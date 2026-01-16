@@ -11,6 +11,7 @@ import { handlerAppsInvoice } from '@db/apps/invoice/index'
 import { handlerAppsKanban } from '@db/apps/kanban/index'
 import { handlerAppLogistics } from '@db/apps/logistics/index'
 import { handlerAppsPermission } from '@db/apps/permission/index'
+import { handlerAppsTestEntities } from '@db/apps/test-entities/index'
 import { handlerAppsUsers } from '@db/apps/users/index'
 import { handlerAuth } from '@db/auth/index'
 import { handlerDashboard } from '@db/dashboard/index'
@@ -37,15 +38,21 @@ const worker = setupWorker(
   ...handlerAuth,
   ...handlerAppsKanban,
   ...handlerDashboard,
+  ...handlerAppsTestEntities,
 )
 
 export default function () {
+  if (import.meta.env.VITE_USE_MSW === 'false') return
+
   const workerUrl = `${import.meta.env.BASE_URL ?? '/'}mockServiceWorker.js`
 
   worker.start({
     serviceWorker: {
       url: workerUrl,
     },
-    onUnhandledRequest: 'bypass',
+    onUnhandledRequest: (req) => {
+      console.log('MSW unhandled request:', req.method, req.url)
+      return 'bypass'
+    },
   })
 }

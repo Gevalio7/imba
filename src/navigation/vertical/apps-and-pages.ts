@@ -101,6 +101,11 @@ export default [
     ],
   },
   {
+    title: 'Test Entities',
+    icon: { icon: 'bx-test-tube' },
+    to: 'apps-test-entities',
+  },
+  {
     title: 'Roles & Permissions',
     icon: { icon: 'bx-check-shield' },
     children: [
