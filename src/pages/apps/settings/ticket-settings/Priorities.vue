@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useApi } from '@/composables/useApi'
+import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для приоритета
@@ -13,8 +13,8 @@ interface Priority {
   isActive: boolean
 }
 
-// API
-const { get, post, put, delete: del } = useApi()
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Данные приоритетов
 const priorities = ref<Priority[]>([])
@@ -26,8 +26,8 @@ const fetchPriorities = async () => {
   try {
     loading.value = true
     error.value = null
-    const { data } = await get('/priorities')
-    priorities.value = data.value as Priority[]
+    const data = await $fetch<Priority[]>(`${API_BASE}/priorities`)
+    priorities.value = data
   } catch (err) {
     error.value = 'Ошибка загрузки приоритетов'
     console.error('Error fetching priorities:', err)
@@ -39,10 +39,12 @@ const fetchPriorities = async () => {
 // Создание приоритета
 const createPriority = async (priority: Omit<Priority, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const { data } = await post('/priorities', { body: priority })
-    const newPriority = data.value as Priority
-    priorities.value.push(newPriority)
-    return newPriority
+    const data = await $fetch<Priority>(`${API_BASE}/priorities`, {
+      method: 'POST',
+      body: priority
+    })
+    priorities.value.push(data)
+    return data
   } catch (err) {
     console.error('Error creating priority:', err)
     throw err
@@ -52,13 +54,15 @@ const createPriority = async (priority: Omit<Priority, 'id' | 'createdAt' | 'upd
 // Обновление приоритета
 const updatePriority = async (id: number, priority: Omit<Priority, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const { data } = await put(`/priorities/${id}`, { body: priority })
-    const updatedPriority = data.value as Priority
+    const data = await $fetch<Priority>(`${API_BASE}/priorities/${id}`, {
+      method: 'PUT',
+      body: priority
+    })
     const index = priorities.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      priorities.value[index] = updatedPriority
+      priorities.value[index] = data
     }
-    return updatedPriority
+    return data
   } catch (err) {
     console.error('Error updating priority:', err)
     throw err
@@ -68,7 +72,9 @@ const updatePriority = async (id: number, priority: Omit<Priority, 'id' | 'creat
 // Удаление приоритета
 const deletePriority = async (id: number) => {
   try {
-    await del(`/priorities/${id}`)
+    await $fetch(`${API_BASE}/priorities/${id}`, {
+      method: 'DELETE'
+    })
     const index = priorities.value.findIndex(p => p.id === id)
     if (index !== -1) {
       priorities.value.splice(index, 1)

@@ -18,40 +18,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use('/api/apps/test-entities', testEntitiesRouter);
-
-// Mock route for priorities
-app.get('/api/priorities', (req, res) => {
-  res.json([
-    {
-      id: 1,
-      name: 'Высокий',
-      color: '#dc3545',
-      createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z',
-      status: 1,
-      isActive: true
-    },
-    {
-      id: 2,
-      name: 'Средний',
-      color: '#ffc107',
-      createdAt: '2023-01-02T00:00:00Z',
-      updatedAt: '2023-01-02T00:00:00Z',
-      status: 1,
-      isActive: true
-    },
-    {
-      id: 3,
-      name: 'Низкий',
-      color: '#28a745',
-      createdAt: '2023-01-03T00:00:00Z',
-      updatedAt: '2023-01-03T00:00:00Z',
-      status: 1,
-      isActive: true
-    }
-  ]);
-});
+app.use('/apps/test-entities', testEntitiesRouter);
 
 (async () => {
   try {
