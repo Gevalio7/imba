@@ -10,7 +10,7 @@ const entities = [
   'PerformanceLog', 'PgpKeys', 'PostMasterFilters', 'PostMasterMailAccounts', 'Priorities',
   'ProcessesAutomationSettings', 'ProcessManagement', 'QueueAutoResponse', 'Queues',
   'Roles', 'RolesGroups', 'Services', 'SessionManagement', 'Signatures', 'SLA',
-  'SmimeCertificates', 'SqlBox', 'States', 'SystemConfiguration', 'SystemFileSupport',
+  'SmimeCertificates', 'SqlBox', 'States', 'Types', 'SystemConfiguration', 'SystemFileSupport',
   'SystemLog', 'SystemMaintenance', 'TemplateAttachments', 'TemplateQueues', 'Templates',
   'TicketAttributeRelations', 'TicketNotifications', 'Translation', 'UsersGroupsRolesSettings',
   'WebServices'

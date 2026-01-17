@@ -2,6 +2,7 @@ const { pool } = require('../config/db');
   
   class CustomerUsersCustomers {
     static tableName = 'customer_users_customers';
+    static fields = 'name, description';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -11,13 +12,15 @@ const { pool } = require('../config/db');
       let paramIndex = 1;
 
       if (q) {
-        whereClause = 'WHERE name ILIKE $1 OR description ILIKE $1';
+        const fieldList = this.fields.split(', ');
+        whereClause = `WHERE ${fieldList[0]} ILIKE $1 OR ${fieldList[1]} ILIKE $1`;
         params.push(`%${q}%`);
         paramIndex++;
       }
 
       let orderClause = '';
-      if (sortBy && ['name', 'description', 'created_at', 'updated_at'].includes(sortBy)) {
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
@@ -29,7 +32,7 @@ const { pool } = require('../config/db');
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      const dataQuery = `SELECT id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${CustomerUsersCustomers.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${CustomerUsersCustomers.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -45,7 +48,7 @@ const { pool } = require('../config/db');
 
   static async getById(id) {
     try {
-      const result = await pool.query(`SELECT id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${CustomerUsersCustomers.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${CustomerUsersCustomers.tableName} WHERE id = $1`, [id]);
 
       return result.rows[0] || null;
     } catch (error) {
@@ -56,7 +59,8 @@ const { pool } = require('../config/db');
 
   static async create(customeruserscustomer) {
     try {
-      const result = await pool.query(`INSERT INTO ${CustomerUsersCustomers.tableName} (name, description, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [customeruserscustomer.name, customeruserscustomer.description, customeruserscustomer.status, customeruserscustomer.isActive]);
+      const fieldList = this.fields.split(', ');
+      const result = await pool.query(`INSERT INTO ${CustomerUsersCustomers.tableName} (${this.fields}, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [customeruserscustomer[fieldList[0]], customeruserscustomer[fieldList[1]], customeruserscustomer.status, customeruserscustomer.isActive]);
 
       return result.rows[0];
     } catch (error) {
@@ -67,7 +71,8 @@ const { pool } = require('../config/db');
 
   static async update(id, customeruserscustomer) {
     try {
-      const result = await pool.query(`UPDATE ${CustomerUsersCustomers.tableName} SET name = $1, description = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [customeruserscustomer.name, customeruserscustomer.description, customeruserscustomer.status, customeruserscustomer.isActive, id]);
+      const fieldList = this.fields.split(', ');
+      const result = await pool.query(`UPDATE ${CustomerUsersCustomers.tableName} SET ${fieldList[0]} = $1, ${fieldList[1]} = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [customeruserscustomer[fieldList[0]], customeruserscustomer[fieldList[1]], customeruserscustomer.status, customeruserscustomer.isActive, id]);
 
       return result.rows[0] || null;
     } catch (error) {

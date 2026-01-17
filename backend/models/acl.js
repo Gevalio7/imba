@@ -2,6 +2,7 @@ const { pool } = require('../config/db');
   
   class Acl {
     static tableName = 'acl';
+    static fields = 'name, description';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -11,13 +12,15 @@ const { pool } = require('../config/db');
       let paramIndex = 1;
 
       if (q) {
-        whereClause = 'WHERE name ILIKE $1 OR description ILIKE $1';
+        const fieldList = this.fields.split(', ');
+        whereClause = `WHERE ${fieldList[0]} ILIKE $1 OR ${fieldList[1]} ILIKE $1`;
         params.push(`%${q}%`);
         paramIndex++;
       }
 
       let orderClause = '';
-      if (sortBy && ['name', 'description', 'created_at', 'updated_at'].includes(sortBy)) {
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
@@ -29,7 +32,7 @@ const { pool } = require('../config/db');
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      const dataQuery = `SELECT id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${Acl.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${Acl.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -45,7 +48,7 @@ const { pool } = require('../config/db');
 
   static async getById(id) {
     try {
-      const result = await pool.query(`SELECT id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${Acl.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${Acl.tableName} WHERE id = $1`, [id]);
 
       return result.rows[0] || null;
     } catch (error) {
@@ -56,7 +59,8 @@ const { pool } = require('../config/db');
 
   static async create(acl) {
     try {
-      const result = await pool.query(`INSERT INTO ${Acl.tableName} (name, description, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [acl.name, acl.description, acl.status, acl.isActive]);
+      const fieldList = this.fields.split(', ');
+      const result = await pool.query(`INSERT INTO ${Acl.tableName} (${this.fields}, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [acl[fieldList[0]], acl[fieldList[1]], acl.status, acl.isActive]);
 
       return result.rows[0];
     } catch (error) {
@@ -67,7 +71,8 @@ const { pool } = require('../config/db');
 
   static async update(id, acl) {
     try {
-      const result = await pool.query(`UPDATE ${Acl.tableName} SET name = $1, description = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, name, description, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [acl.name, acl.description, acl.status, acl.isActive, id]);
+      const fieldList = this.fields.split(', ');
+      const result = await pool.query(`UPDATE ${Acl.tableName} SET ${fieldList[0]} = $1, ${fieldList[1]} = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [acl[fieldList[0]], acl[fieldList[1]], acl.status, acl.isActive, id]);
 
       return result.rows[0] || null;
     } catch (error) {

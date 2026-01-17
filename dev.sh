@@ -24,6 +24,9 @@ rm -rf node_modules/.vite
 
 # Запуск бэкенда в фоне
 echo "Запуск бэкенда..."
+pkill -f "node server.js" || true
+echo "Остановка предыдущего бэкенда..."
+sleep 1
 cd backend && npm start &
 BACKEND_PID=$!
 echo "Backend started with PID: $BACKEND_PID"
