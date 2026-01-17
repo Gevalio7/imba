@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { initializeDatabase } = require('./init-db');
 const testEntitiesRouter = require('./routes/testEntities');
+const prioritiesRouter = require('./routes/priorities');
 
 // Add global error handlers for debugging
 process.on('uncaughtException', (err) => {
@@ -19,6 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/apps/test-entities', testEntitiesRouter);
+app.use('/priorities', prioritiesRouter);
 
 (async () => {
   try {

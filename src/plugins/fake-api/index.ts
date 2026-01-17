@@ -48,9 +48,6 @@ export default function () {
     serviceWorker: {
       url: workerUrl,
     },
-    onUnhandledRequest: (req) => {
-      console.log('MSW unhandled request:', req.method, req.url)
-      return 'bypass'
-    },
+    onUnhandledRequest: 'bypass',
   })
 }

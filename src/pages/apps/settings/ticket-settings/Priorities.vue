@@ -18,6 +18,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Данные приоритетов
 const priorities = ref<Priority[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,8 +27,11 @@ const fetchPriorities = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Priority[]>(`${API_BASE}/priorities`)
-    priorities.value = data
+    console.log('Fetching priorities from:', `${API_BASE}/priorities`)
+    const data = await $fetch<{ priorities: Priority[], total: number }>(`${API_BASE}/priorities`)
+    console.log('Fetched priorities data:', data)
+    priorities.value = data.priorities
+    total.value = data.total
   } catch (err) {
     error.value = 'Ошибка загрузки приоритетов'
     console.error('Error fetching priorities:', err)

@@ -47,6 +47,21 @@ async function initializeDatabase() {
     `);
     console.log('Таблица test_entities создана или уже существует.');
 
+    // Создание таблицы priorities
+    console.log('Creating table priorities...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS priorities (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        color VARCHAR(7) DEFAULT '#000000',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status INTEGER DEFAULT 1,
+        is_active BOOLEAN DEFAULT true
+      )
+    `);
+    console.log('Таблица priorities создана или уже существует.');
+
     // Проверка, есть ли данные
     const countResult = await pool.query('SELECT COUNT(*) as count FROM test_entities');
     const count = parseInt(countResult.rows[0].count);
@@ -67,6 +82,27 @@ async function initializeDatabase() {
       console.log('Начальные данные вставлены.');
     } else {
       console.log('Начальные данные уже существуют.');
+    }
+
+    // Проверка, есть ли данные в priorities
+    const prioritiesCountResult = await pool.query('SELECT COUNT(*) as count FROM priorities');
+    const prioritiesCount = parseInt(prioritiesCountResult.rows[0].count);
+
+    if (prioritiesCount === 0) {
+      // Вставка начальных данных для priorities
+      const initialPriorities = [
+        { name: 'Низкий', color: '#28a745', status: 1, is_active: true },
+        { name: 'Средний', color: '#ffc107', status: 1, is_active: true },
+        { name: 'Высокий', color: '#dc3545', status: 1, is_active: true },
+        { name: 'Критический', color: '#6f42c1', status: 1, is_active: true },
+      ];
+
+      for (const priority of initialPriorities) {
+        await pool.query('INSERT INTO priorities (name, color, status, is_active) VALUES ($1, $2, $3, $4)', [priority.name, priority.color, priority.status, priority.is_active]);
+      }
+      console.log('Начальные данные для priorities вставлены.');
+    } else {
+      console.log('Начальные данные для priorities уже существуют.');
     }
   } catch (err) {
     console.error('Ошибка инициализации базы данных:', err);
