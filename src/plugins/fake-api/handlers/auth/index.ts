@@ -1,12 +1,12 @@
-import type { PathParams } from 'msw'
-import { HttpResponse, http } from 'msw'
 import { db } from '@db/auth/db'
 import type { UserOut } from '@db/auth/types'
+import type { PathParams } from 'msw'
+import { HttpResponse, http } from 'msw'
 
 // Handlers for auth
 export const handlerAuth = [
 
-  http.post<PathParams>(('/api/auth/login'), async ({ request }) => {
+  http.post<PathParams>(('/auth/login'), async ({ request }) => {
     const { email, password } = await request.json() as { email: string; password: string }
 
     let errors: Record<string, string[]> = {

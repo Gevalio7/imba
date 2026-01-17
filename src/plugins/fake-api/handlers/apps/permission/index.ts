@@ -6,7 +6,7 @@ import { paginateArray } from '@api-utils/paginateArray'
 
 export const handlerAppsPermission = [
   // 👉 Get Permission List
-  http.get(('/api/apps/permissions'), ({ request }) => {
+  http.get(('/apps/permissions'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q') || ''

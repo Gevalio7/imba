@@ -3,7 +3,7 @@ import { db } from '@db/apps/chat/db'
 import type { Chat, ChatContact, ChatContactWithChat, ChatMessage } from '@db/apps/chat/types'
 
 export const handlerAppsChat = [
-  http.get(('/api/apps/chat/chats-and-contacts'), ({ request }) => {
+  http.get(('/apps/chat/chats-and-contacts'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q') || ''
@@ -31,7 +31,7 @@ export const handlerAppsChat = [
     return HttpResponse.json(response, { status: 200 })
   }),
 
-  http.get(('/api/apps/chat/chats/:userId'), ({ params }) => {
+  http.get(('/apps/chat/chats/:userId'), ({ params }) => {
     const userId = Number(params.userId)
 
     const chat = db.chats.find(e => e.userId === userId)
@@ -48,7 +48,7 @@ export const handlerAppsChat = [
     })
   }),
 
-  http.post(('/api/apps/chat/chats/:userId'), async ({ request, params }) => {
+  http.post(('/apps/chat/chats/:userId'), async ({ request, params }) => {
     // Get user id from URL
     const chatId = Number(params.userId)
 

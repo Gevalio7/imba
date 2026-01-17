@@ -1,11 +1,11 @@
-import { destr } from 'destr'
-import { HttpResponse, http } from 'msw'
 import { db } from '@db/apps/email/db'
 import type { Email, EmailLabel } from '@db/apps/email/types'
+import { destr } from 'destr'
+import { HttpResponse, http } from 'msw'
 
 export const handlerAppsEmail = [
   // 👉 Get Email List
-  http.get(('/api/apps/email'), ({ request }) => {
+  http.get(('/apps/email'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q') || ''
@@ -44,7 +44,7 @@ export const handlerAppsEmail = [
   }),
 
   // 👉 Update Email Meta
-  http.post(('/api/apps/email'), async ({ request }) => {
+  http.post(('/apps/email'), async ({ request }) => {
     const { ids, data, label } = await request.json() as { ids: Email['id'] | Email['id'][]; data: Partial<Email>; label: EmailLabel }
 
     const labelLocal = destr(label)

@@ -4,7 +4,7 @@ import { db } from '@db/pages/profile/db'
 // Handler for pages/profile
 export const handlerPagesProfile = [
   // GET /pages/profile
-  http.get(('/api/pages/profile'), ({ request }) => {
+  http.get(('/pages/profile'), ({ request }) => {
     const url = new URL(request.url)
 
     const tab = url.searchParams.get('tab') || ''
@@ -14,7 +14,7 @@ export const handlerPagesProfile = [
   }),
 
   // GET /pages/profile/header
-  http.get(('/api/pages/profile/header'), () => {
+  http.get(('/pages/profile/header'), () => {
     return HttpResponse.json(db.data.profileHeader,
       { status: 200 })
   }),

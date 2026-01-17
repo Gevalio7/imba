@@ -9,7 +9,7 @@ export const handlerAppsInvoice = [
 
   // 👉 Client
   // Get Clients
-  http.get(('/api/apps/invoice/clients'), () => {
+  http.get(('/apps/invoice/clients'), () => {
     const clients = database.map(invoice => invoice.client)
 
     return HttpResponse.json(clients.splice(0, 5), { status: 200 })
@@ -17,7 +17,7 @@ export const handlerAppsInvoice = [
 
   // 👉 Invoice
   // Get Invoice List
-  http.get(('/api/apps/invoice'), ({ request }) => {
+  http.get(('/apps/invoice'), ({ request }) => {
     const url = new URL(request.url)
     const q = url.searchParams.get('q')
     const status = url.searchParams.get('status')
@@ -126,7 +126,7 @@ export const handlerAppsInvoice = [
   }),
 
   // Get Single Invoice
-  http.get<PathParams>(('/api/apps/invoice/:id'), ({ params }) => {
+  http.get<PathParams>(('/apps/invoice/:id'), ({ params }) => {
     const invoiceId = params.id
 
     const invoice = database.find(e => e.id === Number(invoiceId))
@@ -152,7 +152,7 @@ export const handlerAppsInvoice = [
   }),
 
   // Delete Invoice
-  http.delete(('/api/apps/invoice/:id'), ({ params }) => {
+  http.delete(('/apps/invoice/:id'), ({ params }) => {
     const invoiceId = params.id
 
     const invoiceIndex = database.findIndex(e => e.id === Number(invoiceId))

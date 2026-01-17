@@ -1,11 +1,11 @@
+import { paginateArray } from '@api-utils/paginateArray'
+import { db } from '@db/dashboard/db'
 import is from '@sindresorhus/is'
 import { destr } from 'destr'
 import { HttpResponse, http } from 'msw'
-import { db } from '@db/dashboard/db'
-import { paginateArray } from '@api-utils/paginateArray'
 
 export const handlerDashboard = [
-  http.get('/api/dashboard/analytics/projects', ({ request }) => {
+  http.get('/dashboard/analytics/projects', ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q')

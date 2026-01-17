@@ -1,11 +1,11 @@
-import is from '@sindresorhus/is'
-import { HttpResponse, http } from 'msw'
 import { db } from '@db/app-bar-search/db'
 import type { SearchResults } from '@db/app-bar-search/types'
+import is from '@sindresorhus/is'
+import { HttpResponse, http } from 'msw'
 
 export const handlerAppBarSearch = [
   // Get Search Items
-  http.get('/api/app-bar/search', ({ request }) => {
+  http.get('/app-bar/search', ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q') ?? ''

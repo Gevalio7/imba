@@ -1,11 +1,11 @@
+import { paginateArray } from '@api-utils/paginateArray'
+import { db } from '@db/apps/logistics/db'
 import is from '@sindresorhus/is'
 import { destr } from 'destr'
 import { HttpResponse, http } from 'msw'
-import { db } from '@db/apps/logistics/db'
-import { paginateArray } from '@api-utils/paginateArray'
 
 export const handlerAppLogistics = [
-  http.get(('/api/apps/logistics/vehicles'), ({ request }) => {
+  http.get(('/apps/logistics/vehicles'), ({ request }) => {
     const url = new URL(request.url)
     const sortBy = url.searchParams.get('sortBy')
     const page = url.searchParams.get('page') ?? 1

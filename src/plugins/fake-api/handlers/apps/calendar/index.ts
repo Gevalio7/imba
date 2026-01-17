@@ -7,7 +7,7 @@ import { HttpResponse, http } from 'msw'
 export const handlerAppsCalendar = [
 
   // 👉 Get Calendar Events
-  http.get(('/api/apps/calendar'), ({ request }) => {
+  http.get(('/apps/calendar'), ({ request }) => {
     const url = new URL(request.url)
 
     const queries = url.searchParams.getAll('calendars')
@@ -22,7 +22,7 @@ export const handlerAppsCalendar = [
   }),
 
   // 👉 Add Calendar Event
-  http.post(('/api/apps/calendar'), async ({ request }) => {
+  http.post(('/apps/calendar'), async ({ request }) => {
     const event = await request.json() as typeof db.events[0]
 
     db.events.push({
@@ -34,7 +34,7 @@ export const handlerAppsCalendar = [
   }),
 
   // 👉 Update Calendar Event
-  http.put(('/api/apps/calendar/:id'), async ({ request, params }) => {
+  http.put(('/apps/calendar/:id'), async ({ request, params }) => {
     const updatedEvent = await request.json() as typeof db.events[0]
 
     updatedEvent.id = Number(updatedEvent.id)
@@ -60,7 +60,7 @@ export const handlerAppsCalendar = [
   }),
 
   // 👉 Delete Calendar Event
-  http.delete(('/api/apps/calendar/:id'), ({ request, params }) => {
+  http.delete(('/apps/calendar/:id'), ({ request, params }) => {
     const eventId = Number(params.id)
 
     const eventIndex = db.events.findIndex(e => e.id === eventId)

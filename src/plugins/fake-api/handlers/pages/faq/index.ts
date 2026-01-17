@@ -5,7 +5,7 @@ import type { FaqCategory } from '@db/pages/faq/types'
 
 // Handler for pages/faq
 export const handlerPagesFaq = [
-  http.get(('/api/pages/faq'), ({ request }) => {
+  http.get(('/pages/faq'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q') ?? ''

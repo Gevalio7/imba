@@ -8,7 +8,7 @@ export const handlerAppsEcommerce = [
 
   // 👉 Products
   // Get Product List
-  http.get('/api/apps/ecommerce/products', ({ request }) => {
+  http.get('/apps/ecommerce/products', ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q')
@@ -126,7 +126,7 @@ export const handlerAppsEcommerce = [
   }),
 
   // 👉 Delete Product
-  http.delete('/api/apps/ecommerce/products/:id', ({ request, params }) => {
+  http.delete('/apps/ecommerce/products/:id', ({ request, params }) => {
     const id = Number(params.id)
 
     const productIndex = db.products.findIndex(e => e.id === id)
@@ -150,7 +150,7 @@ export const handlerAppsEcommerce = [
 
   // 👉 Orders
   // Get single Customer
-  http.get(('/api/apps/ecommerce/orders/:id'), ({ params }) => {
+  http.get(('/apps/ecommerce/orders/:id'), ({ params }) => {
     const orderId = Number(params.id)
 
     try {
@@ -169,7 +169,7 @@ export const handlerAppsEcommerce = [
   }),
 
   // Get Order List
-  http.get('/api/apps/ecommerce/orders', ({ request }) => {
+  http.get('/apps/ecommerce/orders', ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q')
@@ -258,7 +258,7 @@ export const handlerAppsEcommerce = [
   }),
 
   // Delete Order
-  http.delete('/api/apps/ecommerce/orders/:id', ({ params }) => {
+  http.delete('/apps/ecommerce/orders/:id', ({ params }) => {
     const id = Number(params.id)
 
     const orderIndex = db.orderData.findIndex(e => e.id === id)
@@ -273,7 +273,7 @@ export const handlerAppsEcommerce = [
 
   // 👉 Customers
   // Get single Customer
-  http.get(('/api/apps/ecommerce/customers/:id'), ({ params }) => {
+  http.get(('/apps/ecommerce/customers/:id'), ({ params }) => {
     const customerId = Number(params.id)
 
     try {
@@ -297,7 +297,7 @@ export const handlerAppsEcommerce = [
   }),
 
   // Get Customer List
-  http.get(('/api/apps/ecommerce/customers'), ({ request }) => {
+  http.get(('/apps/ecommerce/customers'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q')
@@ -387,7 +387,7 @@ export const handlerAppsEcommerce = [
 
   // 👉 Manage Reviews.
   // Get Reviews
-  http.get(('/api/apps/ecommerce/reviews'), ({ request }) => {
+  http.get(('/apps/ecommerce/reviews'), ({ request }) => {
     const url = new URL(request.url)
 
     const q = url.searchParams.get('q')
@@ -481,7 +481,7 @@ export const handlerAppsEcommerce = [
   }),
 
   // Delete Review
-  http.delete(('/api/apps/ecommerce/reviews/:id'), ({ params }) => {
+  http.delete(('/apps/ecommerce/reviews/:id'), ({ params }) => {
     const id = Number(params.id)
 
     const reviewIndex = db.reviews.findIndex(e => e.id === id)
@@ -501,7 +501,7 @@ export const handlerAppsEcommerce = [
 
   // 👉 Referrals
   // Get Referrals
-  http.get(('/api/apps/ecommerce/referrals'), ({ request }) => {
+  http.get(('/apps/ecommerce/referrals'), ({ request }) => {
     const url = new URL(request.url)
 
     const sortBy = url.searchParams.get('sortBy')
