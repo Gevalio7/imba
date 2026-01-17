@@ -68,8 +68,6 @@ async function initializeDatabase() {
     } else {
       console.log('Начальные данные уже существуют.');
     }
-
-    await pool.end();
   } catch (err) {
     console.error('Ошибка инициализации базы данных:', err);
   }

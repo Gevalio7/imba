@@ -11,7 +11,6 @@ import { handlerAppsInvoice } from '@db/apps/invoice/index'
 import { handlerAppsKanban } from '@db/apps/kanban/index'
 import { handlerAppLogistics } from '@db/apps/logistics/index'
 import { handlerAppsPermission } from '@db/apps/permission/index'
-import { handlerAppsTestEntities } from '@db/apps/test-entities/index'
 import { handlerAppsUsers } from '@db/apps/users/index'
 import { handlerAuth } from '@db/auth/index'
 import { handlerDashboard } from '@db/dashboard/index'
@@ -38,7 +37,6 @@ const worker = setupWorker(
   ...handlerAuth,
   ...handlerAppsKanban,
   ...handlerDashboard,
-  ...handlerAppsTestEntities,
 )
 
 export default function () {
