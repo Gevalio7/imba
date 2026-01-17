@@ -104,6 +104,58 @@ async function initializeDatabase() {
     } else {
       console.log('Начальные данные для priorities уже существуют.');
     }
+
+    // Создание таблиц для остальных сущностей
+    const entities = [
+      'acls', 'admin_notifications', 'agents', 'agents_groups', 'agents_roles', 'appointment_notifications',
+      'attachments', 'calendars', 'communication_log', 'communication_notifications_settings',
+      'customers', 'customers_groups', 'customer_users', 'customer_users_customers', 'customer_users_groups',
+      'customer_users_services', 'dynamic_fields', 'dynamic_fields_screens', 'email_addresses',
+      'general_catalog', 'generic_agent', 'greetings', 'groups', 'oauth2', 'package_manager',
+      'performance_log', 'pgp_keys', 'post_master_filters', 'post_master_mail_accounts',
+      'processes_automation_settings', 'process_management', 'queue_auto_response', 'queues',
+      'roles', 'roles_groups', 'services', 'session_management', 'signatures', 'sla',
+      'smime_certificates', 'sql_box', 'states', 'system_configuration', 'system_file_support',
+      'system_log', 'system_maintenance', 'template_attachments', 'template_queues', 'templates',
+      'ticket_attribute_relations', 'ticket_notifications', 'translation', 'users_groups_roles_settings',
+      'web_services'
+    ];
+
+    for (const table of entities) {
+      console.log(`Creating table ${table}...`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS ${table} (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255),
+          description TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          status INTEGER DEFAULT 1,
+          is_active BOOLEAN DEFAULT true
+        )
+      `);
+      console.log(`Таблица ${table} создана или уже существует.`);
+
+      // Проверка, есть ли данные
+      const countResult = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
+      const count = parseInt(countResult.rows[0].count);
+
+      if (count === 0) {
+        // Вставка начальных данных
+        const initialData = [
+          { name: `${table} Item 1`, description: `Description for ${table} item 1`, status: 1, is_active: true },
+          { name: `${table} Item 2`, description: `Description for ${table} item 2`, status: 1, is_active: true },
+          { name: `${table} Item 3`, description: `Description for ${table} item 3`, status: 1, is_active: true },
+        ];
+
+        for (const item of initialData) {
+          await pool.query(`INSERT INTO ${table} (name, description, status, is_active) VALUES ($1, $2, $3, $4)`, [item.name, item.description, item.status, item.is_active]);
+        }
+        console.log(`Начальные данные для ${table} вставлены.`);
+      } else {
+        console.log(`Начальные данные для ${table} уже существуют.`);
+      }
+    }
   } catch (err) {
     console.error('Ошибка инициализации базы данных:', err);
   }

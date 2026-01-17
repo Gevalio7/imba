@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const DynamicFields = require('../models/dynamicFields');
 
-const getPriorities = async (req, res) => {
+const getDynamicFields = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await DynamicFields.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getDynamicFields:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getDynamicFieldById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const dynamicfieldId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(dynamicfieldId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const dynamicfield = await DynamicFields.getById(dynamicfieldId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!dynamicfield) {
+      return res.status(404).json({ message: 'DynamicField not found' });
     }
 
-    res.json(priority);
+    res.json(dynamicfield);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getDynamicFieldById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createDynamicFields = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newDynamicField = await DynamicFields.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newDynamicField);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createDynamicFields:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateDynamicFields = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const dynamicfieldId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(dynamicfieldId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedDynamicField = await DynamicFields.update(dynamicfieldId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedDynamicField) {
+      return res.status(404).json({ message: 'DynamicField not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedDynamicField);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateDynamicFields:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteDynamicFields = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const dynamicfieldId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(dynamicfieldId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await DynamicFields.delete(dynamicfieldId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'DynamicField not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteDynamicFields:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getDynamicFields,
+  getDynamicFieldById,
+  createDynamicFields,
+  updateDynamicFields,
+  deleteDynamicFields,
 };

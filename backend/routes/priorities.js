@@ -3,9 +3,9 @@ const router = express.Router();
 const {
   getPriorities,
   getPriorityById,
-  createPriority,
-  updatePriority,
-  deletePriority,
+  createPriorities,
+  updatePriorities,
+  deletePriorities,
 } = require('../controllers/prioritiesController');
 
 // GET /priorities - список с query params
@@ -15,12 +15,12 @@ router.get('/', getPriorities);
 router.get('/:id', getPriorityById);
 
 // POST /priorities
-router.post('/', createPriority);
+router.post('/', createPriorities);
 
 // PUT /priorities/:id
-router.put('/:id', updatePriority);
+router.put('/:id', updatePriorities);
 
 // DELETE /priorities/:id
-router.delete('/:id', deletePriority);
+router.delete('/:id', deletePriorities);
 
 module.exports = router;

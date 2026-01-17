@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const AgentsRoles = require('../models/agentsRoles');
 
-const getPriorities = async (req, res) => {
+const getAgentsRoles = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await AgentsRoles.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getAgentsRoles:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getAgentsRoleById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const agentsroleId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(agentsroleId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const agentsrole = await AgentsRoles.getById(agentsroleId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!agentsrole) {
+      return res.status(404).json({ message: 'AgentsRole not found' });
     }
 
-    res.json(priority);
+    res.json(agentsrole);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getAgentsRoleById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createAgentsRoles = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newAgentsRole = await AgentsRoles.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newAgentsRole);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createAgentsRoles:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateAgentsRoles = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const agentsroleId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(agentsroleId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedAgentsRole = await AgentsRoles.update(agentsroleId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedAgentsRole) {
+      return res.status(404).json({ message: 'AgentsRole not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedAgentsRole);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateAgentsRoles:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteAgentsRoles = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const agentsroleId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(agentsroleId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await AgentsRoles.delete(agentsroleId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'AgentsRole not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteAgentsRoles:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getAgentsRoles,
+  getAgentsRoleById,
+  createAgentsRoles,
+  updateAgentsRoles,
+  deleteAgentsRoles,
 };

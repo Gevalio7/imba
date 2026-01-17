@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const TemplateQueues = require('../models/templateQueues');
 
-const getPriorities = async (req, res) => {
+const getTemplateQueues = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await TemplateQueues.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getTemplateQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getTemplateQueueById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const templatequeueId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(templatequeueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const templatequeue = await TemplateQueues.getById(templatequeueId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!templatequeue) {
+      return res.status(404).json({ message: 'TemplateQueue not found' });
     }
 
-    res.json(priority);
+    res.json(templatequeue);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getTemplateQueueById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createTemplateQueues = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newTemplateQueue = await TemplateQueues.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newTemplateQueue);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createTemplateQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateTemplateQueues = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const templatequeueId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(templatequeueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedTemplateQueue = await TemplateQueues.update(templatequeueId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedTemplateQueue) {
+      return res.status(404).json({ message: 'TemplateQueue not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedTemplateQueue);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateTemplateQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteTemplateQueues = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const templatequeueId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(templatequeueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await TemplateQueues.delete(templatequeueId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'TemplateQueue not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteTemplateQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getTemplateQueues,
+  getTemplateQueueById,
+  createTemplateQueues,
+  updateTemplateQueues,
+  deleteTemplateQueues,
 };

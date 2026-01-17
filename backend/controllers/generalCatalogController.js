@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const GeneralCatalog = require('../models/generalCatalog');
 
-const getPriorities = async (req, res) => {
+const getGeneralCatalog = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await GeneralCatalog.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getGeneralCatalog:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getGeneralCatalogById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const generalcatalogId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(generalcatalogId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const generalcatalog = await GeneralCatalog.getById(generalcatalogId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!generalcatalog) {
+      return res.status(404).json({ message: 'GeneralCatalog not found' });
     }
 
-    res.json(priority);
+    res.json(generalcatalog);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getGeneralCatalogById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createGeneralCatalog = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newGeneralCatalog = await GeneralCatalog.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newGeneralCatalog);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createGeneralCatalog:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateGeneralCatalog = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const generalcatalogId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(generalcatalogId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedGeneralCatalog = await GeneralCatalog.update(generalcatalogId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedGeneralCatalog) {
+      return res.status(404).json({ message: 'GeneralCatalog not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedGeneralCatalog);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateGeneralCatalog:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteGeneralCatalog = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const generalcatalogId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(generalcatalogId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await GeneralCatalog.delete(generalcatalogId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'GeneralCatalog not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteGeneralCatalog:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getGeneralCatalog,
+  getGeneralCatalogById,
+  createGeneralCatalog,
+  updateGeneralCatalog,
+  deleteGeneralCatalog,
 };

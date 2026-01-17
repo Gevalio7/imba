@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const EmailAddresses = require('../models/emailAddresses');
 
-const getPriorities = async (req, res) => {
+const getEmailAddresses = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await EmailAddresses.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getEmailAddresses:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getEmailAddressById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const emailaddressId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(emailaddressId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const emailaddress = await EmailAddresses.getById(emailaddressId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!emailaddress) {
+      return res.status(404).json({ message: 'EmailAddress not found' });
     }
 
-    res.json(priority);
+    res.json(emailaddress);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getEmailAddressById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createEmailAddresses = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newEmailAddress = await EmailAddresses.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newEmailAddress);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createEmailAddresses:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateEmailAddresses = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const emailaddressId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(emailaddressId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedEmailAddress = await EmailAddresses.update(emailaddressId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedEmailAddress) {
+      return res.status(404).json({ message: 'EmailAddress not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedEmailAddress);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateEmailAddresses:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteEmailAddresses = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const emailaddressId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(emailaddressId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await EmailAddresses.delete(emailaddressId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'EmailAddress not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteEmailAddresses:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getEmailAddresses,
+  getEmailAddressById,
+  createEmailAddresses,
+  updateEmailAddresses,
+  deleteEmailAddresses,
 };

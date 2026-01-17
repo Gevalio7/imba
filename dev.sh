@@ -14,6 +14,10 @@ if [ ! -d "backend/node_modules" ]; then
   cd backend && npm install && cd ..
 fi
 
+# Генерация моделей
+echo "Генерация моделей..."
+cd backend && node generate-models.js && cd ..
+
 # Очистка кэша Vite
 echo "Очистка кэша Vite..."
 rm -rf node_modules/.vite

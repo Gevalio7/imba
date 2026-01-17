@@ -1,6 +1,6 @@
-const Priorities = require('../models/priorities');
+const Queues = require('../models/queues');
 
-const getPriorities = async (req, res) => {
+const getQueues = async (req, res) => {
   try {
     const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -10,7 +10,7 @@ const getPriorities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await Priorities.getAll({
+    const result = await Queues.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -20,34 +20,34 @@ const getPriorities = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error in getPriorities:', error);
+    console.error('Error in getQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const getPriorityById = async (req, res) => {
+const getQueueById = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const queueId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(queueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const priority = await Priorities.getById(priorityId);
+    const queue = await Queues.getById(queueId);
 
-    if (!priority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!queue) {
+      return res.status(404).json({ message: 'Queue not found' });
     }
 
-    res.json(priority);
+    res.json(queue);
   } catch (error) {
-    console.error('Error in getPriorityById:', error);
+    console.error('Error in getQueueById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createPriorities = async (req, res) => {
+const createQueues = async (req, res) => {
   try {
     const { name, description, status, isActive } = req.body;
 
@@ -55,22 +55,22 @@ const createPriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const newPriority = await Priorities.create({ name, description, status, isActive });
+    const newQueue = await Queues.create({ name, description, status, isActive });
 
-    res.status(201).json(newPriority);
+    res.status(201).json(newQueue);
   } catch (error) {
-    console.error('Error in createPriorities:', error);
+    console.error('Error in createQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updatePriorities = async (req, res) => {
+const updateQueues = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const queueId = parseInt(id, 10);
     const { name, description, status, isActive } = req.body;
 
-    if (isNaN(priorityId)) {
+    if (isNaN(queueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
@@ -78,45 +78,45 @@ const updatePriorities = async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const updatedPriority = await Priorities.update(priorityId, { name, description, status, isActive });
+    const updatedQueue = await Queues.update(queueId, { name, description, status, isActive });
 
-    if (!updatedPriority) {
-      return res.status(404).json({ message: 'Priority not found' });
+    if (!updatedQueue) {
+      return res.status(404).json({ message: 'Queue not found' });
     }
 
-    res.json(updatedPriority);
+    res.json(updatedQueue);
   } catch (error) {
-    console.error('Error in updatePriorities:', error);
+    console.error('Error in updateQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deletePriorities = async (req, res) => {
+const deleteQueues = async (req, res) => {
   try {
     const { id } = req.params;
-    const priorityId = parseInt(id, 10);
+    const queueId = parseInt(id, 10);
 
-    if (isNaN(priorityId)) {
+    if (isNaN(queueId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await Priorities.delete(priorityId);
+    const deleted = await Queues.delete(queueId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Priority not found' });
+      return res.status(404).json({ message: 'Queue not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePriorities:', error);
+    console.error('Error in deleteQueues:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
-  getPriorities,
-  getPriorityById,
-  createPriorities,
-  updatePriorities,
-  deletePriorities,
+  getQueues,
+  getQueueById,
+  createQueues,
+  updateQueues,
+  deleteQueues,
 };
