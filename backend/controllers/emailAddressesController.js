@@ -49,13 +49,17 @@ const getEmailAddressById = async (req, res) => {
 
 const createEmailAddresses = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.email = req.body.email;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.email) {
+      return res.status(400).json({ message: 'email is required' });
     }
 
-    const newEmailAddress = await EmailAddresses.create({ name, description, status, isActive });
+    const newEmailAddress = await EmailAddresses.create(data);
 
     res.status(201).json(newEmailAddress);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateEmailAddresses = async (req, res) => {
   try {
     const { id } = req.params;
     const emailaddressId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.email = req.body.email;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(emailaddressId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.email) {
+      return res.status(400).json({ message: 'email is required' });
     }
 
-    const updatedEmailAddress = await EmailAddresses.update(emailaddressId, { name, description, status, isActive });
+    const updatedEmailAddress = await EmailAddresses.update(emailaddressId, data);
 
     if (!updatedEmailAddress) {
       return res.status(404).json({ message: 'EmailAddress not found' });

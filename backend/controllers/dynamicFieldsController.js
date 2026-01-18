@@ -49,13 +49,20 @@ const getDynamicFieldById = async (req, res) => {
 
 const createDynamicFields = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.label = req.body.label;
+    data.fieldType = req.body.fieldType;
+    data.defaultValue = req.body.defaultValue;
+    data.isRequired = req.body.isRequired;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newDynamicField = await DynamicFields.create({ name, description, status, isActive });
+    const newDynamicField = await DynamicFields.create(data);
 
     res.status(201).json(newDynamicField);
   } catch (error) {
@@ -68,17 +75,24 @@ const updateDynamicFields = async (req, res) => {
   try {
     const { id } = req.params;
     const dynamicfieldId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.label = req.body.label;
+    data.fieldType = req.body.fieldType;
+    data.defaultValue = req.body.defaultValue;
+    data.isRequired = req.body.isRequired;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(dynamicfieldId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedDynamicField = await DynamicFields.update(dynamicfieldId, { name, description, status, isActive });
+    const updatedDynamicField = await DynamicFields.update(dynamicfieldId, data);
 
     if (!updatedDynamicField) {
       return res.status(404).json({ message: 'DynamicField not found' });

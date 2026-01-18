@@ -49,13 +49,17 @@ const getTypeById = async (req, res) => {
 
 const createTypes = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newType = await Types.create({ name, description, status, isActive });
+    const newType = await Types.create(data);
 
     res.status(201).json(newType);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateTypes = async (req, res) => {
   try {
     const { id } = req.params;
     const typeId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(typeId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedType = await Types.update(typeId, { name, description, status, isActive });
+    const updatedType = await Types.update(typeId, data);
 
     if (!updatedType) {
       return res.status(404).json({ message: 'Type not found' });

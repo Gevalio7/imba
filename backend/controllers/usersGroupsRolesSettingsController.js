@@ -49,13 +49,17 @@ const getUsersGroupsRolesSettingById = async (req, res) => {
 
 const createUsersGroupsRolesSettings = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newUsersGroupsRolesSetting = await UsersGroupsRolesSettings.create({ name, description, status, isActive });
+    const newUsersGroupsRolesSetting = await UsersGroupsRolesSettings.create(data);
 
     res.status(201).json(newUsersGroupsRolesSetting);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateUsersGroupsRolesSettings = async (req, res) => {
   try {
     const { id } = req.params;
     const usersgroupsrolessettingId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(usersgroupsrolessettingId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedUsersGroupsRolesSetting = await UsersGroupsRolesSettings.update(usersgroupsrolessettingId, { name, description, status, isActive });
+    const updatedUsersGroupsRolesSetting = await UsersGroupsRolesSettings.update(usersgroupsrolessettingId, data);
 
     if (!updatedUsersGroupsRolesSetting) {
       return res.status(404).json({ message: 'UsersGroupsRolesSetting not found' });

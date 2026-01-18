@@ -49,13 +49,17 @@ const getStateById = async (req, res) => {
 
 const createStates = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newState = await States.create({ name, description, status, isActive });
+    const newState = await States.create(data);
 
     res.status(201).json(newState);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateStates = async (req, res) => {
   try {
     const { id } = req.params;
     const stateId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(stateId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedState = await States.update(stateId, { name, description, status, isActive });
+    const updatedState = await States.update(stateId, data);
 
     if (!updatedState) {
       return res.status(404).json({ message: 'State not found' });

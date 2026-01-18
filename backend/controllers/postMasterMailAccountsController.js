@@ -49,13 +49,17 @@ const getPostMasterMailAccountById = async (req, res) => {
 
 const createPostMasterMailAccounts = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newPostMasterMailAccount = await PostMasterMailAccounts.create({ name, description, status, isActive });
+    const newPostMasterMailAccount = await PostMasterMailAccounts.create(data);
 
     res.status(201).json(newPostMasterMailAccount);
   } catch (error) {
@@ -68,17 +72,21 @@ const updatePostMasterMailAccounts = async (req, res) => {
   try {
     const { id } = req.params;
     const postmastermailaccountId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(postmastermailaccountId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedPostMasterMailAccount = await PostMasterMailAccounts.update(postmastermailaccountId, { name, description, status, isActive });
+    const updatedPostMasterMailAccount = await PostMasterMailAccounts.update(postmastermailaccountId, data);
 
     if (!updatedPostMasterMailAccount) {
       return res.status(404).json({ message: 'PostMasterMailAccount not found' });

@@ -49,13 +49,17 @@ const getServiceById = async (req, res) => {
 
 const createServices = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newService = await Services.create({ name, description, status, isActive });
+    const newService = await Services.create(data);
 
     res.status(201).json(newService);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateServices = async (req, res) => {
   try {
     const { id } = req.params;
     const serviceId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(serviceId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedService = await Services.update(serviceId, { name, description, status, isActive });
+    const updatedService = await Services.update(serviceId, data);
 
     if (!updatedService) {
       return res.status(404).json({ message: 'Service not found' });

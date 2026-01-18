@@ -1,0 +1,246 @@
+{
+    "Acl": [
+        "name",
+        "description",
+        "permissions"
+    ],
+    "AdminNotification": [
+        "name",
+        "message"
+    ],
+    "Agents": [
+        "name",
+        "message"
+    ],
+    "AgentsGroups": [
+        "name",
+        "description"
+    ],
+    "AgentsRoles": [
+        "name",
+        "description"
+    ],
+    "AppointmentNotifications": [
+        "name",
+        "description"
+    ],
+    "Attachments": [
+        "name",
+        "description"
+    ],
+    "Calendars": [
+        "name",
+        "description"
+    ],
+    "CommunicationLog": [
+        "name",
+        "description"
+    ],
+    "CommunicationNotificationsSettings": [
+        "name",
+        "description"
+    ],
+    "Customers": [
+        "name",
+        "street",
+        "zip",
+        "city",
+        "comment"
+    ],
+    "CustomersGroups": [
+        "name",
+        "description"
+    ],
+    "CustomerUsers": [
+        "name",
+        "description"
+    ],
+    "CustomerUsersCustomers": [
+        "name",
+        "description"
+    ],
+    "CustomerUsersGroups": [
+        "name",
+        "description"
+    ],
+    "CustomerUsersServices": [
+        "name",
+        "description"
+    ],
+    "DynamicFields": [
+        "name",
+        "label",
+        "fieldType",
+        "defaultValue",
+        "isRequired"
+    ],
+    "DynamicFieldsScreens": [
+        "name",
+        "description"
+    ],
+    "EmailAddresses": [
+        "email",
+        "description"
+    ],
+    "GeneralCatalog": [
+        "name",
+        "description"
+    ],
+    "GenericAgent": [
+        "name",
+        "description"
+    ],
+    "Greetings": [
+        "name",
+        "description"
+    ],
+    "Groups": [
+        "name",
+        "description"
+    ],
+    "OAuth2": [
+        "name",
+        "clientId",
+        "clientSecret",
+        "authorizationUrl",
+        "tokenUrl",
+        "scopes"
+    ],
+    "PackageManager": [
+        "name",
+        "description",
+        "version",
+        "author"
+    ],
+    "PerformanceLog": [
+        "name",
+        "description"
+    ],
+    "PgpKeys": [
+        "name",
+        "description"
+    ],
+    "PostMasterFilters": [
+        "name",
+        "description"
+    ],
+    "PostMasterMailAccounts": [
+        "name",
+        "description"
+    ],
+    "Priorities": [
+        "name",
+        "color"
+    ],
+    "ProcessesAutomationSettings": [
+        "name",
+        "description"
+    ],
+    "ProcessManagement": [
+        "name",
+        "description"
+    ],
+    "QueueAutoResponse": [
+        "name",
+        "description"
+    ],
+    "Queues": [
+        "name",
+        "description"
+    ],
+    "Roles": [
+        "name",
+        "description"
+    ],
+    "RolesGroups": [
+        "name",
+        "description"
+    ],
+    "Services": [
+        "name",
+        "description"
+    ],
+    "SessionManagement": [
+        "name",
+        "description"
+    ],
+    "Signatures": [
+        "name",
+        "description"
+    ],
+    "SLA": [
+        "name",
+        "description"
+    ],
+    "SmimeCertificates": [
+        "name",
+        "description"
+    ],
+    "SqlBox": [
+        "name",
+        "description"
+    ],
+    "States": [
+        "name",
+        "description"
+    ],
+    "Types": [
+        "name",
+        "description"
+    ],
+    "SystemConfiguration": [
+        "name",
+        "description",
+        "value",
+        "configType",
+        "isEditable"
+    ],
+    "SystemFileSupport": [
+        "name",
+        "description"
+    ],
+    "SystemLog": [
+        "name",
+        "description"
+    ],
+    "SystemMaintenance": [
+        "name",
+        "description"
+    ],
+    "TemplateAttachments": [
+        "name",
+        "description"
+    ],
+    "TemplateQueues": [
+        "name",
+        "description"
+    ],
+    "Templates": [
+        "name",
+        "message"
+    ],
+    "TestEntities": [
+        "name",
+        "comment"
+    ],
+    "TicketAttributeRelations": [
+        "name",
+        "description"
+    ],
+    "TicketNotifications": [
+        "name",
+        "description"
+    ],
+    "Translation": [
+        "name",
+        "description"
+    ],
+    "UsersGroupsRolesSettings": [
+        "name",
+        "description"
+    ],
+    "WebServices": [
+        "name",
+        "description"
+    ]
+}

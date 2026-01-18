@@ -49,13 +49,17 @@ const getTemplateAttachmentById = async (req, res) => {
 
 const createTemplateAttachments = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newTemplateAttachment = await TemplateAttachments.create({ name, description, status, isActive });
+    const newTemplateAttachment = await TemplateAttachments.create(data);
 
     res.status(201).json(newTemplateAttachment);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateTemplateAttachments = async (req, res) => {
   try {
     const { id } = req.params;
     const templateattachmentId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(templateattachmentId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedTemplateAttachment = await TemplateAttachments.update(templateattachmentId, { name, description, status, isActive });
+    const updatedTemplateAttachment = await TemplateAttachments.update(templateattachmentId, data);
 
     if (!updatedTemplateAttachment) {
       return res.status(404).json({ message: 'TemplateAttachment not found' });

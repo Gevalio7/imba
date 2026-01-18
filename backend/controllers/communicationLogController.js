@@ -49,13 +49,17 @@ const getCommunicationLogById = async (req, res) => {
 
 const createCommunicationLog = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newCommunicationLog = await CommunicationLog.create({ name, description, status, isActive });
+    const newCommunicationLog = await CommunicationLog.create(data);
 
     res.status(201).json(newCommunicationLog);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateCommunicationLog = async (req, res) => {
   try {
     const { id } = req.params;
     const communicationlogId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(communicationlogId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedCommunicationLog = await CommunicationLog.update(communicationlogId, { name, description, status, isActive });
+    const updatedCommunicationLog = await CommunicationLog.update(communicationlogId, data);
 
     if (!updatedCommunicationLog) {
       return res.status(404).json({ message: 'CommunicationLog not found' });

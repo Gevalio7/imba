@@ -49,13 +49,17 @@ const getCustomerUsersGroupById = async (req, res) => {
 
 const createCustomerUsersGroups = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newCustomerUsersGroup = await CustomerUsersGroups.create({ name, description, status, isActive });
+    const newCustomerUsersGroup = await CustomerUsersGroups.create(data);
 
     res.status(201).json(newCustomerUsersGroup);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateCustomerUsersGroups = async (req, res) => {
   try {
     const { id } = req.params;
     const customerusersgroupId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(customerusersgroupId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedCustomerUsersGroup = await CustomerUsersGroups.update(customerusersgroupId, { name, description, status, isActive });
+    const updatedCustomerUsersGroup = await CustomerUsersGroups.update(customerusersgroupId, data);
 
     if (!updatedCustomerUsersGroup) {
       return res.status(404).json({ message: 'CustomerUsersGroup not found' });

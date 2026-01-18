@@ -1,20 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const entities = [
-  'Acl', 'AdminNotification', 'Agents', 'AgentsGroups', 'AgentsRoles', 'AppointmentNotifications',
-  'Attachments', 'Calendars', 'CommunicationLog', 'CommunicationNotificationsSettings',
-  'Customers', 'CustomersGroups', 'CustomerUsers', 'CustomerUsersCustomers', 'CustomerUsersGroups',
-  'CustomerUsersServices', 'DynamicFields', 'DynamicFieldsScreens', 'EmailAddresses',
-  'GeneralCatalog', 'GenericAgent', 'Greetings', 'Groups', 'OAuth2', 'PackageManager',
-  'PerformanceLog', 'PgpKeys', 'PostMasterFilters', 'PostMasterMailAccounts', 'Priorities',
-  'ProcessesAutomationSettings', 'ProcessManagement', 'QueueAutoResponse', 'Queues',
-  'Roles', 'RolesGroups', 'Services', 'SessionManagement', 'Signatures', 'SLA',
-  'SmimeCertificates', 'SqlBox', 'States', 'Types', 'SystemConfiguration', 'SystemFileSupport',
-  'SystemLog', 'SystemMaintenance', 'TemplateAttachments', 'TemplateQueues', 'Templates',
-  'TicketAttributeRelations', 'TicketNotifications', 'Translation', 'UsersGroupsRolesSettings',
-  'WebServices'
-];
+const configPath = path.join(__dirname, 'entities-config.json');
+const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const entities = Object.keys(config);
 
 function toSnakeCase(str) {
   return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
@@ -32,12 +21,8 @@ function generateModel(entity) {
   const singular = singularize(entity).toLowerCase();
   const fileName = entity.charAt(0).toLowerCase() + entity.slice(1) + '.js';
 
-  // Special fields for specific entities
-  let fields = 'name, description';
-  if (entity === 'Priorities') {
-    fields = 'name, color';
-  }
-  const fieldList = fields.split(', ');
+  const fieldList = config[entity];
+  const fields = fieldList.join(', ');
 
   const code = `const { pool } = require('../config/db');
   
@@ -53,9 +38,10 @@ function generateModel(entity) {
       let paramIndex = 1;
 
       if (q) {
-        const fieldList = this.fields.split(', ');
-        whereClause = \`WHERE \${fieldList[0]} ILIKE \$1 OR \${fieldList[1]} ILIKE \$1\`;
-        params.push(\`%\${q}%\`);
+        const searchFields = this.fields.split(', ');
+        const conditions = searchFields.map(field => field + ' ILIKE $' + paramIndex).join(' OR ');
+        whereClause = "WHERE " + conditions;
+        params.push('%' + q + '%');
         paramIndex++;
       }
 
@@ -101,7 +87,10 @@ function generateModel(entity) {
   static async create(${singular}) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(\`INSERT INTO \${${className}.tableName} (\${this.fields}, status, is_active) VALUES (\$1, \$2, \$3, \$4) RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, [${singular}[fieldList[0]], ${singular}[fieldList[1]], ${singular}.status, ${singular}.isActive]);
+      const placeholders = fieldList.map((_, i) => \`$\${i + 1}\`).join(', ');
+      const values = fieldList.map(field => ${singular}[field]);
+      values.push(${singular}.status, ${singular}.isActive);
+      const result = await pool.query(\`INSERT INTO \${${className}.tableName} (\${this.fields}, status, is_active) VALUES (\${placeholders}, \$\${fieldList.length + 1}, \$\${fieldList.length + 2}) RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
 
       return result.rows[0];
     } catch (error) {
@@ -113,7 +102,10 @@ function generateModel(entity) {
   static async update(id, ${singular}) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(\`UPDATE \${${className}.tableName} SET \${fieldList[0]} = \$1, \${fieldList[1]} = \$2, status = \$3, is_active = \$4, updated_at = CURRENT_TIMESTAMP WHERE id = \$5 RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, [${singular}[fieldList[0]], ${singular}[fieldList[1]], ${singular}.status, ${singular}.isActive, id]);
+      const setClause = fieldList.map((field, i) => \`\${field} = \$\${i + 1}\`).join(', ');
+      const values = fieldList.map(field => ${singular}[field]);
+      values.push(${singular}.status, ${singular}.isActive, id);
+      const result = await pool.query(\`UPDATE \${${className}.tableName} SET \${setClause}, status = \$\${fieldList.length + 1}, is_active = \$\${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = \$\${fieldList.length + 3} RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
 
       return result.rows[0] || null;
     } catch (error) {

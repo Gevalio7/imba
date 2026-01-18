@@ -49,13 +49,17 @@ const getTranslationById = async (req, res) => {
 
 const createTranslation = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newTranslation = await Translation.create({ name, description, status, isActive });
+    const newTranslation = await Translation.create(data);
 
     res.status(201).json(newTranslation);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateTranslation = async (req, res) => {
   try {
     const { id } = req.params;
     const translationId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(translationId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedTranslation = await Translation.update(translationId, { name, description, status, isActive });
+    const updatedTranslation = await Translation.update(translationId, data);
 
     if (!updatedTranslation) {
       return res.status(404).json({ message: 'Translation not found' });

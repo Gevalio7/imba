@@ -49,13 +49,17 @@ const getRoleById = async (req, res) => {
 
 const createRoles = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newRole = await Roles.create({ name, description, status, isActive });
+    const newRole = await Roles.create(data);
 
     res.status(201).json(newRole);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateRoles = async (req, res) => {
   try {
     const { id } = req.params;
     const roleId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(roleId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedRole = await Roles.update(roleId, { name, description, status, isActive });
+    const updatedRole = await Roles.update(roleId, data);
 
     if (!updatedRole) {
       return res.status(404).json({ message: 'Role not found' });

@@ -49,13 +49,17 @@ const getProcessesAutomationSettingById = async (req, res) => {
 
 const createProcessesAutomationSettings = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newProcessesAutomationSetting = await ProcessesAutomationSettings.create({ name, description, status, isActive });
+    const newProcessesAutomationSetting = await ProcessesAutomationSettings.create(data);
 
     res.status(201).json(newProcessesAutomationSetting);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateProcessesAutomationSettings = async (req, res) => {
   try {
     const { id } = req.params;
     const processesautomationsettingId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(processesautomationsettingId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedProcessesAutomationSetting = await ProcessesAutomationSettings.update(processesautomationsettingId, { name, description, status, isActive });
+    const updatedProcessesAutomationSetting = await ProcessesAutomationSettings.update(processesautomationsettingId, data);
 
     if (!updatedProcessesAutomationSetting) {
       return res.status(404).json({ message: 'ProcessesAutomationSetting not found' });

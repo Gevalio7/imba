@@ -49,13 +49,20 @@ const getCustomerById = async (req, res) => {
 
 const createCustomers = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.street = req.body.street;
+    data.zip = req.body.zip;
+    data.city = req.body.city;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newCustomer = await Customers.create({ name, description, status, isActive });
+    const newCustomer = await Customers.create(data);
 
     res.status(201).json(newCustomer);
   } catch (error) {
@@ -68,17 +75,24 @@ const updateCustomers = async (req, res) => {
   try {
     const { id } = req.params;
     const customerId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.street = req.body.street;
+    data.zip = req.body.zip;
+    data.city = req.body.city;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(customerId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedCustomer = await Customers.update(customerId, { name, description, status, isActive });
+    const updatedCustomer = await Customers.update(customerId, data);
 
     if (!updatedCustomer) {
       return res.status(404).json({ message: 'Customer not found' });

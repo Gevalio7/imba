@@ -49,13 +49,17 @@ const getTemplateById = async (req, res) => {
 
 const createTemplates = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newTemplate = await Templates.create({ name, description, status, isActive });
+    const newTemplate = await Templates.create(data);
 
     res.status(201).json(newTemplate);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateTemplates = async (req, res) => {
   try {
     const { id } = req.params;
     const templateId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(templateId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedTemplate = await Templates.update(templateId, { name, description, status, isActive });
+    const updatedTemplate = await Templates.update(templateId, data);
 
     if (!updatedTemplate) {
       return res.status(404).json({ message: 'Template not found' });

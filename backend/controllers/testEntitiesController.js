@@ -1,4 +1,4 @@
-const TestEntity = require('../models/testEntity');
+const TestEntities = require('../models/testEntities');
 
 const getTestEntities = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ const getTestEntities = async (req, res) => {
     const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
     const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await TestEntity.getAll({
+    const result = await TestEntities.getAll({
       q: searchQuery,
       sortBy: sortByLocal,
       orderBy: orderByLocal,
@@ -28,87 +28,95 @@ const getTestEntities = async (req, res) => {
 const getTestEntityById = async (req, res) => {
   try {
     const { id } = req.params;
-    const entityId = parseInt(id, 10);
+    const testentityId = parseInt(id, 10);
 
-    if (isNaN(entityId)) {
+    if (isNaN(testentityId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const entity = await TestEntity.getById(entityId);
+    const testentity = await TestEntities.getById(testentityId);
 
-    if (!entity) {
-      return res.status(404).json({ message: 'Test Entity not found' });
+    if (!testentity) {
+      return res.status(404).json({ message: 'TestEntity not found' });
     }
 
-    res.json(entity);
+    res.json(testentity);
   } catch (error) {
     console.error('Error in getTestEntityById:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const createTestEntity = async (req, res) => {
+const createTestEntities = async (req, res) => {
   try {
-    const { name, comment } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name || !comment) {
-      return res.status(400).json({ message: 'Name and comment are required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newEntity = await TestEntity.create({ name, comment });
+    const newTestEntity = await TestEntities.create(data);
 
-    res.status(201).json(newEntity);
+    res.status(201).json(newTestEntity);
   } catch (error) {
-    console.error('Error in createTestEntity:', error);
+    console.error('Error in createTestEntities:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const updateTestEntity = async (req, res) => {
+const updateTestEntities = async (req, res) => {
   try {
     const { id } = req.params;
-    const entityId = parseInt(id, 10);
-    const { name, comment } = req.body;
+    const testentityId = parseInt(id, 10);
+    const data = {};
+    data.name = req.body.name;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (isNaN(entityId)) {
+    if (isNaN(testentityId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name || !comment) {
-      return res.status(400).json({ message: 'Name and comment are required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedEntity = await TestEntity.update(entityId, { name, comment });
+    const updatedTestEntity = await TestEntities.update(testentityId, data);
 
-    if (!updatedEntity) {
-      return res.status(404).json({ message: 'Test Entity not found' });
+    if (!updatedTestEntity) {
+      return res.status(404).json({ message: 'TestEntity not found' });
     }
 
-    res.json(updatedEntity);
+    res.json(updatedTestEntity);
   } catch (error) {
-    console.error('Error in updateTestEntity:', error);
+    console.error('Error in updateTestEntities:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-const deleteTestEntity = async (req, res) => {
+const deleteTestEntities = async (req, res) => {
   try {
     const { id } = req.params;
-    const entityId = parseInt(id, 10);
+    const testentityId = parseInt(id, 10);
 
-    if (isNaN(entityId)) {
+    if (isNaN(testentityId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    const deleted = await TestEntity.delete(entityId);
+    const deleted = await TestEntities.delete(testentityId);
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Test Entity not found' });
+      return res.status(404).json({ message: 'TestEntity not found' });
     }
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error in deleteTestEntity:', error);
+    console.error('Error in deleteTestEntities:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -116,7 +124,7 @@ const deleteTestEntity = async (req, res) => {
 module.exports = {
   getTestEntities,
   getTestEntityById,
-  createTestEntity,
-  updateTestEntity,
-  deleteTestEntity,
+  createTestEntities,
+  updateTestEntities,
+  deleteTestEntities,
 };

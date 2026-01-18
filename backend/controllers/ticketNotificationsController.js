@@ -49,13 +49,17 @@ const getTicketNotificationById = async (req, res) => {
 
 const createTicketNotifications = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newTicketNotification = await TicketNotifications.create({ name, description, status, isActive });
+    const newTicketNotification = await TicketNotifications.create(data);
 
     res.status(201).json(newTicketNotification);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateTicketNotifications = async (req, res) => {
   try {
     const { id } = req.params;
     const ticketnotificationId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(ticketnotificationId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedTicketNotification = await TicketNotifications.update(ticketnotificationId, { name, description, status, isActive });
+    const updatedTicketNotification = await TicketNotifications.update(ticketnotificationId, data);
 
     if (!updatedTicketNotification) {
       return res.status(404).json({ message: 'TicketNotification not found' });

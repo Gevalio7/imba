@@ -49,13 +49,17 @@ const getAdminNotificationById = async (req, res) => {
 
 const createAdminNotification = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newAdminNotification = await AdminNotification.create({ name, description, status, isActive });
+    const newAdminNotification = await AdminNotification.create(data);
 
     res.status(201).json(newAdminNotification);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateAdminNotification = async (req, res) => {
   try {
     const { id } = req.params;
     const adminnotificationId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(adminnotificationId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedAdminNotification = await AdminNotification.update(adminnotificationId, { name, description, status, isActive });
+    const updatedAdminNotification = await AdminNotification.update(adminnotificationId, data);
 
     if (!updatedAdminNotification) {
       return res.status(404).json({ message: 'AdminNotification not found' });

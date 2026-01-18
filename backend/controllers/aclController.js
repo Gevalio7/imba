@@ -49,13 +49,18 @@ const getAclById = async (req, res) => {
 
 const createAcl = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.permissions = req.body.permissions;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newAcl = await Acl.create({ name, description, status, isActive });
+    const newAcl = await Acl.create(data);
 
     res.status(201).json(newAcl);
   } catch (error) {
@@ -68,17 +73,22 @@ const updateAcl = async (req, res) => {
   try {
     const { id } = req.params;
     const aclId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.permissions = req.body.permissions;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(aclId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedAcl = await Acl.update(aclId, { name, description, status, isActive });
+    const updatedAcl = await Acl.update(aclId, data);
 
     if (!updatedAcl) {
       return res.status(404).json({ message: 'Acl not found' });

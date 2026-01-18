@@ -49,13 +49,17 @@ const getGenericAgentById = async (req, res) => {
 
 const createGenericAgent = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newGenericAgent = await GenericAgent.create({ name, description, status, isActive });
+    const newGenericAgent = await GenericAgent.create(data);
 
     res.status(201).json(newGenericAgent);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateGenericAgent = async (req, res) => {
   try {
     const { id } = req.params;
     const genericagentId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(genericagentId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedGenericAgent = await GenericAgent.update(genericagentId, { name, description, status, isActive });
+    const updatedGenericAgent = await GenericAgent.update(genericagentId, data);
 
     if (!updatedGenericAgent) {
       return res.status(404).json({ message: 'GenericAgent not found' });

@@ -49,13 +49,19 @@ const getPackageManagerById = async (req, res) => {
 
 const createPackageManager = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.version = req.body.version;
+    data.author = req.body.author;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newPackageManager = await PackageManager.create({ name, description, status, isActive });
+    const newPackageManager = await PackageManager.create(data);
 
     res.status(201).json(newPackageManager);
   } catch (error) {
@@ -68,17 +74,23 @@ const updatePackageManager = async (req, res) => {
   try {
     const { id } = req.params;
     const packagemanagerId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.version = req.body.version;
+    data.author = req.body.author;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(packagemanagerId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedPackageManager = await PackageManager.update(packagemanagerId, { name, description, status, isActive });
+    const updatedPackageManager = await PackageManager.update(packagemanagerId, data);
 
     if (!updatedPackageManager) {
       return res.status(404).json({ message: 'PackageManager not found' });

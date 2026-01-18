@@ -49,13 +49,21 @@ const getOAuth2ById = async (req, res) => {
 
 const createOAuth2 = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.clientId = req.body.clientId;
+    data.clientSecret = req.body.clientSecret;
+    data.authorizationUrl = req.body.authorizationUrl;
+    data.tokenUrl = req.body.tokenUrl;
+    data.scopes = req.body.scopes;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newOAuth2 = await OAuth2.create({ name, description, status, isActive });
+    const newOAuth2 = await OAuth2.create(data);
 
     res.status(201).json(newOAuth2);
   } catch (error) {
@@ -68,17 +76,25 @@ const updateOAuth2 = async (req, res) => {
   try {
     const { id } = req.params;
     const oauth2Id = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.clientId = req.body.clientId;
+    data.clientSecret = req.body.clientSecret;
+    data.authorizationUrl = req.body.authorizationUrl;
+    data.tokenUrl = req.body.tokenUrl;
+    data.scopes = req.body.scopes;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(oauth2Id)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedOAuth2 = await OAuth2.update(oauth2Id, { name, description, status, isActive });
+    const updatedOAuth2 = await OAuth2.update(oauth2Id, data);
 
     if (!updatedOAuth2) {
       return res.status(404).json({ message: 'OAuth2 not found' });

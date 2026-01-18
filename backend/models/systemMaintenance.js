@@ -12,9 +12,10 @@ const { pool } = require('../config/db');
       let paramIndex = 1;
 
       if (q) {
-        const fieldList = this.fields.split(', ');
-        whereClause = `WHERE ${fieldList[0]} ILIKE $1 OR ${fieldList[1]} ILIKE $1`;
-        params.push(`%${q}%`);
+        const searchFields = this.fields.split(', ');
+        const conditions = searchFields.map(field => field + ' ILIKE $' + paramIndex).join(' OR ');
+        whereClause = "WHERE " + conditions;
+        params.push('%' + q + '%');
         paramIndex++;
       }
 
@@ -60,7 +61,10 @@ const { pool } = require('../config/db');
   static async create(systemmaintenance) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(`INSERT INTO ${SystemMaintenance.tableName} (${this.fields}, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [systemmaintenance[fieldList[0]], systemmaintenance[fieldList[1]], systemmaintenance.status, systemmaintenance.isActive]);
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
+      const values = fieldList.map(field => systemmaintenance[field]);
+      values.push(systemmaintenance.status, systemmaintenance.isActive);
+      const result = await pool.query(`INSERT INTO ${SystemMaintenance.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
     } catch (error) {
@@ -72,7 +76,10 @@ const { pool } = require('../config/db');
   static async update(id, systemmaintenance) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(`UPDATE ${SystemMaintenance.tableName} SET ${fieldList[0]} = $1, ${fieldList[1]} = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [systemmaintenance[fieldList[0]], systemmaintenance[fieldList[1]], systemmaintenance.status, systemmaintenance.isActive, id]);
+      const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
+      const values = fieldList.map(field => systemmaintenance[field]);
+      values.push(systemmaintenance.status, systemmaintenance.isActive, id);
+      const result = await pool.query(`UPDATE ${SystemMaintenance.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

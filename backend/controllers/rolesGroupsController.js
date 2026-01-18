@@ -49,13 +49,17 @@ const getRolesGroupById = async (req, res) => {
 
 const createRolesGroups = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newRolesGroup = await RolesGroups.create({ name, description, status, isActive });
+    const newRolesGroup = await RolesGroups.create(data);
 
     res.status(201).json(newRolesGroup);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateRolesGroups = async (req, res) => {
   try {
     const { id } = req.params;
     const rolesgroupId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(rolesgroupId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedRolesGroup = await RolesGroups.update(rolesgroupId, { name, description, status, isActive });
+    const updatedRolesGroup = await RolesGroups.update(rolesgroupId, data);
 
     if (!updatedRolesGroup) {
       return res.status(404).json({ message: 'RolesGroup not found' });

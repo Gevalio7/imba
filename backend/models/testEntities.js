@@ -1,8 +1,8 @@
 const { pool } = require('../config/db');
   
-  class SystemFileSupport {
-    static tableName = 'system_file_support';
-    static fields = 'name, description';
+  class TestEntities {
+    static tableName = 'test_entities';
+    static fields = 'name, comment';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -28,17 +28,17 @@ const { pool } = require('../config/db');
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${SystemFileSupport.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${TestEntities.tableName} ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      const dataQuery = `SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${SystemFileSupport.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${TestEntities.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
       return {
-        system_file_support: dataResult.rows,
+        test_entities: dataResult.rows,
         total,
       };
     } catch (error) {
@@ -49,7 +49,7 @@ const { pool } = require('../config/db');
 
   static async getById(id) {
     try {
-      const result = await pool.query(`SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${SystemFileSupport.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`SELECT id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM ${TestEntities.tableName} WHERE id = $1`, [id]);
 
       return result.rows[0] || null;
     } catch (error) {
@@ -58,13 +58,13 @@ const { pool } = require('../config/db');
     }
   }
 
-  static async create(systemfilesupport) {
+  static async create(testentity) {
     try {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => systemfilesupport[field]);
-      values.push(systemfilesupport.status, systemfilesupport.isActive);
-      const result = await pool.query(`INSERT INTO ${SystemFileSupport.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      const values = fieldList.map(field => testentity[field]);
+      values.push(testentity.status, testentity.isActive);
+      const result = await pool.query(`INSERT INTO ${TestEntities.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
     } catch (error) {
@@ -73,13 +73,13 @@ const { pool } = require('../config/db');
     }
   }
 
-  static async update(id, systemfilesupport) {
+  static async update(id, testentity) {
     try {
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
-      const values = fieldList.map(field => systemfilesupport[field]);
-      values.push(systemfilesupport.status, systemfilesupport.isActive, id);
-      const result = await pool.query(`UPDATE ${SystemFileSupport.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      const values = fieldList.map(field => testentity[field]);
+      values.push(testentity.status, testentity.isActive, id);
+      const result = await pool.query(`UPDATE ${TestEntities.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {
@@ -90,7 +90,7 @@ const { pool } = require('../config/db');
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${SystemFileSupport.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${TestEntities.tableName} WHERE id = $1`, [id]);
 
       return result.rowCount > 0;
     } catch (error) {
@@ -100,4 +100,4 @@ const { pool } = require('../config/db');
   }
 }
 
-module.exports = SystemFileSupport;
+module.exports = TestEntities;

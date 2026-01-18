@@ -49,13 +49,17 @@ const getSLAById = async (req, res) => {
 
 const createSLA = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newSLA = await SLA.create({ name, description, status, isActive });
+    const newSLA = await SLA.create(data);
 
     res.status(201).json(newSLA);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateSLA = async (req, res) => {
   try {
     const { id } = req.params;
     const slaId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(slaId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedSLA = await SLA.update(slaId, { name, description, status, isActive });
+    const updatedSLA = await SLA.update(slaId, data);
 
     if (!updatedSLA) {
       return res.status(404).json({ message: 'SLA not found' });

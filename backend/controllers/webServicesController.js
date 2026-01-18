@@ -49,13 +49,17 @@ const getWebServiceById = async (req, res) => {
 
 const createWebServices = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newWebService = await WebServices.create({ name, description, status, isActive });
+    const newWebService = await WebServices.create(data);
 
     res.status(201).json(newWebService);
   } catch (error) {
@@ -68,17 +72,21 @@ const updateWebServices = async (req, res) => {
   try {
     const { id } = req.params;
     const webserviceId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(webserviceId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedWebService = await WebServices.update(webserviceId, { name, description, status, isActive });
+    const updatedWebService = await WebServices.update(webserviceId, data);
 
     if (!updatedWebService) {
       return res.status(404).json({ message: 'WebService not found' });

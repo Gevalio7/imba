@@ -49,13 +49,17 @@ const getPgpKeyById = async (req, res) => {
 
 const createPgpKeys = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const newPgpKey = await PgpKeys.create({ name, description, status, isActive });
+    const newPgpKey = await PgpKeys.create(data);
 
     res.status(201).json(newPgpKey);
   } catch (error) {
@@ -68,17 +72,21 @@ const updatePgpKeys = async (req, res) => {
   try {
     const { id } = req.params;
     const pgpkeyId = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    data.name = req.body.name;
+    data.description = req.body.description;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(pgpkeyId)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
-    const updatedPgpKey = await PgpKeys.update(pgpkeyId, { name, description, status, isActive });
+    const updatedPgpKey = await PgpKeys.update(pgpkeyId, data);
 
     if (!updatedPgpKey) {
       return res.status(404).json({ message: 'PgpKey not found' });

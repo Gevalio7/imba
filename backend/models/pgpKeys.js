@@ -12,9 +12,10 @@ const { pool } = require('../config/db');
       let paramIndex = 1;
 
       if (q) {
-        const fieldList = this.fields.split(', ');
-        whereClause = `WHERE ${fieldList[0]} ILIKE $1 OR ${fieldList[1]} ILIKE $1`;
-        params.push(`%${q}%`);
+        const searchFields = this.fields.split(', ');
+        const conditions = searchFields.map(field => field + ' ILIKE $' + paramIndex).join(' OR ');
+        whereClause = "WHERE " + conditions;
+        params.push('%' + q + '%');
         paramIndex++;
       }
 
@@ -60,7 +61,10 @@ const { pool } = require('../config/db');
   static async create(pgpkey) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(`INSERT INTO ${PgpKeys.tableName} (${this.fields}, status, is_active) VALUES ($1, $2, $3, $4) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [pgpkey[fieldList[0]], pgpkey[fieldList[1]], pgpkey.status, pgpkey.isActive]);
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
+      const values = fieldList.map(field => pgpkey[field]);
+      values.push(pgpkey.status, pgpkey.isActive);
+      const result = await pool.query(`INSERT INTO ${PgpKeys.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
     } catch (error) {
@@ -72,7 +76,10 @@ const { pool } = require('../config/db');
   static async update(id, pgpkey) {
     try {
       const fieldList = this.fields.split(', ');
-      const result = await pool.query(`UPDATE ${PgpKeys.tableName} SET ${fieldList[0]} = $1, ${fieldList[1]} = $2, status = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, [pgpkey[fieldList[0]], pgpkey[fieldList[1]], pgpkey.status, pgpkey.isActive, id]);
+      const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
+      const values = fieldList.map(field => pgpkey[field]);
+      values.push(pgpkey.status, pgpkey.isActive, id);
+      const result = await pool.query(`UPDATE ${PgpKeys.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

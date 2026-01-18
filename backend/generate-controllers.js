@@ -1,20 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const entities = [
-  'Acl', 'AdminNotification', 'Agents', 'AgentsGroups', 'AgentsRoles', 'AppointmentNotifications',
-  'Attachments', 'Calendars', 'CommunicationLog', 'CommunicationNotificationsSettings',
-  'Customers', 'CustomersGroups', 'CustomerUsers', 'CustomerUsersCustomers', 'CustomerUsersGroups',
-  'CustomerUsersServices', 'DynamicFields', 'DynamicFieldsScreens', 'EmailAddresses',
-  'GeneralCatalog', 'GenericAgent', 'Greetings', 'Groups', 'OAuth2', 'PackageManager',
-  'PerformanceLog', 'PgpKeys', 'PostMasterFilters', 'PostMasterMailAccounts', 'Priorities',
-  'ProcessesAutomationSettings', 'ProcessManagement', 'QueueAutoResponse', 'Queues',
-  'Roles', 'RolesGroups', 'Services', 'SessionManagement', 'Signatures', 'SLA',
-  'SmimeCertificates', 'SqlBox', 'States', 'Types', 'SystemConfiguration', 'SystemFileSupport',
-  'SystemLog', 'SystemMaintenance', 'TemplateAttachments', 'TemplateQueues', 'Templates',
-  'TicketAttributeRelations', 'TicketNotifications', 'Translation', 'UsersGroupsRolesSettings',
-  'WebServices'
-];
+const configPath = path.join(__dirname, 'entities-config.json');
+const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const entities = Object.keys(config);
 
 function singularize(str) {
   if (str === 'PgpKeys') return 'PgpKey';
@@ -28,6 +17,7 @@ function generateController(entity) {
   const modelName = entity.charAt(0).toLowerCase() + entity.slice(1);
   const singular = singularize(entity);
   const fileName = modelName + 'Controller.js';
+  const fields = config[entity];
 
   const code = `const ${entity} = require('../models/${modelName}');
 
@@ -80,13 +70,16 @@ const get${singular}ById = async (req, res) => {
 
 const create${entity} = async (req, res) => {
   try {
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    ${fields.map(field => 'data.' + field + ' = req.body.' + field + ';').join('\n    ')}
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.${fields[0]}) {
+      return res.status(400).json({ message: '${fields[0]} is required' });
     }
 
-    const new${singular} = await ${entity}.create({ name, description, status, isActive });
+    const new${singular} = await ${entity}.create(data);
 
     res.status(201).json(new${singular});
   } catch (error) {
@@ -99,17 +92,20 @@ const update${entity} = async (req, res) => {
   try {
     const { id } = req.params;
     const ${singular.toLowerCase()}Id = parseInt(id, 10);
-    const { name, description, status, isActive } = req.body;
+    const data = {};
+    ${fields.map(field => 'data.' + field + ' = req.body.' + field + ';').join('\n    ')}
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (isNaN(${singular.toLowerCase()}Id)) {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' });
+    if (!data.${fields[0]}) {
+      return res.status(400).json({ message: '${fields[0]} is required' });
     }
 
-    const updated${singular} = await ${entity}.update(${singular.toLowerCase()}Id, { name, description, status, isActive });
+    const updated${singular} = await ${entity}.update(${singular.toLowerCase()}Id, data);
 
     if (!updated${singular}) {
       return res.status(404).json({ message: '${singular} not found' });
