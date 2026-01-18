@@ -95,8 +95,8 @@ function generateCreateTableSQL(entityName, fields) {
   
   // Добавляем поля из интерфейса
   for (const [fieldName, fieldType] of Object.entries(fields)) {
-    // Пропускаем поля status и isActive - будем использовать только isActive
-    if (fieldName === 'status') continue;
+    // Пропускаем поля status и isActive - isActive будет добавлено как системное поле
+    if (fieldName === 'status' || fieldName === 'isActive') continue;
     
     const columnName = toSnakeCase(fieldName);
     const sqlType = mapTypeToSQL(fieldType, fieldName);
@@ -107,6 +107,7 @@ function generateCreateTableSQL(entityName, fields) {
   }
   
   // Добавляем системные поля
+  sql += `  is_active BOOLEAN DEFAULT true,\n`;
   sql += `  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n`;
   sql += `  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n`;
   sql += `);\n\n`;

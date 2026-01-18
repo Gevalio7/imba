@@ -1,0 +1,28 @@
+import { NextFunction, Request, Response } from 'express';
+
+// Обработчик для несуществующих маршрутов
+export const notFound = (req: Request, res: Response, next: NextFunction) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  res.status(404);
+  next(error);
+};
+
+// Общий обработчик ошибок
+export const errorHandler = (
+  err: Error & { statusCode?: number },
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  
+  res.status(statusCode).json({
+    message: err.message,
+    stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack,
+  });
+};
+
+// Async handler для обработки асинхронных ошибок
+export const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};

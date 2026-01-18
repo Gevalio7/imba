@@ -1,18 +1,7 @@
 {
-  "Acl": {
-    "name": "string",
-    "description": "string",
-    "permissions": "string[]",
-    "isActive": "boolean"
-  },
   "Acls": {
     "name": "string",
     "description": "string",
-    "isActive": "boolean"
-  },
-  "AdminNotification": {
-    "name": "string",
-    "message": "string",
     "isActive": "boolean"
   },
   "AdminNotifications": {

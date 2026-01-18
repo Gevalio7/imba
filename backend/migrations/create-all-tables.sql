@@ -1,6 +1,6 @@
 -- ============================================
 -- Скрипт создания всех таблиц
--- Сгенерирован автоматически: 2026-01-18T17:01:21.860Z
+-- Сгенерирован автоматически: 2026-01-18T17:33:08.760Z
 -- Всего таблиц: 61
 -- ============================================
 
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS acl (
   name VARCHAR(255) NOT NULL,
   description TEXT ,
   permissions TEXT[] ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS acls (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS admin_notification (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS agents (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS agents_groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS agents_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS appointment_notifications (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS attachments (
   file_name VARCHAR(255) ,
   type INTEGER ,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS auto_responses (
   trigger VARCHAR(255) ,
   response TEXT ,
   delay INTEGER ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -309,7 +309,7 @@ CREATE TABLE IF NOT EXISTS calendars (
   description TEXT ,
   timezone VARCHAR(255) ,
   work_hours VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS communication_log (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS communication_notifications_settings (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS customer_users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS customer_users_customers (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -454,7 +454,7 @@ CREATE TABLE IF NOT EXISTS customer_users_groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -483,7 +483,7 @@ CREATE TABLE IF NOT EXISTS customer_users_services (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -515,7 +515,7 @@ CREATE TABLE IF NOT EXISTS customers (
   zip VARCHAR(20) ,
   city VARCHAR(255) ,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -544,7 +544,7 @@ CREATE TABLE IF NOT EXISTS customers_groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -576,7 +576,7 @@ CREATE TABLE IF NOT EXISTS dynamic_fields (
   field_type VARCHAR(255) ,
   default_value VARCHAR(255) ,
   is_required BOOLEAN  DEFAULT false,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -607,9 +607,9 @@ CREATE TABLE IF NOT EXISTS dynamic_fields_screens (
   screen_name VARCHAR(255) ,
   field_name VARCHAR(255) ,
   field_type VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
   is_required BOOLEAN  DEFAULT false,
   position INTEGER ,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -638,7 +638,7 @@ CREATE TABLE IF NOT EXISTS email_addresses (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -667,7 +667,7 @@ CREATE TABLE IF NOT EXISTS general_catalog (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -698,9 +698,9 @@ CREATE TABLE IF NOT EXISTS generic_agent (
   description TEXT ,
   trigger_type VARCHAR(255) ,
   schedule VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
   last_run VARCHAR(255) ,
   next_run VARCHAR(255) ,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -729,7 +729,7 @@ CREATE TABLE IF NOT EXISTS greetings (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -758,7 +758,7 @@ CREATE TABLE IF NOT EXISTS groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -791,7 +791,7 @@ CREATE TABLE IF NOT EXISTS oauth2 (
   authorization_url VARCHAR(255) ,
   token_url VARCHAR(255) ,
   scopes TEXT[] ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -824,11 +824,13 @@ CREATE TABLE IF NOT EXISTS package_manager (
   author VARCHAR(255) ,
   is_installed BOOLEAN  DEFAULT false,
   is_upgradable BOOLEAN  DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_package_manager_name ON package_manager(name);
+CREATE INDEX IF NOT EXISTS idx_package_manager_is_active ON package_manager(is_active);
 
 -- Триггер для автоматического обновления updated_at
 CREATE OR REPLACE FUNCTION update_package_manager_updated_at()
@@ -851,7 +853,7 @@ CREATE TABLE IF NOT EXISTS performance_log (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -880,7 +882,7 @@ CREATE TABLE IF NOT EXISTS pgp_keys (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -909,7 +911,7 @@ CREATE TABLE IF NOT EXISTS post_master_filters (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -938,7 +940,7 @@ CREATE TABLE IF NOT EXISTS post_master_mail_accounts (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -967,7 +969,7 @@ CREATE TABLE IF NOT EXISTS priorities (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   color VARCHAR(7) ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -997,9 +999,9 @@ CREATE TABLE IF NOT EXISTS process_management (
   name VARCHAR(255) NOT NULL,
   description TEXT ,
   process_type VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
   last_executed VARCHAR(255) ,
   next_execution VARCHAR(255) ,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1028,7 +1030,7 @@ CREATE TABLE IF NOT EXISTS processes_automation_settings (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1057,7 +1059,7 @@ CREATE TABLE IF NOT EXISTS queue_auto_response (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1088,7 +1090,7 @@ CREATE TABLE IF NOT EXISTS queues (
   description TEXT ,
   max_tickets INTEGER ,
   priority INTEGER ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1117,7 +1119,7 @@ CREATE TABLE IF NOT EXISTS roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1146,7 +1148,7 @@ CREATE TABLE IF NOT EXISTS roles_groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1175,7 +1177,7 @@ CREATE TABLE IF NOT EXISTS services (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1207,7 +1209,7 @@ CREATE TABLE IF NOT EXISTS session_management (
   user_agent VARCHAR(255) ,
   login_time VARCHAR(255) ,
   last_activity VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1235,7 +1237,7 @@ CREATE TABLE IF NOT EXISTS signatures (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   content TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1266,7 +1268,7 @@ CREATE TABLE IF NOT EXISTS sla (
   description TEXT ,
   response_time INTEGER ,
   resolution_time INTEGER ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1295,7 +1297,7 @@ CREATE TABLE IF NOT EXISTS smime_certificates (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1324,7 +1326,7 @@ CREATE TABLE IF NOT EXISTS sql_box (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1353,7 +1355,7 @@ CREATE TABLE IF NOT EXISTS states (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1382,7 +1384,7 @@ CREATE TABLE IF NOT EXISTS support_data_collector (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1414,7 +1416,7 @@ CREATE TABLE IF NOT EXISTS system_configuration (
   value VARCHAR(255) ,
   config_type VARCHAR(255) ,
   is_editable BOOLEAN  DEFAULT false,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1443,7 +1445,7 @@ CREATE TABLE IF NOT EXISTS system_file_support (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1472,7 +1474,7 @@ CREATE TABLE IF NOT EXISTS system_log (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1503,8 +1505,8 @@ CREATE TABLE IF NOT EXISTS system_maintenance (
   description TEXT ,
   start_time VARCHAR(255) ,
   end_time VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
   is_scheduled BOOLEAN  DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1533,7 +1535,7 @@ CREATE TABLE IF NOT EXISTS template_attachments (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1562,7 +1564,7 @@ CREATE TABLE IF NOT EXISTS template_queues (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1591,7 +1593,7 @@ CREATE TABLE IF NOT EXISTS templates (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1620,11 +1622,13 @@ CREATE TABLE IF NOT EXISTS test_entities (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   comment TEXT ,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_test_entities_name ON test_entities(name);
+CREATE INDEX IF NOT EXISTS idx_test_entities_is_active ON test_entities(is_active);
 
 -- Триггер для автоматического обновления updated_at
 CREATE OR REPLACE FUNCTION update_test_entities_updated_at()
@@ -1649,7 +1653,7 @@ CREATE TABLE IF NOT EXISTS ticket_attribute_relations (
   source_attribute VARCHAR(255) ,
   target_attribute VARCHAR(255) ,
   relation_type VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1678,7 +1682,7 @@ CREATE TABLE IF NOT EXISTS ticket_notifications (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1707,7 +1711,7 @@ CREATE TABLE IF NOT EXISTS translation (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   message TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1736,7 +1740,7 @@ CREATE TABLE IF NOT EXISTS types (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   comment TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1765,7 +1769,7 @@ CREATE TABLE IF NOT EXISTS users_groups_roles_settings (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT ,
-  is_active BOOLEAN  DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1796,8 +1800,8 @@ CREATE TABLE IF NOT EXISTS web_services (
   description TEXT ,
   endpoint VARCHAR(255) ,
   method VARCHAR(255) ,
-  is_active BOOLEAN  DEFAULT true,
   last_tested VARCHAR(255) ,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
