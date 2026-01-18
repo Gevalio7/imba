@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для SQL-запросов
-interface SqlQuery {
+// Типы данных для SQL Box
+interface SqlBox {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные SQL-запросов (демо данные)
-const sqlQueries = ref<SqlQuery[]>([
-  {
-    id: 1,
-    name: 'user-query-1',
-    message: 'SQL-запрос для получения пользователей',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'ticket-query-2',
-    message: 'SQL-запрос для получения тикетов',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'report-query-3',
-    message: 'SQL-запрос для генерации отчетов',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'statistic-query-4',
-    message: 'SQL-запрос для получения статистики',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-query',
-    message: 'Старый SQL-запрос, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'auto-query',
-    message: 'Автоматический SQL-запрос',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные sql box
+const sqlBox = ref<SqlBox[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchSqlBox = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching sqlBox from:', `${API_BASE}/sqlBox`)
+    const data = await $fetch<{ sqlBox: SqlBox[], total: number }>(`${API_BASE}/sqlBox`)
+    console.log('Fetched sqlBox data:', data)
+    sqlBox.value = data.sqlBox
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки sql box'
+    console.error('Error fetching sqlBox:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание sql box
+const createSqlBox = async (item: Omit<SqlBox, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SqlBox>(`${API_BASE}/sqlBox`, {
+      method: 'POST',
+      body: item
+    })
+    sqlBox.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating sqlBox:', err)
+    throw err
+  }
+}
+
+// Обновление sql box
+const updateSqlBox = async (id: number, item: Omit<SqlBox, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SqlBox>(`${API_BASE}/sqlBox/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = sqlBox.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      sqlBox.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating sqlBox:', err)
+    throw err
+  }
+}
+
+// Удаление sql box
+const deleteSqlBox = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/sqlBox/${id}`, {
+      method: 'DELETE'
+    })
+    const index = sqlBox.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      sqlBox.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting sqlBox:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchSqlBox()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredSqlQueries = computed(() => {
-  let filtered = sqlQueries.value
+const filteredSqlBox = computed(() => {
+  let filtered = sqlBox.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = sqlQueries.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      sqlQueries.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteSqlBox(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} SQL-запросов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} sql box`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = sqlQueries.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      sqlQueries.value[index].status = bulkStatusValue.value
-      sqlQueries.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateSqlBox(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} SQL-запросов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} sql box`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<SqlQuery>({
+const defaultItem = ref<SqlBox>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<SqlQuery>({
   isActive: true,
 })
 
-const editedItem = ref<SqlQuery>({ ...defaultItem.value })
+const editedItem = ref<SqlBox>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,14 +223,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: SqlQuery) => {
-  editedIndex.value = sqlQueries.value.indexOf(item)
+const editItem = (item: SqlBox) => {
+  editedIndex.value = sqlBox.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: SqlQuery) => {
-  editedIndex.value = sqlQueries.value.indexOf(item)
+const deleteItem = (item: SqlBox) => {
+  editedIndex.value = sqlBox.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(sqlQueries.value[editedIndex.value], editedItem.value)
-    showToast('SQL-запрос успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...sqlQueries.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    sqlQueries.value.push({ ...editedItem.value })
-    showToast('SQL-запрос успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateSqlBox(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('SQL Box успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createSqlBox({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('SQL Box успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения sql box', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  sqlQueries.value.splice(editedIndex.value, 1)
-  showToast('SQL-запрос успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteSqlBox(editedItem.value.id)
+    showToast('SQL Box успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления sql box', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: SqlQuery, newValue: number) => {
+const toggleStatus = async (item: SqlBox, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = sqlQueries.value.findIndex((t: SqlQuery) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    sqlQueries.value[index].status = newValue
-    sqlQueries.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', sqlQueries.value[index])
-    showToast('Статус SQL-запроса изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве sqlQueries')
+
+  try {
+    await updateSqlBox(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус sql box изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового SQL-запроса
-const addNewSqlQuery = () => {
+// Добавление нового sql box
+const addNewSqlBox = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -287,13 +326,25 @@ const addNewSqlQuery = () => {
 
 <template>
   <div>
-    <VCard title="SQL-запросы">
+    <VCard title="SQL Box">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск SQL-запросов"
+            placeholder="Поиск sql box"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewSqlQuery = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewSqlQuery = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewSqlQuery = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewSqlQuery = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewSqlQuery"
+            @click="addNewSqlBox"
           >
-            Добавить SQL-запрос
+            Добавить sql box
           </VBtn>
         </div>
       </div>
@@ -436,7 +479,7 @@ const addNewSqlQuery = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные SQL-запросы? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные sql box? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -503,24 +546,13 @@ const addNewSqlQuery = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredSqlQueries"
+        :items="filteredSqlBox"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewSqlQuery = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewSqlQuery = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredSqlQueries.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredSqlBox.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -573,9 +601,10 @@ const addNewSqlQuery = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать SQL-запрос' : 'Добавить SQL-запрос'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать sql box' : 'Добавить sql box'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewSqlQuery = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание SQL-запроса"
-                rows="4"
-                placeholder="Введите описание SQL-запроса..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewSqlQuery = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот SQL-запрос?">
+      <VCard title="Вы уверены, что хотите удалить этот sql box?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewSqlQuery = () => {
   margin-block-end: 1rem;
 }
 </style>
-

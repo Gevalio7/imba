@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для уведомления администратора
+// Типы данных для Уведомление администратора
 interface AdminNotification {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные уведомлений администратора (демо данные)
-const adminNotifications = ref<AdminNotification[]>([
-  {
-    id: 1,
-    name: 'system-alert',
-    message: 'Уведомление о системных алертах для администраторов',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'user-activity',
-    message: 'Уведомление о высокой активности пользователей',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'security-event',
-    message: 'Уведомление о событиях безопасности',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'maintenance-schedule',
-    message: 'Уведомление о запланированном обслуживании',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-admin-notif',
-    message: 'Старое уведомление, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'performance-alert',
-    message: 'Уведомление о проблемах производительности',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные уведомления администратора
+const adminNotification = ref<AdminNotification[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchAdminNotification = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching adminNotification from:', `${API_BASE}/adminNotification`)
+    const data = await $fetch<{ adminNotification: AdminNotification[], total: number }>(`${API_BASE}/adminNotification`)
+    console.log('Fetched adminNotification data:', data)
+    adminNotification.value = data.adminNotification
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки уведомления администратора'
+    console.error('Error fetching adminNotification:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание уведомление администратора
+const createAdminNotification = async (item: Omit<AdminNotification, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AdminNotification>(`${API_BASE}/adminNotification`, {
+      method: 'POST',
+      body: item
+    })
+    adminNotification.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating adminNotification:', err)
+    throw err
+  }
+}
+
+// Обновление уведомление администратора
+const updateAdminNotification = async (id: number, item: Omit<AdminNotification, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AdminNotification>(`${API_BASE}/adminNotification/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = adminNotification.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      adminNotification.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating adminNotification:', err)
+    throw err
+  }
+}
+
+// Удаление уведомление администратора
+const deleteAdminNotification = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/adminNotification/${id}`, {
+      method: 'DELETE'
+    })
+    const index = adminNotification.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      adminNotification.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting adminNotification:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchAdminNotification()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredAdminNotifications = computed(() => {
-  let filtered = adminNotifications.value
+const filteredAdminNotification = computed(() => {
+  let filtered = adminNotification.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = adminNotifications.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      adminNotifications.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteAdminNotification(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} уведомлений администратора`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} уведомления администратора`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = adminNotifications.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      adminNotifications.value[index].status = bulkStatusValue.value
-      adminNotifications.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateAdminNotification(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} уведомлений администратора`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} уведомления администратора`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -194,13 +224,13 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: AdminNotification) => {
-  editedIndex.value = adminNotifications.value.indexOf(item)
+  editedIndex.value = adminNotification.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: AdminNotification) => {
-  editedIndex.value = adminNotifications.value.indexOf(item)
+  editedIndex.value = adminNotification.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(adminNotifications.value[editedIndex.value], editedItem.value)
-    showToast('Уведомление администратора успешно сохранено')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...adminNotifications.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    adminNotifications.value.push({ ...editedItem.value })
-    showToast('Уведомление администратора успешно добавлено')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateAdminNotification(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Уведомление администратора успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createAdminNotification({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Уведомление администратора успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения уведомление администратора', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  adminNotifications.value.splice(editedIndex.value, 1)
-  showToast('Уведомление администратора успешно удалено')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteAdminNotification(editedItem.value.id)
+    showToast('Уведомление администратора успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления уведомление администратора', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: AdminNotification, newValue: number) => {
+const toggleStatus = async (item: AdminNotification, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = adminNotifications.value.findIndex((t: AdminNotification) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    adminNotifications.value[index].status = newValue
-    adminNotifications.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', adminNotifications.value[index])
-    showToast('Статус уведомления администратора изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве adminNotifications')
+
+  try {
+    await updateAdminNotification(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус уведомление администратора изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,7 +316,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового уведомления администратора
+// Добавление нового уведомление администратора
 const addNewAdminNotification = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -289,11 +328,23 @@ const addNewAdminNotification = () => {
   <div>
     <VCard title="Уведомления администратора">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск уведомлений администратора"
+            placeholder="Поиск уведомления администратора"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewAdminNotification = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewAdminNotification = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewAdminNotification = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -503,24 +546,13 @@ const addNewAdminNotification = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredAdminNotifications"
+        :items="filteredAdminNotification"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewAdminNotification = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewAdminNotification = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAdminNotifications.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredAdminNotification.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -576,6 +604,7 @@ const addNewAdminNotification = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать уведомление администратора' : 'Добавить уведомление администратора'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewAdminNotification = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание уведомления администратора"
-                rows="4"
-                placeholder="Введите описание уведомления администратора..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewAdminNotification = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить это уведомление администратора?">
+      <VCard title="Вы уверены, что хотите удалить этот уведомление администратора?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewAdminNotification = () => {
   margin-block-end: 1rem;
 }
 </style>
-

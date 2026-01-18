@@ -393,5 +393,13 @@
     "message": "string",
     "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
+  },
+  "sLA": {
+    "name": "string",
+    "description": "string",
+    "responseTime": "number // в часах",
+    "resolutionTime": "number // в часах",
+    "status": "number // 1 - активен, 2 - не активен",
+    "isActive": "boolean"
   }
 }

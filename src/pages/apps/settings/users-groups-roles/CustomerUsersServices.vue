@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для сервиса пользователя клиента
-interface CustomerUserService {
+// Типы данных для Сервис пользователей клиентов
+interface CustomerUsersServices {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные сервисов пользователей клиентов (демо данные)
-const customerUserServices = ref<CustomerUserService[]>([
-  {
-    id: 1,
-    name: 'support-service',
-    message: 'Сервис для обработки обращений поддержки',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'sales-service',
-    message: 'Сервис для обработки запросов продаж',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'billing-service',
-    message: 'Сервис для финансовых вопросов',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'info-service',
-    message: 'Общий информационный сервис',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'archive-service',
-    message: 'Архивный сервис, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'feedback-service',
-    message: 'Сервис для сбора отзывов клиентов',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные сервисы пользователей клиентов
+const customerUsersServices = ref<CustomerUsersServices[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchCustomerUsersServices = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching customerUsersServices from:', `${API_BASE}/customerUsersServices`)
+    const data = await $fetch<{ customerUsersServices: CustomerUsersServices[], total: number }>(`${API_BASE}/customerUsersServices`)
+    console.log('Fetched customerUsersServices data:', data)
+    customerUsersServices.value = data.customerUsersServices
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки сервисы пользователей клиентов'
+    console.error('Error fetching customerUsersServices:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание сервис пользователей клиентов
+const createCustomerUsersServices = async (item: Omit<CustomerUsersServices, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<CustomerUsersServices>(`${API_BASE}/customerUsersServices`, {
+      method: 'POST',
+      body: item
+    })
+    customerUsersServices.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating customerUsersServices:', err)
+    throw err
+  }
+}
+
+// Обновление сервис пользователей клиентов
+const updateCustomerUsersServices = async (id: number, item: Omit<CustomerUsersServices, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<CustomerUsersServices>(`${API_BASE}/customerUsersServices/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = customerUsersServices.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customerUsersServices.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating customerUsersServices:', err)
+    throw err
+  }
+}
+
+// Удаление сервис пользователей клиентов
+const deleteCustomerUsersServices = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/customerUsersServices/${id}`, {
+      method: 'DELETE'
+    })
+    const index = customerUsersServices.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customerUsersServices.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting customerUsersServices:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchCustomerUsersServices()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredCustomerUserServices = computed(() => {
-  let filtered = customerUserServices.value
+const filteredCustomerUsersServices = computed(() => {
+  let filtered = customerUsersServices.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = customerUserServices.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      customerUserServices.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteCustomerUsersServices(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} сервисов пользователей клиентов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} сервисы пользователей клиентов`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = customerUserServices.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      customerUserServices.value[index].status = bulkStatusValue.value
-      customerUserServices.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateCustomerUsersServices(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} сервисов пользователей клиентов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} сервисы пользователей клиентов`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<CustomerUserService>({
+const defaultItem = ref<CustomerUsersServices>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<CustomerUserService>({
   isActive: true,
 })
 
-const editedItem = ref<CustomerUserService>({ ...defaultItem.value })
+const editedItem = ref<CustomerUsersServices>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,14 +223,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: CustomerUserService) => {
-  editedIndex.value = customerUserServices.value.indexOf(item)
+const editItem = (item: CustomerUsersServices) => {
+  editedIndex.value = customerUsersServices.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: CustomerUserService) => {
-  editedIndex.value = customerUserServices.value.indexOf(item)
+const deleteItem = (item: CustomerUsersServices) => {
+  editedIndex.value = customerUsersServices.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(customerUserServices.value[editedIndex.value], editedItem.value)
-    showToast('Сервис пользователя клиента успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...customerUserServices.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    customerUserServices.value.push({ ...editedItem.value })
-    showToast('Сервис пользователя клиента успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateCustomerUsersServices(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Сервис пользователей клиентов успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createCustomerUsersServices({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Сервис пользователей клиентов успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения сервис пользователей клиентов', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  customerUserServices.value.splice(editedIndex.value, 1)
-  showToast('Сервис пользователя клиента успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteCustomerUsersServices(editedItem.value.id)
+    showToast('Сервис пользователей клиентов успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления сервис пользователей клиентов', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: CustomerUserService, newValue: number) => {
+const toggleStatus = async (item: CustomerUsersServices, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = customerUserServices.value.findIndex((t: CustomerUserService) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    customerUserServices.value[index].status = newValue
-    customerUserServices.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', customerUserServices.value[index])
-    showToast('Статус сервиса пользователя клиента изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве customerUserServices')
+
+  try {
+    await updateCustomerUsersServices(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус сервис пользователей клиентов изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового сервиса пользователя клиента
-const addNewCustomerUserService = () => {
+// Добавление нового сервис пользователей клиентов
+const addNewCustomerUsersServices = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewCustomerUserService = () => {
   <div>
     <VCard title="Сервисы пользователей клиентов">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск сервисов пользователей клиентов"
+            placeholder="Поиск сервисы пользователей клиентов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewCustomerUserService = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewCustomerUserService = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewCustomerUserService = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewCustomerUserService = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewCustomerUserService"
+            @click="addNewCustomerUsersServices"
           >
-            Добавить сервис пользователя клиента
+            Добавить сервис пользователей клиентов
           </VBtn>
         </div>
       </div>
@@ -503,24 +546,13 @@ const addNewCustomerUserService = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredCustomerUserServices"
+        :items="filteredCustomerUsersServices"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewCustomerUserService = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewCustomerUserService = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredCustomerUserServices.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredCustomerUsersServices.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -573,9 +601,10 @@ const addNewCustomerUserService = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать сервис пользователя клиента' : 'Добавить сервис пользователя клиента'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать сервис пользователей клиентов' : 'Добавить сервис пользователей клиентов'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewCustomerUserService = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание сервиса пользователя клиента"
-                rows="4"
-                placeholder="Введите описание сервиса пользователя клиента..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewCustomerUserService = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот сервис пользователя клиента?">
+      <VCard title="Вы уверены, что хотите удалить этот сервис пользователей клиентов?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewCustomerUserService = () => {
   margin-block-end: 1rem;
 }
 </style>
-

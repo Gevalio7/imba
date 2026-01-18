@@ -1,105 +1,115 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для компании
-interface Customer {
+// Типы данных для Клиент
+interface Customers {
   id: number
   name: string
   street: string
   zip: string
   city: string
   comment: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные компаний (демо данные)
-const customers = ref<Customer[]>([
-  {
-    id: 1,
-    name: 'Компания А',
-    street: 'ул. Ленина, 15',
-    zip: '123456',
-    city: 'Москва',
-    comment: 'Крупная корпоративная компания',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Компания Б',
-    street: 'пр. Победы, 23',
-    zip: '654321',
-    city: 'Санкт-Петербург',
-    comment: 'Средняя бизнес компания',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Компания В',
-    street: 'ул. Советская, 8',
-    zip: '112233',
-    city: 'Екатеринбург',
-    comment: 'Стартап компания',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'Компания Г',
-    street: 'пер. Зеленый, 45',
-    zip: '332211',
-    city: 'Новосибирск',
-    comment: 'Индивидуальный предприниматель',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'Компания Д',
-    street: 'ш. Энтузиастов, 12',
-    zip: '445566',
-    city: 'Казань',
-    comment: 'Государственная организация',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'Компания Е',
-    street: 'наб. Речная, 7',
-    zip: '778899',
-    city: 'Сочи',
-    comment: 'Международная корпорация',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные клиенты
+const customers = ref<Customers[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchCustomers = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching customers from:', `${API_BASE}/customers`)
+    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    console.log('Fetched customers data:', data)
+    customers.value = data.customers
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки клиенты'
+    console.error('Error fetching customers:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание клиент
+const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Customers>(`${API_BASE}/customers`, {
+      method: 'POST',
+      body: item
+    })
+    customers.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating customers:', err)
+    throw err
+  }
+}
+
+// Обновление клиент
+const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Customers>(`${API_BASE}/customers/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = customers.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customers.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating customers:', err)
+    throw err
+  }
+}
+
+// Удаление клиент
+const deleteCustomers = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/customers/${id}`, {
+      method: 'DELETE'
+    })
+    const index = customers.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customers.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting customers:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchCustomers()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Улица', key: 'street', sortable: true },
+  { title: 'Индекс', key: 'zip', sortable: true },
+  { title: 'Город', key: 'city', sortable: true },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -107,11 +117,7 @@ const filteredCustomers = computed(() => {
   let filtered = customers.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(c => c.status === statusFilter.value)
-  }
-
-  if (commentFilter.value !== null) {
-    filtered = filtered.filter(c => c.comment === commentFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -120,7 +126,6 @@ const filteredCustomers = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  commentFilter.value = null
 }
 
 // Массовые действия
@@ -138,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = customers.value.findIndex(c => c.id === item.id)
-    if (index !== -1) {
-      customers.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteCustomers(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} компаний`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} клиенты`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = customers.value.findIndex(c => c.id === item.id)
-    if (index !== -1) {
-      customers.value[index].status = bulkStatusValue.value
-      customers.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateCustomers(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} компаний`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} клиенты`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -178,7 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const commentFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -196,11 +205,11 @@ watch(selectedItems, (newValue) => {
   console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
 }, { deep: true })
 
-// Диалоги и формы
-const relationsDialog = ref(false)
-const isDeleteDialogOpen = ref(false)
+// Диалоги
+const editDialog = ref(false)
+const deleteDialog = ref(false)
 
-const defaultItem = ref<Customer>({
+const defaultItem = ref<Customers>({
   id: -1,
   name: '',
   street: '',
@@ -213,7 +222,7 @@ const defaultItem = ref<Customer>({
   isActive: true,
 })
 
-const editedItem = ref<Customer>({ ...defaultItem.value })
+const editedItem = ref<Customers>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -223,13 +232,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Customer) => {
+const editItem = (item: Customers) => {
   editedIndex.value = customers.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Customer) => {
+const deleteItem = (item: Customers) => {
   editedIndex.value = customers.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -247,52 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(customers.value[editedIndex.value], editedItem.value)
-    showToast('Компания успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...customers.value.map(c => c.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    customers.value.push({ ...editedItem.value })
-    showToast('Компания успешно добавлена')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateCustomers(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Клиент успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createCustomers({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Клиент успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения клиент', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  customers.value.splice(editedIndex.value, 1)
-  showToast('Компания успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteCustomers(editedItem.value.id)
+    showToast('Клиент успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления клиент', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Customer, newValue: number) => {
+const toggleStatus = async (item: Customers, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = customers.value.findIndex((c: Customer) => c.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    customers.value[index].status = newValue
-    customers.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', customers.value[index])
-    showToast('Статус компании изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве customers')
+
+  try {
+    await updateCustomers(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус клиент изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -307,51 +325,35 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-
-// Удаление клиента
-const deleteCustomer = (item: Customer) => {
-  editedItem.value = { ...item }
-  editedIndex.value = customers.value.indexOf(item)
-  isDeleteDialogOpen.value = true
-}
-
-// Подтверждение удаления
-const confirmDelete = () => {
-  customers.value.splice(editedIndex.value, 1)
-  showToast('Компания успешно удалена')
-  isDeleteDialogOpen.value = false
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-}
-
-// Функции для создания и редактирования
-const addNewCustomer = () => {
+// Добавление нового клиент
+const addNewCustomers = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
 }
-
-const editCustomer = (item: Customer) => {
-  editedIndex.value = customers.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-// Диалог редактирования
-const editDialog = ref(false)
 </script>
 
 <template>
   <div>
-    <!-- Основная таблица -->
-    <VCard
-      title="Компании"
-    >
-      <div class="d-flex flex-wrap gap-4 pa-6">
+    <VCard title="Клиенты">
+
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск компаний"
+            placeholder="Поиск клиенты"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -367,16 +369,6 @@ const editDialog = ref(false)
           Фильтр
         </VBtn>
 
-        <!-- Кнопка связей -->
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="bx-link"
-          @click="relationsDialog = true"
-        >
-          Связи
-        </VBtn>
-
         <!-- Кнопка массовых действий -->
         <VMenu
           v-model="isBulkActionsMenuOpen"
@@ -389,12 +381,6 @@ const editDialog = ref(false)
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -402,7 +388,6 @@ const editDialog = ref(false)
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -411,7 +396,6 @@ const editDialog = ref(false)
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -439,12 +423,129 @@ const editDialog = ref(false)
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewCustomer"
+            @click="addNewCustomers"
           >
-            Добавить компанию
+            Добавить клиент
           </VBtn>
         </div>
       </div>
+
+
+      <!-- Диалог фильтров -->
+      <VDialog
+        v-model="isFilterDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Фильтры">
+          <VCardText>
+            <VRow>
+              <VCol cols="12">
+                <AppSelect
+                  v-model="statusFilter"
+                  placeholder="Статус"
+                  :items="[
+                    { title: 'Активен', value: 1 },
+                    { title: 'Не активен', value: 2 },
+                  ]"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VCardText>
+
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                variant="text"
+                @click="clearFilters"
+              >
+                Сбросить
+              </VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isFilterDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="isFilterDialogOpen = false"
+              >
+                Применить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
+      <!-- Диалог массового удаления -->
+      <VDialog
+        v-model="isBulkDeleteDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Подтверждение удаления">
+          <VCardText>
+            Вы уверены, что хотите удалить выбранные клиенты? Это действие нельзя отменить.
+          </VCardText>
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkDeleteDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkDelete"
+              >
+                Удалить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
+      <!-- Диалог массового изменения статуса -->
+      <VDialog
+        v-model="isBulkStatusDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Изменить статус">
+          <VCardText>
+            <AppSelect
+              v-model="bulkStatusValue"
+              :items="statusOptions"
+              item-title="text"
+              item-value="value"
+              label="Новый статус"
+            />
+          </VCardText>
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkStatusDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkStatusChange"
+              >
+                Применить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
 
       <VDivider />
 
@@ -459,19 +560,8 @@ const editDialog = ref(false)
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Комментарий -->
-        <template #item.comment="{ item }">
-          <div class="text-truncate" style="max-inline-size: 200px;">
-            {{ item.comment }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -487,10 +577,6 @@ const editDialog = ref(false)
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -499,10 +585,10 @@ const editDialog = ref(false)
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editCustomer(item)">
+            <IconBtn @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteCustomer(item)">
+            <IconBtn @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -519,187 +605,103 @@ const editDialog = ref(false)
       </div>
     </VCard>
 
-    <!-- Диалог фильтров -->
+    <!-- Диалог редактирования -->
     <VDialog
-      v-model="isFilterDialogOpen"
-      max-width="500px"
-    >
-      <VCard title="Фильтры">
-        <VCardText>
-          <VRow>
-            <VCol cols="12">
-              <AppSelect
-                v-model="statusFilter"
-                placeholder="Статус"
-                :items="[
-                  { title: 'Активен', value: 1 },
-                  { title: 'Не активен', value: 2 },
-                ]"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-            <VCol cols="12">
-              <AppSelect
-                v-model="commentFilter"
-                placeholder="Комментарий"
-                :items="[
-                  { title: 'Крупная корпоративная компания', value: 'Крупная корпоративная компания' },
-                  { title: 'Средняя бизнес компания', value: 'Средняя бизнес компания' },
-                  { title: 'Стартап компания', value: 'Стартап компания' },
-                  { title: 'Индивидуальный предприниматель', value: 'Индивидуальный предприниматель' },
-                  { title: 'Государственная организация', value: 'Государственная организация' },
-                  { title: 'Международная корпорация', value: 'Международная корпорация' },
-                ]"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VCardText>
-          <div class="d-flex justify-end gap-4">
-            <VBtn
-              variant="text"
-              @click="clearFilters"
-            >
-              Сбросить
-            </VBtn>
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="isFilterDialogOpen = false"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="isFilterDialogOpen = false"
-            >
-              Применить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог массового удаления -->
-    <VDialog
-      v-model="isBulkDeleteDialogOpen"
-      max-width="500px"
-    >
-      <VCard title="Подтверждение удаления">
-        <VCardText>
-          Вы уверены, что хотите удалить выбранные компании? Это действие нельзя отменить.
-        </VCardText>
-        <VCardText>
-          <div class="d-flex justify-end gap-4">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="isBulkDeleteDialogOpen = false"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="confirmBulkDelete"
-            >
-              Удалить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог массового изменения статуса -->
-    <VDialog
-      v-model="isBulkStatusDialogOpen"
-      max-width="500px"
-    >
-      <VCard title="Изменить статус">
-        <VCardText>
-          <AppSelect
-            v-model="bulkStatusValue"
-            :items="statusOptions"
-            item-title="text"
-            item-value="value"
-            label="Новый статус"
-          />
-        </VCardText>
-        <VCardText>
-          <div class="d-flex justify-end gap-4">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="isBulkStatusDialogOpen = false"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="confirmBulkStatusChange"
-            >
-              Применить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог связей -->
-    <VDialog
-      v-model="relationsDialog"
+      v-model="editDialog"
       max-width="600px"
     >
-      <VCard title="Связи компаний">
+      <VCard :title="editedIndex > -1 ? 'Редактировать клиент' : 'Добавить клиент'">
         <VCardText>
-          <p class="text-body-1 mb-4">
-            Клиенты связаны с пользователями клиентов и сервисами. Перейдите в соответствующие разделы для управления связями.
-          </p>
           <VRow>
-            <VCol cols="12" sm="6">
-              <VCard
-                variant="outlined"
-                class="pa-4 text-center"
-                hover
-                @click="$router.push({ name: 'settings', query: { tab: 'customer-users' } })"
-              >
-                <VIcon icon="bx-user" size="48" class="mb-2" />
-                <div class="text-h6">Пользователи клиентов</div>
-                <div class="text-body-2 text-medium-emphasis">
-                  Управление пользователями клиентов
-                </div>
-              </VCard>
+
+            <!-- Название -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.name"
+                label="Название *"
+              />
             </VCol>
-            <VCol cols="12" sm="6">
-              <VCard
-                variant="outlined"
-                class="pa-4 text-center"
-                hover
-                @click="$router.push({ name: 'settings', query: { tab: 'customer-users-services' } })"
-              >
-                <VIcon icon="bx-link" size="48" class="mb-2" />
-                <div class="text-h6">Связи клиентов и сервисов</div>
-                <div class="text-body-2 text-medium-emphasis">
-                  Связи между компаниями и сервисами
-                </div>
-              </VCard>
+
+            <!-- Улица -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.street"
+                label="Улица"
+              />
+            </VCol>
+
+            <!-- Индекс -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.zip"
+                label="Индекс"
+              />
+            </VCol>
+
+            <!-- Город -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.city"
+                label="Город"
+              />
+            </VCol>
+
+            <!-- Комментарий -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextarea
+                v-model="editedItem.comment"
+                label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
+              />
+            </VCol>
+
+            <!-- Статус -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.status"
+                :items="statusOptions"
+                item-title="text"
+                item-value="value"
+                label="Статус"
+              />
             </VCol>
           </VRow>
         </VCardText>
+
         <VCardText>
-          <div class="d-flex justify-end">
+          <div class="self-align-end d-flex gap-4 justify-end">
             <VBtn
-              color="primary"
+              color="error"
               variant="outlined"
-              @click="relationsDialog = false"
+              @click="close"
             >
-              Закрыть
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
             </VBtn>
           </div>
         </VCardText>
@@ -708,104 +710,25 @@ const editDialog = ref(false)
 
     <!-- Диалог удаления -->
     <VDialog
-      v-model="isDeleteDialogOpen"
+      v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту компанию?">
+      <VCard title="Вы уверены, что хотите удалить этот клиент?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
               color="error"
               variant="outlined"
-              @click="isDeleteDialogOpen = false"
+              @click="closeDelete"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="confirmDelete"
+              @click="deleteItemConfirm"
             >
               Удалить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог редактирования/создания -->
-    <VDialog
-      v-model="editDialog"
-      max-width="600px"
-    >
-      <VCard :title="editedIndex === -1 ? 'Добавить компанию' : 'Редактировать компанию'">
-        <VCardText>
-          <VRow>
-            <VCol cols="12">
-              <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
-                placeholder="Введите название компании"
-                required
-              />
-            </VCol>
-            <VCol cols="12">
-              <AppTextField
-                v-model="editedItem.street"
-                label="Адрес"
-                placeholder="Введите адрес"
-              />
-            </VCol>
-            <VCol cols="6">
-              <AppTextField
-                v-model="editedItem.zip"
-                label="Индекс"
-                placeholder="Введите индекс"
-              />
-            </VCol>
-            <VCol cols="6">
-              <AppTextField
-                v-model="editedItem.city"
-                label="Город"
-                placeholder="Введите город"
-              />
-            </VCol>
-            <VCol cols="12">
-              <VTextarea
-                v-model="editedItem.comment"
-                label="Комментарий"
-                placeholder="Введите комментарий"
-                rows="3"
-              />
-            </VCol>
-            <VCol cols="12">
-              <div class="d-flex align-center">
-                <VSwitch
-                  v-model="editedItem.isActive"
-                  label="Активен"
-                  color="primary"
-                  @update:model-value="(val) => {
-                    editedItem.status = val ? 1 : 2
-                  }"
-                />
-              </div>
-            </VCol>
-          </VRow>
-        </VCardText>
-        <VCardText>
-          <div class="d-flex justify-end gap-4">
-            <VBtn
-              variant="text"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="primary"
-              variant="elevated"
-              @click="save"
-            >
-              {{ editedIndex === -1 ? 'Добавить' : 'Сохранить' }}
             </VBtn>
           </div>
         </VCardText>
@@ -824,13 +747,6 @@ const editDialog = ref(false)
 </template>
 
 <style lang="scss" scoped>
-.color-circle {
-  border: 1px solid #ccc;
-  border-radius: 50%;
-  block-size: 20px;
-  inline-size: 20px;
-}
-
 .v-card {
   margin-block-end: 1rem;
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для обслуживания системы
+// Типы данных для Обслуживание системы
 interface SystemMaintenance {
   id: number
   name: string
@@ -10,115 +11,113 @@ interface SystemMaintenance {
   endTime: string
   isActive: boolean
   isScheduled: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные обслуживания системы (демо данные)
-const systemMaintenances = ref<SystemMaintenance[]>([
-  {
-    id: 1,
-    name: 'Weekly Maintenance',
-    description: 'Еженедельное обслуживание системы',
-    startTime: '2023-01-15 02:00:00',
-    endTime: '2023-01-15 04:00:00',
-    isActive: true,
-    isScheduled: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Database Update',
-    description: 'Обновление базы данных',
-    startTime: '2023-01-16 01:00:00',
-    endTime: '2023-01-16 03:00:00',
-    isActive: true,
-    isScheduled: true,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Security Patch',
-    description: 'Установка патчей безопасности',
-    startTime: '2023-01-17 00:00:00',
-    endTime: '2023-01-17 02:00:00',
-    isActive: true,
-    isScheduled: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Emergency Maintenance',
-    description: 'Аварийное обслуживание системы',
-    startTime: '2023-01-14 22:00:00',
-    endTime: '2023-01-15 00:00:00',
-    isActive: false,
-    isScheduled: false,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Maintenance',
-    description: 'Старое обслуживание, больше не используется',
-    startTime: '2023-01-10 02:00:00',
-    endTime: '2023-01-10 04:00:00',
-    isActive: false,
-    isScheduled: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Maintenance',
-    description: 'Тестовое обслуживание для проверки системы',
-    startTime: '2023-01-18 03:00:00',
-    endTime: '2023-01-18 05:00:00',
-    isActive: true,
-    isScheduled: true,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные обслуживание системы
+const systemMaintenance = ref<SystemMaintenance[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchSystemMaintenance = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching systemMaintenance from:', `${API_BASE}/systemMaintenance`)
+    const data = await $fetch<{ systemMaintenance: SystemMaintenance[], total: number }>(`${API_BASE}/systemMaintenance`)
+    console.log('Fetched systemMaintenance data:', data)
+    systemMaintenance.value = data.systemMaintenance
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки обслуживание системы'
+    console.error('Error fetching systemMaintenance:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание обслуживание системы
+const createSystemMaintenance = async (item: Omit<SystemMaintenance, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SystemMaintenance>(`${API_BASE}/systemMaintenance`, {
+      method: 'POST',
+      body: item
+    })
+    systemMaintenance.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating systemMaintenance:', err)
+    throw err
+  }
+}
+
+// Обновление обслуживание системы
+const updateSystemMaintenance = async (id: number, item: Omit<SystemMaintenance, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SystemMaintenance>(`${API_BASE}/systemMaintenance/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = systemMaintenance.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      systemMaintenance.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating systemMaintenance:', err)
+    throw err
+  }
+}
+
+// Удаление обслуживание системы
+const deleteSystemMaintenance = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/systemMaintenance/${id}`, {
+      method: 'DELETE'
+    })
+    const index = systemMaintenance.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      systemMaintenance.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting systemMaintenance:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchSystemMaintenance()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
-  { title: 'Начало', key: 'startTime', sortable: true },
-  { title: 'Окончание', key: 'endTime', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Запланировано', key: 'isScheduled', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Время начала', key: 'startTime', sortable: true },
+  { title: 'Время окончания', key: 'endTime', sortable: true },
+  { title: 'Запланировано', key: 'isScheduled', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredSystemMaintenances = computed(() => {
-  let filtered = systemMaintenances.value
+const filteredSystemMaintenance = computed(() => {
+  let filtered = systemMaintenance.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (isActiveFilter.value !== null) {
-    filtered = filtered.filter(t => t.isActive === isActiveFilter.value)
-  }
-
-  if (isScheduledFilter.value !== null) {
-    filtered = filtered.filter(t => t.isScheduled === isScheduledFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -127,8 +126,6 @@ const filteredSystemMaintenances = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  isActiveFilter.value = null
-  isScheduledFilter.value = null
 }
 
 // Массовые действия
@@ -146,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = systemMaintenances.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      systemMaintenances.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteSystemMaintenance(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} мероприятий обслуживания`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} обслуживание системы`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = systemMaintenances.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      systemMaintenances.value[index].status = bulkStatusValue.value
-      systemMaintenances.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateSystemMaintenance(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} мероприятий обслуживания`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} обслуживание системы`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -186,8 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const isActiveFilter = ref<boolean | null>(null)
-const isScheduledFilter = ref<boolean | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -215,11 +215,11 @@ const defaultItem = ref<SystemMaintenance>({
   description: '',
   startTime: '',
   endTime: '',
-  isActive: true,
-  isScheduled: true,
+  isScheduled: false,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
 const editedItem = ref<SystemMaintenance>({ ...defaultItem.value })
@@ -233,13 +233,13 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SystemMaintenance) => {
-  editedIndex.value = systemMaintenances.value.indexOf(item)
+  editedIndex.value = systemMaintenance.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: SystemMaintenance) => {
-  editedIndex.value = systemMaintenances.value.indexOf(item)
+  editedIndex.value = systemMaintenance.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -256,72 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateSystemMaintenance(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Обслуживание системы успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createSystemMaintenance({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Обслуживание системы успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения обслуживание системы', 'error')
   }
-
-  if (!editedItem.value.startTime.trim()) {
-    showToast('Время начала обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.endTime.trim()) {
-    showToast('Время окончания обязательно для заполнения', 'error')
-    return
-  }
-
-  if (new Date(editedItem.value.startTime) >= new Date(editedItem.value.endTime)) {
-    showToast('Время окончания должно быть позже времени начала', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(systemMaintenances.value[editedIndex.value], editedItem.value)
-    showToast('Мероприятие обслуживания успешно сохранено')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...systemMaintenances.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    systemMaintenances.value.push({ ...editedItem.value })
-    showToast('Мероприятие обслуживания успешно добавлено')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  systemMaintenances.value.splice(editedIndex.value, 1)
-  showToast('Мероприятие обслуживания успешно удалено')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteSystemMaintenance(editedItem.value.id)
+    showToast('Обслуживание системы успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления обслуживание системы', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: SystemMaintenance, newValue: number) => {
+const toggleStatus = async (item: SystemMaintenance, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = systemMaintenances.value.findIndex((t: SystemMaintenance) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    systemMaintenances.value[index].status = newValue
-    systemMaintenances.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', systemMaintenances.value[index])
-    showToast('Статус мероприятия обслуживания изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве systemMaintenances')
+
+  try {
+    await updateSystemMaintenance(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус обслуживание системы изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -336,7 +325,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового мероприятия обслуживания
+// Добавление нового обслуживание системы
 const addNewSystemMaintenance = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -347,20 +336,24 @@ const addNewSystemMaintenance = () => {
 <template>
   <div>
     <VCard title="Обслуживание системы">
-      <VCardText>
-        <p class="text-body-1">
-          Управлять периодом обслуживания.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Schedule a maintenance period.
-        </p>
-      </VCardText>
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск мероприятий обслуживания"
+            placeholder="Поиск обслуживание системы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -388,12 +381,6 @@ const addNewSystemMaintenance = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -401,7 +388,6 @@ const addNewSystemMaintenance = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -410,7 +396,6 @@ const addNewSystemMaintenance = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -440,7 +425,7 @@ const addNewSystemMaintenance = () => {
             prepend-icon="bx-plus"
             @click="addNewSystemMaintenance"
           >
-            Добавить обслуживание
+            Добавить обслуживание системы
           </VBtn>
         </div>
       </div>
@@ -461,30 +446,6 @@ const addNewSystemMaintenance = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="isActiveFilter"
-                  placeholder="Активен"
-                  :items="[
-                    { title: 'Да', value: true },
-                    { title: 'Нет', value: false },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="isScheduledFilter"
-                  placeholder="Запланировано"
-                  :items="[
-                    { title: 'Да', value: true },
-                    { title: 'Нет', value: false },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -527,7 +488,7 @@ const addNewSystemMaintenance = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные мероприятия обслуживания? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные обслуживание системы? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -594,46 +555,13 @@ const addNewSystemMaintenance = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredSystemMaintenances"
+        :items="filteredSystemMaintenance"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Активен -->
-        <template #item.isActive="{ item }">
-          <VChip
-            :color="item.isActive ? 'success' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isActive ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
-        <!-- Запланировано -->
-        <template #item.isScheduled="{ item }">
-          <VChip
-            :color="item.isScheduled ? 'primary' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isScheduled ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -641,6 +569,16 @@ const addNewSystemMaintenance = () => {
             density="default"
             label
             size="small"
+          />
+        </template>
+
+        <!-- Активен -->
+        <template #item.isActive="{ item }">
+          <VSwitch
+            :model-value="item.isActive"
+            @update:model-value="(val) => {
+              toggleStatus(item, val ? 1 : 2)
+            }"
           />
         </template>
 
@@ -661,7 +599,7 @@ const addNewSystemMaintenance = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredSystemMaintenances.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredSystemMaintenance.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -672,9 +610,10 @@ const addNewSystemMaintenance = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать обслуживание' : 'Добавить обслуживание'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать обслуживание системы' : 'Добавить обслуживание системы'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -687,58 +626,49 @@ const addNewSystemMaintenance = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.description"
-                label="Описание обслуживания *"
+                label="Описание"
                 rows="3"
-                placeholder="Введите описание обслуживания..."
+                placeholder="Введите описание..."
               />
             </VCol>
 
             <!-- Время начала -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.startTime"
-                label="Время начала *"
-                type="datetime-local"
+                label="Время начала"
               />
             </VCol>
 
             <!-- Время окончания -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.endTime"
-                label="Время окончания *"
-                type="datetime-local"
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
+                label="Время окончания"
               />
             </VCol>
 
             <!-- Запланировано -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <VSwitch
                 v-model="editedItem.isScheduled"
                 label="Запланировано"
+                color="primary"
               />
             </VCol>
 
@@ -784,7 +714,7 @@ const addNewSystemMaintenance = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить это мероприятие обслуживания?">
+      <VCard title="Вы уверены, что хотите удалить этот обслуживание системы?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

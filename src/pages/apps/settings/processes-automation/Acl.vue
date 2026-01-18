@@ -1,100 +1,119 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для списков управления доступом
+// Типы данных для ACL (Контроль доступа)
 interface Acl {
   id: number
   name: string
   description: string
   permissions: string[]
   isActive: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные ACL (демо данные)
-const acls = ref<Acl[]>([
-  {
-    id: 1,
-    name: 'Admin ACL',
-    description: 'Полный доступ для администраторов',
-    permissions: ['read', 'write', 'delete', 'admin'],
-    isActive: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Agent ACL',
-    description: 'Доступ для агентов поддержки',
-    permissions: ['read', 'write', 'comment'],
-    isActive: true,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Customer ACL',
-    description: 'Ограниченный доступ для клиентов',
-    permissions: ['read', 'create'],
-    isActive: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Manager ACL',
-    description: 'Доступ для менеджеров',
-    permissions: ['read', 'write', 'assign', 'report'],
-    isActive: true,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old ACL',
-    description: 'Старый ACL, больше не используется',
-    permissions: ['read'],
-    isActive: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test ACL',
-    description: 'Тестовый ACL для проверки системы',
-    permissions: ['read', 'write'],
-    isActive: true,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные acl (контроль доступа)
+const acl = ref<Acl[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchAcl = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching acl from:', `${API_BASE}/acl`)
+    const data = await $fetch<{ acl: Acl[], total: number }>(`${API_BASE}/acl`)
+    console.log('Fetched acl data:', data)
+    acl.value = data.acl
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки acl (контроль доступа)'
+    console.error('Error fetching acl:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание acl (контроль доступа)
+const createAcl = async (item: Omit<Acl, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Acl>(`${API_BASE}/acl`, {
+      method: 'POST',
+      body: item
+    })
+    acl.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating acl:', err)
+    throw err
+  }
+}
+
+// Обновление acl (контроль доступа)
+const updateAcl = async (id: number, item: Omit<Acl, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Acl>(`${API_BASE}/acl/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = acl.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      acl.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating acl:', err)
+    throw err
+  }
+}
+
+// Удаление acl (контроль доступа)
+const deleteAcl = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/acl/${id}`, {
+      method: 'DELETE'
+    })
+    const index = acl.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      acl.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting acl:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchAcl()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
-  { title: 'Разрешения', key: 'permissions', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Разрешения', key: 'permissions', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredAcls = computed(() => {
-  let filtered = acls.value
+const filteredAcl = computed(() => {
+  let filtered = acl.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -120,31 +139,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = acls.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      acls.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteAcl(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} ACL`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} acl (контроль доступа)`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = acls.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      acls.value[index].status = bulkStatusValue.value
-      acls.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateAcl(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} ACL`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} acl (контроль доступа)`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -186,10 +210,10 @@ const defaultItem = ref<Acl>({
   name: '',
   description: '',
   permissions: [],
-  isActive: true,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
 const editedItem = ref<Acl>({ ...defaultItem.value })
@@ -201,26 +225,15 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции разрешений
-const permissionOptions = [
-  { text: 'Чтение', value: 'read' },
-  { text: 'Запись', value: 'write' },
-  { text: 'Удаление', value: 'delete' },
-  { text: 'Комментарии', value: 'comment' },
-  { text: 'Назначение', value: 'assign' },
-  { text: 'Отчеты', value: 'report' },
-  { text: 'Администрирование', value: 'admin' },
-]
-
 // Методы
 const editItem = (item: Acl) => {
-  editedIndex.value = acls.value.indexOf(item)
+  editedIndex.value = acl.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: Acl) => {
-  editedIndex.value = acls.value.indexOf(item)
+  editedIndex.value = acl.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -237,57 +250,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateAcl(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('ACL (Контроль доступа) успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createAcl({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('ACL (Контроль доступа) успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения acl (контроль доступа)', 'error')
   }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(acls.value[editedIndex.value], editedItem.value)
-    showToast('ACL успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...acls.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    acls.value.push({ ...editedItem.value })
-    showToast('ACL успешно добавлен')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  acls.value.splice(editedIndex.value, 1)
-  showToast('ACL успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteAcl(editedItem.value.id)
+    showToast('ACL (Контроль доступа) успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления acl (контроль доступа)', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Acl, newValue: number) => {
+const toggleStatus = async (item: Acl, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = acls.value.findIndex((t: Acl) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    acls.value[index].status = newValue
-    acls.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', acls.value[index])
-    showToast('Статус ACL изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве acls')
+
+  try {
+    await updateAcl(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус acl (контроль доступа) изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -302,7 +319,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового ACL
+// Добавление нового acl (контроль доступа)
 const addNewAcl = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -312,21 +329,25 @@ const addNewAcl = () => {
 
 <template>
   <div>
-    <VCard title="Списки управления доступом (ACL)">
-      <VCardText>
-        <p class="text-body-1">
-          Настройка и управление ACL.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Configure and manage ACLs.
-        </p>
-      </VCardText>
+    <VCard title="ACL (Контроль доступа)">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск ACL"
+            placeholder="Поиск acl (контроль доступа)"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -354,12 +375,6 @@ const addNewAcl = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -367,7 +382,6 @@ const addNewAcl = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -376,7 +390,6 @@ const addNewAcl = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -406,7 +419,7 @@ const addNewAcl = () => {
             prepend-icon="bx-plus"
             @click="addNewAcl"
           >
-            Добавить ACL
+            Добавить acl (контроль доступа)
           </VBtn>
         </div>
       </div>
@@ -469,7 +482,7 @@ const addNewAcl = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные ACL? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные acl (контроль доступа)? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -536,31 +549,13 @@ const addNewAcl = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredAcls"
+        :items="filteredAcl"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Разрешения -->
-        <template #item.permissions="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.permissions.join(', ') }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -576,10 +571,6 @@ const addNewAcl = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -602,7 +593,7 @@ const addNewAcl = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAcls.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredAcl.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -613,9 +604,10 @@ const addNewAcl = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать ACL' : 'Добавить ACL'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать acl (контроль доступа)' : 'Добавить acl (контроль доступа)'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -628,26 +620,26 @@ const addNewAcl = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.description"
-                label="Описание ACL *"
+                label="Описание"
                 rows="3"
-                placeholder="Введите описание ACL..."
+                placeholder="Введите описание..."
               />
             </VCol>
 
             <!-- Разрешения -->
-            <VCol cols="12">
-              <AppSelect
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
                 v-model="editedItem.permissions"
-                :items="permissionOptions"
-                item-title="text"
-                item-value="value"
-                label="Разрешения *"
-                multiple
-                chips
-                closable-chips
+                label="Разрешения"
               />
             </VCol>
 
@@ -693,7 +685,7 @@ const addNewAcl = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот ACL?">
+      <VCard title="Вы уверены, что хотите удалить этот acl (контроль доступа)?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

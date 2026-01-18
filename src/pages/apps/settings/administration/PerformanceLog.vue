@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для журнала производительности
+// Типы данных для Журнал производительности
 interface PerformanceLog {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные журнала производительности (демо данные)
-const performanceLogs = ref<PerformanceLog[]>([
-  {
-    id: 1,
-    name: 'performance-test-1',
-    message: 'Тест производительности системы 1',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'performance-test-2',
-    message: 'Тест производительности системы 2',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'performance-test-3',
-    message: 'Тест производительности системы 3',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'performance-test-4',
-    message: 'Тест производительности системы 4',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-performance-test',
-    message: 'Старый тест производительности, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'auto-performance-test',
-    message: 'Автоматический тест производительности',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные журнал производительности
+const performanceLog = ref<PerformanceLog[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchPerformanceLog = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching performanceLog from:', `${API_BASE}/performanceLog`)
+    const data = await $fetch<{ performanceLog: PerformanceLog[], total: number }>(`${API_BASE}/performanceLog`)
+    console.log('Fetched performanceLog data:', data)
+    performanceLog.value = data.performanceLog
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки журнал производительности'
+    console.error('Error fetching performanceLog:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание журнал производительности
+const createPerformanceLog = async (item: Omit<PerformanceLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PerformanceLog>(`${API_BASE}/performanceLog`, {
+      method: 'POST',
+      body: item
+    })
+    performanceLog.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating performanceLog:', err)
+    throw err
+  }
+}
+
+// Обновление журнал производительности
+const updatePerformanceLog = async (id: number, item: Omit<PerformanceLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PerformanceLog>(`${API_BASE}/performanceLog/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = performanceLog.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      performanceLog.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating performanceLog:', err)
+    throw err
+  }
+}
+
+// Удаление журнал производительности
+const deletePerformanceLog = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/performanceLog/${id}`, {
+      method: 'DELETE'
+    })
+    const index = performanceLog.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      performanceLog.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting performanceLog:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchPerformanceLog()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredPerformanceLogs = computed(() => {
-  let filtered = performanceLogs.value
+const filteredPerformanceLog = computed(() => {
+  let filtered = performanceLog.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = performanceLogs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      performanceLogs.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deletePerformanceLog(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} журналов производительности`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} журнал производительности`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = performanceLogs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      performanceLogs.value[index].status = bulkStatusValue.value
-      performanceLogs.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updatePerformanceLog(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} журналов производительности`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} журнал производительности`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -194,13 +224,13 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: PerformanceLog) => {
-  editedIndex.value = performanceLogs.value.indexOf(item)
+  editedIndex.value = performanceLog.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: PerformanceLog) => {
-  editedIndex.value = performanceLogs.value.indexOf(item)
+  editedIndex.value = performanceLog.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(performanceLogs.value[editedIndex.value], editedItem.value)
-    showToast('Журнал производительности успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...performanceLogs.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    performanceLogs.value.push({ ...editedItem.value })
-    showToast('Журнал производительности успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updatePerformanceLog(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Журнал производительности успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createPerformanceLog({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Журнал производительности успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения журнал производительности', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  performanceLogs.value.splice(editedIndex.value, 1)
-  showToast('Журнал производительности успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deletePerformanceLog(editedItem.value.id)
+    showToast('Журнал производительности успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления журнал производительности', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: PerformanceLog, newValue: number) => {
+const toggleStatus = async (item: PerformanceLog, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = performanceLogs.value.findIndex((t: PerformanceLog) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    performanceLogs.value[index].status = newValue
-    performanceLogs.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', performanceLogs.value[index])
-    showToast('Статус журнала производительности изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве performanceLogs')
+
+  try {
+    await updatePerformanceLog(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус журнал производительности изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,7 +316,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового журнала производительности
+// Добавление нового журнал производительности
 const addNewPerformanceLog = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -289,11 +328,23 @@ const addNewPerformanceLog = () => {
   <div>
     <VCard title="Журнал производительности">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск журналов производительности"
+            placeholder="Поиск журнал производительности"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewPerformanceLog = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewPerformanceLog = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewPerformanceLog = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -436,7 +479,7 @@ const addNewPerformanceLog = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные журналы производительности? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные журнал производительности? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -503,24 +546,13 @@ const addNewPerformanceLog = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredPerformanceLogs"
+        :items="filteredPerformanceLog"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewPerformanceLog = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewPerformanceLog = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredPerformanceLogs.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredPerformanceLog.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -576,6 +604,7 @@ const addNewPerformanceLog = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать журнал производительности' : 'Добавить журнал производительности'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewPerformanceLog = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание журнала производительности"
-                rows="4"
-                placeholder="Введите описание журнала производительности..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -677,4 +709,3 @@ const addNewPerformanceLog = () => {
   margin-block-end: 1rem;
 }
 </style>
-

@@ -1,84 +1,109 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для фильтра PostMaster
-interface PostMasterFilter {
+// Типы данных для Фильтр PostMaster
+interface PostMasterFilters {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные фильтров PostMaster (демо данные)
-const postMasterFilters = ref<PostMasterFilter[]>([
-  {
-    id: 1,
-    name: 'spam-filter',
-    message: 'Фильтр для блокировки спама',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'virus-filter',
-    message: 'Фильтр для обнаружения вирусов',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'attachment-filter',
-    message: 'Фильтр для больших вложений',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'keyword-filter',
-    message: 'Фильтр по ключевым словам',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-filter',
-    message: 'Старый фильтр, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'priority-filter',
-    message: 'Фильтр для приоритетных сообщений',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные фильтры postmaster
+const postMasterFilters = ref<PostMasterFilters[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchPostMasterFilters = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching postMasterFilters from:', `${API_BASE}/postMasterFilters`)
+    const data = await $fetch<{ postMasterFilters: PostMasterFilters[], total: number }>(`${API_BASE}/postMasterFilters`)
+    console.log('Fetched postMasterFilters data:', data)
+    postMasterFilters.value = data.postMasterFilters
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки фильтры postmaster'
+    console.error('Error fetching postMasterFilters:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание фильтр postmaster
+const createPostMasterFilters = async (item: Omit<PostMasterFilters, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PostMasterFilters>(`${API_BASE}/postMasterFilters`, {
+      method: 'POST',
+      body: item
+    })
+    postMasterFilters.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating postMasterFilters:', err)
+    throw err
+  }
+}
+
+// Обновление фильтр postmaster
+const updatePostMasterFilters = async (id: number, item: Omit<PostMasterFilters, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PostMasterFilters>(`${API_BASE}/postMasterFilters/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = postMasterFilters.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      postMasterFilters.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating postMasterFilters:', err)
+    throw err
+  }
+}
+
+// Удаление фильтр postmaster
+const deletePostMasterFilters = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/postMasterFilters/${id}`, {
+      method: 'DELETE'
+    })
+    const index = postMasterFilters.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      postMasterFilters.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting postMasterFilters:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchPostMasterFilters()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -86,7 +111,7 @@ const filteredPostMasterFilters = computed(() => {
   let filtered = postMasterFilters.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = postMasterFilters.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      postMasterFilters.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deletePostMasterFilters(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} фильтров PostMaster`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} фильтры postmaster`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = postMasterFilters.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      postMasterFilters.value[index].status = bulkStatusValue.value
-      postMasterFilters.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updatePostMasterFilters(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} фильтров PostMaster`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} фильтры postmaster`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<PostMasterFilter>({
+const defaultItem = ref<PostMasterFilters>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<PostMasterFilter>({
   isActive: true,
 })
 
-const editedItem = ref<PostMasterFilter>({ ...defaultItem.value })
+const editedItem = ref<PostMasterFilters>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: PostMasterFilter) => {
+const editItem = (item: PostMasterFilters) => {
   editedIndex.value = postMasterFilters.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: PostMasterFilter) => {
+const deleteItem = (item: PostMasterFilters) => {
   editedIndex.value = postMasterFilters.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(postMasterFilters.value[editedIndex.value], editedItem.value)
-    showToast('Фильтр PostMaster успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...postMasterFilters.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    postMasterFilters.value.push({ ...editedItem.value })
-    showToast('Фильтр PostMaster успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updatePostMasterFilters(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Фильтр PostMaster успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createPostMasterFilters({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Фильтр PostMaster успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения фильтр postmaster', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  postMasterFilters.value.splice(editedIndex.value, 1)
-  showToast('Фильтр PostMaster успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deletePostMasterFilters(editedItem.value.id)
+    showToast('Фильтр PostMaster успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления фильтр postmaster', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: PostMasterFilter, newValue: number) => {
+const toggleStatus = async (item: PostMasterFilters, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = postMasterFilters.value.findIndex((t: PostMasterFilter) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    postMasterFilters.value[index].status = newValue
-    postMasterFilters.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', postMasterFilters.value[index])
-    showToast('Статус фильтра PostMaster изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве postMasterFilters')
+
+  try {
+    await updatePostMasterFilters(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус фильтр postmaster изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового фильтра PostMaster
-const addNewPostMasterFilter = () => {
+// Добавление нового фильтр postmaster
+const addNewPostMasterFilters = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewPostMasterFilter = () => {
   <div>
     <VCard title="Фильтры PostMaster">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск фильтров PostMaster"
+            placeholder="Поиск фильтры postmaster"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewPostMasterFilter = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewPostMasterFilter = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewPostMasterFilter = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewPostMasterFilter = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewPostMasterFilter"
+            @click="addNewPostMasterFilters"
           >
-            Добавить фильтр PostMaster
+            Добавить фильтр postmaster
           </VBtn>
         </div>
       </div>
@@ -436,7 +479,7 @@ const addNewPostMasterFilter = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные фильтры PostMaster? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные фильтры postmaster? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -508,19 +551,8 @@ const addNewPostMasterFilter = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewPostMasterFilter = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -573,9 +601,10 @@ const addNewPostMasterFilter = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать фильтр PostMaster' : 'Добавить фильтр PostMaster'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать фильтр postmaster' : 'Добавить фильтр postmaster'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewPostMasterFilter = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание фильтра PostMaster"
-                rows="4"
-                placeholder="Введите описание фильтра PostMaster..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewPostMasterFilter = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот фильтр PostMaster?">
+      <VCard title="Вы уверены, что хотите удалить этот фильтр postmaster?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewPostMasterFilter = () => {
   margin-block-end: 1rem;
 }
 </style>
-

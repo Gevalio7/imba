@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для веб-сервисов
-interface WebService {
+// Типы данных для Веб-сервис
+interface WebServices {
   id: number
   name: string
   description: string
@@ -10,99 +11,105 @@ interface WebService {
   method: string
   isActive: boolean
   lastTested: string | null
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные веб-сервисов (демо данные)
-const webServices = ref<WebService[]>([
-  {
-    id: 1,
-    name: 'Email Service',
-    description: 'Сервис для отправки email уведомлений',
-    endpoint: 'https://api.example.com/email',
-    method: 'POST',
-    isActive: true,
-    lastTested: '2023-01-15 10:00:00',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'SMS Service',
-    description: 'Сервис для отправки SMS сообщений',
-    endpoint: 'https://api.example.com/sms',
-    method: 'POST',
-    isActive: true,
-    lastTested: '2023-01-15 11:00:00',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Notification Service',
-    description: 'Сервис для push уведомлений',
-    endpoint: 'https://api.example.com/notify',
-    method: 'POST',
-    isActive: true,
-    lastTested: '2023-01-15 12:00:00',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Payment Service',
-    description: 'Сервис для обработки платежей',
-    endpoint: 'https://api.example.com/payment',
-    method: 'POST',
-    isActive: true,
-    lastTested: '2023-01-15 13:00:00',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Service',
-    description: 'Старый сервис, больше не используется',
-    endpoint: 'https://old-api.example.com',
-    method: 'GET',
-    isActive: false,
-    lastTested: null,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Service',
-    description: 'Тестовый сервис для проверки системы',
-    endpoint: 'https://test-api.example.com',
-    method: 'GET',
-    isActive: true,
-    lastTested: '2023-01-15 15:00:00',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные веб-сервисы
+const webServices = ref<WebServices[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchWebServices = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching webServices from:', `${API_BASE}/webServices`)
+    const data = await $fetch<{ webServices: WebServices[], total: number }>(`${API_BASE}/webServices`)
+    console.log('Fetched webServices data:', data)
+    webServices.value = data.webServices
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки веб-сервисы'
+    console.error('Error fetching webServices:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание веб-сервис
+const createWebServices = async (item: Omit<WebServices, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<WebServices>(`${API_BASE}/webServices`, {
+      method: 'POST',
+      body: item
+    })
+    webServices.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating webServices:', err)
+    throw err
+  }
+}
+
+// Обновление веб-сервис
+const updateWebServices = async (id: number, item: Omit<WebServices, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<WebServices>(`${API_BASE}/webServices/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = webServices.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      webServices.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating webServices:', err)
+    throw err
+  }
+}
+
+// Удаление веб-сервис
+const deleteWebServices = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/webServices/${id}`, {
+      method: 'DELETE'
+    })
+    const index = webServices.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      webServices.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting webServices:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchWebServices()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
-  { title: 'Endpoint', key: 'endpoint', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Конечная точка', key: 'endpoint', sortable: true },
   { title: 'Метод', key: 'method', sortable: true },
   { title: 'Последнее тестирование', key: 'lastTested', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -110,11 +117,7 @@ const filteredWebServices = computed(() => {
   let filtered = webServices.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (methodFilter.value !== null) {
-    filtered = filtered.filter(t => t.method === methodFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -123,7 +126,6 @@ const filteredWebServices = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  methodFilter.value = null
 }
 
 // Массовые действия
@@ -141,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = webServices.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      webServices.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteWebServices(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} веб-сервисов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} веб-сервисы`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = webServices.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      webServices.value[index].status = bulkStatusValue.value
-      webServices.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateWebServices(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} веб-сервисов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} веб-сервисы`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -181,7 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const methodFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -203,20 +209,20 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<WebService>({
+const defaultItem = ref<WebServices>({
   id: -1,
   name: '',
   description: '',
   endpoint: '',
-  method: 'GET',
-  isActive: true,
+  method: '',
   lastTested: null,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<WebService>({ ...defaultItem.value })
+const editedItem = ref<WebServices>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -225,23 +231,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции HTTP методов
-const methodOptions = [
-  { text: 'GET', value: 'GET' },
-  { text: 'POST', value: 'POST' },
-  { text: 'PUT', value: 'PUT' },
-  { text: 'DELETE', value: 'DELETE' },
-  { text: 'PATCH', value: 'PATCH' },
-]
-
 // Методы
-const editItem = (item: WebService) => {
+const editItem = (item: WebServices) => {
   editedIndex.value = webServices.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: WebService) => {
+const deleteItem = (item: WebServices) => {
   editedIndex.value = webServices.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -259,62 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateWebServices(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Веб-сервис успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createWebServices({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Веб-сервис успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения веб-сервис', 'error')
   }
-
-  if (!editedItem.value.endpoint.trim()) {
-    showToast('Endpoint обязателен для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(webServices.value[editedIndex.value], editedItem.value)
-    showToast('Веб-сервис успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...webServices.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    webServices.value.push({ ...editedItem.value })
-    showToast('Веб-сервис успешно добавлен')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  webServices.value.splice(editedIndex.value, 1)
-  showToast('Веб-сервис успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteWebServices(editedItem.value.id)
+    showToast('Веб-сервис успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления веб-сервис', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: WebService, newValue: number) => {
+const toggleStatus = async (item: WebServices, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = webServices.value.findIndex((t: WebService) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    webServices.value[index].status = newValue
-    webServices.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', webServices.value[index])
-    showToast('Статус веб-сервиса изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве webServices')
+
+  try {
+    await updateWebServices(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус веб-сервис изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -329,8 +325,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового веб-сервиса
-const addNewWebService = () => {
+// Добавление нового веб-сервис
+const addNewWebServices = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -340,20 +336,24 @@ const addNewWebService = () => {
 <template>
   <div>
     <VCard title="Веб-сервисы">
-      <VCardText>
-        <p class="text-body-1">
-          Создание и управление веб-сервисами.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Create and manage web services.
-        </p>
-      </VCardText>
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск веб-сервисов"
+            placeholder="Поиск веб-сервисы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -381,12 +381,6 @@ const addNewWebService = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -394,7 +388,6 @@ const addNewWebService = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -403,7 +396,6 @@ const addNewWebService = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -431,7 +423,7 @@ const addNewWebService = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewWebService"
+            @click="addNewWebServices"
           >
             Добавить веб-сервис
           </VBtn>
@@ -454,21 +446,6 @@ const addNewWebService = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="methodFilter"
-                  placeholder="HTTP метод"
-                  :items="[
-                    { title: 'GET', value: 'GET' },
-                    { title: 'POST', value: 'POST' },
-                    { title: 'PUT', value: 'PUT' },
-                    { title: 'DELETE', value: 'DELETE' },
-                    { title: 'PATCH', value: 'PATCH' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -583,47 +560,8 @@ const addNewWebService = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Endpoint -->
-        <template #item.endpoint="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.endpoint }}
-          </div>
-        </template>
-
-        <!-- Метод -->
-        <template #item.method="{ item }">
-          <VChip
-            :color="item.method === 'GET' ? 'primary' : item.method === 'POST' ? 'success' : item.method === 'PUT' ? 'warning' : item.method === 'DELETE' ? 'error' : 'info'"
-            size="small"
-            label
-          >
-            {{ item.method }}
-          </VChip>
-        </template>
-
-        <!-- Последнее тестирование -->
-        <template #item.lastTested="{ item }">
-          <div v-if="item.lastTested">
-            {{ item.lastTested }}
-          </div>
-          <div v-else class="text-grey">
-            Не тестировался
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -639,10 +577,6 @@ const addNewWebService = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -679,6 +613,7 @@ const addNewWebService = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать веб-сервис' : 'Добавить веб-сервис'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -690,36 +625,49 @@ const addNewWebService = () => {
               />
             </VCol>
 
-            <!-- HTTP метод -->
+            <!-- Описание -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
-                v-model="editedItem.method"
-                :items="methodOptions"
-                item-title="text"
-                item-value="value"
-                label="HTTP метод *"
-              />
-            </VCol>
-
-            <!-- Описание -->
-            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.description"
-                label="Описание веб-сервиса *"
+                label="Описание"
                 rows="3"
-                placeholder="Введите описание веб-сервиса..."
+                placeholder="Введите описание..."
               />
             </VCol>
 
-            <!-- Endpoint -->
-            <VCol cols="12">
+            <!-- Конечная точка -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextField
                 v-model="editedItem.endpoint"
-                label="Endpoint *"
-                placeholder="Например: https://api.example.com/endpoint"
+                label="Конечная точка"
+              />
+            </VCol>
+
+            <!-- Метод -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.method"
+                label="Метод"
+              />
+            </VCol>
+
+            <!-- Последнее тестирование -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.lastTested"
+                label="Последнее тестирование"
               />
             </VCol>
 

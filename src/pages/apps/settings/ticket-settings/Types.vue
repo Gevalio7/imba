@@ -2,22 +2,24 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для типа
-interface Type {
+// Типы данных для Тип
+interface Types {
   id: number
   name: string
   comment: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные типов
-const types = ref<Type[]>([])
+// Данные типы
+const types = ref<Types[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,61 +28,64 @@ const fetchTypes = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Type[]>(`${API_BASE}/types`)
-    types.value = data
+    console.log('Fetching types from:', `${API_BASE}/types`)
+    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/types`)
+    console.log('Fetched types data:', data)
+    types.value = data.types
+    total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки типов'
+    error.value = 'Ошибка загрузки типы'
     console.error('Error fetching types:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание типа
-const createType = async (type: Omit<Type, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание тип
+const createTypes = async (item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Type>(`${API_BASE}/types`, {
+    const data = await $fetch<Types>(`${API_BASE}/types`, {
       method: 'POST',
-      body: type
+      body: item
     })
     types.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating type:', err)
+    console.error('Error creating types:', err)
     throw err
   }
 }
 
-// Обновление типа
-const updateType = async (id: number, type: Omit<Type, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление тип
+const updateTypes = async (id: number, item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Type>(`${API_BASE}/types/${id}`, {
+    const data = await $fetch<Types>(`${API_BASE}/types/${id}`, {
       method: 'PUT',
-      body: type
+      body: item
     })
-    const index = types.value.findIndex(t => t.id === id)
+    const index = types.value.findIndex(p => p.id === id)
     if (index !== -1) {
       types.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating type:', err)
+    console.error('Error updating types:', err)
     throw err
   }
 }
 
-// Удаление типа
-const deleteType = async (id: number) => {
+// Удаление тип
+const deleteTypes = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/types/${id}`, {
       method: 'DELETE'
     })
-    const index = types.value.findIndex(t => t.id === id)
+    const index = types.value.findIndex(p => p.id === id)
     if (index !== -1) {
       types.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting type:', err)
+    console.error('Error deleting types:', err)
     throw err
   }
 }
@@ -93,12 +98,12 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -106,7 +111,7 @@ const filteredTypes = computed(() => {
   let filtered = types.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -136,10 +141,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteType(item.id)
+      await deleteTypes(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} типов`)
+    showToast(`Удалено ${count} типы`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -150,15 +155,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateType(item.id, {
-        name: item.name,
-        comment: item.comment,
+      await updateTypes(item.id, {
+        ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} типов`)
+    showToast(`Статус изменен для ${count} типы`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -199,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Type>({
+const defaultItem = ref<Types>({
   id: -1,
   name: '',
   comment: '',
@@ -209,7 +213,7 @@ const defaultItem = ref<Type>({
   isActive: true,
 })
 
-const editedItem = ref<Type>({ ...defaultItem.value })
+const editedItem = ref<Types>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -219,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Type) => {
+const editItem = (item: Types) => {
   editedIndex.value = types.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Type) => {
+const deleteItem = (item: Types) => {
   editedIndex.value = types.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -244,31 +248,24 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name.trim()) {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.comment.trim()) {
-    showToast('Комментарий обязателен для заполнения', 'error')
     return
   }
 
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateType(editedItem.value.id, {
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const updated = await updateTypes(editedItem.value.id, {
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
       showToast('Тип успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createType({
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const created = await createTypes({
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
@@ -276,34 +273,33 @@ const save = async () => {
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения типа', 'error')
+    showToast('Ошибка сохранения тип', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteType(editedItem.value.id)
+    await deleteTypes(editedItem.value.id)
     showToast('Тип успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления типа', 'error')
+    showToast('Ошибка удаления тип', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: Type, newValue: number) => {
+const toggleStatus = async (item: Types, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateType(item.id, {
-      name: item.name,
-      comment: item.comment,
+    await updateTypes(item.id, {
+      ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус типа изменен')
+    showToast('Статус тип изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -320,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового типа
-const addNewType = () => {
+// Добавление нового тип
+const addNewTypes = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -348,7 +344,7 @@ const addNewType = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск типов"
+            placeholder="Поиск типы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -376,12 +372,6 @@ const addNewType = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -389,7 +379,6 @@ const addNewType = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -398,7 +387,6 @@ const addNewType = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -426,7 +414,7 @@ const addNewType = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewType"
+            @click="addNewTypes"
           >
             Добавить тип
           </VBtn>
@@ -564,17 +552,7 @@ const addNewType = () => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
       >
-        <!-- Комментарий -->
-        <template #item.comment="{ item }">
-          {{ item.comment }}
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -590,10 +568,6 @@ const addNewType = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -630,6 +604,7 @@ const addNewType = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать тип' : 'Добавить тип'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -644,11 +619,13 @@ const addNewType = () => {
             <!-- Комментарий -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppTextField
+              <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 

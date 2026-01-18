@@ -1,16 +1,28 @@
 import cors from 'cors';
 import 'dotenv/config';
-import express, { Application, NextFunction, Request, Response } from 'express';
+import express, { Application, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { errorHandler, notFound } from './middleware/errorHandler';
 
 const app: Application = express();
 const PORT: string | number = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Логирование запросов в dev режиме
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Import all routes dynamically
 const routesPath = path.join(__dirname, 'routes');
@@ -20,26 +32,40 @@ if (fs.existsSync(routesPath)) {
     const routeName = file.replace('.js', '');
     const route = require(path.join(routesPath, file));
     app.use(`/api/${routeName}`, route);
-    console.log(`Loaded route: /api/${routeName}`);
+    console.log(`✅ Loaded route: /api/${routeName}`);
   });
 }
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+  });
 });
 
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+// API info endpoint
+app.get('/api', (req: Request, res: Response) => {
+  res.json({
+    message: 'API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api/*',
+    },
+  });
 });
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ message: 'Route not found' });
-});
+// 404 handler - должен быть перед error handler
+app.use(notFound);
+
+// Error handling middleware - должен быть последним
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📊 Database: ${process.env.DB_NAME || 'test_entities_db'}`);
 });

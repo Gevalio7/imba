@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для управления сеансами
-interface Session {
+// Типы данных для Управление сессией
+interface SessionManagement {
   id: number
   username: string
   ipAddress: string
@@ -10,111 +11,113 @@ interface Session {
   loginTime: string
   lastActivity: string
   isActive: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные сеансов (демо данные)
-const sessions = ref<Session[]>([
-  {
-    id: 1,
-    username: 'admin',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    loginTime: '2023-01-15 09:00:00',
-    lastActivity: '2023-01-15 10:30:00',
-    isActive: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    username: 'support_agent',
-    ipAddress: '192.168.1.101',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-    loginTime: '2023-01-15 08:30:00',
-    lastActivity: '2023-01-15 10:15:00',
-    isActive: true,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    username: 'customer_user',
-    ipAddress: '10.0.0.50',
-    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-    loginTime: '2023-01-15 07:45:00',
-    lastActivity: '2023-01-15 09:45:00',
-    isActive: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    username: 'manager',
-    ipAddress: '192.168.1.102',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/96.0.4664.110',
-    loginTime: '2023-01-15 08:00:00',
-    lastActivity: '2023-01-15 10:00:00',
-    isActive: true,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    username: 'old_user',
-    ipAddress: '192.168.1.200',
-    userAgent: 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36',
-    loginTime: '2023-01-10 10:00:00',
-    lastActivity: '2023-01-10 10:30:00',
-    isActive: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    username: 'test_user',
-    ipAddress: '127.0.0.1',
-    userAgent: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36',
-    loginTime: '2023-01-15 10:00:00',
-    lastActivity: '2023-01-15 10:20:00',
-    isActive: true,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные управление сессиями
+const sessionManagement = ref<SessionManagement[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchSessionManagement = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching sessionManagement from:', `${API_BASE}/sessionManagement`)
+    const data = await $fetch<{ sessionManagement: SessionManagement[], total: number }>(`${API_BASE}/sessionManagement`)
+    console.log('Fetched sessionManagement data:', data)
+    sessionManagement.value = data.sessionManagement
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки управление сессиями'
+    console.error('Error fetching sessionManagement:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание управление сессией
+const createSessionManagement = async (item: Omit<SessionManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SessionManagement>(`${API_BASE}/sessionManagement`, {
+      method: 'POST',
+      body: item
+    })
+    sessionManagement.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating sessionManagement:', err)
+    throw err
+  }
+}
+
+// Обновление управление сессией
+const updateSessionManagement = async (id: number, item: Omit<SessionManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SessionManagement>(`${API_BASE}/sessionManagement/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = sessionManagement.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      sessionManagement.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating sessionManagement:', err)
+    throw err
+  }
+}
+
+// Удаление управление сессией
+const deleteSessionManagement = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/sessionManagement/${id}`, {
+      method: 'DELETE'
+    })
+    const index = sessionManagement.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      sessionManagement.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting sessionManagement:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchSessionManagement()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Пользователь', key: 'username', sortable: true },
+  { title: 'Имя пользователя', key: 'username', sortable: true },
   { title: 'IP адрес', key: 'ipAddress', sortable: true },
-  { title: 'User Agent', key: 'userAgent', sortable: false },
+  { title: 'User Agent', key: 'userAgent', sortable: true },
   { title: 'Время входа', key: 'loginTime', sortable: true },
   { title: 'Последняя активность', key: 'lastActivity', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredSessions = computed(() => {
-  let filtered = sessions.value
+const filteredSessionManagement = computed(() => {
+  let filtered = sessionManagement.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (isActiveFilter.value !== null) {
-    filtered = filtered.filter(t => t.isActive === isActiveFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -123,7 +126,6 @@ const filteredSessions = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  isActiveFilter.value = null
 }
 
 // Массовые действия
@@ -141,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = sessions.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      sessions.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteSessionManagement(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} сеансов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} управление сессиями`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = sessions.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      sessions.value[index].status = bulkStatusValue.value
-      sessions.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateSessionManagement(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} сеансов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} управление сессиями`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -181,7 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const isActiveFilter = ref<boolean | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -203,20 +209,20 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Session>({
+const defaultItem = ref<SessionManagement>({
   id: -1,
   username: '',
   ipAddress: '',
   userAgent: '',
   loginTime: '',
   lastActivity: '',
-  isActive: true,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<Session>({ ...defaultItem.value })
+const editedItem = ref<SessionManagement>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -226,14 +232,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Session) => {
-  editedIndex.value = sessions.value.indexOf(item)
+const editItem = (item: SessionManagement) => {
+  editedIndex.value = sessionManagement.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Session) => {
-  editedIndex.value = sessions.value.indexOf(item)
+const deleteItem = (item: SessionManagement) => {
+  editedIndex.value = sessionManagement.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -250,57 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.username.trim()) {
-    showToast('Имя пользователя обязательно для заполнения', 'error')
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.ipAddress.trim()) {
-    showToast('IP адрес обязателен для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateSessionManagement(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Управление сессией успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createSessionManagement({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Управление сессией успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения управление сессией', 'error')
   }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(sessions.value[editedIndex.value], editedItem.value)
-    showToast('Сеанс успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...sessions.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    sessions.value.push({ ...editedItem.value })
-    showToast('Сеанс успешно добавлен')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  sessions.value.splice(editedIndex.value, 1)
-  showToast('Сеанс успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteSessionManagement(editedItem.value.id)
+    showToast('Управление сессией успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления управление сессией', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Session, newValue: number) => {
+const toggleStatus = async (item: SessionManagement, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = sessions.value.findIndex((t: Session) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    sessions.value[index].status = newValue
-    sessions.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', sessions.value[index])
-    showToast('Статус сеанса изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве sessions')
+
+  try {
+    await updateSessionManagement(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус управление сессией изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -315,8 +325,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового сеанса
-const addNewSession = () => {
+// Добавление нового управление сессией
+const addNewSessionManagement = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -325,18 +335,25 @@ const addNewSession = () => {
 
 <template>
   <div>
-    <VCard title="Управление сеансами">
-      <VCardText>
-        <p class="text-body-1">
-          Управление активными сеансами.
-        </p>
-      </VCardText>
+    <VCard title="Управление сессиями">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск сеансов"
+            placeholder="Поиск управление сессиями"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -364,12 +381,6 @@ const addNewSession = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -377,7 +388,6 @@ const addNewSession = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -386,7 +396,6 @@ const addNewSession = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -414,9 +423,9 @@ const addNewSession = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewSession"
+            @click="addNewSessionManagement"
           >
-            Добавить сеанс
+            Добавить управление сессией
           </VBtn>
         </div>
       </div>
@@ -437,18 +446,6 @@ const addNewSession = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="isActiveFilter"
-                  placeholder="Активен"
-                  :items="[
-                    { title: 'Да', value: true },
-                    { title: 'Нет', value: false },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -491,7 +488,7 @@ const addNewSession = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные сеансы? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные управление сессиями? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -558,38 +555,13 @@ const addNewSession = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredSessions"
+        :items="filteredSessionManagement"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Пользователь -->
-        <template #item.username="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.username }}
-          </div>
-        </template>
-
-        <!-- IP адрес -->
-        <template #item.ipAddress="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.ipAddress }}
-          </div>
-        </template>
-
-        <!-- User Agent -->
-        <template #item.userAgent="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.userAgent }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -605,10 +577,6 @@ const addNewSession = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.username)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -631,7 +599,7 @@ const addNewSession = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredSessions.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredSessionManagement.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -642,62 +610,62 @@ const addNewSession = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать сеанс' : 'Добавить сеанс'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать управление сессией' : 'Добавить управление сессией'">
         <VCardText>
           <VRow>
-            <!-- Пользователь -->
+
+            <!-- Имя пользователя -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.username"
-                label="Пользователь *"
+                label="Имя пользователя"
               />
             </VCol>
 
             <!-- IP адрес -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.ipAddress"
-                label="IP адрес *"
+                label="IP адрес"
               />
             </VCol>
 
             <!-- User Agent -->
-            <VCol cols="12">
-              <AppTextarea
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
                 v-model="editedItem.userAgent"
                 label="User Agent"
-                rows="3"
-                placeholder="Введите User Agent..."
               />
             </VCol>
 
             <!-- Время входа -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.loginTime"
-                label="Время входа *"
-                type="datetime-local"
+                label="Время входа"
               />
             </VCol>
 
             <!-- Последняя активность -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.lastActivity"
-                label="Последняя активность *"
-                type="datetime-local"
+                label="Последняя активность"
               />
             </VCol>
 
@@ -743,7 +711,7 @@ const addNewSession = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот сеанс?">
+      <VCard title="Вы уверены, что хотите удалить этот управление сессией?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

@@ -2,24 +2,26 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для вложения
-interface Attachment {
+// Типы данных для Вложение
+interface Attachments {
   id: number
   name: string
   fileName: string
   type: number
   comment: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные вложений
-const attachments = ref<Attachment[]>([])
+// Данные вложения
+const attachments = ref<Attachments[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -28,61 +30,64 @@ const fetchAttachments = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Attachment[]>(`${API_BASE}/attachments`)
-    attachments.value = data
+    console.log('Fetching attachments from:', `${API_BASE}/attachments`)
+    const data = await $fetch<{ attachments: Attachments[], total: number }>(`${API_BASE}/attachments`)
+    console.log('Fetched attachments data:', data)
+    attachments.value = data.attachments
+    total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки вложений'
+    error.value = 'Ошибка загрузки вложения'
     console.error('Error fetching attachments:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание вложения
-const createAttachment = async (attachment: Omit<Attachment, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание вложение
+const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Attachment>(`${API_BASE}/attachments`, {
+    const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
       method: 'POST',
-      body: attachment
+      body: item
     })
     attachments.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating attachment:', err)
+    console.error('Error creating attachments:', err)
     throw err
   }
 }
 
-// Обновление вложения
-const updateAttachment = async (id: number, attachment: Omit<Attachment, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление вложение
+const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Attachment>(`${API_BASE}/attachments/${id}`, {
+    const data = await $fetch<Attachments>(`${API_BASE}/attachments/${id}`, {
       method: 'PUT',
-      body: attachment
+      body: item
     })
-    const index = attachments.value.findIndex(a => a.id === id)
+    const index = attachments.value.findIndex(p => p.id === id)
     if (index !== -1) {
       attachments.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating attachment:', err)
+    console.error('Error updating attachments:', err)
     throw err
   }
 }
 
-// Удаление вложения
-const deleteAttachment = async (id: number) => {
+// Удаление вложение
+const deleteAttachments = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/attachments/${id}`, {
       method: 'DELETE'
     })
-    const index = attachments.value.findIndex(a => a.id === id)
+    const index = attachments.value.findIndex(p => p.id === id)
     if (index !== -1) {
       attachments.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting attachment:', err)
+    console.error('Error deleting attachments:', err)
     throw err
   }
 }
@@ -95,14 +100,14 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Название файла', key: 'fileName', sortable: false },
-  { title: 'Тип', key: 'type', sortable: false },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Имя файла', key: 'fileName', sortable: true },
+  { title: 'Тип', key: 'type', sortable: true },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -110,7 +115,7 @@ const filteredAttachments = computed(() => {
   let filtered = attachments.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(a => a.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -140,10 +145,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteAttachment(item.id)
+      await deleteAttachments(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} вложений`)
+    showToast(`Удалено ${count} вложения`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -154,17 +159,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateAttachment(item.id, {
-        name: item.name,
-        fileName: item.fileName,
-        type: item.type,
-        comment: item.comment,
+      await updateAttachments(item.id, {
+        ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} вложений`)
+    showToast(`Статус изменен для ${count} вложения`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -205,14 +207,11 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-// Файл
-const fileInput = ref<HTMLInputElement>()
-
-const defaultItem = ref<Attachment>({
+const defaultItem = ref<Attachments>({
   id: -1,
   name: '',
   fileName: '',
-  type: 1,
+  type: 0,
   comment: '',
   createdAt: '',
   updatedAt: '',
@@ -220,7 +219,7 @@ const defaultItem = ref<Attachment>({
   isActive: true,
 })
 
-const editedItem = ref<Attachment>({ ...defaultItem.value })
+const editedItem = ref<Attachments>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -229,24 +228,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов
-const typeOptions = [
-  { text: 'PDF', value: 1 },
-  { text: 'Изображение', value: 2 },
-  { text: 'Таблица', value: 3 },
-  { text: 'Презентация', value: 4 },
-  { text: 'Архив', value: 5 },
-  { text: 'Текст', value: 6 },
-]
-
 // Методы
-const editItem = (item: Attachment) => {
+const editItem = (item: Attachments) => {
   editedIndex.value = attachments.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Attachment) => {
+const deleteItem = (item: Attachments) => {
   editedIndex.value = attachments.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -265,77 +254,58 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name.trim()) {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.fileName.trim()) {
-    showToast('Название файла обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.type) {
-    showToast('Тип файла обязателен для заполнения', 'error')
     return
   }
 
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateAttachment(editedItem.value.id, {
-        name: editedItem.value.name,
-        fileName: editedItem.value.fileName,
-        type: editedItem.value.type,
-        comment: editedItem.value.comment,
+      const updated = await updateAttachments(editedItem.value.id, {
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Вложение успешно сохранено')
+      showToast('Вложение успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createAttachment({
-        name: editedItem.value.name,
-        fileName: editedItem.value.fileName,
-        type: editedItem.value.type,
-        comment: editedItem.value.comment,
+      const created = await createAttachments({
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Вложение успешно добавлено')
+      showToast('Вложение успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения вложения', 'error')
+    showToast('Ошибка сохранения вложение', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteAttachment(editedItem.value.id)
-    showToast('Вложение успешно удалено')
+    await deleteAttachments(editedItem.value.id)
+    showToast('Вложение успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления вложения', 'error')
+    showToast('Ошибка удаления вложение', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: Attachment, newValue: number) => {
+const toggleStatus = async (item: Attachments, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateAttachment(item.id, {
-      name: item.name,
-      fileName: item.fileName,
-      type: item.type,
-      comment: item.comment,
+    await updateAttachments(item.id, {
+      ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус вложения изменен')
+    showToast('Статус вложение изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -352,53 +322,11 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового вложения
-const addNewAttachment = () => {
+// Добавление нового вложение
+const addNewAttachments = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
-}
-
-// Методы для работы с файлами
-const triggerFileInput = () => {
-  fileInput.value?.click()
-}
-
-const handleFileChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    editedItem.value.fileName = file.name
-    // Автозаполнение названия файла без расширения
-    if (!editedItem.value.name.trim()) {
-      editedItem.value.name = file.name.replace(/\.[^/.]+$/, '')
-    }
-  }
-}
-
-const removeFile = () => {
-  editedItem.value.fileName = ''
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
-// Скачивание файла
-const downloadItem = (item: Attachment) => {
-  console.log('📥 Скачивание файла:', item.fileName)
-  try {
-    // Создаем ссылку для скачивания и автоматически кликаем по ней
-    const link = document.createElement('a')
-    link.href = `${API_BASE}/attachments/${item.id}/download`
-    link.download = item.fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    showToast(`Файл "${item.fileName}" скачивается`)
-  } catch (error) {
-    console.error('Ошибка скачивания:', error)
-    showToast('Ошибка скачивания файла', 'error')
-  }
 }
 </script>
 
@@ -422,7 +350,7 @@ const downloadItem = (item: Attachment) => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск вложений"
+            placeholder="Поиск вложения"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -450,12 +378,6 @@ const downloadItem = (item: Attachment) => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -463,7 +385,6 @@ const downloadItem = (item: Attachment) => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -472,7 +393,6 @@ const downloadItem = (item: Attachment) => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -500,7 +420,7 @@ const downloadItem = (item: Attachment) => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewAttachment"
+            @click="addNewAttachments"
           >
             Добавить вложение
           </VBtn>
@@ -637,27 +557,8 @@ const downloadItem = (item: Attachment) => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Название файла -->
-        <template #item.fileName="{ item }">
-          {{ item.fileName }}
-        </template>
-
-        <!-- Тип -->
-        <template #item.type="{ item }">
-          {{ typeOptions.find(t => t.value === item.type)?.text || 'Неизвестно' }}
-        </template>
-
-        <!-- Комментарий -->
-        <template #item.comment="{ item }">
-          {{ item.comment }}
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -673,10 +574,6 @@ const downloadItem = (item: Attachment) => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -685,9 +582,6 @@ const downloadItem = (item: Attachment) => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="downloadItem(item)">
-              <VIcon icon="bx-download" />
-            </IconBtn>
             <IconBtn @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
@@ -716,6 +610,7 @@ const downloadItem = (item: Attachment) => {
       <VCard :title="editedIndex > -1 ? 'Редактировать вложение' : 'Добавить вложение'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -727,59 +622,14 @@ const downloadItem = (item: Attachment) => {
               />
             </VCol>
 
-            <!-- Название файла -->
+            <!-- Имя файла -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.fileName"
-                label="Название файла"
-                readonly
-              />
-            </VCol>
-
-            <!-- Файл -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <div class="d-flex align-center gap-2">
-                <AppTextField
-                  :model-value="editedItem.fileName"
-                  label="Файл"
-                  readonly
-                  placeholder="Выберите файл"
-                />
-                <VBtn
-                  v-if="editedItem.fileName"
-                  icon="bx-download"
-                  size="small"
-                  variant="tonal"
-                  color="success"
-                  @click="downloadItem(editedItem)"
-                />
-                <VBtn
-                  icon="bx-paperclip"
-                  size="small"
-                  variant="tonal"
-                  color="primary"
-                  @click="triggerFileInput"
-                />
-                <VBtn
-                  v-if="editedItem.fileName"
-                  icon="bx-trash"
-                  size="small"
-                  variant="tonal"
-                  color="error"
-                  @click="removeFile"
-                />
-              </div>
-              <input
-                ref="fileInput"
-                type="file"
-                style="display: none;"
-                @change="handleFileChange"
+                label="Имя файла"
               />
             </VCol>
 
@@ -788,23 +638,24 @@ const downloadItem = (item: Attachment) => {
               cols="12"
               sm="6"
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.type"
-                :items="typeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип файла *"
+                label="Тип"
+                type="number"
+                min="0"
               />
             </VCol>
 
             <!-- Комментарий -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppTextField
+              <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 
@@ -850,7 +701,7 @@ const downloadItem = (item: Attachment) => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить это вложение?">
+      <VCard title="Вы уверены, что хотите удалить этот вложение?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

@@ -1,100 +1,113 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для автоответа
-interface AutoResponse {
+// Типы данных для Автоответ
+interface AutoResponses {
   id: number
   name: string
   trigger: string
   response: string
   delay: number
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные автоответов (демо данные)
-const autoResponses = ref<AutoResponse[]>([
-  {
-    id: 1,
-    name: 'Ответ на новое обращение',
-    trigger: 'Новое обращение создано',
-    response: 'Спасибо за ваше обращение! Мы получили вашу заявку и рассмотрим её в ближайшее время.',
-    delay: 5,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Ответ на закрытие',
-    trigger: 'Обращение закрыто',
-    response: 'Ваше обращение было успешно закрыто. Если у вас возникнут дополнительные вопросы, пожалуйста, создайте новое обращение.',
-    delay: 0,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Ответ на ожидание',
-    trigger: 'Обращение переведено в ожидание',
-    response: 'Ваше обращение находится на рассмотрении. Мы свяжемся с вами при получении дополнительной информации.',
-    delay: 10,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'Ответ на VIP обращение',
-    trigger: 'VIP обращение создано',
-    response: 'Уважаемый клиент! Ваше VIP обращение получено и будет обработано в приоритетном порядке.',
-    delay: 2,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'Ответ на эскалацию',
-    trigger: 'Обращение эскалировано',
-    response: 'Ваше обращение было эскалировано руководству. Мы свяжемся с вами в ближайшее время.',
-    delay: 15,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'Ответ на повторное обращение',
-    trigger: 'Повторное обращение от клиента',
-    response: 'Мы заметили, что вы уже обращались к нам ранее. Пожалуйста, укажите номер предыдущего обращения для быстрого решения.',
-    delay: 3,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные автоответы
+const autoResponses = ref<AutoResponses[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchAutoResponses = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching autoResponses from:', `${API_BASE}/autoResponses`)
+    const data = await $fetch<{ autoResponses: AutoResponses[], total: number }>(`${API_BASE}/autoResponses`)
+    console.log('Fetched autoResponses data:', data)
+    autoResponses.value = data.autoResponses
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки автоответы'
+    console.error('Error fetching autoResponses:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание автоответ
+const createAutoResponses = async (item: Omit<AutoResponses, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AutoResponses>(`${API_BASE}/autoResponses`, {
+      method: 'POST',
+      body: item
+    })
+    autoResponses.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating autoResponses:', err)
+    throw err
+  }
+}
+
+// Обновление автоответ
+const updateAutoResponses = async (id: number, item: Omit<AutoResponses, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AutoResponses>(`${API_BASE}/autoResponses/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = autoResponses.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      autoResponses.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating autoResponses:', err)
+    throw err
+  }
+}
+
+// Удаление автоответ
+const deleteAutoResponses = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/autoResponses/${id}`, {
+      method: 'DELETE'
+    })
+    const index = autoResponses.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      autoResponses.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting autoResponses:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchAutoResponses()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Условие', key: 'trigger', sortable: false },
-  { title: 'Ответ', key: 'response', sortable: false },
-  { title: 'Задержка (мин)', key: 'delay', sortable: true },
+  { title: 'Триггер', key: 'trigger', sortable: true },
+  { title: 'Ответ', key: 'response', sortable: true },
+  { title: 'Задержка', key: 'delay', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -102,7 +115,7 @@ const filteredAutoResponses = computed(() => {
   let filtered = autoResponses.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(ar => ar.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -128,31 +141,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = autoResponses.value.findIndex(ar => ar.id === item.id)
-    if (index !== -1) {
-      autoResponses.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteAutoResponses(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} автоответов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} автоответы`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = autoResponses.value.findIndex(ar => ar.id === item.id)
-    if (index !== -1) {
-      autoResponses.value[index].status = bulkStatusValue.value
-      autoResponses.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateAutoResponses(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} автоответов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} автоответы`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -189,19 +207,19 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<AutoResponse>({
+const defaultItem = ref<AutoResponses>({
   id: -1,
   name: '',
   trigger: '',
   response: '',
-  delay: 5,
+  delay: 0,
   createdAt: '',
   updatedAt: '',
   status: 1,
   isActive: true,
 })
 
-const editedItem = ref<AutoResponse>({ ...defaultItem.value })
+const editedItem = ref<AutoResponses>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -211,13 +229,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: AutoResponse) => {
+const editItem = (item: AutoResponses) => {
   editedIndex.value = autoResponses.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: AutoResponse) => {
+const deleteItem = (item: AutoResponses) => {
   editedIndex.value = autoResponses.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -235,52 +253,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(autoResponses.value[editedIndex.value], editedItem.value)
-    showToast('Автоответ успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...autoResponses.value.map(ar => ar.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    autoResponses.value.push({ ...editedItem.value })
-    showToast('Автоответ успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateAutoResponses(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Автоответ успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createAutoResponses({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Автоответ успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения автоответ', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  autoResponses.value.splice(editedIndex.value, 1)
-  showToast('Автоответ успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteAutoResponses(editedItem.value.id)
+    showToast('Автоответ успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления автоответ', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: AutoResponse, newValue: number) => {
+const toggleStatus = async (item: AutoResponses, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = autoResponses.value.findIndex((ar: AutoResponse) => ar.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    autoResponses.value[index].status = newValue
-    autoResponses.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', autoResponses.value[index])
-    showToast('Статус автоответа изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве autoResponses')
+
+  try {
+    await updateAutoResponses(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус автоответ изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -295,8 +322,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового автоответа
-const addNewAutoResponse = () => {
+// Добавление нового автоответ
+const addNewAutoResponses = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -307,11 +334,23 @@ const addNewAutoResponse = () => {
   <div>
     <VCard title="Автоответы">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск автоответов"
+            placeholder="Поиск автоответы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -339,12 +378,6 @@ const addNewAutoResponse = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -352,7 +385,6 @@ const addNewAutoResponse = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -361,7 +393,6 @@ const addNewAutoResponse = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -389,7 +420,7 @@ const addNewAutoResponse = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewAutoResponse"
+            @click="addNewAutoResponses"
           >
             Добавить автоответ
           </VBtn>
@@ -526,26 +557,8 @@ const addNewAutoResponse = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Условие -->
-        <template #item.trigger="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.trigger }}
-          </div>
-        </template>
-
-        <!-- Ответ -->
-        <template #item.response="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.response }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -561,10 +574,6 @@ const addNewAutoResponse = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -596,11 +605,12 @@ const addNewAutoResponse = () => {
     <!-- Диалог редактирования -->
     <VDialog
       v-model="editDialog"
-      max-width="700px"
+      max-width="600px"
     >
       <VCard :title="editedIndex > -1 ? 'Редактировать автоответ' : 'Добавить автоответ'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -612,25 +622,25 @@ const addNewAutoResponse = () => {
               />
             </VCol>
 
-            <!-- Условие -->
+            <!-- Триггер -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.trigger"
-                label="Условие срабатывания"
-                placeholder="Например: Новое обращение создано"
+                label="Триггер"
               />
             </VCol>
 
             <!-- Ответ -->
-            <VCol cols="12">
-              <AppTextarea
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
                 v-model="editedItem.response"
-                label="Текст ответа"
-                rows="4"
-                placeholder="Введите текст автоматического ответа..."
+                label="Ответ"
               />
             </VCol>
 
@@ -641,7 +651,7 @@ const addNewAutoResponse = () => {
             >
               <AppTextField
                 v-model="editedItem.delay"
-                label="Задержка (минуты)"
+                label="Задержка"
                 type="number"
                 min="0"
               />

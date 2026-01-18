@@ -6,7 +6,14 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate": "node generate-all.js",
+    "generate:models": "node generate-models.js",
+    "generate:controllers": "node generate-controllers.js",
+    "generate:routes": "node generate-routes.js",
+    "generate:vue-pages": "node generate-vue-pages.js",
+    "extract": "node extract-interfaces.js",
+    "init-db": "ts-node init-db.ts"
   },
   "keywords": [],
   "author": "",

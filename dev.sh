@@ -1,44 +1,238 @@
 #!/bin/bash
 
-echo "Starting dev.sh script..."
+# Цвета для вывода
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-# Проверка и установка зависимостей для фронтенда
+# Функция для вывода цветного текста
+print_color() {
+    local color=$1
+    shift
+    echo -e "${color}$@${NC}"
+}
+
+# Функция для проверки, запущен ли процесс на порту
+check_port() {
+    local port=$1
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Функция для остановки процесса на порту
+kill_port() {
+    local port=$1
+    local pids=$(lsof -ti:$port 2>/dev/null)
+    if [ ! -z "$pids" ]; then
+        print_color $YELLOW "⚠️  Останавливаем процесс на порту $port..."
+        kill -9 $pids 2>/dev/null
+        sleep 1
+        print_color $GREEN "✅ Процесс на порту $port остановлен"
+    fi
+}
+
+# Функция для очистки при выходе
+cleanup() {
+    print_color $YELLOW "\n\n🛑 Останавливаем все процессы..."
+    
+    # Останавливаем фронтенд
+    if [ ! -z "$FRONTEND_PID" ]; then
+        kill -TERM $FRONTEND_PID 2>/dev/null
+        print_color $GREEN "✅ Фронтенд остановлен"
+    fi
+    
+    # Останавливаем бэкенд
+    if [ ! -z "$BACKEND_PID" ]; then
+        kill -TERM $BACKEND_PID 2>/dev/null
+        print_color $GREEN "✅ Бэкенд остановлен"
+    fi
+    
+    # Дополнительная очистка портов
+    kill_port 5173
+    kill_port 5174
+    kill_port 5175
+    kill_port 5176
+    kill_port 3000
+    
+    print_color $CYAN "👋 До свидания!"
+    exit 0
+}
+
+# Устанавливаем обработчик сигналов
+trap cleanup SIGINT SIGTERM EXIT
+
+# Заголовок
+print_color $MAGENTA "╔════════════════════════════════════════════════════════════╗"
+print_color $MAGENTA "║                                                            ║"
+print_color $MAGENTA "║          🚀 Development Environment Launcher 🚀            ║"
+print_color $MAGENTA "║                                                            ║"
+print_color $MAGENTA "╚════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Проверка наличия .env файла
+if [ ! -f ".env" ]; then
+    print_color $YELLOW "⚠️  Файл .env не найден. Создаем из .env.example..."
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        print_color $GREEN "✅ Файл .env создан"
+    else
+        print_color $RED "❌ Файл .env.example не найден!"
+        exit 1
+    fi
+fi
+
+# Проверка наличия backend/.env файла
+if [ ! -f "backend/.env" ]; then
+    print_color $YELLOW "⚠️  Файл backend/.env не найден. Создаем из backend/.env.example..."
+    if [ -f "backend/.env.example" ]; then
+        cp backend/.env.example backend/.env
+        print_color $GREEN "✅ Файл backend/.env создан"
+    else
+        print_color $YELLOW "⚠️  Файл backend/.env.example не найден, пропускаем..."
+    fi
+fi
+
+# Очистка портов перед запуском
+print_color $CYAN "\n🧹 Очистка портов..."
+kill_port 5173
+kill_port 5174
+kill_port 5175
+kill_port 5176
+kill_port 3000
+
+# Проверка зависимостей
+print_color $CYAN "\n📦 Проверка зависимостей..."
+
 if [ ! -d "node_modules" ]; then
-  echo "Установка зависимостей фронтенда..."
-  npm install
+    print_color $YELLOW "⚠️  Зависимости фронтенда не установлены. Устанавливаем..."
+    npm install
+    if [ $? -ne 0 ]; then
+        print_color $RED "❌ Ошибка установки зависимостей фронтенда"
+        exit 1
+    fi
+    print_color $GREEN "✅ Зависимости фронтенда установлены"
+else
+    print_color $GREEN "✅ Зависимости фронтенда уже установлены"
 fi
 
-# Проверка и установка зависимостей для бэкенда
 if [ ! -d "backend/node_modules" ]; then
-  echo "Установка зависимостей бэкенда..."
-  cd backend && npm install && cd ..
+    print_color $YELLOW "⚠️  Зависимости бэкенда не установлены. Устанавливаем..."
+    cd backend && npm install && cd ..
+    if [ $? -ne 0 ]; then
+        print_color $RED "❌ Ошибка установки зависимостей бэкенда"
+        exit 1
+    fi
+    print_color $GREEN "✅ Зависимости бэкенда установлены"
+else
+    print_color $GREEN "✅ Зависимости бэкенда уже установлены"
 fi
 
-# Генерация моделей
-echo "Генерация моделей..."
-cd backend && node generate-models.js && cd ..
+# Создание логов директории
+mkdir -p logs
 
-# Очистка кэша Vite
-echo "Очистка кэша Vite..."
-rm -rf node_modules/.vite
-
-# Запуск бэкенда в фоне
-echo "Запуск бэкенда..."
-pkill -f "node server.js" || true
-echo "Остановка предыдущего бэкенда..."
-sleep 1
-cd backend && npm start &
+# Запуск бэкенда
+print_color $CYAN "\n🔧 Запуск бэкенда..."
+cd backend
+npm run dev > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
-echo "Backend started with PID: $BACKEND_PID"
+cd ..
 
-# Ожидание 3 секунды
-echo "Waiting 3 seconds for backend to initialize..."
-sleep 3
+# Ждем запуска бэкенда
+print_color $YELLOW "⏳ Ожидание запуска бэкенда..."
+for i in {1..30}; do
+    if check_port 3000; then
+        print_color $GREEN "✅ Бэкенд запущен на http://localhost:3000"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        print_color $RED "❌ Бэкенд не запустился за 30 секунд"
+        print_color $YELLOW "📋 Последние строки лога:"
+        tail -20 logs/backend.log
+        cleanup
+        exit 1
+    fi
+    sleep 1
+    echo -n "."
+done
+echo ""
 
-# Запуск Vite dev сервера
-echo "Запуск Vite dev сервера..."
-npm run dev < /dev/null
+# Запуск фронтенда
+print_color $CYAN "\n🎨 Запуск фронтенда..."
+npm run dev > logs/frontend.log 2>&1 &
+FRONTEND_PID=$!
 
-# Остановка бэкенда при завершении
-echo "Остановка бэкенда..."
-kill $BACKEND_PID
+# Ждем запуска фронтенда
+print_color $YELLOW "⏳ Ожидание запуска фронтенда..."
+for i in {1..30}; do
+    # Проверяем все возможные порты Vite
+    if check_port 5173 || check_port 5174 || check_port 5175 || check_port 5176; then
+        # Определяем на каком порту запустился
+        for port in 5173 5174 5175 5176; do
+            if check_port $port; then
+                FRONTEND_PORT=$port
+                print_color $GREEN "✅ Фронтенд запущен на http://localhost:$port"
+                break 2
+            fi
+        done
+    fi
+    if [ $i -eq 30 ]; then
+        print_color $RED "❌ Фронтенд не запустился за 30 секунд"
+        print_color $YELLOW "📋 Последние строки лога:"
+        tail -20 logs/frontend.log
+        cleanup
+        exit 1
+    fi
+    sleep 1
+    echo -n "."
+done
+echo ""
+
+# Информация о запущенных сервисах
+print_color $MAGENTA "\n╔════════════════════════════════════════════════════════════╗"
+print_color $MAGENTA "║                                                            ║"
+print_color $MAGENTA "║                  ✨ Все сервисы запущены! ✨               ║"
+print_color $MAGENTA "║                                                            ║"
+print_color $MAGENTA "╚════════════════════════════════════════════════════════════╝"
+echo ""
+print_color $GREEN "🌐 Фронтенд:  http://localhost:${FRONTEND_PORT:-5173}"
+print_color $GREEN "🔧 Бэкенд:    http://localhost:3000"
+print_color $GREEN "💚 Health:    http://localhost:3000/health"
+print_color $GREEN "📊 API:       http://localhost:3000/api"
+echo ""
+print_color $CYAN "📋 Логи:"
+print_color $CYAN "   Фронтенд: logs/frontend.log"
+print_color $CYAN "   Бэкенд:   logs/backend.log"
+echo ""
+print_color $YELLOW "💡 Для просмотра логов в реальном времени:"
+print_color $YELLOW "   tail -f logs/frontend.log"
+print_color $YELLOW "   tail -f logs/backend.log"
+echo ""
+print_color $RED "⚠️  Нажмите Ctrl+C для остановки всех сервисов"
+echo ""
+
+# Мониторинг процессов
+while true; do
+    # Проверяем, живы ли процессы
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        print_color $RED "\n❌ Бэкенд упал! Последние строки лога:"
+        tail -20 logs/backend.log
+        cleanup
+        exit 1
+    fi
+    
+    if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+        print_color $RED "\n❌ Фронтенд упал! Последние строки лога:"
+        tail -20 logs/frontend.log
+        cleanup
+        exit 1
+    fi
+    
+    sleep 5
+done

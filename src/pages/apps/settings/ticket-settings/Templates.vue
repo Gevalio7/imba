@@ -1,84 +1,109 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для шаблона
-interface Template {
+// Типы данных для Шаблон
+interface Templates {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные шаблонов (демо данные)
-const templates = ref<Template[]>([
-  {
-    id: 1,
-    name: 'Добро пожаловать',
-    message: 'Здравствуйте! Добро пожаловать в нашу систему поддержки.\nМы рады помочь вам с любыми вопросами.',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Спасибо за обращение',
-    message: 'Спасибо, что обратились к нам!\nВаше сообщение получено и будет обработано в ближайшее время.',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Автоматический ответ',
-    message: 'Это автоматический ответ.\nМы получили ваше сообщение и ответим в течение 24 часов.',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'Шаблон для VIP',
-    message: 'Уважаемый клиент!\nМы ценим ваше время и обещаем оперативное решение вашего вопроса.',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'Закрытие обращения',
-    message: 'Ваше обращение закрыто.\nЕсли у вас возникнут дополнительные вопросы, пожалуйста, создайте новое обращение.',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'Ожидание информации',
-    message: 'Для продолжения работы над вашим обращением нам требуется дополнительная информация.\nПожалуйста, предоставьте необходимые детали.',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные шаблоны
+const templates = ref<Templates[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchTemplates = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching templates from:', `${API_BASE}/templates`)
+    const data = await $fetch<{ templates: Templates[], total: number }>(`${API_BASE}/templates`)
+    console.log('Fetched templates data:', data)
+    templates.value = data.templates
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки шаблоны'
+    console.error('Error fetching templates:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание шаблон
+const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Templates>(`${API_BASE}/templates`, {
+      method: 'POST',
+      body: item
+    })
+    templates.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating templates:', err)
+    throw err
+  }
+}
+
+// Обновление шаблон
+const updateTemplates = async (id: number, item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Templates>(`${API_BASE}/templates/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = templates.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      templates.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating templates:', err)
+    throw err
+  }
+}
+
+// Удаление шаблон
+const deleteTemplates = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/templates/${id}`, {
+      method: 'DELETE'
+    })
+    const index = templates.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      templates.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting templates:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchTemplates()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -86,7 +111,7 @@ const filteredTemplates = computed(() => {
   let filtered = templates.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = templates.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      templates.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteTemplates(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} шаблонов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} шаблоны`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = templates.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      templates.value[index].status = bulkStatusValue.value
-      templates.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateTemplates(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} шаблонов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} шаблоны`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Template>({
+const defaultItem = ref<Templates>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<Template>({
   isActive: true,
 })
 
-const editedItem = ref<Template>({ ...defaultItem.value })
+const editedItem = ref<Templates>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Template) => {
+const editItem = (item: Templates) => {
   editedIndex.value = templates.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Template) => {
+const deleteItem = (item: Templates) => {
   editedIndex.value = templates.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(templates.value[editedIndex.value], editedItem.value)
-    showToast('Шаблон успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...templates.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    templates.value.push({ ...editedItem.value })
-    showToast('Шаблон успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateTemplates(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Шаблон успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createTemplates({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Шаблон успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения шаблон', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  templates.value.splice(editedIndex.value, 1)
-  showToast('Шаблон успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteTemplates(editedItem.value.id)
+    showToast('Шаблон успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления шаблон', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Template, newValue: number) => {
+const toggleStatus = async (item: Templates, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = templates.value.findIndex((t: Template) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    templates.value[index].status = newValue
-    templates.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', templates.value[index])
-    showToast('Статус шаблона изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве templates')
+
+  try {
+    await updateTemplates(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус шаблон изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового шаблона
-const addNewTemplate = () => {
+// Добавление нового шаблон
+const addNewTemplates = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewTemplate = () => {
   <div>
     <VCard title="Шаблоны">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск шаблонов"
+            placeholder="Поиск шаблоны"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewTemplate = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewTemplate = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewTemplate = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,7 +414,7 @@ const addNewTemplate = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewTemplate"
+            @click="addNewTemplates"
           >
             Добавить шаблон
           </VBtn>
@@ -508,19 +551,8 @@ const addNewTemplate = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Сообщение -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewTemplate = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -576,6 +604,7 @@ const addNewTemplate = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать шаблон' : 'Добавить шаблон'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -588,12 +617,15 @@ const addNewTemplate = () => {
             </VCol>
 
             <!-- Сообщение -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Сообщение шаблона"
-                rows="4"
-                placeholder="Введите текст шаблона..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 

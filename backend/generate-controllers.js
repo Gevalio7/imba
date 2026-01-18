@@ -45,128 +45,114 @@ function generateController(entity) {
   const modelName = entity.charAt(0).toLowerCase() + entity.slice(1);
   const singular = singularize(entity);
   const fileName = modelName + 'Controller.js';
-  const fields = Object.keys(config[entity]);
+  const fields = Object.keys(config[entity]).filter(field => !['status', 'isActive'].includes(field));
 
   const code = `const ${entity} = require('../models/${modelName}');
+const { asyncHandler } = require('../middleware/errorHandler');
 
-const get${entity} = async (req, res) => {
-  try {
-    const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+const get${entity} = asyncHandler(async (req, res) => {
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
-    const searchQuery = typeof q === 'string' ? q : undefined;
-    const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-    const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-    const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
-    const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined;
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
+  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
-    const result = await ${entity}.getAll({
-      q: searchQuery,
-      sortBy: sortByLocal,
-      orderBy: orderByLocal,
-      itemsPerPage: itemsPerPageLocal,
-      page: pageLocal,
-    });
+  const result = await ${entity}.getAll({
+    q: searchQuery,
+    sortBy: sortByLocal,
+    orderBy: orderByLocal,
+    itemsPerPage: itemsPerPageLocal,
+    page: pageLocal,
+  });
 
-    res.json(result);
-  } catch (error) {
-    console.error('Error in get${entity}:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  res.json(result);
+});
+
+const get${singular}ById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ${singular.toLowerCase()}Id = parseInt(id, 10);
+
+  if (isNaN(${singular.toLowerCase()}Id)) {
+    return res.status(400).json({ message: 'Invalid ID' });
   }
-};
 
-const get${singular}ById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const ${singular.toLowerCase()}Id = parseInt(id, 10);
+  const ${singular.toLowerCase()} = await ${entity}.getById(${singular.toLowerCase()}Id);
 
-    if (isNaN(${singular.toLowerCase()}Id)) {
-      return res.status(400).json({ message: 'Invalid ID' });
-    }
-
-    const ${singular.toLowerCase()} = await ${entity}.getById(${singular.toLowerCase()}Id);
-
-    if (!${singular.toLowerCase()}) {
-      return res.status(404).json({ message: '${singular} not found' });
-    }
-
-    res.json(${singular.toLowerCase()});
-  } catch (error) {
-    console.error('Error in get${singular}ById:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  if (!${singular.toLowerCase()}) {
+    return res.status(404).json({ message: '${singular} not found' });
   }
-};
 
-const create${entity} = async (req, res) => {
-  try {
-    const data = {};
-    ${fields.map(field => 'data.' + field + ' = req.body.' + field + ';').join('\n    ')}
+  res.json(${singular.toLowerCase()});
+});
+
+const create${entity} = asyncHandler(async (req, res) => {
+  const data = {};
+  ${fields.map(field => `data.${field} = req.body.${field};`).join('\n  ')}
+  
+  // Добавляем status и isActive если переданы
+  if (req.body.status !== undefined) {
     data.status = req.body.status;
-    data.isActive = req.body.isActive;
-
-    if (!data.${fields[0]}) {
-      return res.status(400).json({ message: '${fields[0]} is required' });
-    }
-
-    const new${singular} = await ${entity}.create(data);
-
-    res.status(201).json(new${singular});
-  } catch (error) {
-    console.error('Error in create${entity}:', error);
-    res.status(500).json({ message: 'Internal server error' });
   }
-};
+  if (req.body.isActive !== undefined) {
+    data.isActive = req.body.isActive;
+  }
 
-const update${entity} = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const ${singular.toLowerCase()}Id = parseInt(id, 10);
-    const data = {};
-    ${fields.map(field => 'data.' + field + ' = req.body.' + field + ';').join('\n    ')}
+  // Валидация обязательных полей
+  if (!data.${fields[0]}) {
+    return res.status(400).json({ message: '${fields[0]} is required' });
+  }
+
+  const new${singular} = await ${entity}.create(data);
+
+  res.status(201).json(new${singular});
+});
+
+const update${entity} = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ${singular.toLowerCase()}Id = parseInt(id, 10);
+
+  if (isNaN(${singular.toLowerCase()}Id)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const data = {};
+  ${fields.map(field => `if (req.body.${field} !== undefined) data.${field} = req.body.${field};`).join('\n  ')}
+  
+  // Добавляем status и isActive если переданы
+  if (req.body.status !== undefined) {
     data.status = req.body.status;
+  }
+  if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
-
-    if (isNaN(${singular.toLowerCase()}Id)) {
-      return res.status(400).json({ message: 'Invalid ID' });
-    }
-
-    if (!data.${fields[0]}) {
-      return res.status(400).json({ message: '${fields[0]} is required' });
-    }
-
-    const updated${singular} = await ${entity}.update(${singular.toLowerCase()}Id, data);
-
-    if (!updated${singular}) {
-      return res.status(404).json({ message: '${singular} not found' });
-    }
-
-    res.json(updated${singular});
-  } catch (error) {
-    console.error('Error in update${entity}:', error);
-    res.status(500).json({ message: 'Internal server error' });
   }
-};
 
-const delete${entity} = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const ${singular.toLowerCase()}Id = parseInt(id, 10);
+  const updated${singular} = await ${entity}.update(${singular.toLowerCase()}Id, data);
 
-    if (isNaN(${singular.toLowerCase()}Id)) {
-      return res.status(400).json({ message: 'Invalid ID' });
-    }
-
-    const deleted = await ${entity}.delete(${singular.toLowerCase()}Id);
-
-    if (!deleted) {
-      return res.status(404).json({ message: '${singular} not found' });
-    }
-
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error in delete${entity}:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  if (!updated${singular}) {
+    return res.status(404).json({ message: '${singular} not found' });
   }
-};
+
+  res.json(updated${singular});
+});
+
+const delete${entity} = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ${singular.toLowerCase()}Id = parseInt(id, 10);
+
+  if (isNaN(${singular.toLowerCase()}Id)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const deleted = await ${entity}.delete(${singular.toLowerCase()}Id);
+
+  if (!deleted) {
+    return res.status(404).json({ message: '${singular} not found' });
+  }
+
+  res.status(204).send();
+});
 
 module.exports = {
   get${entity},

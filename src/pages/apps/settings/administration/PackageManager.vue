@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для менеджера пакетов
-interface Package {
+// Типы данных для Менеджер пакетов
+interface PackageManager {
   id: number
   name: string
   description: string
@@ -10,111 +11,114 @@ interface Package {
   author: string
   isInstalled: boolean
   isUpgradable: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные пакетов (демо данные)
-const packages = ref<Package[]>([
-  {
-    id: 1,
-    name: 'Ticket Management',
-    description: 'Расширенное управление тикетами',
-    version: '2.1.0',
-    author: 'OTRS Team',
-    isInstalled: true,
-    isUpgradable: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Email Integration',
-    description: 'Интеграция с почтовыми серверами',
-    version: '1.5.3',
-    author: 'Email Team',
-    isInstalled: true,
-    isUpgradable: false,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Reporting Module',
-    description: 'Модуль отчетности и аналитики',
-    version: '3.0.1',
-    author: 'Analytics Team',
-    isInstalled: true,
-    isUpgradable: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'SMS Notifications',
-    description: 'SMS уведомления для клиентов',
-    version: '1.2.0',
-    author: 'SMS Team',
-    isInstalled: false,
-    isUpgradable: false,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Package',
-    description: 'Старый пакет, больше не поддерживается',
-    version: '0.5.0',
-    author: 'Legacy Team',
-    isInstalled: true,
-    isUpgradable: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Package',
-    description: 'Тестовый пакет для проверки системы',
-    version: '1.0.0',
-    author: 'Test Team',
-    isInstalled: false,
-    isUpgradable: false,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные менеджер пакетов
+const packageManager = ref<PackageManager[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchPackageManager = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching packageManager from:', `${API_BASE}/packageManager`)
+    const data = await $fetch<{ packageManager: PackageManager[], total: number }>(`${API_BASE}/packageManager`)
+    console.log('Fetched packageManager data:', data)
+    packageManager.value = data.packageManager
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки менеджер пакетов'
+    console.error('Error fetching packageManager:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание менеджер пакетов
+const createPackageManager = async (item: Omit<PackageManager, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PackageManager>(`${API_BASE}/packageManager`, {
+      method: 'POST',
+      body: item
+    })
+    packageManager.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating packageManager:', err)
+    throw err
+  }
+}
+
+// Обновление менеджер пакетов
+const updatePackageManager = async (id: number, item: Omit<PackageManager, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PackageManager>(`${API_BASE}/packageManager/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = packageManager.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      packageManager.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating packageManager:', err)
+    throw err
+  }
+}
+
+// Удаление менеджер пакетов
+const deletePackageManager = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/packageManager/${id}`, {
+      method: 'DELETE'
+    })
+    const index = packageManager.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      packageManager.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting packageManager:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchPackageManager()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
   { title: 'Версия', key: 'version', sortable: true },
   { title: 'Автор', key: 'author', sortable: true },
-  { title: 'Установлен', key: 'isInstalled', sortable: false },
-  { title: 'Обновляемый', key: 'isUpgradable', sortable: false },
+  { title: 'Установлен', key: 'isInstalled', sortable: true },
+  { title: 'Доступно обновление', key: 'isUpgradable', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredPackages = computed(() => {
-  let filtered = packages.value
+const filteredPackageManager = computed(() => {
+  let filtered = packageManager.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (isInstalledFilter.value !== null) {
-    filtered = filtered.filter(t => t.isInstalled === isInstalledFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -123,73 +127,53 @@ const filteredPackages = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  isInstalledFilter.value = null
 }
 
 // Массовые действия
-const bulkInstall = () => {
-  console.log('📥 Массовая установка - вызвана')
+const bulkDelete = () => {
+  console.log('🗑️ Массовое удаление - вызвано')
   console.log('📋 Выбранные элементы:', selectedItems.value)
   console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkInstallDialogOpen.value = true
+  isBulkDeleteDialogOpen.value = true
 }
 
-const bulkUninstall = () => {
-  console.log('📤 Массовое удаление - вызвано')
+const bulkChangeStatus = () => {
+  console.log('🔄 Массовое изменение статуса - вызвано')
   console.log('📋 Выбранные элементы:', selectedItems.value)
   console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkUninstallDialogOpen.value = true
+  isBulkStatusDialogOpen.value = true
 }
 
-const bulkUpdate = () => {
-  console.log('🔄 Массовое обновление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkUpdateDialogOpen.value = true
-}
-
-const confirmBulkInstall = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = packages.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      packages.value[index].isInstalled = true
-      packages.value[index].version = '1.0.0' // Устанавливаем базовую версию
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deletePackageManager(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Установлено ${count} пакетов`)
-  isBulkInstallDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} менеджер пакетов`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkUninstall = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = packages.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      packages.value[index].isInstalled = false
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updatePackageManager(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} пакетов`)
-  isBulkUninstallDialogOpen.value = false
-}
-
-const confirmBulkUpdate = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = packages.value.findIndex(t => t.id === item.id)
-    if (index !== -1 && packages.value[index].isUpgradable) {
-      const currentVersion = packages.value[index].version
-      const versionParts = currentVersion.split('.').map(Number)
-      versionParts[2] += 1 // Увеличиваем патч-версию
-      packages.value[index].version = versionParts.join('.')
-      packages.value[index].isUpgradable = false
-    }
-  })
-  selectedItems.value = []
-  showToast(`Обновлено ${count} пакетов`)
-  isBulkUpdateDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} менеджер пакетов`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -205,15 +189,14 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const isInstalledFilter = ref<boolean | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
 const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
-const isBulkInstallDialogOpen = ref(false)
-const isBulkUninstallDialogOpen = ref(false)
-const isBulkUpdateDialogOpen = ref(false)
+const isBulkDeleteDialogOpen = ref(false)
+const isBulkStatusDialogOpen = ref(false)
+const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
 watch(selectedItems, (newValue) => {
@@ -227,20 +210,21 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Package>({
+const defaultItem = ref<PackageManager>({
   id: -1,
   name: '',
   description: '',
-  version: '1.0.0',
+  version: '',
   author: '',
   isInstalled: false,
   isUpgradable: false,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<Package>({ ...defaultItem.value })
+const editedItem = ref<PackageManager>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -250,14 +234,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Package) => {
-  editedIndex.value = packages.value.indexOf(item)
+const editItem = (item: PackageManager) => {
+  editedIndex.value = packageManager.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Package) => {
-  editedIndex.value = packages.value.indexOf(item)
+const deleteItem = (item: PackageManager) => {
+  editedIndex.value = packageManager.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -274,74 +258,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.author.trim()) {
-    showToast('Автор обязателен для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(packages.value[editedIndex.value], editedItem.value)
-    showToast('Пакет успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...packages.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    packages.value.push({ ...editedItem.value })
-    showToast('Пакет успешно добавлен')
-  }
-  close()
-}
-
-const deleteItemConfirm = () => {
-  packages.value.splice(editedIndex.value, 1)
-  showToast('Пакет успешно удален')
-  closeDelete()
-}
-
-// Установка пакета
-const installPackage = (item: Package) => {
-  const index = packages.value.findIndex(t => t.id === item.id)
-  if (index !== -1) {
-    packages.value[index].isInstalled = true
-    packages.value[index].version = '1.0.0'
-    showToast(`Пакет ${item.name} успешно установлен`)
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updatePackageManager(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Менеджер пакетов успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createPackageManager({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Менеджер пакетов успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения менеджер пакетов', 'error')
   }
 }
 
-// Удаление пакета
-const uninstallPackage = (item: Package) => {
-  const index = packages.value.findIndex(t => t.id === item.id)
-  if (index !== -1) {
-    packages.value[index].isInstalled = false
-    showToast(`Пакет ${item.name} успешно удален`)
+const deleteItemConfirm = async () => {
+  try {
+    await deletePackageManager(editedItem.value.id)
+    showToast('Менеджер пакетов успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления менеджер пакетов', 'error')
   }
 }
 
-// Обновление пакета
-const updatePackage = (item: Package) => {
-  const index = packages.value.findIndex(t => t.id === item.id)
-  if (index !== -1 && packages.value[index].isUpgradable) {
-    const currentVersion = packages.value[index].version
-    const versionParts = currentVersion.split('.').map(Number)
-    versionParts[2] += 1 // Увеличиваем патч-версию
-    packages.value[index].version = versionParts.join('.')
-    packages.value[index].isUpgradable = false
-    showToast(`Пакет ${item.name} успешно обновлен до версии ${packages.value[index].version}`)
+// Переключение статуса
+const toggleStatus = async (item: PackageManager, newValue: number) => {
+  console.log('🔄 toggleStatus вызван')
+  console.log('📝 Элемент:', item)
+  console.log('🔢 Новое значение статуса:', newValue)
+
+  try {
+    await updatePackageManager(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус менеджер пакетов изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -356,8 +327,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового пакета
-const addNewPackage = () => {
+// Добавление нового менеджер пакетов
+const addNewPackageManager = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -367,20 +338,24 @@ const addNewPackage = () => {
 <template>
   <div>
     <VCard title="Менеджер пакетов">
-      <VCardText>
-        <p class="text-body-1">
-          Управление дополнениями.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Manage add-ons.
-        </p>
-      </VCardText>
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск пакетов"
+            placeholder="Поиск менеджер пакетов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -408,12 +383,6 @@ const addNewPackage = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -421,17 +390,7 @@ const addNewPackage = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('📥 Клик по пункту Установить')
-                bulkInstall()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Установить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                console.log('📤 Клик по пункту Удалить')
-                bulkUninstall()
+                bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
             >
@@ -439,12 +398,11 @@ const addNewPackage = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Обновить')
-                bulkUpdate()
+                bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
             >
-              <VListItemTitle>Обновить</VListItemTitle>
+              <VListItemTitle>Изменить статус</VListItemTitle>
             </VListItem>
           </VList>
         </VMenu>
@@ -467,9 +425,9 @@ const addNewPackage = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewPackage"
+            @click="addNewPackageManager"
           >
-            Добавить пакет
+            Добавить менеджер пакетов
           </VBtn>
         </div>
       </div>
@@ -490,18 +448,6 @@ const addNewPackage = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="isInstalledFilter"
-                  placeholder="Установлен"
-                  :items="[
-                    { title: 'Да', value: true },
-                    { title: 'Нет', value: false },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -537,58 +483,28 @@ const addNewPackage = () => {
         </VCard>
       </VDialog>
 
-      <!-- Диалог массовой установки -->
-      <VDialog
-        v-model="isBulkInstallDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Массовая установка">
-          <VCardText>
-            Вы уверены, что хотите установить выбранные пакеты?
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkInstallDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkInstall"
-              >
-                Установить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
       <!-- Диалог массового удаления -->
       <VDialog
-        v-model="isBulkUninstallDialogOpen"
+        v-model="isBulkDeleteDialogOpen"
         max-width="500px"
       >
-        <VCard title="Массовое удаление">
+        <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные пакеты? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные менеджер пакетов? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isBulkUninstallDialogOpen = false"
+                @click="isBulkDeleteDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="confirmBulkUninstall"
+                @click="confirmBulkDelete"
               >
                 Удалить
               </VBtn>
@@ -597,30 +513,36 @@ const addNewPackage = () => {
         </VCard>
       </VDialog>
 
-      <!-- Диалог массового обновления -->
+      <!-- Диалог массового изменения статуса -->
       <VDialog
-        v-model="isBulkUpdateDialogOpen"
+        v-model="isBulkStatusDialogOpen"
         max-width="500px"
       >
-        <VCard title="Массовое обновление">
+        <VCard title="Изменить статус">
           <VCardText>
-            Вы уверены, что хотите обновить выбранные пакеты?
+            <AppSelect
+              v-model="bulkStatusValue"
+              :items="statusOptions"
+              item-title="text"
+              item-value="value"
+              label="Новый статус"
+            />
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isBulkUpdateDialogOpen = false"
+                @click="isBulkStatusDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="confirmBulkUpdate"
+                @click="confirmBulkStatusChange"
               >
-                Обновить
+                Применить
               </VBtn>
             </div>
           </VCardText>
@@ -635,53 +557,13 @@ const addNewPackage = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredPackages"
+        :items="filteredPackageManager"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Автор -->
-        <template #item.author="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.author }}
-          </div>
-        </template>
-
-        <!-- Установлен -->
-        <template #item.isInstalled="{ item }">
-          <VChip
-            :color="item.isInstalled ? 'success' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isInstalled ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
-        <!-- Обновляемый -->
-        <template #item.isUpgradable="{ item }">
-          <VChip
-            :color="item.isUpgradable ? 'warning' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isUpgradable ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -692,33 +574,19 @@ const addNewPackage = () => {
           />
         </template>
 
+        <!-- Активен -->
+        <template #item.isActive="{ item }">
+          <VSwitch
+            :model-value="item.isActive"
+            @update:model-value="(val) => {
+              toggleStatus(item, val ? 1 : 2)
+            }"
+          />
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <VBtn
-              v-if="!item.isInstalled"
-              size="small"
-              color="primary"
-              @click="installPackage(item)"
-            >
-              Установить
-            </VBtn>
-            <VBtn
-              v-if="item.isInstalled"
-              size="small"
-              color="error"
-              @click="uninstallPackage(item)"
-            >
-              Удалить
-            </VBtn>
-            <VBtn
-              v-if="item.isInstalled && item.isUpgradable"
-              size="small"
-              color="warning"
-              @click="updatePackage(item)"
-            >
-              Обновить
-            </VBtn>
             <IconBtn @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
@@ -733,7 +601,7 @@ const addNewPackage = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredPackages.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredPackageManager.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -744,9 +612,10 @@ const addNewPackage = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать пакет' : 'Добавить пакет'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать менеджер пакетов' : 'Добавить менеджер пакетов'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -758,57 +627,62 @@ const addNewPackage = () => {
               />
             </VCol>
 
+            <!-- Описание -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextarea
+                v-model="editedItem.description"
+                label="Описание"
+                rows="3"
+                placeholder="Введите описание..."
+              />
+            </VCol>
+
             <!-- Версия -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.version"
-                label="Версия *"
+                label="Версия"
               />
             </VCol>
 
             <!-- Автор -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.author"
-                label="Автор *"
-              />
-            </VCol>
-
-            <!-- Описание -->
-            <VCol cols="12">
-              <AppTextarea
-                v-model="editedItem.description"
-                label="Описание пакета *"
-                rows="3"
-                placeholder="Введите описание пакета..."
+                label="Автор"
               />
             </VCol>
 
             <!-- Установлен -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <VSwitch
                 v-model="editedItem.isInstalled"
                 label="Установлен"
+                color="primary"
               />
             </VCol>
 
-            <!-- Обновляемый -->
+            <!-- Доступно обновление -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <VSwitch
                 v-model="editedItem.isUpgradable"
-                label="Обновляемый"
+                label="Доступно обновление"
+                color="primary"
               />
             </VCol>
 
@@ -854,7 +728,7 @@ const addNewPackage = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот пакет?">
+      <VCard title="Вы уверены, что хотите удалить этот менеджер пакетов?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

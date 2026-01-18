@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для переводов
+// Типы данных для Перевод
 interface Translation {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные переводов (демо данные)
-const translations = ref<Translation[]>([
-  {
-    id: 1,
-    name: 'ru-en',
-    message: 'Перевод с русского на английский',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'en-ru',
-    message: 'Перевод с английского на русский',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'de-ru',
-    message: 'Перевод с немецкого на русский',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'fr-ru',
-    message: 'Перевод с французского на русский',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-translation',
-    message: 'Старый перевод, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'auto-translation',
-    message: 'Автоматический перевод',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные переводы
+const translation = ref<Translation[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchTranslation = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching translation from:', `${API_BASE}/translation`)
+    const data = await $fetch<{ translation: Translation[], total: number }>(`${API_BASE}/translation`)
+    console.log('Fetched translation data:', data)
+    translation.value = data.translation
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки переводы'
+    console.error('Error fetching translation:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание перевод
+const createTranslation = async (item: Omit<Translation, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Translation>(`${API_BASE}/translation`, {
+      method: 'POST',
+      body: item
+    })
+    translation.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating translation:', err)
+    throw err
+  }
+}
+
+// Обновление перевод
+const updateTranslation = async (id: number, item: Omit<Translation, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Translation>(`${API_BASE}/translation/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = translation.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      translation.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating translation:', err)
+    throw err
+  }
+}
+
+// Удаление перевод
+const deleteTranslation = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/translation/${id}`, {
+      method: 'DELETE'
+    })
+    const index = translation.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      translation.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting translation:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchTranslation()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredTranslations = computed(() => {
-  let filtered = translations.value
+const filteredTranslation = computed(() => {
+  let filtered = translation.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = translations.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      translations.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteTranslation(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} переводов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} переводы`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = translations.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      translations.value[index].status = bulkStatusValue.value
-      translations.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateTranslation(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} переводов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} переводы`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -194,13 +224,13 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: Translation) => {
-  editedIndex.value = translations.value.indexOf(item)
+  editedIndex.value = translation.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: Translation) => {
-  editedIndex.value = translations.value.indexOf(item)
+  editedIndex.value = translation.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(translations.value[editedIndex.value], editedItem.value)
-    showToast('Перевод успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...translations.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    translations.value.push({ ...editedItem.value })
-    showToast('Перевод успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateTranslation(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Перевод успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createTranslation({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Перевод успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения перевод', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  translations.value.splice(editedIndex.value, 1)
-  showToast('Перевод успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteTranslation(editedItem.value.id)
+    showToast('Перевод успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления перевод', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Translation, newValue: number) => {
+const toggleStatus = async (item: Translation, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = translations.value.findIndex((t: Translation) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    translations.value[index].status = newValue
-    translations.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', translations.value[index])
-    showToast('Статус перевода изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве translations')
+
+  try {
+    await updateTranslation(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус перевод изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,7 +316,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового перевода
+// Добавление нового перевод
 const addNewTranslation = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -289,11 +328,23 @@ const addNewTranslation = () => {
   <div>
     <VCard title="Переводы">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск переводов"
+            placeholder="Поиск переводы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewTranslation = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewTranslation = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewTranslation = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -503,24 +546,13 @@ const addNewTranslation = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredTranslations"
+        :items="filteredTranslation"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewTranslation = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewTranslation = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredTranslations.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredTranslation.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -576,6 +604,7 @@ const addNewTranslation = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать перевод' : 'Добавить перевод'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewTranslation = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание перевода"
-                rows="4"
-                placeholder="Введите описание перевода..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 

@@ -34,6 +34,10 @@ if (entities.length === 0) {
 }
 
 function toSnakeCase(str) {
+  // Специальная обработка для sLA -> sla
+  if (str === 'sLA') {
+    return 'sla';
+  }
   return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
 }
 
@@ -45,18 +49,20 @@ function singularize(str) {
 
 function generateModel(entity) {
   const tableName = toSnakeCase(entity);
-  const className = entity;
+  // Для sLA используем SLA как имя класса
+  const className = entity === 'sLA' ? 'SLA' : entity;
   const singular = singularize(entity).toLowerCase();
   const fileName = entity.charAt(0).toLowerCase() + entity.slice(1) + '.js';
 
-  const fieldList = Object.keys(config[entity]);
+  const fieldList = Object.keys(config[entity]).filter(f => !['status', 'isActive'].includes(f));
   const fields = fieldList.join(', ');
 
   const code = `const { pool } = require('../config/db');
-  
-  class ${className} {
-    static tableName = '${tableName}';
-    static fields = '${fields}';
+
+class ${className} {
+  static tableName = '${tableName}';
+  static fields = '${fields}';
+
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -67,9 +73,9 @@ function generateModel(entity) {
 
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => field + ' ILIKE $' + paramIndex).join(' OR ');
-        whereClause = "WHERE " + conditions;
-        params.push('%' + q + '%');
+        const conditions = searchFields.map(field => \`\${field.toLowerCase()} ILIKE $\${paramIndex}\`).join(' OR ');
+        whereClause = \`WHERE \${conditions}\`;
+        params.push(\`%\${q}%\`);
         paramIndex++;
       }
 
@@ -87,12 +93,17 @@ function generateModel(entity) {
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      const dataQuery = \`SELECT id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} \${whereClause} \${orderClause} LIMIT \$\${paramIndex} OFFSET \$\${paramIndex + 1}\`;
+      // Преобразуем имена полей в lowercase для SQL
+      const sqlFields = this.fields.split(', ').map(f => {
+        const lower = f.toLowerCase();
+        return lower === f ? f : \`\${lower} as "\${f}"\`;
+      }).join(', ');
+      const dataQuery = \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} \${whereClause} \${orderClause} LIMIT $\${paramIndex} OFFSET $\${paramIndex + 1}\`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
       return {
-        ${tableName}: dataResult.rows,
+        ${entity}: dataResult.rows,
         total,
       };
     } catch (error) {
@@ -103,7 +114,15 @@ function generateModel(entity) {
 
   static async getById(id) {
     try {
-      const result = await pool.query(\`SELECT id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} WHERE id = \$1\`, [id]);
+      // Преобразуем имена полей в lowercase для SQL
+      const sqlFields = this.fields.split(', ').map(f => {
+        const lower = f.toLowerCase();
+        return lower === f ? f : \`\${lower} as "\${f}"\`;
+      }).join(', ');
+      const result = await pool.query(
+        \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} WHERE id = $1\`,
+        [id]
+      );
 
       return result.rows[0] || null;
     } catch (error) {
@@ -117,8 +136,20 @@ function generateModel(entity) {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => \`$\${i + 1}\`).join(', ');
       const values = fieldList.map(field => ${singular}[field]);
-      values.push(${singular}.status || 1, ${singular}.isActive !== undefined ? ${singular}.isActive : true);
-      const result = await pool.query(\`INSERT INTO \${${className}.tableName} (\${this.fields}, status, is_active) VALUES (\${placeholders}, \$\${fieldList.length + 1}, \$\${fieldList.length + 2}) RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
+      
+      // Добавляем status и isActive
+      values.push(${singular}.status || 1);
+      values.push(${singular}.isActive !== undefined ? ${singular}.isActive : true);
+      
+      // Преобразуем имена полей в lowercase для SQL
+      const sqlFieldsInsert = fieldList.map(f => f.toLowerCase()).join(', ');
+      const sqlFieldsSelect = fieldList.map(f => {
+        const lower = f.toLowerCase();
+        return lower === f ? f : \`\${lower} as "\${f}"\`;
+      }).join(', ');
+      
+      const query = \`INSERT INTO \${${className}.tableName} (\${sqlFieldsInsert}, status, is_active) VALUES (\${placeholders}, $\${fieldList.length + 1}, $\${fieldList.length + 2}) RETURNING id, \${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`;
+      const result = await pool.query(query, values);
 
       return result.rows[0];
     } catch (error) {
@@ -130,10 +161,47 @@ function generateModel(entity) {
   static async update(id, ${singular}) {
     try {
       const fieldList = this.fields.split(', ');
-      const setClause = fieldList.map((field, i) => \`\${field} = \$\${i + 1}\`).join(', ');
-      const values = fieldList.map(field => ${singular}[field]);
-      values.push(${singular}.status !== undefined ? ${singular}.status : undefined, ${singular}.isActive !== undefined ? ${singular}.isActive : undefined, id);
-      const result = await pool.query(\`UPDATE \${${className}.tableName} SET \${setClause}\${${singular}.status !== undefined ? ', status = \$\${fieldList.length + 1}' : ''}\${${singular}.isActive !== undefined ? ', is_active = \$\${fieldList.length + ' + (${singular}.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = \$\${fieldList.length + ' + (${singular}.status !== undefined && ${singular}.isActive !== undefined ? 3 : ${singular}.status !== undefined || ${singular}.isActive !== undefined ? 2 : 1) + '} RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
+      const updates = [];
+      const values = [];
+      let paramIndex = 1;
+
+      // Обновляем только переданные поля
+      fieldList.forEach(field => {
+        if (${singular}[field] !== undefined) {
+          updates.push(\`\${field.toLowerCase()} = $\${paramIndex}\`);
+          values.push(${singular}[field]);
+          paramIndex++;
+        }
+      });
+
+      // Добавляем status если передан
+      if (${singular}.status !== undefined) {
+        updates.push(\`status = $\${paramIndex}\`);
+        values.push(${singular}.status);
+        paramIndex++;
+      }
+
+      // Добавляем isActive если передан
+      if (${singular}.isActive !== undefined) {
+        updates.push(\`is_active = $\${paramIndex}\`);
+        values.push(${singular}.isActive);
+        paramIndex++;
+      }
+
+      // Всегда обновляем updated_at
+      updates.push('updated_at = CURRENT_TIMESTAMP');
+
+      // Добавляем id в конец
+      values.push(id);
+
+      // Преобразуем имена полей в lowercase для SQL
+      const sqlFields = fieldList.map(f => {
+        const lower = f.toLowerCase();
+        return lower === f ? f : \`\${lower} as "\${f}"\`;
+      }).join(', ');
+
+      const query = \`UPDATE \${${className}.tableName} SET \${updates.join(', ')} WHERE id = $\${paramIndex} RETURNING id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`;
+      const result = await pool.query(query, values);
 
       return result.rows[0] || null;
     } catch (error) {
@@ -144,7 +212,7 @@ function generateModel(entity) {
 
   static async delete(id) {
     try {
-      const result = await pool.query(\`DELETE FROM \${${className}.tableName} WHERE id = \$1\`, [id]);
+      const result = await pool.query(\`DELETE FROM \${${className}.tableName} WHERE id = $1\`, [id]);
 
       return result.rowCount > 0;
     } catch (error) {

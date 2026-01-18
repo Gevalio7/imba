@@ -1,84 +1,109 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для PGP ключа
-interface PgpKey {
+// Типы данных для PGP ключ
+interface PgpKeys {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные PGP ключей (демо данные)
-const pgpKeys = ref<PgpKey[]>([
-  {
-    id: 1,
-    name: 'pgp-key-support',
-    message: 'PGP ключ для шифрования сообщений поддержки',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'pgp-key-admin',
-    message: 'PGP ключ для административных сообщений',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'pgp-key-billing',
-    message: 'PGP ключ для финансовых уведомлений',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'pgp-key-feedback',
-    message: 'PGP ключ для сообщений обратной связи',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'pgp-key-old',
-    message: 'Старый PGP ключ, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'pgp-key-general',
-    message: 'Общий PGP ключ для всех сообщений',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные pgp ключи
+const pgpKeys = ref<PgpKeys[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchPgpKeys = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching pgpKeys from:', `${API_BASE}/pgpKeys`)
+    const data = await $fetch<{ pgpKeys: PgpKeys[], total: number }>(`${API_BASE}/pgpKeys`)
+    console.log('Fetched pgpKeys data:', data)
+    pgpKeys.value = data.pgpKeys
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки pgp ключи'
+    console.error('Error fetching pgpKeys:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание pgp ключ
+const createPgpKeys = async (item: Omit<PgpKeys, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PgpKeys>(`${API_BASE}/pgpKeys`, {
+      method: 'POST',
+      body: item
+    })
+    pgpKeys.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating pgpKeys:', err)
+    throw err
+  }
+}
+
+// Обновление pgp ключ
+const updatePgpKeys = async (id: number, item: Omit<PgpKeys, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PgpKeys>(`${API_BASE}/pgpKeys/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = pgpKeys.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      pgpKeys.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating pgpKeys:', err)
+    throw err
+  }
+}
+
+// Удаление pgp ключ
+const deletePgpKeys = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/pgpKeys/${id}`, {
+      method: 'DELETE'
+    })
+    const index = pgpKeys.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      pgpKeys.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting pgpKeys:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchPgpKeys()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -86,7 +111,7 @@ const filteredPgpKeys = computed(() => {
   let filtered = pgpKeys.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = pgpKeys.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      pgpKeys.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deletePgpKeys(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} PGP ключей`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} pgp ключи`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = pgpKeys.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      pgpKeys.value[index].status = bulkStatusValue.value
-      pgpKeys.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updatePgpKeys(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} PGP ключей`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} pgp ключи`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<PgpKey>({
+const defaultItem = ref<PgpKeys>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<PgpKey>({
   isActive: true,
 })
 
-const editedItem = ref<PgpKey>({ ...defaultItem.value })
+const editedItem = ref<PgpKeys>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: PgpKey) => {
+const editItem = (item: PgpKeys) => {
   editedIndex.value = pgpKeys.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: PgpKey) => {
+const deleteItem = (item: PgpKeys) => {
   editedIndex.value = pgpKeys.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(pgpKeys.value[editedIndex.value], editedItem.value)
-    showToast('PGP ключ успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...pgpKeys.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    pgpKeys.value.push({ ...editedItem.value })
-    showToast('PGP ключ успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updatePgpKeys(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('PGP ключ успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createPgpKeys({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('PGP ключ успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения pgp ключ', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  pgpKeys.value.splice(editedIndex.value, 1)
-  showToast('PGP ключ успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deletePgpKeys(editedItem.value.id)
+    showToast('PGP ключ успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления pgp ключ', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: PgpKey, newValue: number) => {
+const toggleStatus = async (item: PgpKeys, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = pgpKeys.value.findIndex((t: PgpKey) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    pgpKeys.value[index].status = newValue
-    pgpKeys.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', pgpKeys.value[index])
-    showToast('Статус PGP ключа изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве pgpKeys')
+
+  try {
+    await updatePgpKeys(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус pgp ключ изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового PGP ключа
-const addNewPgpKey = () => {
+// Добавление нового pgp ключ
+const addNewPgpKeys = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewPgpKey = () => {
   <div>
     <VCard title="PGP ключи">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск PGP ключей"
+            placeholder="Поиск pgp ключи"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewPgpKey = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewPgpKey = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewPgpKey = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewPgpKey = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewPgpKey"
+            @click="addNewPgpKeys"
           >
-            Добавить PGP ключ
+            Добавить pgp ключ
           </VBtn>
         </div>
       </div>
@@ -436,7 +479,7 @@ const addNewPgpKey = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные PGP ключи? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные pgp ключи? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -508,19 +551,8 @@ const addNewPgpKey = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewPgpKey = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -573,9 +601,10 @@ const addNewPgpKey = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать PGP ключ' : 'Добавить PGP ключ'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать pgp ключ' : 'Добавить pgp ключ'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewPgpKey = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание PGP ключа"
-                rows="4"
-                placeholder="Введите описание PGP ключа..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewPgpKey = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот PGP ключ?">
+      <VCard title="Вы уверены, что хотите удалить этот pgp ключ?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewPgpKey = () => {
   margin-block-end: 1rem;
 }
 </style>
-

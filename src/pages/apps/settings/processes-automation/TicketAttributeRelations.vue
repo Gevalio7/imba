@@ -1,100 +1,113 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для связей свойств заявки
-interface TicketAttributeRelation {
+// Типы данных для Связь атрибутов тикета
+interface TicketAttributeRelations {
   id: number
   name: string
   sourceAttribute: string
   targetAttribute: string
   relationType: string
   isActive: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные связей свойств заявки (демо данные)
-const ticketAttributeRelations = ref<TicketAttributeRelation[]>([
-  {
-    id: 1,
-    name: 'Priority affects SLA',
-    sourceAttribute: 'priority',
-    targetAttribute: 'sla_time',
-    relationType: 'dependency',
-    isActive: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Category affects assignment',
-    sourceAttribute: 'category',
-    targetAttribute: 'assigned_group',
-    relationType: 'mapping',
-    isActive: true,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Customer type affects priority',
-    sourceAttribute: 'customer_type',
-    targetAttribute: 'priority',
-    relationType: 'calculation',
-    isActive: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Service level affects response time',
-    sourceAttribute: 'service_level',
-    targetAttribute: 'response_time',
-    relationType: 'dependency',
-    isActive: true,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old relation',
-    sourceAttribute: 'old_attribute',
-    targetAttribute: 'old_target',
-    relationType: 'mapping',
-    isActive: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test relation',
-    sourceAttribute: 'test_source',
-    targetAttribute: 'test_target',
-    relationType: 'calculation',
-    isActive: true,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные связи атрибутов тикетов
+const ticketAttributeRelations = ref<TicketAttributeRelations[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchTicketAttributeRelations = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching ticketAttributeRelations from:', `${API_BASE}/ticketAttributeRelations`)
+    const data = await $fetch<{ ticketAttributeRelations: TicketAttributeRelations[], total: number }>(`${API_BASE}/ticketAttributeRelations`)
+    console.log('Fetched ticketAttributeRelations data:', data)
+    ticketAttributeRelations.value = data.ticketAttributeRelations
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки связи атрибутов тикетов'
+    console.error('Error fetching ticketAttributeRelations:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание связь атрибутов тикета
+const createTicketAttributeRelations = async (item: Omit<TicketAttributeRelations, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<TicketAttributeRelations>(`${API_BASE}/ticketAttributeRelations`, {
+      method: 'POST',
+      body: item
+    })
+    ticketAttributeRelations.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating ticketAttributeRelations:', err)
+    throw err
+  }
+}
+
+// Обновление связь атрибутов тикета
+const updateTicketAttributeRelations = async (id: number, item: Omit<TicketAttributeRelations, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<TicketAttributeRelations>(`${API_BASE}/ticketAttributeRelations/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = ticketAttributeRelations.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      ticketAttributeRelations.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating ticketAttributeRelations:', err)
+    throw err
+  }
+}
+
+// Удаление связь атрибутов тикета
+const deleteTicketAttributeRelations = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/ticketAttributeRelations/${id}`, {
+      method: 'DELETE'
+    })
+    const index = ticketAttributeRelations.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      ticketAttributeRelations.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting ticketAttributeRelations:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchTicketAttributeRelations()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Источник', key: 'sourceAttribute', sortable: true },
-  { title: 'Цель', key: 'targetAttribute', sortable: true },
+  { title: 'Исходный атрибут', key: 'sourceAttribute', sortable: true },
+  { title: 'Целевой атрибут', key: 'targetAttribute', sortable: true },
   { title: 'Тип связи', key: 'relationType', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -102,11 +115,7 @@ const filteredTicketAttributeRelations = computed(() => {
   let filtered = ticketAttributeRelations.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (relationTypeFilter.value !== null) {
-    filtered = filtered.filter(t => t.relationType === relationTypeFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -115,7 +124,6 @@ const filteredTicketAttributeRelations = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  relationTypeFilter.value = null
 }
 
 // Массовые действия
@@ -133,31 +141,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = ticketAttributeRelations.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      ticketAttributeRelations.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteTicketAttributeRelations(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} связей свойств заявки`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} связи атрибутов тикетов`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = ticketAttributeRelations.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      ticketAttributeRelations.value[index].status = bulkStatusValue.value
-      ticketAttributeRelations.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateTicketAttributeRelations(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} связей свойств заявки`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} связи атрибутов тикетов`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +186,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const relationTypeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -195,19 +207,19 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<TicketAttributeRelation>({
+const defaultItem = ref<TicketAttributeRelations>({
   id: -1,
   name: '',
   sourceAttribute: '',
   targetAttribute: '',
-  relationType: 'dependency',
-  isActive: true,
+  relationType: '',
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<TicketAttributeRelation>({ ...defaultItem.value })
+const editedItem = ref<TicketAttributeRelations>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -216,22 +228,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов связей
-const relationTypeOptions = [
-  { text: 'Зависимость', value: 'dependency' },
-  { text: 'Сопоставление', value: 'mapping' },
-  { text: 'Расчет', value: 'calculation' },
-  { text: 'Валидация', value: 'validation' },
-]
-
 // Методы
-const editItem = (item: TicketAttributeRelation) => {
+const editItem = (item: TicketAttributeRelations) => {
   editedIndex.value = ticketAttributeRelations.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: TicketAttributeRelation) => {
+const deleteItem = (item: TicketAttributeRelations) => {
   editedIndex.value = ticketAttributeRelations.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -249,62 +253,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.sourceAttribute.trim()) {
-    showToast('Атрибут источника обязателен для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateTicketAttributeRelations(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Связь атрибутов тикета успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createTicketAttributeRelations({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Связь атрибутов тикета успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения связь атрибутов тикета', 'error')
   }
-
-  if (!editedItem.value.targetAttribute.trim()) {
-    showToast('Атрибут цели обязателен для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(ticketAttributeRelations.value[editedIndex.value], editedItem.value)
-    showToast('Связь свойств заявки успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...ticketAttributeRelations.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    ticketAttributeRelations.value.push({ ...editedItem.value })
-    showToast('Связь свойств заявки успешно добавлена')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  ticketAttributeRelations.value.splice(editedIndex.value, 1)
-  showToast('Связь свойств заявки успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteTicketAttributeRelations(editedItem.value.id)
+    showToast('Связь атрибутов тикета успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления связь атрибутов тикета', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: TicketAttributeRelation, newValue: number) => {
+const toggleStatus = async (item: TicketAttributeRelations, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = ticketAttributeRelations.value.findIndex((t: TicketAttributeRelation) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    ticketAttributeRelations.value[index].status = newValue
-    ticketAttributeRelations.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', ticketAttributeRelations.value[index])
-    showToast('Статус связи свойств заявки изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве ticketAttributeRelations')
+
+  try {
+    await updateTicketAttributeRelations(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус связь атрибутов тикета изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -319,8 +322,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой связи свойств заявки
-const addNewTicketAttributeRelation = () => {
+// Добавление нового связь атрибутов тикета
+const addNewTicketAttributeRelations = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -329,21 +332,25 @@ const addNewTicketAttributeRelation = () => {
 
 <template>
   <div>
-    <VCard title="Связи свойств заявки">
-      <VCardText>
-        <p class="text-body-1">
-          Управление связями свойств заявки.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Management of ticket attribute relations.
-        </p>
-      </VCardText>
+    <VCard title="Связи атрибутов тикетов">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск связей свойств заявки"
+            placeholder="Поиск связи атрибутов тикетов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -371,12 +378,6 @@ const addNewTicketAttributeRelation = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -384,7 +385,6 @@ const addNewTicketAttributeRelation = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -393,7 +393,6 @@ const addNewTicketAttributeRelation = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -421,9 +420,9 @@ const addNewTicketAttributeRelation = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewTicketAttributeRelation"
+            @click="addNewTicketAttributeRelations"
           >
-            Добавить связь
+            Добавить связь атрибутов тикета
           </VBtn>
         </div>
       </div>
@@ -444,20 +443,6 @@ const addNewTicketAttributeRelation = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="relationTypeFilter"
-                  placeholder="Тип связи"
-                  :items="[
-                    { title: 'Зависимость', value: 'dependency' },
-                    { title: 'Сопоставление', value: 'mapping' },
-                    { title: 'Расчет', value: 'calculation' },
-                    { title: 'Валидация', value: 'validation' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -500,7 +485,7 @@ const addNewTicketAttributeRelation = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные связи свойств заявки? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные связи атрибутов тикетов? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -572,37 +557,8 @@ const addNewTicketAttributeRelation = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Источник -->
-        <template #item.sourceAttribute="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.sourceAttribute }}
-          </div>
-        </template>
-
-        <!-- Цель -->
-        <template #item.targetAttribute="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.targetAttribute }}
-          </div>
-        </template>
-
-        <!-- Тип связи -->
-        <template #item.relationType="{ item }">
-          <VChip
-            :color="item.relationType === 'dependency' ? 'primary' : item.relationType === 'mapping' ? 'success' : item.relationType === 'calculation' ? 'warning' : 'info'"
-            size="small"
-            label
-          >
-            {{ item.relationType }}
-          </VChip>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -618,10 +574,6 @@ const addNewTicketAttributeRelation = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -655,9 +607,10 @@ const addNewTicketAttributeRelation = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать связь' : 'Добавить связь'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать связь атрибутов тикета' : 'Добавить связь атрибутов тикета'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -669,39 +622,36 @@ const addNewTicketAttributeRelation = () => {
               />
             </VCol>
 
-            <!-- Атрибут источника -->
+            <!-- Исходный атрибут -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.sourceAttribute"
-                label="Атрибут источника *"
+                label="Исходный атрибут"
               />
             </VCol>
 
-            <!-- Атрибут цели -->
+            <!-- Целевой атрибут -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.targetAttribute"
-                label="Атрибут цели *"
+                label="Целевой атрибут"
               />
             </VCol>
 
             <!-- Тип связи -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.relationType"
-                :items="relationTypeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип связи *"
+                label="Тип связи"
               />
             </VCol>
 
@@ -747,7 +697,7 @@ const addNewTicketAttributeRelation = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту связь свойств заявки?">
+      <VCard title="Вы уверены, что хотите удалить этот связь атрибутов тикета?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

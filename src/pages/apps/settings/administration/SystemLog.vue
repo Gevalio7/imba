@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для системного журнала
+// Типы данных для Системный журнал
 interface SystemLog {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные системного журнала (демо данные)
-const systemLogs = ref<SystemLog[]>([
-  {
-    id: 1,
-    name: 'error-log',
-    message: 'Лог ошибок системы',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'access-log',
-    message: 'Лог доступа к системе',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'security-log',
-    message: 'Лог безопасности системы',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'performance-log',
-    message: 'Лог производительности системы',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'old-log',
-    message: 'Старый лог, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'audit-log',
-    message: 'Аудиторский лог системы',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные системный журнал
+const systemLog = ref<SystemLog[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchSystemLog = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching systemLog from:', `${API_BASE}/systemLog`)
+    const data = await $fetch<{ systemLog: SystemLog[], total: number }>(`${API_BASE}/systemLog`)
+    console.log('Fetched systemLog data:', data)
+    systemLog.value = data.systemLog
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки системный журнал'
+    console.error('Error fetching systemLog:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание системный журнал
+const createSystemLog = async (item: Omit<SystemLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SystemLog>(`${API_BASE}/systemLog`, {
+      method: 'POST',
+      body: item
+    })
+    systemLog.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating systemLog:', err)
+    throw err
+  }
+}
+
+// Обновление системный журнал
+const updateSystemLog = async (id: number, item: Omit<SystemLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SystemLog>(`${API_BASE}/systemLog/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = systemLog.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      systemLog.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating systemLog:', err)
+    throw err
+  }
+}
+
+// Удаление системный журнал
+const deleteSystemLog = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/systemLog/${id}`, {
+      method: 'DELETE'
+    })
+    const index = systemLog.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      systemLog.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting systemLog:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchSystemLog()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredSystemLogs = computed(() => {
-  let filtered = systemLogs.value
+const filteredSystemLog = computed(() => {
+  let filtered = systemLog.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = systemLogs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      systemLogs.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteSystemLog(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} системных журналов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} системный журнал`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = systemLogs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      systemLogs.value[index].status = bulkStatusValue.value
-      systemLogs.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateSystemLog(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} системных журналов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} системный журнал`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -194,13 +224,13 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SystemLog) => {
-  editedIndex.value = systemLogs.value.indexOf(item)
+  editedIndex.value = systemLog.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
 const deleteItem = (item: SystemLog) => {
-  editedIndex.value = systemLogs.value.indexOf(item)
+  editedIndex.value = systemLog.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(systemLogs.value[editedIndex.value], editedItem.value)
-    showToast('Системный журнал успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...systemLogs.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    systemLogs.value.push({ ...editedItem.value })
-    showToast('Системный журнал успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateSystemLog(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Системный журнал успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createSystemLog({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Системный журнал успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения системный журнал', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  systemLogs.value.splice(editedIndex.value, 1)
-  showToast('Системный журнал успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteSystemLog(editedItem.value.id)
+    showToast('Системный журнал успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления системный журнал', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: SystemLog, newValue: number) => {
+const toggleStatus = async (item: SystemLog, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = systemLogs.value.findIndex((t: SystemLog) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    systemLogs.value[index].status = newValue
-    systemLogs.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', systemLogs.value[index])
-    showToast('Статус системного журнала изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве systemLogs')
+
+  try {
+    await updateSystemLog(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус системный журнал изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,7 +316,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового системного журнала
+// Добавление нового системный журнал
 const addNewSystemLog = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -289,11 +328,23 @@ const addNewSystemLog = () => {
   <div>
     <VCard title="Системный журнал">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск системных журналов"
+            placeholder="Поиск системный журнал"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewSystemLog = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewSystemLog = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewSystemLog = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -436,7 +479,7 @@ const addNewSystemLog = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные системные журналы? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные системный журнал? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -503,24 +546,13 @@ const addNewSystemLog = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredSystemLogs"
+        :items="filteredSystemLog"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewSystemLog = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewSystemLog = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredSystemLogs.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredSystemLog.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -576,6 +604,7 @@ const addNewSystemLog = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать системный журнал' : 'Добавить системный журнал'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewSystemLog = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание системного журнала"
-                rows="4"
-                placeholder="Введите описание системного журнала..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -677,4 +709,3 @@ const addNewSystemLog = () => {
   margin-block-end: 1rem;
 }
 </style>
-

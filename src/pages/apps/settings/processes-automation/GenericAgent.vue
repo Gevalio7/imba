@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для планировщика задач
-interface GenericAgentTask {
+// Типы данных для Универсальный агент
+interface GenericAgent {
   id: number
   name: string
   description: string
@@ -11,118 +12,114 @@ interface GenericAgentTask {
   isActive: boolean
   lastRun: string | null
   nextRun: string
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные задач планировщика (демо данные)
-const genericAgentTasks = ref<GenericAgentTask[]>([
-  {
-    id: 1,
-    name: 'Nightly Cleanup',
-    description: 'Очистка старых логов и временных файлов',
-    triggerType: 'time',
-    schedule: '0 2 * * *',
-    isActive: true,
-    lastRun: '2023-01-15 02:00:00',
-    nextRun: '2023-01-16 02:00:00',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Ticket Reminder',
-    description: 'Напоминание о старых тикетах',
-    triggerType: 'event',
-    schedule: 'ticket.created',
-    isActive: true,
-    lastRun: '2023-01-15 10:30:00',
-    nextRun: '2023-01-15 10:30:00',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Database Backup',
-    description: 'Ежедневное резервное копирование базы данных',
-    triggerType: 'time',
-    schedule: '0 3 * * *',
-    isActive: true,
-    lastRun: '2023-01-15 03:00:00',
-    nextRun: '2023-01-16 03:00:00',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Email Notification',
-    description: 'Отправка email уведомлений',
-    triggerType: 'event',
-    schedule: 'ticket.status_changed',
-    isActive: true,
-    lastRun: '2023-01-15 14:00:00',
-    nextRun: '2023-01-15 14:00:00',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Task',
-    description: 'Старая задача, больше не используется',
-    triggerType: 'time',
-    schedule: '0 0 * * 0',
-    isActive: false,
-    lastRun: null,
-    nextRun: '2023-01-15 00:00:00',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Task',
-    description: 'Тестовая задача для проверки системы',
-    triggerType: 'event',
-    schedule: 'test.event',
-    isActive: true,
-    lastRun: '2023-01-15 16:00:00',
-    nextRun: '2023-01-15 16:00:00',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные универсальный агент
+const genericAgent = ref<GenericAgent[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchGenericAgent = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching genericAgent from:', `${API_BASE}/genericAgent`)
+    const data = await $fetch<{ genericAgent: GenericAgent[], total: number }>(`${API_BASE}/genericAgent`)
+    console.log('Fetched genericAgent data:', data)
+    genericAgent.value = data.genericAgent
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки универсальный агент'
+    console.error('Error fetching genericAgent:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание универсальный агент
+const createGenericAgent = async (item: Omit<GenericAgent, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<GenericAgent>(`${API_BASE}/genericAgent`, {
+      method: 'POST',
+      body: item
+    })
+    genericAgent.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating genericAgent:', err)
+    throw err
+  }
+}
+
+// Обновление универсальный агент
+const updateGenericAgent = async (id: number, item: Omit<GenericAgent, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<GenericAgent>(`${API_BASE}/genericAgent/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = genericAgent.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      genericAgent.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating genericAgent:', err)
+    throw err
+  }
+}
+
+// Удаление универсальный агент
+const deleteGenericAgent = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/genericAgent/${id}`, {
+      method: 'DELETE'
+    })
+    const index = genericAgent.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      genericAgent.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting genericAgent:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchGenericAgent()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
   { title: 'Тип триггера', key: 'triggerType', sortable: true },
-  { title: 'Расписание', key: 'schedule', sortable: false },
+  { title: 'Расписание', key: 'schedule', sortable: true },
   { title: 'Последний запуск', key: 'lastRun', sortable: true },
   { title: 'Следующий запуск', key: 'nextRun', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredGenericAgentTasks = computed(() => {
-  let filtered = genericAgentTasks.value
+const filteredGenericAgent = computed(() => {
+  let filtered = genericAgent.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (triggerTypeFilter.value !== null) {
-    filtered = filtered.filter(t => t.triggerType === triggerTypeFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -131,7 +128,6 @@ const filteredGenericAgentTasks = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  triggerTypeFilter.value = null
 }
 
 // Массовые действия
@@ -149,31 +145,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = genericAgentTasks.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      genericAgentTasks.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteGenericAgent(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} задач планировщика`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} универсальный агент`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = genericAgentTasks.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      genericAgentTasks.value[index].status = bulkStatusValue.value
-      genericAgentTasks.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateGenericAgent(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} задач планировщика`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} универсальный агент`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -189,7 +190,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const triggerTypeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -211,21 +211,21 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<GenericAgentTask>({
+const defaultItem = ref<GenericAgent>({
   id: -1,
   name: '',
   description: '',
-  triggerType: 'time',
+  triggerType: '',
   schedule: '',
-  isActive: true,
   lastRun: null,
   nextRun: '',
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<GenericAgentTask>({ ...defaultItem.value })
+const editedItem = ref<GenericAgent>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -234,21 +234,15 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов триггеров
-const triggerTypeOptions = [
-  { text: 'Временной', value: 'time' },
-  { text: 'Событийный', value: 'event' },
-]
-
 // Методы
-const editItem = (item: GenericAgentTask) => {
-  editedIndex.value = genericAgentTasks.value.indexOf(item)
+const editItem = (item: GenericAgent) => {
+  editedIndex.value = genericAgent.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: GenericAgentTask) => {
-  editedIndex.value = genericAgentTasks.value.indexOf(item)
+const deleteItem = (item: GenericAgent) => {
+  editedIndex.value = genericAgent.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -265,62 +259,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateGenericAgent(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Универсальный агент успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createGenericAgent({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Универсальный агент успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения универсальный агент', 'error')
   }
-
-  if (!editedItem.value.schedule.trim()) {
-    showToast('Расписание обязательно для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(genericAgentTasks.value[editedIndex.value], editedItem.value)
-    showToast('Задача планировщика успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...genericAgentTasks.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    genericAgentTasks.value.push({ ...editedItem.value })
-    showToast('Задача планировщика успешно добавлена')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  genericAgentTasks.value.splice(editedIndex.value, 1)
-  showToast('Задача планировщика успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteGenericAgent(editedItem.value.id)
+    showToast('Универсальный агент успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления универсальный агент', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: GenericAgentTask, newValue: number) => {
+const toggleStatus = async (item: GenericAgent, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = genericAgentTasks.value.findIndex((t: GenericAgentTask) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    genericAgentTasks.value[index].status = newValue
-    genericAgentTasks.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', genericAgentTasks.value[index])
-    showToast('Статус задачи планировщика изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве genericAgentTasks')
+
+  try {
+    await updateGenericAgent(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус универсальный агент изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -335,8 +328,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой задачи планировщика
-const addNewGenericAgentTask = () => {
+// Добавление нового универсальный агент
+const addNewGenericAgent = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -345,21 +338,25 @@ const addNewGenericAgentTask = () => {
 
 <template>
   <div>
-    <VCard title="Планировщик задач">
-      <VCardText>
-        <p class="text-body-1">
-          Управление заданиями, основанными на событиях или времени выполнения.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Manage tasks triggered by event or time based execution.
-        </p>
-      </VCardText>
+    <VCard title="Универсальный агент">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск задач планировщика"
+            placeholder="Поиск универсальный агент"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -387,12 +384,6 @@ const addNewGenericAgentTask = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -400,7 +391,6 @@ const addNewGenericAgentTask = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -409,7 +399,6 @@ const addNewGenericAgentTask = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -437,9 +426,9 @@ const addNewGenericAgentTask = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewGenericAgentTask"
+            @click="addNewGenericAgent"
           >
-            Добавить задачу
+            Добавить универсальный агент
           </VBtn>
         </div>
       </div>
@@ -460,18 +449,6 @@ const addNewGenericAgentTask = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="triggerTypeFilter"
-                  placeholder="Тип триггера"
-                  :items="[
-                    { title: 'Временной', value: 'time' },
-                    { title: 'Событийный', value: 'event' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -514,7 +491,7 @@ const addNewGenericAgentTask = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные задачи планировщика? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные универсальный агент? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -581,52 +558,13 @@ const addNewGenericAgentTask = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredGenericAgentTasks"
+        :items="filteredGenericAgent"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Тип триггера -->
-        <template #item.triggerType="{ item }">
-          <VChip
-            :color="item.triggerType === 'time' ? 'primary' : 'success'"
-            size="small"
-            label
-          >
-            {{ item.triggerType === 'time' ? 'Временной' : 'Событийный' }}
-          </VChip>
-        </template>
-
-        <!-- Расписание -->
-        <template #item.schedule="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.schedule }}
-          </div>
-        </template>
-
-        <!-- Последний запуск -->
-        <template #item.lastRun="{ item }">
-          <div v-if="item.lastRun">
-            {{ item.lastRun }}
-          </div>
-          <div v-else class="text-grey">
-            Не запускался
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -642,10 +580,6 @@ const addNewGenericAgentTask = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -668,7 +602,7 @@ const addNewGenericAgentTask = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredGenericAgentTasks.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredGenericAgent.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -679,9 +613,10 @@ const addNewGenericAgentTask = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать задачу' : 'Добавить задачу'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать универсальный агент' : 'Добавить универсальный агент'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -693,36 +628,60 @@ const addNewGenericAgentTask = () => {
               />
             </VCol>
 
-            <!-- Тип триггера -->
+            <!-- Описание -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
-                v-model="editedItem.triggerType"
-                :items="triggerTypeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип триггера *"
+              <AppTextarea
+                v-model="editedItem.description"
+                label="Описание"
+                rows="3"
+                placeholder="Введите описание..."
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
-              <AppTextarea
-                v-model="editedItem.description"
-                label="Описание задачи *"
-                rows="3"
-                placeholder="Введите описание задачи..."
+            <!-- Тип триггера -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.triggerType"
+                label="Тип триггера"
               />
             </VCol>
 
             <!-- Расписание -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextField
                 v-model="editedItem.schedule"
-                label="Расписание *"
-                placeholder="Например: 0 2 * * * (ежедневно в 2:00)"
+                label="Расписание"
+              />
+            </VCol>
+
+            <!-- Последний запуск -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.lastRun"
+                label="Последний запуск"
+              />
+            </VCol>
+
+            <!-- Следующий запуск -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.nextRun"
+                label="Следующий запуск"
               />
             </VCol>
 
@@ -768,7 +727,7 @@ const addNewGenericAgentTask = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту задачу планировщика?">
+      <VCard title="Вы уверены, что хотите удалить этот универсальный агент?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

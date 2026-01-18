@@ -1,100 +1,113 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для очереди
-interface Queue {
+// Типы данных для Очередь
+interface Queues {
   id: number
   name: string
   description: string
   maxTickets: number
   priority: number
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные очередей (демо данные)
-const queues = ref<Queue[]>([
-  {
-    id: 1,
-    name: 'Техническая поддержка',
-    description: 'Очередь для технических вопросов и проблем',
-    maxTickets: 50,
-    priority: 1,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Продажи',
-    description: 'Очередь для вопросов по продуктам и продажам',
-    maxTickets: 30,
-    priority: 2,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Общие вопросы',
-    description: 'Очередь для общих вопросов и информации',
-    maxTickets: 100,
-    priority: 3,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'VIP клиенты',
-    description: 'Приоритетная очередь для VIP клиентов',
-    maxTickets: 10,
-    priority: 1,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'Архивная очередь',
-    description: 'Устаревшая очередь, больше не используется',
-    maxTickets: 0,
-    priority: 5,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'Финансовый отдел',
-    description: 'Очередь для финансовых вопросов и счетов',
-    maxTickets: 20,
-    priority: 2,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные очереди
+const queues = ref<Queues[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchQueues = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching queues from:', `${API_BASE}/queues`)
+    const data = await $fetch<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetched queues data:', data)
+    queues.value = data.queues
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки очереди'
+    console.error('Error fetching queues:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание очередь
+const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Queues>(`${API_BASE}/queues`, {
+      method: 'POST',
+      body: item
+    })
+    queues.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating queues:', err)
+    throw err
+  }
+}
+
+// Обновление очередь
+const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Queues>(`${API_BASE}/queues/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = queues.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      queues.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating queues:', err)
+    throw err
+  }
+}
+
+// Удаление очередь
+const deleteQueues = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/queues/${id}`, {
+      method: 'DELETE'
+    })
+    const index = queues.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      queues.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting queues:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchQueues()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
   { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
   { title: 'Приоритет', key: 'priority', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -102,7 +115,7 @@ const filteredQueues = computed(() => {
   let filtered = queues.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(q => q.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -128,31 +141,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = queues.value.findIndex(q => q.id === item.id)
-    if (index !== -1) {
-      queues.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteQueues(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} очередей`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} очереди`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = queues.value.findIndex(q => q.id === item.id)
-    if (index !== -1) {
-      queues.value[index].status = bulkStatusValue.value
-      queues.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateQueues(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} очередей`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} очереди`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -189,19 +207,19 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Queue>({
+const defaultItem = ref<Queues>({
   id: -1,
   name: '',
   description: '',
-  maxTickets: 50,
-  priority: 3,
+  maxTickets: 0,
+  priority: 0,
   createdAt: '',
   updatedAt: '',
   status: 1,
   isActive: true,
 })
 
-const editedItem = ref<Queue>({ ...defaultItem.value })
+const editedItem = ref<Queues>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -210,23 +228,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции приоритета
-const priorityOptions = [
-  { text: 'Высокий', value: 1 },
-  { text: 'Средний', value: 2 },
-  { text: 'Низкий', value: 3 },
-  { text: 'Очень низкий', value: 4 },
-  { text: 'Минимальный', value: 5 },
-]
-
 // Методы
-const editItem = (item: Queue) => {
+const editItem = (item: Queues) => {
   editedIndex.value = queues.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Queue) => {
+const deleteItem = (item: Queues) => {
   editedIndex.value = queues.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -244,52 +253,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(queues.value[editedIndex.value], editedItem.value)
-    showToast('Очередь успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...queues.value.map(q => q.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    queues.value.push({ ...editedItem.value })
-    showToast('Очередь успешно добавлена')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateQueues(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Очередь успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createQueues({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Очередь успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения очередь', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  queues.value.splice(editedIndex.value, 1)
-  showToast('Очередь успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteQueues(editedItem.value.id)
+    showToast('Очередь успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления очередь', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Queue, newValue: number) => {
+const toggleStatus = async (item: Queues, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = queues.value.findIndex((q: Queue) => q.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    queues.value[index].status = newValue
-    queues.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', queues.value[index])
-    showToast('Статус очереди изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве queues')
+
+  try {
+    await updateQueues(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус очередь изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -304,8 +322,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой очереди
-const addNewQueue = () => {
+// Добавление нового очередь
+const addNewQueues = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -316,11 +334,23 @@ const addNewQueue = () => {
   <div>
     <VCard title="Очереди">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск очередей"
+            placeholder="Поиск очереди"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -348,12 +378,6 @@ const addNewQueue = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -361,7 +385,6 @@ const addNewQueue = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -370,7 +393,6 @@ const addNewQueue = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -398,7 +420,7 @@ const addNewQueue = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewQueue"
+            @click="addNewQueues"
           >
             Добавить очередь
           </VBtn>
@@ -535,24 +557,8 @@ const addNewQueue = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Приоритет -->
-        <template #item.priority="{ item }">
-          {{ priorityOptions.find(p => p.value === item.priority)?.text || 'Неизвестный' }}
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -568,10 +574,6 @@ const addNewQueue = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -608,6 +610,7 @@ const addNewQueue = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать очередь' : 'Добавить очередь'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -620,12 +623,15 @@ const addNewQueue = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.description"
-                label="Описание очереди"
+                label="Описание"
                 rows="3"
-                placeholder="Введите описание очереди..."
+                placeholder="Введите описание..."
               />
             </VCol>
 
@@ -647,12 +653,11 @@ const addNewQueue = () => {
               cols="12"
               sm="6"
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.priority"
-                :items="priorityOptions"
-                item-title="text"
-                item-value="value"
                 label="Приоритет"
+                type="number"
+                min="0"
               />
             </VCol>
 
@@ -698,7 +703,7 @@ const addNewQueue = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту очередь?">
+      <VCard title="Вы уверены, что хотите удалить этот очередь?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

@@ -86,7 +86,12 @@ function processDirectory(dirPath) {
         const interfaces = extractInterfaces(content);
 
         // Определяем сущность по имени файла
-        const entityName = file.replace('.vue', '');
+        let entityName = file.replace('.vue', '');
+        
+        // Специальная обработка для SLA -> sLA
+        if (entityName === 'SLA') {
+          entityName = 'sLA';
+        }
 
         // Ищем интерфейс с таким же именем или похожим
         const interfaceKeys = Object.keys(interfaces);

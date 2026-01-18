@@ -2,22 +2,24 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для сервиса
-interface Service {
+// Типы данных для Сервис
+interface Services {
   id: number
   name: string
   comment: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные сервисов
-const services = ref<Service[]>([])
+// Данные сервисы
+const services = ref<Services[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,61 +28,64 @@ const fetchServices = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Service[]>(`${API_BASE}/services`)
-    services.value = data
+    console.log('Fetching services from:', `${API_BASE}/services`)
+    const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
+    console.log('Fetched services data:', data)
+    services.value = data.services
+    total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки сервисов'
+    error.value = 'Ошибка загрузки сервисы'
     console.error('Error fetching services:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание сервиса
-const createService = async (service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание сервис
+const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Service>(`${API_BASE}/services`, {
+    const data = await $fetch<Services>(`${API_BASE}/services`, {
       method: 'POST',
-      body: service
+      body: item
     })
     services.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating service:', err)
+    console.error('Error creating services:', err)
     throw err
   }
 }
 
-// Обновление сервиса
-const updateService = async (id: number, service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление сервис
+const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Service>(`${API_BASE}/services/${id}`, {
+    const data = await $fetch<Services>(`${API_BASE}/services/${id}`, {
       method: 'PUT',
-      body: service
+      body: item
     })
-    const index = services.value.findIndex(s => s.id === id)
+    const index = services.value.findIndex(p => p.id === id)
     if (index !== -1) {
       services.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating service:', err)
+    console.error('Error updating services:', err)
     throw err
   }
 }
 
-// Удаление сервиса
-const deleteService = async (id: number) => {
+// Удаление сервис
+const deleteServices = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/services/${id}`, {
       method: 'DELETE'
     })
-    const index = services.value.findIndex(s => s.id === id)
+    const index = services.value.findIndex(p => p.id === id)
     if (index !== -1) {
       services.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting service:', err)
+    console.error('Error deleting services:', err)
     throw err
   }
 }
@@ -93,12 +98,12 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -106,7 +111,7 @@ const filteredServices = computed(() => {
   let filtered = services.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(s => s.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -136,10 +141,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteService(item.id)
+      await deleteServices(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} сервисов`)
+    showToast(`Удалено ${count} сервисы`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -150,15 +155,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateService(item.id, {
-        name: item.name,
-        comment: item.comment,
+      await updateServices(item.id, {
+        ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} сервисов`)
+    showToast(`Статус изменен для ${count} сервисы`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -199,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Service>({
+const defaultItem = ref<Services>({
   id: -1,
   name: '',
   comment: '',
@@ -209,7 +213,7 @@ const defaultItem = ref<Service>({
   isActive: true,
 })
 
-const editedItem = ref<Service>({ ...defaultItem.value })
+const editedItem = ref<Services>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -219,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Service) => {
+const editItem = (item: Services) => {
   editedIndex.value = services.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Service) => {
+const deleteItem = (item: Services) => {
   editedIndex.value = services.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -244,31 +248,24 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name.trim()) {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.comment.trim()) {
-    showToast('Комментарий обязателен для заполнения', 'error')
     return
   }
 
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateService(editedItem.value.id, {
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const updated = await updateServices(editedItem.value.id, {
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
       showToast('Сервис успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createService({
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const created = await createServices({
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
@@ -276,34 +273,33 @@ const save = async () => {
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения сервиса', 'error')
+    showToast('Ошибка сохранения сервис', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteService(editedItem.value.id)
+    await deleteServices(editedItem.value.id)
     showToast('Сервис успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления сервиса', 'error')
+    showToast('Ошибка удаления сервис', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: Service, newValue: number) => {
+const toggleStatus = async (item: Services, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateService(item.id, {
-      name: item.name,
-      comment: item.comment,
+    await updateServices(item.id, {
+      ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус сервиса изменен')
+    showToast('Статус сервис изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -320,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового сервиса
-const addNewService = () => {
+// Добавление нового сервис
+const addNewServices = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -348,7 +344,7 @@ const addNewService = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск сервисов"
+            placeholder="Поиск сервисы"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -376,12 +372,6 @@ const addNewService = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -389,7 +379,6 @@ const addNewService = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -398,7 +387,6 @@ const addNewService = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -426,7 +414,7 @@ const addNewService = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewService"
+            @click="addNewServices"
           >
             Добавить сервис
           </VBtn>
@@ -564,11 +552,6 @@ const addNewService = () => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
       >
         <!-- Статус -->
         <template #item.status="{ item }">
@@ -585,10 +568,6 @@ const addNewService = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -625,6 +604,7 @@ const addNewService = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать сервис' : 'Добавить сервис'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -639,11 +619,13 @@ const addNewService = () => {
             <!-- Комментарий -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppTextField
+              <AppTextarea
                 v-model="editedItem.comment"
-                label="Комментарий *"
+                label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 

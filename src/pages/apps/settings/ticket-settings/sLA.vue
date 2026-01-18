@@ -2,11 +2,13 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для Роль агентов
-interface AgentsRoles {
+// Типы данных для sLA
+interface sLA {
   id: number
   name: string
-  message: string
+  description: string
+  responseTime: number // в часах
+  resolutionTime: number // в часах
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
   createdAt: string
@@ -17,88 +19,90 @@ interface AgentsRoles {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные роли агентов
-const agentsRoles = ref<AgentsRoles[]>([])
+// Данные sla
+const sLA = ref<sLA[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
 // Загрузка данных из API
-const fetchAgentsRoles = async () => {
+const fetchsLA = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching agentsRoles from:', `${API_BASE}/agentsRoles`)
-    const data = await $fetch<{ agentsRoles: AgentsRoles[], total: number }>(`${API_BASE}/agentsRoles`)
-    console.log('Fetched agentsRoles data:', data)
-    agentsRoles.value = data.agentsRoles
+    console.log('Fetching sLA from:', `${API_BASE}/sLA`)
+    const data = await $fetch<{ sLA: sLA[], total: number }>(`${API_BASE}/sLA`)
+    console.log('Fetched sLA data:', data)
+    sLA.value = data.sLA
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки роли агентов'
-    console.error('Error fetching agentsRoles:', err)
+    error.value = 'Ошибка загрузки sla'
+    console.error('Error fetching sLA:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание роль агентов
-const createAgentsRoles = async (item: Omit<AgentsRoles, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание sla
+const createsLA = async (item: Omit<sLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<AgentsRoles>(`${API_BASE}/agentsRoles`, {
+    const data = await $fetch<sLA>(`${API_BASE}/sLA`, {
       method: 'POST',
       body: item
     })
-    agentsRoles.value.push(data)
+    sLA.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating agentsRoles:', err)
+    console.error('Error creating sLA:', err)
     throw err
   }
 }
 
-// Обновление роль агентов
-const updateAgentsRoles = async (id: number, item: Omit<AgentsRoles, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление sla
+const updatesLA = async (id: number, item: Omit<sLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<AgentsRoles>(`${API_BASE}/agentsRoles/${id}`, {
+    const data = await $fetch<sLA>(`${API_BASE}/sLA/${id}`, {
       method: 'PUT',
       body: item
     })
-    const index = agentsRoles.value.findIndex(p => p.id === id)
+    const index = sLA.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      agentsRoles.value[index] = data
+      sLA.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating agentsRoles:', err)
+    console.error('Error updating sLA:', err)
     throw err
   }
 }
 
-// Удаление роль агентов
-const deleteAgentsRoles = async (id: number) => {
+// Удаление sla
+const deletesLA = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/agentsRoles/${id}`, {
+    await $fetch(`${API_BASE}/sLA/${id}`, {
       method: 'DELETE'
     })
-    const index = agentsRoles.value.findIndex(p => p.id === id)
+    const index = sLA.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      agentsRoles.value.splice(index, 1)
+      sLA.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting agentsRoles:', err)
+    console.error('Error deleting sLA:', err)
     throw err
   }
 }
 
 // Инициализация
 onMounted(() => {
-  fetchAgentsRoles()
+  fetchsLA()
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Время ответа (ч)', key: 'responseTime', sortable: true },
+  { title: 'Время решения (ч)', key: 'resolutionTime', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
@@ -107,8 +111,8 @@ const headers = [
 ]
 
 // Фильтрация
-const filteredAgentsRoles = computed(() => {
-  let filtered = agentsRoles.value
+const filteredsLA = computed(() => {
+  let filtered = sLA.value
 
   if (statusFilter.value !== null) {
     filtered = filtered.filter(p => p.status === statusFilter.value)
@@ -141,10 +145,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteAgentsRoles(item.id)
+      await deletesLA(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} роли агентов`)
+    showToast(`Удалено ${count} sla`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -155,14 +159,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateAgentsRoles(item.id, {
+      await updatesLA(item.id, {
         ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} роли агентов`)
+    showToast(`Статус изменен для ${count} sla`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -203,17 +207,19 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<AgentsRoles>({
+const defaultItem = ref<sLA>({
   id: -1,
   name: '',
-  message: '',
+  description: '',
+  responseTime: 4,
+  resolutionTime: 4,
   createdAt: '',
   updatedAt: '',
   status: 1,
   isActive: true,
 })
 
-const editedItem = ref<AgentsRoles>({ ...defaultItem.value })
+const editedItem = ref<sLA>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -223,14 +229,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: AgentsRoles) => {
-  editedIndex.value = agentsRoles.value.indexOf(item)
+const editItem = (item: sLA) => {
+  editedIndex.value = sLA.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: AgentsRoles) => {
-  editedIndex.value = agentsRoles.value.indexOf(item)
+const deleteItem = (item: sLA) => {
+  editedIndex.value = sLA.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -256,50 +262,50 @@ const save = async () => {
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateAgentsRoles(editedItem.value.id, {
+      const updated = await updatesLA(editedItem.value.id, {
         ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Роль агентов успешно сохранен')
+      showToast('sLA успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createAgentsRoles({
+      const created = await createsLA({
         ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Роль агентов успешно добавлен')
+      showToast('sLA успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения роль агентов', 'error')
+    showToast('Ошибка сохранения sla', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteAgentsRoles(editedItem.value.id)
-    showToast('Роль агентов успешно удален')
+    await deletesLA(editedItem.value.id)
+    showToast('sLA успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления роль агентов', 'error')
+    showToast('Ошибка удаления sla', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: AgentsRoles, newValue: number) => {
+const toggleStatus = async (item: sLA, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateAgentsRoles(item.id, {
+    await updatesLA(item.id, {
       ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус роль агентов изменен')
+    showToast('Статус sla изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -316,8 +322,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового роль агентов
-const addNewAgentsRoles = () => {
+// Добавление нового sla
+const addNewsLA = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -326,7 +332,7 @@ const addNewAgentsRoles = () => {
 
 <template>
   <div>
-    <VCard title="Роли агентов">
+    <VCard title="sLA">
 
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
@@ -344,7 +350,7 @@ const addNewAgentsRoles = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск роли агентов"
+            placeholder="Поиск sla"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -414,9 +420,9 @@ const addNewAgentsRoles = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewAgentsRoles"
+            @click="addNewsLA"
           >
-            Добавить роль агентов
+            Добавить sla
           </VBtn>
         </div>
       </div>
@@ -479,7 +485,7 @@ const addNewAgentsRoles = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные роли агентов? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные sla? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -546,7 +552,7 @@ const addNewAgentsRoles = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredAgentsRoles"
+        :items="filteredsLA"
         show-select
         :hide-default-footer="true"
         item-value="id"
@@ -590,7 +596,7 @@ const addNewAgentsRoles = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAgentsRoles.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredsLA.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -601,7 +607,7 @@ const addNewAgentsRoles = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать роль агентов' : 'Добавить роль агентов'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать sla' : 'Добавить sla'">
         <VCardText>
           <VRow>
 
@@ -616,16 +622,44 @@ const addNewAgentsRoles = () => {
               />
             </VCol>
 
-            <!-- Сообщение -->
+            <!-- Описание -->
             <VCol
               cols="12"
               
             >
               <AppTextarea
-                v-model="editedItem.message"
-                label="Сообщение"
+                v-model="editedItem.description"
+                label="Описание"
                 rows="3"
-                placeholder="Введите сообщение..."
+                placeholder="Введите описание..."
+              />
+            </VCol>
+
+            <!-- Время ответа (часы) -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.responseTime"
+                label="Время ответа (часы)"
+                type="number"
+                min="0"
+                step="0.25"
+              />
+            </VCol>
+
+            <!-- Время решения (часы) -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.resolutionTime"
+                label="Время решения (часы)"
+                type="number"
+                min="0"
+                step="0.25"
               />
             </VCol>
 
@@ -671,7 +705,7 @@ const addNewAgentsRoles = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот роль агентов?">
+      <VCard title="Вы уверены, что хотите удалить этот sla?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

@@ -1,84 +1,109 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для роли
-interface Role {
+// Типы данных для Роль
+interface Roles {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные ролей (демо данные)
-const roles = ref<Role[]>([
-  {
-    id: 1,
-    name: 'admin',
-    message: 'Роль администратора с полными правами',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'manager',
-    message: 'Роль менеджера для управления командой',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'user',
-    message: 'Базовая роль пользователя',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'support',
-    message: 'Роль для поддержки клиентов',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'guest',
-    message: 'Роль гостя с ограниченными правами',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'analyst',
-    message: 'Роль аналитика для отчетов',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные роли
+const roles = ref<Roles[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchRoles = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching roles from:', `${API_BASE}/roles`)
+    const data = await $fetch<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
+    console.log('Fetched roles data:', data)
+    roles.value = data.roles
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки роли'
+    console.error('Error fetching roles:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание роль
+const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Roles>(`${API_BASE}/roles`, {
+      method: 'POST',
+      body: item
+    })
+    roles.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating roles:', err)
+    throw err
+  }
+}
+
+// Обновление роль
+const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Roles>(`${API_BASE}/roles/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = roles.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      roles.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating roles:', err)
+    throw err
+  }
+}
+
+// Удаление роль
+const deleteRoles = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/roles/${id}`, {
+      method: 'DELETE'
+    })
+    const index = roles.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      roles.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting roles:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchRoles()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -86,7 +111,7 @@ const filteredRoles = computed(() => {
   let filtered = roles.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = roles.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      roles.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteRoles(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} ролей`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} роли`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = roles.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      roles.value[index].status = bulkStatusValue.value
-      roles.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateRoles(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} ролей`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} роли`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Role>({
+const defaultItem = ref<Roles>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<Role>({
   isActive: true,
 })
 
-const editedItem = ref<Role>({ ...defaultItem.value })
+const editedItem = ref<Roles>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Role) => {
+const editItem = (item: Roles) => {
   editedIndex.value = roles.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Role) => {
+const deleteItem = (item: Roles) => {
   editedIndex.value = roles.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(roles.value[editedIndex.value], editedItem.value)
-    showToast('Роль успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...roles.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    roles.value.push({ ...editedItem.value })
-    showToast('Роль успешно добавлена')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateRoles(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Роль успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createRoles({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Роль успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения роль', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  roles.value.splice(editedIndex.value, 1)
-  showToast('Роль успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteRoles(editedItem.value.id)
+    showToast('Роль успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления роль', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Role, newValue: number) => {
+const toggleStatus = async (item: Roles, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = roles.value.findIndex((t: Role) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    roles.value[index].status = newValue
-    roles.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', roles.value[index])
-    showToast('Статус роли изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве roles')
+
+  try {
+    await updateRoles(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус роль изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой роли
-const addNewRole = () => {
+// Добавление нового роль
+const addNewRoles = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewRole = () => {
   <div>
     <VCard title="Роли">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск ролей"
+            placeholder="Поиск роли"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewRole = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewRole = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewRole = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,7 +414,7 @@ const addNewRole = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewRole"
+            @click="addNewRoles"
           >
             Добавить роль
           </VBtn>
@@ -508,19 +551,8 @@ const addNewRole = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewRole = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -576,6 +604,7 @@ const addNewRole = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать роль' : 'Добавить роль'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewRole = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание роли"
-                rows="4"
-                placeholder="Введите описание роли..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewRole = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту роль?">
+      <VCard title="Вы уверены, что хотите удалить этот роль?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewRole = () => {
   margin-block-end: 1rem;
 }
 </style>
-

@@ -2,22 +2,24 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для состояния
-interface State {
+// Типы данных для Состояние
+interface States {
   id: number
   name: string
   comment: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные состояний
-const states = ref<State[]>([])
+// Данные состояния
+const states = ref<States[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,61 +28,64 @@ const fetchStates = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<State[]>(`${API_BASE}/states`)
-    states.value = data
+    console.log('Fetching states from:', `${API_BASE}/states`)
+    const data = await $fetch<{ states: States[], total: number }>(`${API_BASE}/states`)
+    console.log('Fetched states data:', data)
+    states.value = data.states
+    total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки состояний'
+    error.value = 'Ошибка загрузки состояния'
     console.error('Error fetching states:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание состояния
-const createState = async (state: Omit<State, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание состояние
+const createStates = async (item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<State>(`${API_BASE}/states`, {
+    const data = await $fetch<States>(`${API_BASE}/states`, {
       method: 'POST',
-      body: state
+      body: item
     })
     states.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating state:', err)
+    console.error('Error creating states:', err)
     throw err
   }
 }
 
-// Обновление состояния
-const updateState = async (id: number, state: Omit<State, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление состояние
+const updateStates = async (id: number, item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<State>(`${API_BASE}/states/${id}`, {
+    const data = await $fetch<States>(`${API_BASE}/states/${id}`, {
       method: 'PUT',
-      body: state
+      body: item
     })
-    const index = states.value.findIndex(s => s.id === id)
+    const index = states.value.findIndex(p => p.id === id)
     if (index !== -1) {
       states.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating state:', err)
+    console.error('Error updating states:', err)
     throw err
   }
 }
 
-// Удаление состояния
-const deleteState = async (id: number) => {
+// Удаление состояние
+const deleteStates = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/states/${id}`, {
       method: 'DELETE'
     })
-    const index = states.value.findIndex(s => s.id === id)
+    const index = states.value.findIndex(p => p.id === id)
     if (index !== -1) {
       states.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting state:', err)
+    console.error('Error deleting states:', err)
     throw err
   }
 }
@@ -93,12 +98,12 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -106,7 +111,7 @@ const filteredStates = computed(() => {
   let filtered = states.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(s => s.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -136,10 +141,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteState(item.id)
+      await deleteStates(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} состояний`)
+    showToast(`Удалено ${count} состояния`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -150,15 +155,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateState(item.id, {
-        name: item.name,
-        comment: item.comment,
+      await updateStates(item.id, {
+        ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} состояний`)
+    showToast(`Статус изменен для ${count} состояния`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -199,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<State>({
+const defaultItem = ref<States>({
   id: -1,
   name: '',
   comment: '',
@@ -209,7 +213,7 @@ const defaultItem = ref<State>({
   isActive: true,
 })
 
-const editedItem = ref<State>({ ...defaultItem.value })
+const editedItem = ref<States>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -218,16 +222,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-
-
 // Методы
-const editItem = (item: State) => {
+const editItem = (item: States) => {
   editedIndex.value = states.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: State) => {
+const deleteItem = (item: States) => {
   editedIndex.value = states.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -246,66 +248,58 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name.trim()) {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.comment.trim()) {
-    showToast('Комментарий обязателен для заполнения', 'error')
     return
   }
 
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateState(editedItem.value.id, {
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const updated = await updateStates(editedItem.value.id, {
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Состояние успешно сохранено')
+      showToast('Состояние успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createState({
-        name: editedItem.value.name,
-        comment: editedItem.value.comment,
+      const created = await createStates({
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Состояние успешно добавлено')
+      showToast('Состояние успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения состояния', 'error')
+    showToast('Ошибка сохранения состояние', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteState(editedItem.value.id)
-    showToast('Состояние успешно удалено')
+    await deleteStates(editedItem.value.id)
+    showToast('Состояние успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления состояния', 'error')
+    showToast('Ошибка удаления состояние', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: State, newValue: number) => {
+const toggleStatus = async (item: States, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateState(item.id, {
-      name: item.name,
-      comment: item.comment,
+    await updateStates(item.id, {
+      ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус состояния изменен')
+    showToast('Статус состояние изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -322,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового состояния
-const addNewState = () => {
+// Добавление нового состояние
+const addNewStates = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -350,7 +344,7 @@ const addNewState = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск состояний"
+            placeholder="Поиск состояния"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -378,12 +372,6 @@ const addNewState = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -391,7 +379,6 @@ const addNewState = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -400,7 +387,6 @@ const addNewState = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -428,7 +414,7 @@ const addNewState = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewState"
+            @click="addNewStates"
           >
             Добавить состояние
           </VBtn>
@@ -566,17 +552,7 @@ const addNewState = () => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
       >
-        <!-- Комментарий -->
-        <template #item.comment="{ item }">
-          {{ item.comment }}
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -592,10 +568,6 @@ const addNewState = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -632,6 +604,7 @@ const addNewState = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать состояние' : 'Добавить состояние'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -646,11 +619,13 @@ const addNewState = () => {
             <!-- Комментарий -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppTextField
+              <AppTextarea
                 v-model="editedItem.comment"
-                label="Комментарий *"
+                label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 
@@ -696,7 +671,7 @@ const addNewState = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить это состояние?">
+      <VCard title="Вы уверены, что хотите удалить этот состояние?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

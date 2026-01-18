@@ -1,92 +1,117 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для группы агентов
-interface AgentGroup {
+// Типы данных для Группа агентов
+interface AgentsGroups {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные групп агентов (демо данные)
-const agentGroups = ref<AgentGroup[]>([
-  {
-    id: 1,
-    name: 'support-group',
-    message: 'Группа агентов поддержки клиентов',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'sales-group',
-    message: 'Группа агентов продаж',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'admin-group',
-    message: 'Группа администраторов',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'tech-group',
-    message: 'Группа технических специалистов',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'archive-group',
-    message: 'Архивная группа, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'feedback-group',
-    message: 'Группа для обработки отзывов',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные группы агентов
+const agentsGroups = ref<AgentsGroups[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchAgentsGroups = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching agentsGroups from:', `${API_BASE}/agentsGroups`)
+    const data = await $fetch<{ agentsGroups: AgentsGroups[], total: number }>(`${API_BASE}/agentsGroups`)
+    console.log('Fetched agentsGroups data:', data)
+    agentsGroups.value = data.agentsGroups
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки группы агентов'
+    console.error('Error fetching agentsGroups:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание группа агентов
+const createAgentsGroups = async (item: Omit<AgentsGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups`, {
+      method: 'POST',
+      body: item
+    })
+    agentsGroups.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating agentsGroups:', err)
+    throw err
+  }
+}
+
+// Обновление группа агентов
+const updateAgentsGroups = async (id: number, item: Omit<AgentsGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = agentsGroups.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      agentsGroups.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating agentsGroups:', err)
+    throw err
+  }
+}
+
+// Удаление группа агентов
+const deleteAgentsGroups = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/agentsGroups/${id}`, {
+      method: 'DELETE'
+    })
+    const index = agentsGroups.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      agentsGroups.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting agentsGroups:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchAgentsGroups()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredAgentGroups = computed(() => {
-  let filtered = agentGroups.value
+const filteredAgentsGroups = computed(() => {
+  let filtered = agentsGroups.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = agentGroups.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      agentGroups.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteAgentsGroups(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} групп агентов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} группы агентов`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = agentGroups.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      agentGroups.value[index].status = bulkStatusValue.value
-      agentGroups.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateAgentsGroups(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} групп агентов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} группы агентов`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<AgentGroup>({
+const defaultItem = ref<AgentsGroups>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<AgentGroup>({
   isActive: true,
 })
 
-const editedItem = ref<AgentGroup>({ ...defaultItem.value })
+const editedItem = ref<AgentsGroups>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,14 +223,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: AgentGroup) => {
-  editedIndex.value = agentGroups.value.indexOf(item)
+const editItem = (item: AgentsGroups) => {
+  editedIndex.value = agentsGroups.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: AgentGroup) => {
-  editedIndex.value = agentGroups.value.indexOf(item)
+const deleteItem = (item: AgentsGroups) => {
+  editedIndex.value = agentsGroups.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(agentGroups.value[editedIndex.value], editedItem.value)
-    showToast('Группа агентов успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...agentGroups.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    agentGroups.value.push({ ...editedItem.value })
-    showToast('Группа агентов успешно добавлена')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateAgentsGroups(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Группа агентов успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createAgentsGroups({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Группа агентов успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения группа агентов', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  agentGroups.value.splice(editedIndex.value, 1)
-  showToast('Группа агентов успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteAgentsGroups(editedItem.value.id)
+    showToast('Группа агентов успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления группа агентов', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: AgentGroup, newValue: number) => {
+const toggleStatus = async (item: AgentsGroups, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = agentGroups.value.findIndex((t: AgentGroup) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    agentGroups.value[index].status = newValue
-    agentGroups.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', agentGroups.value[index])
-    showToast('Статус группы агентов изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве agentGroups')
+
+  try {
+    await updateAgentsGroups(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус группа агентов изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой группы агентов
-const addNewAgentGroup = () => {
+// Добавление нового группа агентов
+const addNewAgentsGroups = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -289,11 +328,23 @@ const addNewAgentGroup = () => {
   <div>
     <VCard title="Группы агентов">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск групп агентов"
+            placeholder="Поиск группы агентов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewAgentGroup = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewAgentGroup = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewAgentGroup = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewAgentGroup = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewAgentGroup"
+            @click="addNewAgentsGroups"
           >
-            Добавить группу агентов
+            Добавить группа агентов
           </VBtn>
         </div>
       </div>
@@ -503,24 +546,13 @@ const addNewAgentGroup = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredAgentGroups"
+        :items="filteredAgentsGroups"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewAgentGroup = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -562,7 +590,7 @@ const addNewAgentGroup = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAgentGroups.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredAgentsGroups.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -573,9 +601,10 @@ const addNewAgentGroup = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать группу агентов' : 'Добавить группу агентов'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать группа агентов' : 'Добавить группа агентов'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewAgentGroup = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание группы агентов"
-                rows="4"
-                placeholder="Введите описание группы агентов..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewAgentGroup = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту группу агентов?">
+      <VCard title="Вы уверены, что хотите удалить этот группа агентов?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewAgentGroup = () => {
   margin-block-end: 1rem;
 }
 </style>
-

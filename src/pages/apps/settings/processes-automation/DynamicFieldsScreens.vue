@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для динамических полей и экранов
-interface DynamicFieldScreen {
+// Типы данных для Экран динамических полей
+interface DynamicFieldsScreens {
   id: number
   name: string
   screenName: string
@@ -11,118 +12,114 @@ interface DynamicFieldScreen {
   isActive: boolean
   isRequired: boolean
   position: number
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные динамических полей и экранов (демо данные)
-const dynamicFieldScreens = ref<DynamicFieldScreen[]>([
-  {
-    id: 1,
-    name: 'Ticket Create Screen',
-    screenName: 'Создание тикета',
-    fieldName: 'priority',
-    fieldType: 'select',
-    isActive: true,
-    isRequired: true,
-    position: 1,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Ticket Edit Screen',
-    screenName: 'Редактирование тикета',
-    fieldName: 'category',
-    fieldType: 'select',
-    isActive: true,
-    isRequired: false,
-    position: 2,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Customer Profile Screen',
-    screenName: 'Профиль клиента',
-    fieldName: 'phone',
-    fieldType: 'text',
-    isActive: true,
-    isRequired: false,
-    position: 1,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Agent Dashboard Screen',
-    screenName: 'Агентская панель',
-    fieldName: 'assigned_to',
-    fieldType: 'select',
-    isActive: true,
-    isRequired: false,
-    position: 1,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Screen Config',
-    screenName: 'Старый экран',
-    fieldName: 'old_field',
-    fieldType: 'text',
-    isActive: false,
-    isRequired: false,
-    position: 1,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Screen',
-    screenName: 'Тестовый экран',
-    fieldName: 'test_field',
-    fieldType: 'checkbox',
-    isActive: true,
-    isRequired: true,
-    position: 3,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные экраны динамических полей
+const dynamicFieldsScreens = ref<DynamicFieldsScreens[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchDynamicFieldsScreens = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching dynamicFieldsScreens from:', `${API_BASE}/dynamicFieldsScreens`)
+    const data = await $fetch<{ dynamicFieldsScreens: DynamicFieldsScreens[], total: number }>(`${API_BASE}/dynamicFieldsScreens`)
+    console.log('Fetched dynamicFieldsScreens data:', data)
+    dynamicFieldsScreens.value = data.dynamicFieldsScreens
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки экраны динамических полей'
+    console.error('Error fetching dynamicFieldsScreens:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание экран динамических полей
+const createDynamicFieldsScreens = async (item: Omit<DynamicFieldsScreens, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<DynamicFieldsScreens>(`${API_BASE}/dynamicFieldsScreens`, {
+      method: 'POST',
+      body: item
+    })
+    dynamicFieldsScreens.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating dynamicFieldsScreens:', err)
+    throw err
+  }
+}
+
+// Обновление экран динамических полей
+const updateDynamicFieldsScreens = async (id: number, item: Omit<DynamicFieldsScreens, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<DynamicFieldsScreens>(`${API_BASE}/dynamicFieldsScreens/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = dynamicFieldsScreens.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      dynamicFieldsScreens.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating dynamicFieldsScreens:', err)
+    throw err
+  }
+}
+
+// Удаление экран динамических полей
+const deleteDynamicFieldsScreens = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/dynamicFieldsScreens/${id}`, {
+      method: 'DELETE'
+    })
+    const index = dynamicFieldsScreens.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      dynamicFieldsScreens.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting dynamicFieldsScreens:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchDynamicFieldsScreens()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Экран', key: 'screenName', sortable: true },
-  { title: 'Поле', key: 'fieldName', sortable: true },
-  { title: 'Тип', key: 'fieldType', sortable: true },
-  { title: 'Обязательное', key: 'isRequired', sortable: false },
+  { title: 'Имя экрана', key: 'screenName', sortable: true },
+  { title: 'Имя поля', key: 'fieldName', sortable: true },
+  { title: 'Тип поля', key: 'fieldType', sortable: true },
+  { title: 'Обязательное', key: 'isRequired', sortable: true },
   { title: 'Позиция', key: 'position', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredDynamicFieldScreens = computed(() => {
-  let filtered = dynamicFieldScreens.value
+const filteredDynamicFieldsScreens = computed(() => {
+  let filtered = dynamicFieldsScreens.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (isActiveFilter.value !== null) {
-    filtered = filtered.filter(t => t.isActive === isActiveFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -131,7 +128,6 @@ const filteredDynamicFieldScreens = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  isActiveFilter.value = null
 }
 
 // Массовые действия
@@ -149,31 +145,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = dynamicFieldScreens.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      dynamicFieldScreens.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteDynamicFieldsScreens(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} конфигураций динамических полей`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} экраны динамических полей`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = dynamicFieldScreens.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      dynamicFieldScreens.value[index].status = bulkStatusValue.value
-      dynamicFieldScreens.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateDynamicFieldsScreens(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} конфигураций динамических полей`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} экраны динамических полей`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -189,7 +190,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const isActiveFilter = ref<boolean | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -211,21 +211,21 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<DynamicFieldScreen>({
+const defaultItem = ref<DynamicFieldsScreens>({
   id: -1,
   name: '',
   screenName: '',
   fieldName: '',
-  fieldType: 'text',
-  isActive: true,
+  fieldType: '',
   isRequired: false,
-  position: 1,
+  position: 0,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<DynamicFieldScreen>({ ...defaultItem.value })
+const editedItem = ref<DynamicFieldsScreens>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -234,24 +234,15 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов полей
-const fieldTypeOptions = [
-  { text: 'Текст', value: 'text' },
-  { text: 'Чекбокс', value: 'checkbox' },
-  { text: 'Выбор', value: 'select' },
-  { text: 'Дата', value: 'date' },
-  { text: 'Число', value: 'number' },
-]
-
 // Методы
-const editItem = (item: DynamicFieldScreen) => {
-  editedIndex.value = dynamicFieldScreens.value.indexOf(item)
+const editItem = (item: DynamicFieldsScreens) => {
+  editedIndex.value = dynamicFieldsScreens.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: DynamicFieldScreen) => {
-  editedIndex.value = dynamicFieldScreens.value.indexOf(item)
+const deleteItem = (item: DynamicFieldsScreens) => {
+  editedIndex.value = dynamicFieldsScreens.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -268,62 +259,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.screenName.trim()) {
-    showToast('Название экрана обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateDynamicFieldsScreens(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Экран динамических полей успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createDynamicFieldsScreens({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Экран динамических полей успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения экран динамических полей', 'error')
   }
-
-  if (!editedItem.value.fieldName.trim()) {
-    showToast('Название поля обязательно для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(dynamicFieldScreens.value[editedIndex.value], editedItem.value)
-    showToast('Конфигурация динамического поля успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...dynamicFieldScreens.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    dynamicFieldScreens.value.push({ ...editedItem.value })
-    showToast('Конфигурация динамического поля успешно добавлена')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  dynamicFieldScreens.value.splice(editedIndex.value, 1)
-  showToast('Конфигурация динамического поля успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteDynamicFieldsScreens(editedItem.value.id)
+    showToast('Экран динамических полей успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления экран динамических полей', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: DynamicFieldScreen, newValue: number) => {
+const toggleStatus = async (item: DynamicFieldsScreens, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = dynamicFieldScreens.value.findIndex((t: DynamicFieldScreen) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    dynamicFieldScreens.value[index].status = newValue
-    dynamicFieldScreens.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', dynamicFieldScreens.value[index])
-    showToast('Статус конфигурации динамического поля изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве dynamicFieldScreens')
+
+  try {
+    await updateDynamicFieldsScreens(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус экран динамических полей изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -338,8 +328,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой конфигурации динамического поля
-const addNewDynamicFieldScreen = () => {
+// Добавление нового экран динамических полей
+const addNewDynamicFieldsScreens = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -348,21 +338,25 @@ const addNewDynamicFieldScreen = () => {
 
 <template>
   <div>
-    <VCard title="Динамические поля и Экраны">
-      <VCardText>
-        <p class="text-body-1">
-          Активация динамических полей для экранов.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Activation of dynamic fields for screens.
-        </p>
-      </VCardText>
+    <VCard title="Экраны динамических полей">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск конфигураций динамических полей"
+            placeholder="Поиск экраны динамических полей"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -390,12 +384,6 @@ const addNewDynamicFieldScreen = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -403,7 +391,6 @@ const addNewDynamicFieldScreen = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -412,7 +399,6 @@ const addNewDynamicFieldScreen = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -440,9 +426,9 @@ const addNewDynamicFieldScreen = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewDynamicFieldScreen"
+            @click="addNewDynamicFieldsScreens"
           >
-            Добавить конфигурацию
+            Добавить экран динамических полей
           </VBtn>
         </div>
       </div>
@@ -463,18 +449,6 @@ const addNewDynamicFieldScreen = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="isActiveFilter"
-                  placeholder="Активен"
-                  :items="[
-                    { title: 'Да', value: true },
-                    { title: 'Нет', value: false },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -517,7 +491,7 @@ const addNewDynamicFieldScreen = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные конфигурации динамических полей? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные экраны динамических полей? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -584,53 +558,13 @@ const addNewDynamicFieldScreen = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredDynamicFieldScreens"
+        :items="filteredDynamicFieldsScreens"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Экран -->
-        <template #item.screenName="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.screenName }}
-          </div>
-        </template>
-
-        <!-- Поле -->
-        <template #item.fieldName="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 150px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.fieldName }}
-          </div>
-        </template>
-
-        <!-- Тип -->
-        <template #item.fieldType="{ item }">
-          <VChip
-            :color="item.fieldType === 'text' ? 'primary' : item.fieldType === 'select' ? 'success' : item.fieldType === 'checkbox' ? 'warning' : 'info'"
-            size="small"
-            label
-          >
-            {{ item.fieldType }}
-          </VChip>
-        </template>
-
-        <!-- Обязательное -->
-        <template #item.isRequired="{ item }">
-          <VChip
-            :color="item.isRequired ? 'success' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isRequired ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -646,10 +580,6 @@ const addNewDynamicFieldScreen = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -672,7 +602,7 @@ const addNewDynamicFieldScreen = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredDynamicFieldScreens.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredDynamicFieldsScreens.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -683,9 +613,10 @@ const addNewDynamicFieldScreen = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать конфигурацию' : 'Добавить конфигурацию'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать экран динамических полей' : 'Добавить экран динамических полей'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -697,50 +628,48 @@ const addNewDynamicFieldScreen = () => {
               />
             </VCol>
 
-            <!-- Название экрана -->
+            <!-- Имя экрана -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.screenName"
-                label="Название экрана *"
+                label="Имя экрана"
               />
             </VCol>
 
-            <!-- Название поля -->
+            <!-- Имя поля -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.fieldName"
-                label="Название поля *"
+                label="Имя поля"
               />
             </VCol>
 
             <!-- Тип поля -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.fieldType"
-                :items="fieldTypeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип поля *"
+                label="Тип поля"
               />
             </VCol>
 
             <!-- Обязательное -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <VSwitch
                 v-model="editedItem.isRequired"
-                label="Обязательное поле"
+                label="Обязательное"
+                color="primary"
               />
             </VCol>
 
@@ -753,6 +682,7 @@ const addNewDynamicFieldScreen = () => {
                 v-model="editedItem.position"
                 label="Позиция"
                 type="number"
+                min="0"
               />
             </VCol>
 
@@ -798,7 +728,7 @@ const addNewDynamicFieldScreen = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту конфигурацию динамического поля?">
+      <VCard title="Вы уверены, что хотите удалить этот экран динамических полей?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -836,4 +766,3 @@ const addNewDynamicFieldScreen = () => {
   margin-block-end: 1rem;
 }
 </style>
-

@@ -40,6 +40,7 @@ const worker = setupWorker(
 )
 
 export default function () {
+  console.log('VITE_USE_MSW:', import.meta.env.VITE_USE_MSW)
   if (import.meta.env.VITE_USE_MSW === 'false') return
 
   const workerUrl = `${import.meta.env.BASE_URL ?? '/'}mockServiceWorker.js`
@@ -48,6 +49,11 @@ export default function () {
     serviceWorker: {
       url: workerUrl,
     },
+    // 'bypass' - пропускает запросы без моков к реальному API
+    // Это позволяет шаблонным страницам работать с моками,
+    // а вашим новым страницам - с реальным бэкендом
     onUnhandledRequest: 'bypass',
   })
+  
+  console.log('✅ MSW запущен в режиме bypass - незамоканные запросы идут на реальный API')
 }

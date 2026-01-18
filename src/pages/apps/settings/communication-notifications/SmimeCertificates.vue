@@ -1,84 +1,109 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для сертификата S/MIME
-interface SmimeCertificate {
+// Типы данных для S/MIME сертификат
+interface SmimeCertificates {
   id: number
   name: string
   message: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные сертификатов S/MIME (демо данные)
-const smimeCertificates = ref<SmimeCertificate[]>([
-  {
-    id: 1,
-    name: 'smime-cert-support',
-    message: 'S/MIME сертификат для подписи сообщений поддержки',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'smime-cert-admin',
-    message: 'S/MIME сертификат для административных сообщений',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'smime-cert-billing',
-    message: 'S/MIME сертификат для финансовых уведомлений',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'smime-cert-feedback',
-    message: 'S/MIME сертификат для сообщений обратной связи',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'smime-cert-old',
-    message: 'Старый S/MIME сертификат, больше не используется',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'smime-cert-general',
-    message: 'Общий S/MIME сертификат для всех сообщений',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные s/mime сертификаты
+const smimeCertificates = ref<SmimeCertificates[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchSmimeCertificates = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching smimeCertificates from:', `${API_BASE}/smimeCertificates`)
+    const data = await $fetch<{ smimeCertificates: SmimeCertificates[], total: number }>(`${API_BASE}/smimeCertificates`)
+    console.log('Fetched smimeCertificates data:', data)
+    smimeCertificates.value = data.smimeCertificates
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки s/mime сертификаты'
+    console.error('Error fetching smimeCertificates:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание s/mime сертификат
+const createSmimeCertificates = async (item: Omit<SmimeCertificates, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SmimeCertificates>(`${API_BASE}/smimeCertificates`, {
+      method: 'POST',
+      body: item
+    })
+    smimeCertificates.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating smimeCertificates:', err)
+    throw err
+  }
+}
+
+// Обновление s/mime сертификат
+const updateSmimeCertificates = async (id: number, item: Omit<SmimeCertificates, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<SmimeCertificates>(`${API_BASE}/smimeCertificates/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = smimeCertificates.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      smimeCertificates.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating smimeCertificates:', err)
+    throw err
+  }
+}
+
+// Удаление s/mime сертификат
+const deleteSmimeCertificates = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/smimeCertificates/${id}`, {
+      method: 'DELETE'
+    })
+    const index = smimeCertificates.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      smimeCertificates.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting smimeCertificates:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchSmimeCertificates()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'message', sortable: false },
+  { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -86,7 +111,7 @@ const filteredSmimeCertificates = computed(() => {
   let filtered = smimeCertificates.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -112,31 +137,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = smimeCertificates.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      smimeCertificates.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteSmimeCertificates(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} сертификатов S/MIME`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} s/mime сертификаты`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = smimeCertificates.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      smimeCertificates.value[index].status = bulkStatusValue.value
-      smimeCertificates.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateSmimeCertificates(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} сертификатов S/MIME`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} s/mime сертификаты`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -173,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<SmimeCertificate>({
+const defaultItem = ref<SmimeCertificates>({
   id: -1,
   name: '',
   message: '',
@@ -183,7 +213,7 @@ const defaultItem = ref<SmimeCertificate>({
   isActive: true,
 })
 
-const editedItem = ref<SmimeCertificate>({ ...defaultItem.value })
+const editedItem = ref<SmimeCertificates>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -193,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: SmimeCertificate) => {
+const editItem = (item: SmimeCertificates) => {
   editedIndex.value = smimeCertificates.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: SmimeCertificate) => {
+const deleteItem = (item: SmimeCertificates) => {
   editedIndex.value = smimeCertificates.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -217,52 +247,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(smimeCertificates.value[editedIndex.value], editedItem.value)
-    showToast('Сертификат S/MIME успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...smimeCertificates.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    smimeCertificates.value.push({ ...editedItem.value })
-    showToast('Сертификат S/MIME успешно добавлен')
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateSmimeCertificates(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('S/MIME сертификат успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createSmimeCertificates({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('S/MIME сертификат успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения s/mime сертификат', 'error')
   }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  smimeCertificates.value.splice(editedIndex.value, 1)
-  showToast('Сертификат S/MIME успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteSmimeCertificates(editedItem.value.id)
+    showToast('S/MIME сертификат успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления s/mime сертификат', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: SmimeCertificate, newValue: number) => {
+const toggleStatus = async (item: SmimeCertificates, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = smimeCertificates.value.findIndex((t: SmimeCertificate) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    smimeCertificates.value[index].status = newValue
-    smimeCertificates.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', smimeCertificates.value[index])
-    showToast('Статус сертификата S/MIME изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве smimeCertificates')
+
+  try {
+    await updateSmimeCertificates(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус s/mime сертификат изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -277,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового сертификата S/MIME
-const addNewSmimeCertificate = () => {
+// Добавление нового s/mime сертификат
+const addNewSmimeCertificates = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -287,13 +326,25 @@ const addNewSmimeCertificate = () => {
 
 <template>
   <div>
-    <VCard title="Сертификаты S/MIME">
+    <VCard title="S/MIME сертификаты">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск сертификатов S/MIME"
+            placeholder="Поиск s/mime сертификаты"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -321,12 +372,6 @@ const addNewSmimeCertificate = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -334,7 +379,6 @@ const addNewSmimeCertificate = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -343,7 +387,6 @@ const addNewSmimeCertificate = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -371,9 +414,9 @@ const addNewSmimeCertificate = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewSmimeCertificate"
+            @click="addNewSmimeCertificates"
           >
-            Добавить сертификат S/MIME
+            Добавить s/mime сертификат
           </VBtn>
         </div>
       </div>
@@ -436,7 +479,7 @@ const addNewSmimeCertificate = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные сертификаты S/MIME? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные s/mime сертификаты? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -508,19 +551,8 @@ const addNewSmimeCertificate = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.message="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.message }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -536,10 +568,6 @@ const addNewSmimeCertificate = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -573,9 +601,10 @@ const addNewSmimeCertificate = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать сертификат S/MIME' : 'Добавить сертификат S/MIME'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать s/mime сертификат' : 'Добавить s/mime сертификат'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -587,13 +616,16 @@ const addNewSmimeCertificate = () => {
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Описание сертификата S/MIME"
-                rows="4"
-                placeholder="Введите описание сертификата S/MIME..."
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
               />
             </VCol>
 
@@ -639,7 +671,7 @@ const addNewSmimeCertificate = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот сертификат S/MIME?">
+      <VCard title="Вы уверены, что хотите удалить этот s/mime сертификат?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -677,4 +709,3 @@ const addNewSmimeCertificate = () => {
   margin-block-end: 1rem;
 }
 </style>
-

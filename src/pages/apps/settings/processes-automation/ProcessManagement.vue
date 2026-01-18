@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для управления процессами
-interface Process {
+// Типы данных для Управление процессом
+interface ProcessManagement {
   id: number
   name: string
   description: string
@@ -10,91 +11,97 @@ interface Process {
   isActive: boolean
   lastExecuted: string | null
   nextExecution: string
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные процессов (демо данные)
-const processes = ref<Process[]>([
-  {
-    id: 1,
-    name: 'Ticket Escalation',
-    description: 'Процесс эскалации тикетов',
-    processType: 'escalation',
-    isActive: true,
-    lastExecuted: '2023-01-15 10:00:00',
-    nextExecution: '2023-01-15 11:00:00',
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'Customer Notification',
-    description: 'Процесс уведомления клиентов',
-    processType: 'notification',
-    isActive: true,
-    lastExecuted: '2023-01-15 10:30:00',
-    nextExecution: '2023-01-15 10:35:00',
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'Data Cleanup',
-    description: 'Процесс очистки данных',
-    processType: 'cleanup',
-    isActive: true,
-    lastExecuted: '2023-01-15 02:00:00',
-    nextExecution: '2023-01-16 02:00:00',
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'Report Generation',
-    description: 'Процесс генерации отчетов',
-    processType: 'report',
-    isActive: true,
-    lastExecuted: '2023-01-15 09:00:00',
-    nextExecution: '2023-01-16 09:00:00',
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'Old Process',
-    description: 'Старый процесс, больше не используется',
-    processType: 'legacy',
-    isActive: false,
-    lastExecuted: null,
-    nextExecution: '2023-01-15 00:00:00',
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'Test Process',
-    description: 'Тестовый процесс для проверки системы',
-    processType: 'test',
-    isActive: true,
-    lastExecuted: '2023-01-15 16:00:00',
-    nextExecution: '2023-01-15 16:05:00',
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные управление процессами
+const processManagement = ref<ProcessManagement[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchProcessManagement = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching processManagement from:', `${API_BASE}/processManagement`)
+    const data = await $fetch<{ processManagement: ProcessManagement[], total: number }>(`${API_BASE}/processManagement`)
+    console.log('Fetched processManagement data:', data)
+    processManagement.value = data.processManagement
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки управление процессами'
+    console.error('Error fetching processManagement:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание управление процессом
+const createProcessManagement = async (item: Omit<ProcessManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<ProcessManagement>(`${API_BASE}/processManagement`, {
+      method: 'POST',
+      body: item
+    })
+    processManagement.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating processManagement:', err)
+    throw err
+  }
+}
+
+// Обновление управление процессом
+const updateProcessManagement = async (id: number, item: Omit<ProcessManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<ProcessManagement>(`${API_BASE}/processManagement/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = processManagement.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      processManagement.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating processManagement:', err)
+    throw err
+  }
+}
+
+// Удаление управление процессом
+const deleteProcessManagement = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/processManagement/${id}`, {
+      method: 'DELETE'
+    })
+    const index = processManagement.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      processManagement.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting processManagement:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchProcessManagement()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: false },
+  { title: 'Описание', key: 'description', sortable: true },
   { title: 'Тип процесса', key: 'processType', sortable: true },
   { title: 'Последнее выполнение', key: 'lastExecuted', sortable: true },
   { title: 'Следующее выполнение', key: 'nextExecution', sortable: true },
@@ -102,19 +109,15 @@ const headers = [
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredProcesses = computed(() => {
-  let filtered = processes.value
+const filteredProcessManagement = computed(() => {
+  let filtered = processManagement.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (processTypeFilter.value !== null) {
-    filtered = filtered.filter(t => t.processType === processTypeFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -123,7 +126,6 @@ const filteredProcesses = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  processTypeFilter.value = null
 }
 
 // Массовые действия
@@ -141,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = processes.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      processes.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteProcessManagement(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} процессов`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} управление процессами`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = processes.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      processes.value[index].status = bulkStatusValue.value
-      processes.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateProcessManagement(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} процессов`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} управление процессами`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -181,7 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const processTypeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -203,20 +209,20 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Process>({
+const defaultItem = ref<ProcessManagement>({
   id: -1,
   name: '',
   description: '',
-  processType: 'escalation',
-  isActive: true,
+  processType: '',
   lastExecuted: null,
   nextExecution: '',
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<Process>({ ...defaultItem.value })
+const editedItem = ref<ProcessManagement>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -225,25 +231,15 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов процессов
-const processTypeOptions = [
-  { text: 'Эскалация', value: 'escalation' },
-  { text: 'Уведомление', value: 'notification' },
-  { text: 'Очистка', value: 'cleanup' },
-  { text: 'Отчет', value: 'report' },
-  { text: 'Тест', value: 'test' },
-  { text: 'Наследие', value: 'legacy' },
-]
-
 // Методы
-const editItem = (item: Process) => {
-  editedIndex.value = processes.value.indexOf(item)
+const editItem = (item: ProcessManagement) => {
+  editedIndex.value = processManagement.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Process) => {
-  editedIndex.value = processes.value.indexOf(item)
+const deleteItem = (item: ProcessManagement) => {
+  editedIndex.value = processManagement.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -260,57 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.description.trim()) {
-    showToast('Описание обязательно для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateProcessManagement(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Управление процессом успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createProcessManagement({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Управление процессом успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения управление процессом', 'error')
   }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(processes.value[editedIndex.value], editedItem.value)
-    showToast('Процесс успешно сохранен')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...processes.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    processes.value.push({ ...editedItem.value })
-    showToast('Процесс успешно добавлен')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  processes.value.splice(editedIndex.value, 1)
-  showToast('Процесс успешно удален')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteProcessManagement(editedItem.value.id)
+    showToast('Управление процессом успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления управление процессом', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: Process, newValue: number) => {
+const toggleStatus = async (item: ProcessManagement, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = processes.value.findIndex((t: Process) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    processes.value[index].status = newValue
-    processes.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', processes.value[index])
-    showToast('Статус процесса изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве processes')
+
+  try {
+    await updateProcessManagement(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус управление процессом изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -325,8 +325,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового процесса
-const addNewProcess = () => {
+// Добавление нового управление процессом
+const addNewProcessManagement = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -335,21 +335,25 @@ const addNewProcess = () => {
 
 <template>
   <div>
-    <VCard title="Управление Процессами">
-      <VCardText>
-        <p class="text-body-1">
-          Настройка Процессов.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Process management configuration.
-        </p>
-      </VCardText>
+    <VCard title="Управление процессами">
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск процессов"
+            placeholder="Поиск управление процессами"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -377,12 +381,6 @@ const addNewProcess = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -390,7 +388,6 @@ const addNewProcess = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -399,7 +396,6 @@ const addNewProcess = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -427,9 +423,9 @@ const addNewProcess = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewProcess"
+            @click="addNewProcessManagement"
           >
-            Добавить процесс
+            Добавить управление процессом
           </VBtn>
         </div>
       </div>
@@ -450,22 +446,6 @@ const addNewProcess = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="processTypeFilter"
-                  placeholder="Тип процесса"
-                  :items="[
-                    { title: 'Эскалация', value: 'escalation' },
-                    { title: 'Уведомление', value: 'notification' },
-                    { title: 'Очистка', value: 'cleanup' },
-                    { title: 'Отчет', value: 'report' },
-                    { title: 'Тест', value: 'test' },
-                    { title: 'Наследие', value: 'legacy' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -508,7 +488,7 @@ const addNewProcess = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные процессы? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные управление процессами? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -575,45 +555,13 @@ const addNewProcess = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredProcesses"
+        :items="filteredProcessManagement"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Описание -->
-        <template #item.description="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.description }}
-          </div>
-        </template>
-
-        <!-- Тип процесса -->
-        <template #item.processType="{ item }">
-          <VChip
-            :color="item.processType === 'escalation' ? 'primary' : item.processType === 'notification' ? 'success' : item.processType === 'cleanup' ? 'warning' : 'info'"
-            size="small"
-            label
-          >
-            {{ item.processType }}
-          </VChip>
-        </template>
-
-        <!-- Последнее выполнение -->
-        <template #item.lastExecuted="{ item }">
-          <div v-if="item.lastExecuted">
-            {{ item.lastExecuted }}
-          </div>
-          <div v-else class="text-grey">
-            Не выполнялся
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -629,10 +577,6 @@ const addNewProcess = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -655,7 +599,7 @@ const addNewProcess = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredProcesses.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredProcessManagement.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -666,9 +610,10 @@ const addNewProcess = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать процесс' : 'Добавить процесс'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать управление процессом' : 'Добавить управление процессом'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -680,27 +625,49 @@ const addNewProcess = () => {
               />
             </VCol>
 
-            <!-- Тип процесса -->
+            <!-- Описание -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
-                v-model="editedItem.processType"
-                :items="processTypeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип процесса *"
+              <AppTextarea
+                v-model="editedItem.description"
+                label="Описание"
+                rows="3"
+                placeholder="Введите описание..."
               />
             </VCol>
 
-            <!-- Описание -->
-            <VCol cols="12">
-              <AppTextarea
-                v-model="editedItem.description"
-                label="Описание процесса *"
-                rows="3"
-                placeholder="Введите описание процесса..."
+            <!-- Тип процесса -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.processType"
+                label="Тип процесса"
+              />
+            </VCol>
+
+            <!-- Последнее выполнение -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.lastExecuted"
+                label="Последнее выполнение"
+              />
+            </VCol>
+
+            <!-- Следующее выполнение -->
+            <VCol
+              cols="12"
+              
+            >
+              <AppTextField
+                v-model="editedItem.nextExecution"
+                label="Следующее выполнение"
               />
             </VCol>
 
@@ -746,7 +713,7 @@ const addNewProcess = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот процесс?">
+      <VCard title="Вы уверены, что хотите удалить этот управление процессом?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

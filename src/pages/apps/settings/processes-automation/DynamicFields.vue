@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для динамических полей
-interface DynamicField {
+// Типы данных для Динамическое поле
+interface DynamicFields {
   id: number
   name: string
   label: string
@@ -10,99 +11,105 @@ interface DynamicField {
   defaultValue: string
   isRequired: boolean
   isActive: boolean
+  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
-  status: number // 1 - активен, 2 - не активен
 }
 
-// Данные динамических полей (демо данные)
-const dynamicFields = ref<DynamicField[]>([
-  {
-    id: 1,
-    name: 'customer_priority',
-    label: 'Приоритет клиента',
-    fieldType: 'select',
-    defaultValue: 'normal',
-    isRequired: false,
-    isActive: true,
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-  },
-  {
-    id: 2,
-    name: 'ticket_category',
-    label: 'Категория тикета',
-    fieldType: 'select',
-    defaultValue: '',
-    isRequired: true,
-    isActive: true,
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-  },
-  {
-    id: 3,
-    name: 'customer_phone',
-    label: 'Телефон клиента',
-    fieldType: 'text',
-    defaultValue: '',
-    isRequired: false,
-    isActive: true,
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-  },
-  {
-    id: 4,
-    name: 'agent_notes',
-    label: 'Заметки агента',
-    fieldType: 'textarea',
-    defaultValue: '',
-    isRequired: false,
-    isActive: true,
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-  },
-  {
-    id: 5,
-    name: 'old_field',
-    label: 'Старое поле',
-    fieldType: 'text',
-    defaultValue: '',
-    isRequired: false,
-    isActive: false,
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-  },
-  {
-    id: 6,
-    name: 'test_field',
-    label: 'Тестовое поле',
-    fieldType: 'checkbox',
-    defaultValue: 'false',
-    isRequired: true,
-    isActive: true,
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные динамические поля
+const dynamicFields = ref<DynamicFields[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchDynamicFields = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching dynamicFields from:', `${API_BASE}/dynamicFields`)
+    const data = await $fetch<{ dynamicFields: DynamicFields[], total: number }>(`${API_BASE}/dynamicFields`)
+    console.log('Fetched dynamicFields data:', data)
+    dynamicFields.value = data.dynamicFields
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки динамические поля'
+    console.error('Error fetching dynamicFields:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание динамическое поле
+const createDynamicFields = async (item: Omit<DynamicFields, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<DynamicFields>(`${API_BASE}/dynamicFields`, {
+      method: 'POST',
+      body: item
+    })
+    dynamicFields.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating dynamicFields:', err)
+    throw err
+  }
+}
+
+// Обновление динамическое поле
+const updateDynamicFields = async (id: number, item: Omit<DynamicFields, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<DynamicFields>(`${API_BASE}/dynamicFields/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = dynamicFields.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      dynamicFields.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating dynamicFields:', err)
+    throw err
+  }
+}
+
+// Удаление динамическое поле
+const deleteDynamicFields = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/dynamicFields/${id}`, {
+      method: 'DELETE'
+    })
+    const index = dynamicFields.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      dynamicFields.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting dynamicFields:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchDynamicFields()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Метка', key: 'label', sortable: true },
   { title: 'Тип поля', key: 'fieldType', sortable: true },
-  { title: 'Значение по умолчанию', key: 'defaultValue', sortable: false },
-  { title: 'Обязательное', key: 'isRequired', sortable: false },
+  { title: 'Значение по умолчанию', key: 'defaultValue', sortable: true },
+  { title: 'Обязательное', key: 'isRequired', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -110,11 +117,7 @@ const filteredDynamicFields = computed(() => {
   let filtered = dynamicFields.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
-  }
-
-  if (fieldTypeFilter.value !== null) {
-    filtered = filtered.filter(t => t.fieldType === fieldTypeFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -123,7 +126,6 @@ const filteredDynamicFields = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
-  fieldTypeFilter.value = null
 }
 
 // Массовые действия
@@ -141,31 +143,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = dynamicFields.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      dynamicFields.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteDynamicFields(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} динамических полей`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} динамические поля`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = dynamicFields.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      dynamicFields.value[index].status = bulkStatusValue.value
-      dynamicFields.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateDynamicFields(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} динамических полей`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} динамические поля`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -181,7 +188,6 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
-const fieldTypeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -203,20 +209,20 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<DynamicField>({
+const defaultItem = ref<DynamicFields>({
   id: -1,
   name: '',
   label: '',
-  fieldType: 'text',
+  fieldType: '',
   defaultValue: '',
   isRequired: false,
-  isActive: true,
   createdAt: '',
   updatedAt: '',
   status: 1,
+  isActive: true,
 })
 
-const editedItem = ref<DynamicField>({ ...defaultItem.value })
+const editedItem = ref<DynamicFields>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -225,24 +231,14 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Опции типов полей
-const fieldTypeOptions = [
-  { text: 'Текст', value: 'text' },
-  { text: 'Текстовая область', value: 'textarea' },
-  { text: 'Выбор', value: 'select' },
-  { text: 'Чекбокс', value: 'checkbox' },
-  { text: 'Дата', value: 'date' },
-  { text: 'Число', value: 'number' },
-]
-
 // Методы
-const editItem = (item: DynamicField) => {
+const editItem = (item: DynamicFields) => {
   editedIndex.value = dynamicFields.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: DynamicField) => {
+const deleteItem = (item: DynamicFields) => {
   editedIndex.value = dynamicFields.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -260,57 +256,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.label.trim()) {
-    showToast('Метка обязательна для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateDynamicFields(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Динамическое поле успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createDynamicFields({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('Динамическое поле успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения динамическое поле', 'error')
   }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(dynamicFields.value[editedIndex.value], editedItem.value)
-    showToast('Динамическое поле успешно сохранено')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...dynamicFields.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    dynamicFields.value.push({ ...editedItem.value })
-    showToast('Динамическое поле успешно добавлено')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  dynamicFields.value.splice(editedIndex.value, 1)
-  showToast('Динамическое поле успешно удалено')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteDynamicFields(editedItem.value.id)
+    showToast('Динамическое поле успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления динамическое поле', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: DynamicField, newValue: number) => {
+const toggleStatus = async (item: DynamicFields, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = dynamicFields.value.findIndex((t: DynamicField) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    dynamicFields.value[index].status = newValue
-    dynamicFields.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', dynamicFields.value[index])
-    showToast('Статус динамического поля изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве dynamicFields')
+
+  try {
+    await updateDynamicFields(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус динамическое поле изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -325,8 +325,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового динамического поля
-const addNewDynamicField = () => {
+// Добавление нового динамическое поле
+const addNewDynamicFields = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -336,20 +336,24 @@ const addNewDynamicField = () => {
 <template>
   <div>
     <VCard title="Динамические поля">
-      <VCardText>
-        <p class="text-body-1">
-          Создание динамических полей и управление ими.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Create and manage dynamic fields.
-        </p>
-      </VCardText>
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск динамических полей"
+            placeholder="Поиск динамические поля"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -377,12 +381,6 @@ const addNewDynamicField = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -390,7 +388,6 @@ const addNewDynamicField = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -399,7 +396,6 @@ const addNewDynamicField = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -427,9 +423,9 @@ const addNewDynamicField = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewDynamicField"
+            @click="addNewDynamicFields"
           >
-            Добавить поле
+            Добавить динамическое поле
           </VBtn>
         </div>
       </div>
@@ -450,22 +446,6 @@ const addNewDynamicField = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="fieldTypeFilter"
-                  placeholder="Тип поля"
-                  :items="[
-                    { title: 'Текст', value: 'text' },
-                    { title: 'Текстовая область', value: 'textarea' },
-                    { title: 'Выбор', value: 'select' },
-                    { title: 'Чекбокс', value: 'checkbox' },
-                    { title: 'Дата', value: 'date' },
-                    { title: 'Число', value: 'number' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -580,48 +560,8 @@ const addNewDynamicField = () => {
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Метка -->
-        <template #item.label="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.label }}
-          </div>
-        </template>
-
-        <!-- Тип поля -->
-        <template #item.fieldType="{ item }">
-          <VChip
-            :color="item.fieldType === 'text' ? 'primary' : item.fieldType === 'select' ? 'success' : item.fieldType === 'checkbox' ? 'warning' : 'info'"
-            size="small"
-            label
-          >
-            {{ item.fieldType }}
-          </VChip>
-        </template>
-
-        <!-- Значение по умолчанию -->
-        <template #item.defaultValue="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.defaultValue }}
-          </div>
-        </template>
-
-        <!-- Обязательное -->
-        <template #item.isRequired="{ item }">
-          <VChip
-            :color="item.isRequired ? 'success' : 'default'"
-            size="small"
-            label
-          >
-            {{ item.isRequired ? 'Да' : 'Нет' }}
-          </VChip>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -637,10 +577,6 @@ const addNewDynamicField = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -674,9 +610,10 @@ const addNewDynamicField = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать поле' : 'Добавить поле'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать динамическое поле' : 'Добавить динамическое поле'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -691,32 +628,29 @@ const addNewDynamicField = () => {
             <!-- Метка -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.label"
-                label="Метка *"
+                label="Метка"
               />
             </VCol>
 
             <!-- Тип поля -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.fieldType"
-                :items="fieldTypeOptions"
-                item-title="text"
-                item-value="value"
-                label="Тип поля *"
+                label="Тип поля"
               />
             </VCol>
 
             <!-- Значение по умолчанию -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.defaultValue"
@@ -727,11 +661,12 @@ const addNewDynamicField = () => {
             <!-- Обязательное -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <VSwitch
                 v-model="editedItem.isRequired"
-                label="Обязательное поле"
+                label="Обязательное"
+                color="primary"
               />
             </VCol>
 
@@ -777,7 +712,7 @@ const addNewDynamicField = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить это динамическое поле?">
+      <VCard title="Вы уверены, что хотите удалить этот динамическое поле?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

@@ -253,7 +253,7 @@
     "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
-  "SLA": {
+  "sLA": {
     "name": "string",
     "description": "string",
     "responseTime": "number // в часах",

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { $fetch } from 'ofetch'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для OAuth2
-interface OAuth2Config {
+interface OAuth2 {
   id: number
   name: string
   clientId: string
@@ -10,114 +11,115 @@ interface OAuth2Config {
   authorizationUrl: string
   tokenUrl: string
   scopes: string[]
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Данные OAuth2 конфигураций (демо данные)
-const oauth2Configs = ref<OAuth2Config[]>([
-  {
-    id: 1,
-    name: 'Google OAuth2',
-    clientId: 'google-client-123',
-    clientSecret: 'google-secret-456',
-    authorizationUrl: 'https://accounts.google.com/o/oauth2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scopes: ['openid', 'profile', 'email'],
-    createdAt: '2023-01-01 10:00:00',
-    updatedAt: '2023-01-01 10:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Microsoft OAuth2',
-    clientId: 'microsoft-client-789',
-    clientSecret: 'microsoft-secret-012',
-    authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scopes: ['openid', 'profile', 'email', 'offline_access'],
-    createdAt: '2023-01-02 11:00:00',
-    updatedAt: '2023-01-02 11:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'GitHub OAuth2',
-    clientId: 'github-client-345',
-    clientSecret: 'github-secret-678',
-    authorizationUrl: 'https://github.com/login/oauth/authorize',
-    tokenUrl: 'https://github.com/login/oauth/access_token',
-    scopes: ['user', 'repo', 'read:org'],
-    createdAt: '2023-01-03 12:00:00',
-    updatedAt: '2023-01-03 12:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 4,
-    name: 'Facebook OAuth2',
-    clientId: 'facebook-client-901',
-    clientSecret: 'facebook-secret-234',
-    authorizationUrl: 'https://www.facebook.com/v12.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v12.0/oauth/access_token',
-    scopes: ['public_profile', 'email'],
-    createdAt: '2023-01-04 13:00:00',
-    updatedAt: '2023-01-04 13:00:00',
-    status: 1,
-    isActive: true,
-  },
-  {
-    id: 5,
-    name: 'Old OAuth2 Config',
-    clientId: 'old-client-567',
-    clientSecret: 'old-secret-890',
-    authorizationUrl: 'https://old-provider.com/auth',
-    tokenUrl: 'https://old-provider.com/token',
-    scopes: ['basic'],
-    createdAt: '2023-01-05 14:00:00',
-    updatedAt: '2023-01-05 14:00:00',
-    status: 2,
-    isActive: false,
-  },
-  {
-    id: 6,
-    name: 'Test OAuth2',
-    clientId: 'test-client-111',
-    clientSecret: 'test-secret-222',
-    authorizationUrl: 'https://test-provider.com/auth',
-    tokenUrl: 'https://test-provider.com/token',
-    scopes: ['read', 'write'],
-    createdAt: '2023-01-06 15:00:00',
-    updatedAt: '2023-01-06 15:00:00',
-    status: 1,
-    isActive: true,
-  },
-])
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные oauth2
+const oAuth2 = ref<OAuth2[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchOAuth2 = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    console.log('Fetching oAuth2 from:', `${API_BASE}/oAuth2`)
+    const data = await $fetch<{ oAuth2: OAuth2[], total: number }>(`${API_BASE}/oAuth2`)
+    console.log('Fetched oAuth2 data:', data)
+    oAuth2.value = data.oAuth2
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки oauth2'
+    console.error('Error fetching oAuth2:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Создание oauth2
+const createOAuth2 = async (item: Omit<OAuth2, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<OAuth2>(`${API_BASE}/oAuth2`, {
+      method: 'POST',
+      body: item
+    })
+    oAuth2.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating oAuth2:', err)
+    throw err
+  }
+}
+
+// Обновление oauth2
+const updateOAuth2 = async (id: number, item: Omit<OAuth2, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<OAuth2>(`${API_BASE}/oAuth2/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = oAuth2.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      oAuth2.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating oAuth2:', err)
+    throw err
+  }
+}
+
+// Удаление oauth2
+const deleteOAuth2 = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/oAuth2/${id}`, {
+      method: 'DELETE'
+    })
+    const index = oAuth2.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      oAuth2.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting oAuth2:', err)
+    throw err
+  }
+}
+
+// Инициализация
+onMounted(() => {
+  fetchOAuth2()
+})
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Client ID', key: 'clientId', sortable: true },
-  { title: 'Authorization URL', key: 'authorizationUrl', sortable: false },
-  { title: 'Token URL', key: 'tokenUrl', sortable: false },
-  { title: 'Scopes', key: 'scopes', sortable: false },
+  { title: 'ID клиента', key: 'clientId', sortable: true },
+  { title: 'Секрет клиента', key: 'clientSecret', sortable: true },
+  { title: 'URL авторизации', key: 'authorizationUrl', sortable: true },
+  { title: 'URL токена', key: 'tokenUrl', sortable: true },
+  { title: 'Области', key: 'scopes', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredOAuth2Configs = computed(() => {
-  let filtered = oauth2Configs.value
+const filteredOAuth2 = computed(() => {
+  let filtered = oAuth2.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -143,31 +145,36 @@ const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
 
-const confirmBulkDelete = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = oauth2Configs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      oauth2Configs.value.splice(index, 1)
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteOAuth2(item.id)
     }
-  })
-  selectedItems.value = []
-  showToast(`Удалено ${count} OAuth2 конфигураций`)
-  isBulkDeleteDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Удалено ${count} oauth2`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
 }
 
-const confirmBulkStatusChange = () => {
-  const count = selectedItems.value.length
-  selectedItems.value.forEach(item => {
-    const index = oauth2Configs.value.findIndex(t => t.id === item.id)
-    if (index !== -1) {
-      oauth2Configs.value[index].status = bulkStatusValue.value
-      oauth2Configs.value[index].isActive = bulkStatusValue.value === 1
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateOAuth2(item.id, {
+        ...item,
+        status: bulkStatusValue.value,
+        isActive: bulkStatusValue.value === 1
+      })
     }
-  })
-  selectedItems.value = []
-  showToast(`Статус изменен для ${count} OAuth2 конфигураций`)
-  isBulkStatusDialogOpen.value = false
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} oauth2`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 const resolveStatusVariant = (status: number) => {
@@ -204,7 +211,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<OAuth2Config>({
+const defaultItem = ref<OAuth2>({
   id: -1,
   name: '',
   clientId: '',
@@ -218,7 +225,7 @@ const defaultItem = ref<OAuth2Config>({
   isActive: true,
 })
 
-const editedItem = ref<OAuth2Config>({ ...defaultItem.value })
+const editedItem = ref<OAuth2>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -228,14 +235,14 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: OAuth2Config) => {
-  editedIndex.value = oauth2Configs.value.indexOf(item)
+const editItem = (item: OAuth2) => {
+  editedIndex.value = oAuth2.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: OAuth2Config) => {
-  editedIndex.value = oauth2Configs.value.indexOf(item)
+const deleteItem = (item: OAuth2) => {
+  editedIndex.value = oAuth2.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
 }
@@ -252,72 +259,61 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
-const save = () => {
-  if (!editedItem.value.name.trim()) {
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
-  if (!editedItem.value.clientId.trim()) {
-    showToast('Client ID обязателен для заполнения', 'error')
-    return
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateOAuth2(editedItem.value.id, {
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('OAuth2 успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createOAuth2({
+        ...editedItem.value,
+        status: editedItem.value.status,
+        isActive: editedItem.value.status === 1
+      })
+      showToast('OAuth2 успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения oauth2', 'error')
   }
-
-  if (!editedItem.value.clientSecret.trim()) {
-    showToast('Client Secret обязателен для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.authorizationUrl.trim()) {
-    showToast('Authorization URL обязателен для заполнения', 'error')
-    return
-  }
-
-  if (!editedItem.value.tokenUrl.trim()) {
-    showToast('Token URL обязателен для заполнения', 'error')
-    return
-  }
-
-  if (editedIndex.value > -1) {
-    editedItem.value.updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    Object.assign(oauth2Configs.value[editedIndex.value], editedItem.value)
-    showToast('OAuth2 конфигурация успешно сохранена')
-  } else {
-    // Добавление нового
-    const newId = Math.max(...oauth2Configs.value.map(t => t.id)) + 1
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    editedItem.value.id = newId
-    editedItem.value.createdAt = now
-    editedItem.value.updatedAt = now
-    oauth2Configs.value.push({ ...editedItem.value })
-    showToast('OAuth2 конфигурация успешно добавлена')
-  }
-  close()
 }
 
-const deleteItemConfirm = () => {
-  oauth2Configs.value.splice(editedIndex.value, 1)
-  showToast('OAuth2 конфигурация успешно удалена')
-  closeDelete()
+const deleteItemConfirm = async () => {
+  try {
+    await deleteOAuth2(editedItem.value.id)
+    showToast('OAuth2 успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления oauth2', 'error')
+  }
 }
 
 // Переключение статуса
-const toggleStatus = (item: OAuth2Config, newValue: number) => {
+const toggleStatus = async (item: OAuth2, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
-  
-  const index = oauth2Configs.value.findIndex((t: OAuth2Config) => t.id === item.id)
-  console.log('🔍 Найденный индекс:', index)
-  
-  if (index !== -1) {
-    console.log('✅ Элемент найден, обновляем статус')
-    oauth2Configs.value[index].status = newValue
-    oauth2Configs.value[index].isActive = newValue === 1
-    console.log('✅ Обновленный элемент:', oauth2Configs.value[index])
-    showToast('Статус OAuth2 конфигурации изменен')
-  } else {
-    console.error('❌ Элемент не найден в массиве oauth2Configs')
+
+  try {
+    await updateOAuth2(item.id, {
+      ...item,
+      status: newValue,
+      isActive: newValue === 1
+    })
+    showToast('Статус oauth2 изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
   }
 }
 
@@ -332,8 +328,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой OAuth2 конфигурации
-const addNewOAuth2Config = () => {
+// Добавление нового oauth2
+const addNewOAuth2 = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -343,20 +339,24 @@ const addNewOAuth2Config = () => {
 <template>
   <div>
     <VCard title="OAuth2">
-      <VCardText>
-        <p class="text-body-1">
-          Управление OAuth2 ключами (tokens) и их конфигурациями.
-        </p>
-        <p class="text-body-2 text-medium-emphasis">
-          Manage OAuth2 tokens and their configurations.
-        </p>
-      </VCardText>
 
-      <div class="d-flex flex-wrap gap-4 pa-6">
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск OAuth2 конфигураций"
+            placeholder="Поиск oauth2"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -384,12 +384,6 @@ const addNewOAuth2Config = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -397,7 +391,6 @@ const addNewOAuth2Config = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -406,7 +399,6 @@ const addNewOAuth2Config = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -434,9 +426,9 @@ const addNewOAuth2Config = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewOAuth2Config"
+            @click="addNewOAuth2"
           >
-            Добавить OAuth2 конфигурацию
+            Добавить oauth2
           </VBtn>
         </div>
       </div>
@@ -499,7 +491,7 @@ const addNewOAuth2Config = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные OAuth2 конфигурации? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные oauth2? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -566,45 +558,13 @@ const addNewOAuth2Config = () => {
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredOAuth2Configs"
+        :items="filteredOAuth2"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
+        no-data-text="Нет данных"
       >
-        <!-- Client ID -->
-        <template #item.clientId="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.clientId }}
-          </div>
-        </template>
-
-        <!-- Authorization URL -->
-        <template #item.authorizationUrl="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.authorizationUrl }}
-          </div>
-        </template>
-
-        <!-- Token URL -->
-        <template #item.tokenUrl="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 250px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.tokenUrl }}
-          </div>
-        </template>
-
-        <!-- Scopes -->
-        <template #item.scopes="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 200px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.scopes.join(', ') }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -620,10 +580,6 @@ const addNewOAuth2Config = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -646,7 +602,7 @@ const addNewOAuth2Config = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredOAuth2Configs.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredOAuth2.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -657,9 +613,10 @@ const addNewOAuth2Config = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать OAuth2 конфигурацию' : 'Добавить OAuth2 конфигурацию'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать oauth2' : 'Добавить oauth2'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -671,51 +628,58 @@ const addNewOAuth2Config = () => {
               />
             </VCol>
 
-            <!-- Client ID -->
+            <!-- ID клиента -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.clientId"
-                label="Client ID *"
+                label="ID клиента"
               />
             </VCol>
 
-            <!-- Client Secret -->
+            <!-- Секрет клиента -->
             <VCol
               cols="12"
-              sm="6"
+              
             >
               <AppTextField
                 v-model="editedItem.clientSecret"
-                label="Client Secret *"
-                type="password"
+                label="Секрет клиента"
               />
             </VCol>
 
-            <!-- Authorization URL -->
-            <VCol cols="12">
+            <!-- URL авторизации -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextField
                 v-model="editedItem.authorizationUrl"
-                label="Authorization URL *"
+                label="URL авторизации"
               />
             </VCol>
 
-            <!-- Token URL -->
-            <VCol cols="12">
+            <!-- URL токена -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextField
                 v-model="editedItem.tokenUrl"
-                label="Token URL *"
+                label="URL токена"
               />
             </VCol>
 
-            <!-- Scopes -->
-            <VCol cols="12">
+            <!-- Области -->
+            <VCol
+              cols="12"
+              
+            >
               <AppTextField
                 v-model="editedItem.scopes"
-                label="Scopes (через запятую)"
-                placeholder="openid, profile, email"
+                label="Области"
               />
             </VCol>
 
@@ -761,7 +725,7 @@ const addNewOAuth2Config = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту OAuth2 конфигурацию?">
+      <VCard title="Вы уверены, что хотите удалить этот oauth2?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
@@ -799,4 +763,3 @@ const addNewOAuth2Config = () => {
   margin-block-end: 1rem;
 }
 </style>
-

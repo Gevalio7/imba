@@ -2,22 +2,24 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для подписи
-interface Signature {
+// Типы данных для Подпись
+interface Signatures {
   id: number
   name: string
   content: string
-  createdAt: string
-  updatedAt: string
   status: number // 1 - активен, 2 - не активен
   isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные подписей
-const signatures = ref<Signature[]>([])
+// Данные подписи
+const signatures = ref<Signatures[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,61 +28,64 @@ const fetchSignatures = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Signature[]>(`${API_BASE}/signatures`)
-    signatures.value = data
+    console.log('Fetching signatures from:', `${API_BASE}/signatures`)
+    const data = await $fetch<{ signatures: Signatures[], total: number }>(`${API_BASE}/signatures`)
+    console.log('Fetched signatures data:', data)
+    signatures.value = data.signatures
+    total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки подписей'
+    error.value = 'Ошибка загрузки подписи'
     console.error('Error fetching signatures:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание подписи
-const createSignature = async (signature: Omit<Signature, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Создание подпись
+const createSignatures = async (item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Signature>(`${API_BASE}/signatures`, {
+    const data = await $fetch<Signatures>(`${API_BASE}/signatures`, {
       method: 'POST',
-      body: signature
+      body: item
     })
     signatures.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating signature:', err)
+    console.error('Error creating signatures:', err)
     throw err
   }
 }
 
-// Обновление подписи
-const updateSignature = async (id: number, signature: Omit<Signature, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление подпись
+const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Signature>(`${API_BASE}/signatures/${id}`, {
+    const data = await $fetch<Signatures>(`${API_BASE}/signatures/${id}`, {
       method: 'PUT',
-      body: signature
+      body: item
     })
-    const index = signatures.value.findIndex(s => s.id === id)
+    const index = signatures.value.findIndex(p => p.id === id)
     if (index !== -1) {
       signatures.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating signature:', err)
+    console.error('Error updating signatures:', err)
     throw err
   }
 }
 
-// Удаление подписи
-const deleteSignature = async (id: number) => {
+// Удаление подпись
+const deleteSignatures = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/signatures/${id}`, {
       method: 'DELETE'
     })
-    const index = signatures.value.findIndex(s => s.id === id)
+    const index = signatures.value.findIndex(p => p.id === id)
     if (index !== -1) {
       signatures.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting signature:', err)
+    console.error('Error deleting signatures:', err)
     throw err
   }
 }
@@ -93,12 +98,12 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Содержание', key: 'content', sortable: false },
+  { title: 'Содержание', key: 'content', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -106,7 +111,7 @@ const filteredSignatures = computed(() => {
   let filtered = signatures.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(s => s.status === statusFilter.value)
+    filtered = filtered.filter(p => p.status === statusFilter.value)
   }
 
   return filtered
@@ -136,10 +141,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deleteSignature(item.id)
+      await deleteSignatures(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} подписей`)
+    showToast(`Удалено ${count} подписи`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -150,15 +155,14 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updateSignature(item.id, {
-        name: item.name,
-        content: item.content,
+      await updateSignatures(item.id, {
+        ...item,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} подписей`)
+    showToast(`Статус изменен для ${count} подписи`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -199,7 +203,7 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<Signature>({
+const defaultItem = ref<Signatures>({
   id: -1,
   name: '',
   content: '',
@@ -209,7 +213,7 @@ const defaultItem = ref<Signature>({
   isActive: true,
 })
 
-const editedItem = ref<Signature>({ ...defaultItem.value })
+const editedItem = ref<Signatures>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -219,13 +223,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Signature) => {
+const editItem = (item: Signatures) => {
   editedIndex.value = signatures.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Signature) => {
+const deleteItem = (item: Signatures) => {
   editedIndex.value = signatures.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -244,7 +248,7 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name.trim()) {
+  if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
@@ -252,53 +256,50 @@ const save = async () => {
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateSignature(editedItem.value.id, {
-        name: editedItem.value.name,
-        content: editedItem.value.content,
+      const updated = await updateSignatures(editedItem.value.id, {
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Подпись успешно сохранена')
+      showToast('Подпись успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createSignature({
-        name: editedItem.value.name,
-        content: editedItem.value.content,
+      const created = await createSignatures({
+        ...editedItem.value,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
-      showToast('Подпись успешно добавлена')
+      showToast('Подпись успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения подписи', 'error')
+    showToast('Ошибка сохранения подпись', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteSignature(editedItem.value.id)
-    showToast('Подпись успешно удалена')
+    await deleteSignatures(editedItem.value.id)
+    showToast('Подпись успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления подписи', 'error')
+    showToast('Ошибка удаления подпись', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: Signature, newValue: number) => {
+const toggleStatus = async (item: Signatures, newValue: number) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение статуса:', newValue)
 
   try {
-    await updateSignature(item.id, {
-      name: item.name,
-      content: item.content,
+    await updateSignatures(item.id, {
+      ...item,
       status: newValue,
       isActive: newValue === 1
     })
-    showToast('Статус подписи изменен')
+    showToast('Статус подпись изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -315,8 +316,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление новой подписи
-const addNewSignature = () => {
+// Добавление нового подпись
+const addNewSignatures = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -343,7 +344,7 @@ const addNewSignature = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск подписей"
+            placeholder="Поиск подписи"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -371,12 +372,6 @@ const addNewSignature = () => {
               prepend-icon="bx-dots-vertical-rounded"
               :disabled="selectedItems.length === 0"
               v-bind="props"
-              @click="() => {
-                console.log('🖱️ Клик по кнопке Действия')
-                console.log('📊 Количество выбранных:', selectedItems.length)
-                console.log('🔍 Выбранные элементы:', selectedItems)
-                console.log('🚪 Состояние меню до клика:', isBulkActionsMenuOpen)
-              }"
             >
               Действия ({{ selectedItems.length }})
             </VBtn>
@@ -384,7 +379,6 @@ const addNewSignature = () => {
           <VList>
             <VListItem
               @click="() => {
-                console.log('🗑️ Клик по пункту Удалить')
                 bulkDelete()
                 isBulkActionsMenuOpen = false
               }"
@@ -393,7 +387,6 @@ const addNewSignature = () => {
             </VListItem>
             <VListItem
               @click="() => {
-                console.log('🔄 Клик по пункту Изменить статус')
                 bulkChangeStatus()
                 isBulkActionsMenuOpen = false
               }"
@@ -421,7 +414,7 @@ const addNewSignature = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewSignature"
+            @click="addNewSignatures"
           >
             Добавить подпись
           </VBtn>
@@ -559,19 +552,7 @@ const addNewSignature = () => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
-        @update:model-value="(val) => {
-          console.log('📊 VDataTable model-value изменен:', val)
-          console.log('📊 Тип данных:', typeof val, Array.isArray(val))
-          console.log('📊 Количество выбранных:', val ? val.length : 0)
-        }"
       >
-        <!-- Содержание -->
-        <template #item.content="{ item }">
-          <div style=" overflow: hidden;max-inline-size: 300px; text-overflow: ellipsis; white-space: pre-line;">
-            {{ item.content }}
-          </div>
-        </template>
-
         <!-- Статус -->
         <template #item.status="{ item }">
           <VChip
@@ -587,10 +568,6 @@ const addNewSignature = () => {
           <VSwitch
             :model-value="item.isActive"
             @update:model-value="(val) => {
-              console.log('🔘 VSwitch изменен для элемента:', item.name)
-              console.log('🔘 Старое значение:', item.isActive)
-              console.log('🔘 Новое значение:', val)
-              console.log('🔘 Новый статус:', val ? 1 : 2)
               toggleStatus(item, val ? 1 : 2)
             }"
           />
@@ -627,6 +604,7 @@ const addNewSignature = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать подпись' : 'Добавить подпись'">
         <VCardText>
           <VRow>
+
             <!-- Название -->
             <VCol
               cols="12"
@@ -639,12 +617,15 @@ const addNewSignature = () => {
             </VCol>
 
             <!-- Содержание -->
-            <VCol cols="12">
+            <VCol
+              cols="12"
+              
+            >
               <AppTextarea
                 v-model="editedItem.content"
-                label="Содержание подписи"
-                rows="4"
-                placeholder="Введите текст подписи..."
+                label="Содержание"
+                rows="3"
+                placeholder="Введите содержание..."
               />
             </VCol>
 
@@ -690,7 +671,7 @@ const addNewSignature = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить эту подпись?">
+      <VCard title="Вы уверены, что хотите удалить этот подпись?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
