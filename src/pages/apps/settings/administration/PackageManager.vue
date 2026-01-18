@@ -106,9 +106,9 @@ const headers = [
   { title: 'Автор', key: 'author', sortable: true },
   { title: 'Установлен', key: 'isInstalled', sortable: true },
   { title: 'Доступно обновление', key: 'isUpgradable', sortable: true },
+  { title: 'status', key: 'status', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -118,7 +118,8 @@ const filteredPackageManager = computed(() => {
   let filtered = packageManager.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
@@ -164,7 +165,6 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updatePackageManager(item.id, {
         ...item,
-        status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
@@ -176,8 +176,8 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-const resolveStatusVariant = (status: number) => {
-  if (status === 1)
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
@@ -220,7 +220,6 @@ const defaultItem = ref<PackageManager>({
   isUpgradable: false,
   createdAt: '',
   updatedAt: '',
-  status: 1,
   isActive: true,
 })
 
@@ -269,16 +268,14 @@ const save = async () => {
       // Обновление существующего
       const updated = await updatePackageManager(editedItem.value.id, {
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Менеджер пакетов успешно сохранен')
     } else {
       // Добавление нового
       const created = await createPackageManager({
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Менеджер пакетов успешно добавлен')
     }
@@ -299,16 +296,15 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: PackageManager, newValue: number) => {
+const toggleStatus = async (item: PackageManager, newValue: boolean) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение статуса:', newValue)
+  console.log('🔢 Новое значение isActive:', newValue)
 
   try {
     await updatePackageManager(item.id, {
       ...item,
-      status: newValue,
-      isActive: newValue === 1
+      isActive: newValue
     })
     showToast('Статус менеджер пакетов изменен')
   } catch (err) {
@@ -564,24 +560,22 @@ const addNewPackageManager = () => {
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Статус -->
-        <template #item.status="{ item }">
-          <VChip
-            v-bind="resolveStatusVariant(item.status)"
-            density="default"
-            label
-            size="small"
-          />
-        </template>
-
         <!-- Активен -->
         <template #item.isActive="{ item }">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => {
-              toggleStatus(item, val ? 1 : 2)
-            }"
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </template>
 
         <!-- Действия -->
@@ -686,17 +680,28 @@ const addNewPackageManager = () => {
               />
             </VCol>
 
-            <!-- Статус -->
+            <!-- status -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppSelect
+              <AppTextField
                 v-model="editedItem.status"
-                :items="statusOptions"
-                item-title="text"
-                item-value="value"
-                label="Статус"
+                label="status"
+                type="number"
+                min="0"
+              />
+            </VCol>
+
+            <!-- Активен -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
               />
             </VCol>
           </VRow>

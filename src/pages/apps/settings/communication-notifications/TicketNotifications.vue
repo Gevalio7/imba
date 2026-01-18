@@ -7,7 +7,6 @@ interface TicketNotifications {
   id: number
   name: string
   message: string
-  status: number // 1 - активен, 2 - не активен
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -101,7 +100,6 @@ const headers = [
   { title: 'Сообщение', key: 'message', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -111,7 +109,8 @@ const filteredTicketNotifications = computed(() => {
   let filtered = ticketNotifications.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
@@ -157,7 +156,6 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateTicketNotifications(item.id, {
         ...item,
-        status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
@@ -169,8 +167,8 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-const resolveStatusVariant = (status: number) => {
-  if (status === 1)
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
@@ -209,7 +207,6 @@ const defaultItem = ref<TicketNotifications>({
   message: '',
   createdAt: '',
   updatedAt: '',
-  status: 1,
   isActive: true,
 })
 
@@ -258,16 +255,14 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateTicketNotifications(editedItem.value.id, {
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Уведомление тикета успешно сохранен')
     } else {
       // Добавление нового
       const created = await createTicketNotifications({
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Уведомление тикета успешно добавлен')
     }
@@ -288,16 +283,15 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: TicketNotifications, newValue: number) => {
+const toggleStatus = async (item: TicketNotifications, newValue: boolean) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение статуса:', newValue)
+  console.log('🔢 Новое значение isActive:', newValue)
 
   try {
     await updateTicketNotifications(item.id, {
       ...item,
-      status: newValue,
-      isActive: newValue === 1
+      isActive: newValue
     })
     showToast('Статус уведомление тикета изменен')
   } catch (err) {
@@ -553,24 +547,22 @@ const addNewTicketNotifications = () => {
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Статус -->
-        <template #item.status="{ item }">
-          <VChip
-            v-bind="resolveStatusVariant(item.status)"
-            density="default"
-            label
-            size="small"
-          />
-        </template>
-
         <!-- Активен -->
         <template #item.isActive="{ item }">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => {
-              toggleStatus(item, val ? 1 : 2)
-            }"
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </template>
 
         <!-- Действия -->
@@ -629,17 +621,15 @@ const addNewTicketNotifications = () => {
               />
             </VCol>
 
-            <!-- Статус -->
+            <!-- Активен -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppSelect
-                v-model="editedItem.status"
-                :items="statusOptions"
-                item-title="text"
-                item-value="value"
-                label="Статус"
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
               />
             </VCol>
           </VRow>

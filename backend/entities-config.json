@@ -3,37 +3,31 @@
     "name": "string",
     "description": "string",
     "permissions": "string[]",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "AdminNotification": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Agents": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "AgentsGroups": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "AgentsRoles": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "AppointmentNotifications": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "AutoResponses": {
@@ -41,7 +35,6 @@
     "trigger": "string",
     "response": "string",
     "delay": "number",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Attachments": {
@@ -49,7 +42,6 @@
     "fileName": "string",
     "type": "number",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Calendars": {
@@ -57,13 +49,11 @@
     "description": "string",
     "timezone": "string",
     "workHours": "string",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "CommunicationLog": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CommunicationNotificationsSettings": [
@@ -76,37 +66,31 @@
     "zip": "string",
     "city": "string",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CustomersGroups": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CustomerUsers": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CustomerUsersCustomers": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CustomerUsersGroups": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "CustomerUsersServices": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "DynamicFields": {
@@ -115,8 +99,7 @@
     "fieldType": "string",
     "defaultValue": "string",
     "isRequired": "boolean",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "DynamicFieldsScreens": {
     "name": "string",
@@ -125,19 +108,16 @@
     "fieldType": "string",
     "isActive": "boolean",
     "isRequired": "boolean",
-    "position": "number",
-    "status": "number // 1 - активен, 2 - не активен"
+    "position": "number"
   },
   "EmailAddresses": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "GeneralCatalog": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "GenericAgent": {
@@ -147,19 +127,16 @@
     "schedule": "string",
     "isActive": "boolean",
     "lastRun": "string | null",
-    "nextRun": "string",
-    "status": "number // 1 - активен, 2 - не активен"
+    "nextRun": "string"
   },
   "Greetings": {
     "name": "string",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Groups": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "OAuth2": {
@@ -169,7 +146,6 @@
     "authorizationUrl": "string",
     "tokenUrl": "string",
     "scopes": "string[]",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "PackageManager": {
@@ -184,31 +160,26 @@
   "PerformanceLog": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "PgpKeys": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "PostMasterFilters": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "PostMasterMailAccounts": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Priorities": {
     "name": "string",
     "color": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "ProcessesAutomationSettings": [
@@ -221,13 +192,11 @@
     "processType": "string",
     "isActive": "boolean",
     "lastExecuted": "string | null",
-    "nextExecution": "string",
-    "status": "number // 1 - активен, 2 - не активен"
+    "nextExecution": "string"
   },
   "QueueAutoResponse": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Queues": {
@@ -235,25 +204,21 @@
     "description": "string",
     "maxTickets": "number",
     "priority": "number",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Roles": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "RolesGroups": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Services": {
     "name": "string",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SessionManagement": {
@@ -262,13 +227,11 @@
     "userAgent": "string",
     "loginTime": "string",
     "lastActivity": "string",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "Signatures": {
     "name": "string",
     "content": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SLA": {
@@ -282,25 +245,21 @@
   "SmimeCertificates": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SqlBox": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "States": {
     "name": "string",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Types": {
     "name": "string",
     "comment": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SystemConfiguration": {
@@ -309,19 +268,16 @@
     "value": "string",
     "configType": "string",
     "isEditable": "boolean",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "SystemFileSupport": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SystemLog": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "SystemMaintenance": {
@@ -330,25 +286,21 @@
     "startTime": "string",
     "endTime": "string",
     "isActive": "boolean",
-    "isScheduled": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isScheduled": "boolean"
   },
   "TemplateAttachments": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "TemplateQueues": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Templates": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "TestEntities": [
@@ -360,19 +312,16 @@
     "sourceAttribute": "string",
     "targetAttribute": "string",
     "relationType": "string",
-    "isActive": "boolean",
-    "status": "number // 1 - активен, 2 - не активен"
+    "isActive": "boolean"
   },
   "TicketNotifications": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "Translation": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "UsersGroupsRolesSettings": [
@@ -385,13 +334,11 @@
     "endpoint": "string",
     "method": "string",
     "isActive": "boolean",
-    "lastTested": "string | null",
-    "status": "number // 1 - активен, 2 - не активен"
+    "lastTested": "string | null"
   },
   "SupportDataCollector": {
     "name": "string",
     "message": "string",
-    "status": "number // 1 - активен, 2 - не активен",
     "isActive": "boolean"
   },
   "sLA": {
@@ -399,7 +346,13 @@
     "description": "string",
     "responseTime": "number // в часах",
     "resolutionTime": "number // в часах",
-    "status": "number // 1 - активен, 2 - не активен",
+    "isActive": "boolean"
+  },
+  "Sla": {
+    "name": "string",
+    "description": "string",
+    "responseTime": "number // в часах",
+    "resolutionTime": "number // в часах",
     "isActive": "boolean"
   }
 }

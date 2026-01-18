@@ -45,7 +45,7 @@ function generateController(entity) {
   const modelName = entity.charAt(0).toLowerCase() + entity.slice(1);
   const singular = singularize(entity);
   const fileName = modelName + 'Controller.js';
-  const fields = Object.keys(config[entity]).filter(field => !['status', 'isActive'].includes(field));
+  const fields = Object.keys(config[entity]).filter(field => field !== 'isActive');
 
   const code = `const ${entity} = require('../models/${modelName}');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -91,10 +91,7 @@ const create${entity} = asyncHandler(async (req, res) => {
   const data = {};
   ${fields.map(field => `data.${field} = req.body.${field};`).join('\n  ')}
   
-  // Добавляем status и isActive если переданы
-  if (req.body.status !== undefined) {
-    data.status = req.body.status;
-  }
+  // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
@@ -120,10 +117,7 @@ const update${entity} = asyncHandler(async (req, res) => {
   const data = {};
   ${fields.map(field => `if (req.body.${field} !== undefined) data.${field} = req.body.${field};`).join('\n  ')}
   
-  // Добавляем status и isActive если переданы
-  if (req.body.status !== undefined) {
-    data.status = req.body.status;
-  }
+  // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }

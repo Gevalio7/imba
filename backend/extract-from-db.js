@@ -86,6 +86,12 @@ async function extractFromDatabase() {
           continue;
         }
         
+        // Пропускаем поле status, если есть is_active (используем только isActive)
+        if (columnName === 'status' && columns.some(c => c.column_name === 'is_active')) {
+          console.log(`  ⏭️  Пропускаем status (используется is_active)`);
+          continue;
+        }
+        
         // Преобразуем имя колонки в camelCase
         const fieldName = toCamelCase(columnName);
         

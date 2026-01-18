@@ -53,6 +53,12 @@ function extractInterfaces(content) {
       }
     }
 
+    // Удаляем поле status если есть isActive (избегаем дублирования)
+    if (fields.status && fields.isActive) {
+      console.log(`⚠️  Удаляем дублирующееся поле 'status' (используется 'isActive')`);
+      delete fields.status;
+    }
+
     if (Object.keys(fields).length > 0) {
       interfaces[interfaceName] = fields;
       console.log(`Интерфейс ${interfaceName} имеет поля:`, fields);

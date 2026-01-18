@@ -11,7 +11,6 @@ interface SystemConfiguration {
   configType: string
   isEditable: boolean
   isActive: boolean
-  status: number // 1 - активен, 2 - не активен
   createdAt: string
   updatedAt: string
 }
@@ -107,7 +106,6 @@ const headers = [
   { title: 'Редактируемый', key: 'isEditable', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -117,7 +115,8 @@ const filteredSystemConfiguration = computed(() => {
   let filtered = systemConfiguration.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
@@ -163,7 +162,6 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateSystemConfiguration(item.id, {
         ...item,
-        status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
@@ -175,8 +173,8 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-const resolveStatusVariant = (status: number) => {
-  if (status === 1)
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
@@ -218,7 +216,6 @@ const defaultItem = ref<SystemConfiguration>({
   isEditable: false,
   createdAt: '',
   updatedAt: '',
-  status: 1,
   isActive: true,
 })
 
@@ -267,16 +264,14 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateSystemConfiguration(editedItem.value.id, {
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Конфигурация системы успешно сохранен')
     } else {
       // Добавление нового
       const created = await createSystemConfiguration({
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Конфигурация системы успешно добавлен')
     }
@@ -297,16 +292,15 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: SystemConfiguration, newValue: number) => {
+const toggleStatus = async (item: SystemConfiguration, newValue: boolean) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение статуса:', newValue)
+  console.log('🔢 Новое значение isActive:', newValue)
 
   try {
     await updateSystemConfiguration(item.id, {
       ...item,
-      status: newValue,
-      isActive: newValue === 1
+      isActive: newValue
     })
     showToast('Статус конфигурация системы изменен')
   } catch (err) {
@@ -562,24 +556,22 @@ const addNewSystemConfiguration = () => {
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Статус -->
-        <template #item.status="{ item }">
-          <VChip
-            v-bind="resolveStatusVariant(item.status)"
-            density="default"
-            label
-            size="small"
-          />
-        </template>
-
         <!-- Активен -->
         <template #item.isActive="{ item }">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => {
-              toggleStatus(item, val ? 1 : 2)
-            }"
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </template>
 
         <!-- Действия -->
@@ -672,17 +664,15 @@ const addNewSystemConfiguration = () => {
               />
             </VCol>
 
-            <!-- Статус -->
+            <!-- Активен -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppSelect
-                v-model="editedItem.status"
-                :items="statusOptions"
-                item-title="text"
-                item-value="value"
-                label="Статус"
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
               />
             </VCol>
           </VRow>

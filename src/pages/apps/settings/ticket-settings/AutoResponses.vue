@@ -9,7 +9,6 @@ interface AutoResponses {
   trigger: string
   response: string
   delay: number
-  status: number // 1 - активен, 2 - не активен
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -105,7 +104,6 @@ const headers = [
   { title: 'Задержка', key: 'delay', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Статус', key: 'status', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -115,7 +113,8 @@ const filteredAutoResponses = computed(() => {
   let filtered = autoResponses.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
@@ -161,7 +160,6 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateAutoResponses(item.id, {
         ...item,
-        status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
@@ -173,8 +171,8 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-const resolveStatusVariant = (status: number) => {
-  if (status === 1)
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
@@ -215,7 +213,6 @@ const defaultItem = ref<AutoResponses>({
   delay: 0,
   createdAt: '',
   updatedAt: '',
-  status: 1,
   isActive: true,
 })
 
@@ -264,16 +261,14 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateAutoResponses(editedItem.value.id, {
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Автоответ успешно сохранен')
     } else {
       // Добавление нового
       const created = await createAutoResponses({
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('Автоответ успешно добавлен')
     }
@@ -294,16 +289,17 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: AutoResponses, newValue: number) => {
+const toggleStatus = async (item: AutoResponses, newValue: boolean | null) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение статуса:', newValue)
+  console.log('🔢 Новое значение isActive:', newValue)
+
+  if (newValue === null) return
 
   try {
     await updateAutoResponses(item.id, {
       ...item,
-      status: newValue,
-      isActive: newValue === 1
+      isActive: newValue
     })
     showToast('Статус автоответ изменен')
   } catch (err) {
@@ -559,24 +555,22 @@ const addNewAutoResponses = () => {
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Статус -->
-        <template #item.status="{ item }">
-          <VChip
-            v-bind="resolveStatusVariant(item.status)"
-            density="default"
-            label
-            size="small"
-          />
-        </template>
-
         <!-- Активен -->
         <template #item.isActive="{ item }">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => {
-              toggleStatus(item, val ? 1 : 2)
-            }"
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </template>
 
         <!-- Действия -->
@@ -657,17 +651,15 @@ const addNewAutoResponses = () => {
               />
             </VCol>
 
-            <!-- Статус -->
+            <!-- Активен -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppSelect
-                v-model="editedItem.status"
-                :items="statusOptions"
-                item-title="text"
-                item-value="value"
-                label="Статус"
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
               />
             </VCol>
           </VRow>

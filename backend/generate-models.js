@@ -52,12 +52,18 @@ function generateModel(entity) {
   // Для sLA используем SLA как имя класса
   const className = entity === 'sLA' ? 'SLA' : entity;
   const singular = singularize(entity).toLowerCase();
+  const plural = entity.charAt(0).toLowerCase() + entity.slice(1); // Множественное число для ответа API
   const fileName = entity.charAt(0).toLowerCase() + entity.slice(1) + '.js';
 
-  const fieldList = Object.keys(config[entity]).filter(f => !['status', 'isActive'].includes(f));
+  const fieldList = Object.keys(config[entity]).filter(f => f !== 'isActive');
   const fields = fieldList.join(', ');
 
   const code = `const { pool } = require('../config/db');
+
+// Функция для преобразования camelCase в snake_case
+function toSnakeCase(str) {
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+}
 
 class ${className} {
   static tableName = '${tableName}';
@@ -73,7 +79,7 @@ class ${className} {
 
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => \`\${field.toLowerCase()} ILIKE $\${paramIndex}\`).join(' OR ');
+        const conditions = searchFields.map(field => \`\${toSnakeCase(field)} ILIKE $\${paramIndex}\`).join(' OR ');
         whereClause = \`WHERE \${conditions}\`;
         params.push(\`%\${q}%\`);
         paramIndex++;
@@ -93,17 +99,17 @@ class ${className} {
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      // Преобразуем имена полей в lowercase для SQL
+      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const lower = f.toLowerCase();
-        return lower === f ? f : \`\${lower} as "\${f}"\`;
+        const snake = toSnakeCase(f);
+        return snake === f ? f : \`\${snake} as "\${f}"\`;
       }).join(', ');
-      const dataQuery = \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} \${whereClause} \${orderClause} LIMIT $\${paramIndex} OFFSET $\${paramIndex + 1}\`;
+      const dataQuery = \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM \${${className}.tableName} \${whereClause} \${orderClause} LIMIT $\${paramIndex} OFFSET $\${paramIndex + 1}\`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
       return {
-        ${entity}: dataResult.rows,
+        ${plural}: dataResult.rows,
         total,
       };
     } catch (error) {
@@ -114,13 +120,13 @@ class ${className} {
 
   static async getById(id) {
     try {
-      // Преобразуем имена полей в lowercase для SQL
+      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const lower = f.toLowerCase();
-        return lower === f ? f : \`\${lower} as "\${f}"\`;
+        const snake = toSnakeCase(f);
+        return snake === f ? f : \`\${snake} as "\${f}"\`;
       }).join(', ');
       const result = await pool.query(
-        \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive" FROM \${${className}.tableName} WHERE id = $1\`,
+        \`SELECT id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM \${${className}.tableName} WHERE id = $1\`,
         [id]
       );
 
@@ -137,18 +143,17 @@ class ${className} {
       const placeholders = fieldList.map((_, i) => \`$\${i + 1}\`).join(', ');
       const values = fieldList.map(field => ${singular}[field]);
       
-      // Добавляем status и isActive
-      values.push(${singular}.status || 1);
+      // Добавляем isActive
       values.push(${singular}.isActive !== undefined ? ${singular}.isActive : true);
       
-      // Преобразуем имена полей в lowercase для SQL
-      const sqlFieldsInsert = fieldList.map(f => f.toLowerCase()).join(', ');
+      // Преобразуем имена полей в snake_case для SQL
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
-        const lower = f.toLowerCase();
-        return lower === f ? f : \`\${lower} as "\${f}"\`;
+        const snake = toSnakeCase(f);
+        return snake === f ? f : \`\${snake} as "\${f}"\`;
       }).join(', ');
       
-      const query = \`INSERT INTO \${${className}.tableName} (\${sqlFieldsInsert}, status, is_active) VALUES (\${placeholders}, $\${fieldList.length + 1}, $\${fieldList.length + 2}) RETURNING id, \${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`;
+      const query = \`INSERT INTO \${${className}.tableName} (\${sqlFieldsInsert}, is_active) VALUES (\${placeholders}, $\${fieldList.length + 1}) RETURNING id, \${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"\`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -168,18 +173,11 @@ class ${className} {
       // Обновляем только переданные поля
       fieldList.forEach(field => {
         if (${singular}[field] !== undefined) {
-          updates.push(\`\${field.toLowerCase()} = $\${paramIndex}\`);
+          updates.push(\`\${toSnakeCase(field)} = $\${paramIndex}\`);
           values.push(${singular}[field]);
           paramIndex++;
         }
       });
-
-      // Добавляем status если передан
-      if (${singular}.status !== undefined) {
-        updates.push(\`status = $\${paramIndex}\`);
-        values.push(${singular}.status);
-        paramIndex++;
-      }
 
       // Добавляем isActive если передан
       if (${singular}.isActive !== undefined) {
@@ -194,13 +192,13 @@ class ${className} {
       // Добавляем id в конец
       values.push(id);
 
-      // Преобразуем имена полей в lowercase для SQL
+      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
-        const lower = f.toLowerCase();
-        return lower === f ? f : \`\${lower} as "\${f}"\`;
+        const snake = toSnakeCase(f);
+        return snake === f ? f : \`\${snake} as "\${f}"\`;
       }).join(', ');
 
-      const query = \`UPDATE \${${className}.tableName} SET \${updates.join(', ')} WHERE id = $\${paramIndex} RETURNING id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`;
+      const query = \`UPDATE \${${className}.tableName} SET \${updates.join(', ')} WHERE id = $\${paramIndex} RETURNING id, \${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"\`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

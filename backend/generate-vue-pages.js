@@ -165,8 +165,8 @@ function generateHeaders(fields) {
   ];
   
   for (const fieldName of Object.keys(fields)) {
-    // Пропускаем некоторые поля
-    if (['isActive', 'status'].includes(fieldName)) continue;
+    // Пропускаем поле isActive (оно будет в отдельной колонке)
+    if (fieldName === 'isActive') continue;
     
     const russianFieldNames = {
       'name': 'Название',
@@ -242,7 +242,6 @@ function generateHeaders(fields) {
   
   headers.push(`{ title: 'Создано', key: 'createdAt', sortable: true }`);
   headers.push(`{ title: 'Изменено', key: 'updatedAt', sortable: true }`);
-  headers.push(`{ title: 'Статус', key: 'status', sortable: false }`);
   headers.push(`{ title: 'Активен', key: 'isActive', sortable: false }`);
   headers.push(`{ title: 'Действия', key: 'actions', sortable: false }`);
   
@@ -254,8 +253,8 @@ function generateFormFields(fields) {
   let formFields = '';
   
   for (const [fieldName, fieldType] of Object.entries(fields)) {
-    // Пропускаем некоторые поля
-    if (['isActive', 'status', 'createdAt', 'updatedAt', 'id'].includes(fieldName)) continue;
+    // Пропускаем системные поля
+    if (['isActive', 'createdAt', 'updatedAt', 'id'].includes(fieldName)) continue;
     
     const russianFieldNames = {
       'name': 'Название',
@@ -502,7 +501,8 @@ const filtered${entityName} = computed(() => {
   let filtered = ${camelCaseName}.value
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
@@ -548,7 +548,6 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await update${entityName}(item.id, {
         ...item,
-        status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
     }
@@ -560,8 +559,8 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-const resolveStatusVariant = (status: number) => {
-  if (status === 1)
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
@@ -598,7 +597,6 @@ const defaultItem = ref<${entityName}>({
   id: -1,
 ${defaultItemFields}  createdAt: '',
   updatedAt: '',
-  status: 1,
   isActive: true,
 })
 
@@ -647,16 +645,14 @@ const save = async () => {
       // Обновление существующего
       const updated = await update${entityName}(editedItem.value.id, {
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('${russianNameSingular} успешно сохранен')
     } else {
       // Добавление нового
       const created = await create${entityName}({
         ...editedItem.value,
-        status: editedItem.value.status,
-        isActive: editedItem.value.status === 1
+        isActive: editedItem.value.isActive
       })
       showToast('${russianNameSingular} успешно добавлен')
     }
@@ -677,16 +673,17 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: ${entityName}, newValue: number) => {
+const toggleStatus = async (item: ${entityName}, newValue: boolean | null) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение статуса:', newValue)
+  console.log('🔢 Новое значение isActive:', newValue)
+
+  if (newValue === null) return
 
   try {
     await update${entityName}(item.id, {
       ...item,
-      status: newValue,
-      isActive: newValue === 1
+      isActive: newValue
     })
     showToast('Статус ${russianNameSingular.toLowerCase()} изменен')
   } catch (err) {
@@ -942,24 +939,22 @@ const addNew${entityName} = () => {
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Статус -->
-        <template #item.status="{ item }">
-          <VChip
-            v-bind="resolveStatusVariant(item.status)"
-            density="default"
-            label
-            size="small"
-          />
-        </template>
-
         <!-- Активен -->
         <template #item.isActive="{ item }">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => {
-              toggleStatus(item, val ? 1 : 2)
-            }"
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </template>
 
         <!-- Действия -->
@@ -994,17 +989,15 @@ const addNew${entityName} = () => {
         <VCardText>
           <VRow>
 ${formFields}
-            <!-- Статус -->
+            <!-- Активен -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppSelect
-                v-model="editedItem.status"
-                :items="statusOptions"
-                item-title="text"
-                item-value="value"
-                label="Статус"
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
               />
             </VCol>
           </VRow>
