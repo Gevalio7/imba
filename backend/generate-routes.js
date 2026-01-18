@@ -34,11 +34,19 @@ if (entities.length === 0) {
   process.exit(0);
 }
 
+// Функция для получения единственного числа (совпадает с generate-controllers.js)
+function singularize(str) {
+  if (str === 'PgpKeys') return 'PgpKey';
+  if (str === 'EmailAddresses') return 'EmailAddress';
+  if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
+  if (str.endsWith('s')) return str.slice(0, -1);
+  return str;
+}
+
 // Генерируем singularMap динамически
 const singularMap = {};
 entities.forEach(entity => {
-  // Убираем 's' в конце, если есть, для получения единственного числа
-  const singular = entity.replace(/s$/, '');
+  const singular = singularize(entity);
   singularMap[entity] = singular;
 });
 

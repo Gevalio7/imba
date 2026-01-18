@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getPriorities,
-  getPrioritieById,
+  getPriorityById,
   createPriorities,
   updatePriorities,
   deletePriorities,
@@ -12,7 +12,7 @@ const {
 router.get('/', getPriorities);
 
 // GET /priorities/:id
-router.get('/:id', getPrioritieById);
+router.get('/:id', getPriorityById);
 
 // POST /priorities
 router.post('/', createPriorities);
