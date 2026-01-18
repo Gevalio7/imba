@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS sla (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  response_time INTEGER,
+  resolution_time INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true
+);
