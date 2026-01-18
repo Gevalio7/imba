@@ -45,6 +45,7 @@ const sLARouter = require('./routes/sLA');
 const smimeCertificatesRouter = require('./routes/smimeCertificates');
 const sqlBoxRouter = require('./routes/sqlBox');
 const statesRouter = require('./routes/states');
+const typesRouter = require('./routes/types');
 const systemConfigurationRouter = require('./routes/systemConfiguration');
 const systemFileSupportRouter = require('./routes/systemFileSupport');
 const systemLogRouter = require('./routes/systemLog');
@@ -57,6 +58,7 @@ const ticketNotificationsRouter = require('./routes/ticketNotifications');
 const translationRouter = require('./routes/translation');
 const usersGroupsRolesSettingsRouter = require('./routes/usersGroupsRolesSettings');
 const webServicesRouter = require('./routes/webServices');
+const authRouter = require('./routes/auth');
 
 // Add global error handlers for debugging
 process.on('uncaughtException', (err) => {
@@ -117,6 +119,7 @@ app.use('/sla', sLARouter);
 app.use('/smimeCertificates', smimeCertificatesRouter);
 app.use('/sqlBox', sqlBoxRouter);
 app.use('/states', statesRouter);
+app.use('/types', typesRouter);
 app.use('/systemConfiguration', systemConfigurationRouter);
 app.use('/systemFileSupport', systemFileSupportRouter);
 app.use('/systemLog', systemLogRouter);
@@ -129,6 +132,7 @@ app.use('/ticketNotifications', ticketNotificationsRouter);
 app.use('/translation', translationRouter);
 app.use('/usersGroupsRolesSettings', usersGroupsRolesSettingsRouter);
 app.use('/webServices', webServicesRouter);
+app.use('/auth', authRouter);
 
 (async () => {
   try {

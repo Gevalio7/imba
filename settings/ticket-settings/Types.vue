@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 interface Type {
   id: number
   name: string
-  comment: string
+  description: string
   createdAt: string
   updatedAt: string
   status: number // 1 - активен, 2 - не активен
@@ -93,7 +93,7 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: false },
+  { title: 'Описание', key: 'description', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Статус', key: 'status', sortable: false },
@@ -152,7 +152,7 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateType(item.id, {
         name: item.name,
-        comment: item.comment,
+        description: item.description,
         status: bulkStatusValue.value,
         isActive: bulkStatusValue.value === 1
       })
@@ -202,7 +202,7 @@ const deleteDialog = ref(false)
 const defaultItem = ref<Type>({
   id: -1,
   name: '',
-  comment: '',
+  description: '',
   createdAt: '',
   updatedAt: '',
   status: 1,
@@ -249,8 +249,8 @@ const save = async () => {
     return
   }
 
-  if (!editedItem.value.comment.trim()) {
-    showToast('Комментарий обязателен для заполнения', 'error')
+  if (!editedItem.value.description.trim()) {
+    showToast('Описание обязательно для заполнения', 'error')
     return
   }
 
@@ -259,7 +259,7 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateType(editedItem.value.id, {
         name: editedItem.value.name,
-        comment: editedItem.value.comment,
+        description: editedItem.value.description,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
@@ -268,7 +268,7 @@ const save = async () => {
       // Добавление нового
       const created = await createType({
         name: editedItem.value.name,
-        comment: editedItem.value.comment,
+        description: editedItem.value.description,
         status: editedItem.value.status,
         isActive: editedItem.value.status === 1
       })
@@ -299,7 +299,7 @@ const toggleStatus = async (item: Type, newValue: number) => {
   try {
     await updateType(item.id, {
       name: item.name,
-      comment: item.comment,
+      description: item.description,
       status: newValue,
       isActive: newValue === 1
     })
@@ -570,9 +570,9 @@ const addNewType = () => {
           console.log('📊 Количество выбранных:', val ? val.length : 0)
         }"
       >
-        <!-- Комментарий -->
-        <template #item.comment="{ item }">
-          {{ item.comment }}
+        <!-- Описание -->
+        <template #item.description="{ item }">
+          {{ item.description }}
         </template>
 
         <!-- Статус -->
@@ -641,14 +641,14 @@ const addNewType = () => {
               />
             </VCol>
 
-            <!-- Комментарий -->
+            <!-- Описание -->
             <VCol
               cols="12"
               sm="6"
             >
               <AppTextField
-                v-model="editedItem.comment"
-                label="Комментарий"
+                v-model="editedItem.description"
+                label="Описание"
               />
             </VCol>
 

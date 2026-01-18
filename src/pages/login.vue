@@ -1,10 +1,10 @@
 <!-- ❗Errors in the form are set on line 60 -->
 <script setup lang="ts">
-import { VForm } from 'vuetify/components/VForm'
 import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
 import authV2LoginIllustration from '@images/pages/auth-v2-login-illustration.png'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
+import { VForm } from 'vuetify/components/VForm'
 
 definePage({
   meta: {
@@ -43,7 +43,7 @@ const login = async () => {
         password: credentials.value.password,
       },
       onResponseError({ response }) {
-        errors.value = response._data.errors
+        errors.value = response._data?.errors || {}
       },
     })
 

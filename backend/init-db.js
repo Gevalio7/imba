@@ -105,6 +105,11 @@ async function initializeDatabase() {
       console.log('Начальные данные для priorities уже существуют.');
     }
 
+    // Удаление таблицы types, если существует
+    console.log('Dropping table types if exists...');
+    await pool.query(`DROP TABLE IF EXISTS types`);
+    console.log('Таблица types удалена.');
+
     // Создание таблиц для остальных сущностей
     const entities = [
       'acls', 'admin_notifications', 'agents', 'agents_groups', 'agents_roles', 'appointment_notifications',
