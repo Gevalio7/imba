@@ -51,7 +51,9 @@ const createStates = async (req, res) => {
   try {
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -74,7 +76,9 @@ const updateStates = async (req, res) => {
     const stateId = parseInt(id, 10);
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

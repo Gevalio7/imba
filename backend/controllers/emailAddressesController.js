@@ -50,13 +50,15 @@ const getEmailAddressById = async (req, res) => {
 const createEmailAddresses = async (req, res) => {
   try {
     const data = {};
-    data.email = req.body.email;
-    data.description = req.body.description;
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
-    if (!data.email) {
-      return res.status(400).json({ message: 'email is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
     const newEmailAddress = await EmailAddresses.create(data);
@@ -73,8 +75,10 @@ const updateEmailAddresses = async (req, res) => {
     const { id } = req.params;
     const emailaddressId = parseInt(id, 10);
     const data = {};
-    data.email = req.body.email;
-    data.description = req.body.description;
+    data.name = req.body.name;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -82,8 +86,8 @@ const updateEmailAddresses = async (req, res) => {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!data.email) {
-      return res.status(400).json({ message: 'email is required' });
+    if (!data.name) {
+      return res.status(400).json({ message: 'name is required' });
     }
 
     const updatedEmailAddress = await EmailAddresses.update(emailaddressId, data);

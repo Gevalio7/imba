@@ -1,9 +1,37 @@
 const fs = require('fs');
 const path = require('path');
 
-const configPath = path.join(__dirname, 'entities-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+// Создаём директорию controllers, если она не существует
+const controllersDir = path.join(__dirname, 'controllers');
+if (!fs.existsSync(controllersDir)) {
+  fs.mkdirSync(controllersDir, { recursive: true });
+}
+
+// Читаем извлечённые интерфейсы из файла
+const configPath = path.join(__dirname, 'extracted-interfaces.json');
+if (!fs.existsSync(configPath)) {
+  console.error('Файл extracted-interfaces.json не найден!');
+  process.exit(1);
+}
+
+let config;
+try {
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
+  process.exit(1);
+}
+
+if (typeof config !== 'object' || config === null) {
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
+  process.exit(1);
+}
+
 const entities = Object.keys(config);
+if (entities.length === 0) {
+  console.log('В extracted-interfaces.json нет сущностей для генерации контроллеров.');
+  process.exit(0);
+}
 
 function singularize(str) {
   if (str === 'PgpKeys') return 'PgpKey';
@@ -17,7 +45,7 @@ function generateController(entity) {
   const modelName = entity.charAt(0).toLowerCase() + entity.slice(1);
   const singular = singularize(entity);
   const fileName = modelName + 'Controller.js';
-  const fields = config[entity];
+  const fields = Object.keys(config[entity]);
 
   const code = `const ${entity} = require('../models/${modelName}');
 

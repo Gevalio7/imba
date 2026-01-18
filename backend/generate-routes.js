@@ -1,77 +1,46 @@
 const fs = require('fs');
 const path = require('path');
 
-const entities = [
-  'Acl', 'AdminNotification', 'Agents', 'AgentsGroups', 'AgentsRoles', 'AppointmentNotifications',
-  'Attachments', 'Calendars', 'CommunicationLog', 'CommunicationNotificationsSettings',
-  'Customers', 'CustomersGroups', 'CustomerUsers', 'CustomerUsersCustomers', 'CustomerUsersGroups',
-  'CustomerUsersServices', 'DynamicFields', 'DynamicFieldsScreens', 'EmailAddresses',
-  'GeneralCatalog', 'GenericAgent', 'Greetings', 'Groups', 'OAuth2', 'PackageManager',
-  'PerformanceLog', 'PgpKeys', 'PostMasterFilters', 'PostMasterMailAccounts', 'Priorities',
-  'ProcessesAutomationSettings', 'ProcessManagement', 'QueueAutoResponse', 'Queues', 'Roles',
-  'RolesGroups', 'Services', 'SessionManagement', 'Signatures', 'SLA', 'SmimeCertificates',
-  'SqlBox', 'States', 'SystemConfiguration', 'SystemFileSupport', 'SystemLog', 'SystemMaintenance',
-  'TemplateAttachments', 'TemplateQueues', 'Templates', 'TicketAttributeRelations',
-  'TicketNotifications', 'Translation', 'UsersGroupsRolesSettings', 'WebServices'
-];
+// Создаём директорию routes, если она не существует
+const routesDir = path.join(__dirname, 'routes');
+if (!fs.existsSync(routesDir)) {
+  fs.mkdirSync(routesDir, { recursive: true });
+}
 
-const singularMap = {
-  'Acl': 'Acl',
-  'AdminNotification': 'AdminNotification',
-  'Agents': 'Agent',
-  'AgentsGroups': 'AgentsGroup',
-  'AgentsRoles': 'AgentsRole',
-  'AppointmentNotifications': 'AppointmentNotification',
-  'Attachments': 'Attachment',
-  'Calendars': 'Calendar',
-  'CommunicationLog': 'CommunicationLog',
-  'CommunicationNotificationsSettings': 'CommunicationNotificationsSetting',
-  'Customers': 'Customer',
-  'CustomersGroups': 'CustomersGroup',
-  'CustomerUsers': 'CustomerUser',
-  'CustomerUsersCustomers': 'CustomerUsersCustomer',
-  'CustomerUsersGroups': 'CustomerUsersGroup',
-  'CustomerUsersServices': 'CustomerUsersService',
-  'DynamicFields': 'DynamicField',
-  'DynamicFieldsScreens': 'DynamicFieldsScreen',
-  'EmailAddresses': 'EmailAddress',
-  'GeneralCatalog': 'GeneralCatalog',
-  'GenericAgent': 'GenericAgent',
-  'Greetings': 'Greeting',
-  'Groups': 'Group',
-  'OAuth2': 'OAuth2',
-  'PackageManager': 'PackageManager',
-  'PerformanceLog': 'PerformanceLog',
-  'PgpKeys': 'PgpKey',
-  'PostMasterFilters': 'PostMasterFilter',
-  'PostMasterMailAccounts': 'PostMasterMailAccount',
-  'Priorities': 'Priority',
-  'ProcessesAutomationSettings': 'ProcessesAutomationSetting',
-  'ProcessManagement': 'ProcessManagement',
-  'QueueAutoResponse': 'QueueAutoResponse',
-  'Queues': 'Queue',
-  'Roles': 'Role',
-  'RolesGroups': 'RolesGroup',
-  'Services': 'Service',
-  'SessionManagement': 'SessionManagement',
-  'Signatures': 'Signature',
-  'SLA': 'SLA',
-  'SmimeCertificates': 'SmimeCertificate',
-  'SqlBox': 'SqlBox',
-  'States': 'State',
-  'SystemConfiguration': 'SystemConfiguration',
-  'SystemFileSupport': 'SystemFileSupport',
-  'SystemLog': 'SystemLog',
-  'SystemMaintenance': 'SystemMaintenance',
-  'TemplateAttachments': 'TemplateAttachment',
-  'TemplateQueues': 'TemplateQueue',
-  'Templates': 'Template',
-  'TicketAttributeRelations': 'TicketAttributeRelation',
-  'TicketNotifications': 'TicketNotification',
-  'Translation': 'Translation',
-  'UsersGroupsRolesSettings': 'UsersGroupsRolesSetting',
-  'WebServices': 'WebService'
-};
+// Читаем извлечённые интерфейсы из файла
+const extractedInterfacesPath = path.join(__dirname, 'extracted-interfaces.json');
+if (!fs.existsSync(extractedInterfacesPath)) {
+  console.error('Файл extracted-interfaces.json не найден!');
+  process.exit(1);
+}
+
+let extractedInterfaces;
+try {
+  extractedInterfaces = JSON.parse(fs.readFileSync(extractedInterfacesPath, 'utf8'));
+} catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
+  process.exit(1);
+}
+
+if (typeof extractedInterfaces !== 'object' || extractedInterfaces === null) {
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
+  process.exit(1);
+}
+
+// Получаем список сущностей из ключей объекта
+const entities = Object.keys(extractedInterfaces);
+if (entities.length === 0) {
+  console.log('В extracted-interfaces.json нет сущностей для генерации маршрутов.');
+  process.exit(0);
+}
+
+// Генерируем singularMap динамически
+const singularMap = {};
+entities.forEach(entity => {
+  // Убираем 's' в конце, если есть, для получения единственного числа
+  const singular = entity.replace(/s$/, '');
+  singularMap[entity] = singular;
+});
 
 entities.forEach(entity => {
   const singular = singularMap[entity];

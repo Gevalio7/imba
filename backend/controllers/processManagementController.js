@@ -52,6 +52,11 @@ const createProcessManagement = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.processType = req.body.processType;
+    data.isActive = req.body.isActive;
+    data.lastExecuted = req.body.lastExecuted;
+    data.nextExecution = req.body.nextExecution;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +80,11 @@ const updateProcessManagement = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.processType = req.body.processType;
+    data.isActive = req.body.isActive;
+    data.lastExecuted = req.body.lastExecuted;
+    data.nextExecution = req.body.nextExecution;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

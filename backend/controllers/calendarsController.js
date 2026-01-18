@@ -52,6 +52,10 @@ const createCalendars = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.timezone = req.body.timezone;
+    data.workHours = req.body.workHours;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +79,10 @@ const updateCalendars = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.timezone = req.body.timezone;
+    data.workHours = req.body.workHours;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

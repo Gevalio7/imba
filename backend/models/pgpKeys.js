@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class PgpKeys {
     static tableName = 'pgp_keys';
-    static fields = 'name, description';
+    static fields = 'name, message, status, isActive';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => pgpkey[field]);
-      values.push(pgpkey.status, pgpkey.isActive);
+      values.push(pgpkey.status || 1, pgpkey.isActive !== undefined ? pgpkey.isActive : true);
       const result = await pool.query(`INSERT INTO ${PgpKeys.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => pgpkey[field]);
-      values.push(pgpkey.status, pgpkey.isActive, id);
-      const result = await pool.query(`UPDATE ${PgpKeys.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(pgpkey.status !== undefined ? pgpkey.status : undefined, pgpkey.isActive !== undefined ? pgpkey.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${PgpKeys.tableName} SET ${setClause}${pgpkey.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${pgpkey.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (pgpkey.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (pgpkey.status !== undefined && pgpkey.isActive !== undefined ? 3 : pgpkey.status !== undefined || pgpkey.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

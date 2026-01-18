@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class DynamicFieldsScreens {
     static tableName = 'dynamic_fields_screens';
-    static fields = 'name, description';
+    static fields = 'name, screenName, fieldName, fieldType, isActive, isRequired, position, status';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => dynamicfieldsscreen[field]);
-      values.push(dynamicfieldsscreen.status, dynamicfieldsscreen.isActive);
+      values.push(dynamicfieldsscreen.status || 1, dynamicfieldsscreen.isActive !== undefined ? dynamicfieldsscreen.isActive : true);
       const result = await pool.query(`INSERT INTO ${DynamicFieldsScreens.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => dynamicfieldsscreen[field]);
-      values.push(dynamicfieldsscreen.status, dynamicfieldsscreen.isActive, id);
-      const result = await pool.query(`UPDATE ${DynamicFieldsScreens.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(dynamicfieldsscreen.status !== undefined ? dynamicfieldsscreen.status : undefined, dynamicfieldsscreen.isActive !== undefined ? dynamicfieldsscreen.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${DynamicFieldsScreens.tableName} SET ${setClause}${dynamicfieldsscreen.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${dynamicfieldsscreen.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (dynamicfieldsscreen.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (dynamicfieldsscreen.status !== undefined && dynamicfieldsscreen.isActive !== undefined ? 3 : dynamicfieldsscreen.status !== undefined || dynamicfieldsscreen.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

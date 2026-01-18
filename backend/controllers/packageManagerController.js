@@ -54,6 +54,9 @@ const createPackageManager = async (req, res) => {
     data.description = req.body.description;
     data.version = req.body.version;
     data.author = req.body.author;
+    data.isInstalled = req.body.isInstalled;
+    data.isUpgradable = req.body.isUpgradable;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -79,6 +82,9 @@ const updatePackageManager = async (req, res) => {
     data.description = req.body.description;
     data.version = req.body.version;
     data.author = req.body.author;
+    data.isInstalled = req.body.isInstalled;
+    data.isUpgradable = req.body.isUpgradable;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

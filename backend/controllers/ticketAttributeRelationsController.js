@@ -51,7 +51,11 @@ const createTicketAttributeRelations = async (req, res) => {
   try {
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.sourceAttribute = req.body.sourceAttribute;
+    data.targetAttribute = req.body.targetAttribute;
+    data.relationType = req.body.relationType;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -74,7 +78,11 @@ const updateTicketAttributeRelations = async (req, res) => {
     const ticketattributerelationId = parseInt(id, 10);
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.sourceAttribute = req.body.sourceAttribute;
+    data.targetAttribute = req.body.targetAttribute;
+    data.relationType = req.body.relationType;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

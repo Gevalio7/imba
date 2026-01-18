@@ -52,6 +52,10 @@ const createQueues = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.maxTickets = req.body.maxTickets;
+    data.priority = req.body.priority;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +79,10 @@ const updateQueues = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.maxTickets = req.body.maxTickets;
+    data.priority = req.body.priority;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

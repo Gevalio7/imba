@@ -51,7 +51,9 @@ const createCustomerUsersGroups = async (req, res) => {
   try {
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -74,7 +76,9 @@ const updateCustomerUsersGroups = async (req, res) => {
     const customerusersgroupId = parseInt(id, 10);
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

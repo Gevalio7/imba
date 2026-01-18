@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class ProcessManagement {
     static tableName = 'process_management';
-    static fields = 'name, description';
+    static fields = 'name, description, processType, isActive, lastExecuted, nextExecution, status';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => processmanagement[field]);
-      values.push(processmanagement.status, processmanagement.isActive);
+      values.push(processmanagement.status || 1, processmanagement.isActive !== undefined ? processmanagement.isActive : true);
       const result = await pool.query(`INSERT INTO ${ProcessManagement.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => processmanagement[field]);
-      values.push(processmanagement.status, processmanagement.isActive, id);
-      const result = await pool.query(`UPDATE ${ProcessManagement.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(processmanagement.status !== undefined ? processmanagement.status : undefined, processmanagement.isActive !== undefined ? processmanagement.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${ProcessManagement.tableName} SET ${setClause}${processmanagement.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${processmanagement.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (processmanagement.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (processmanagement.status !== undefined && processmanagement.isActive !== undefined ? 3 : processmanagement.status !== undefined || processmanagement.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

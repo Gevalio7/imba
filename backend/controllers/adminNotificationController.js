@@ -54,6 +54,8 @@ const createAdminNotification = async (req, res) => {
     data.message = req.body.message;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (!data.name) {
       return res.status(400).json({ message: 'name is required' });
@@ -75,6 +77,8 @@ const updateAdminNotification = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.message = req.body.message;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

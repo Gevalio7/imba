@@ -55,6 +55,8 @@ const createSystemConfiguration = async (req, res) => {
     data.value = req.body.value;
     data.configType = req.body.configType;
     data.isEditable = req.body.isEditable;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -81,6 +83,8 @@ const updateSystemConfiguration = async (req, res) => {
     data.value = req.body.value;
     data.configType = req.body.configType;
     data.isEditable = req.body.isEditable;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

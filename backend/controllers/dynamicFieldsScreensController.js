@@ -51,7 +51,13 @@ const createDynamicFieldsScreens = async (req, res) => {
   try {
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.screenName = req.body.screenName;
+    data.fieldName = req.body.fieldName;
+    data.fieldType = req.body.fieldType;
+    data.isActive = req.body.isActive;
+    data.isRequired = req.body.isRequired;
+    data.position = req.body.position;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -74,7 +80,13 @@ const updateDynamicFieldsScreens = async (req, res) => {
     const dynamicfieldsscreenId = parseInt(id, 10);
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.screenName = req.body.screenName;
+    data.fieldName = req.body.fieldName;
+    data.fieldType = req.body.fieldType;
+    data.isActive = req.body.isActive;
+    data.isRequired = req.body.isRequired;
+    data.position = req.body.position;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

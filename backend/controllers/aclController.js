@@ -53,6 +53,8 @@ const createAcl = async (req, res) => {
     data.name = req.body.name;
     data.description = req.body.description;
     data.permissions = req.body.permissions;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -77,6 +79,8 @@ const updateAcl = async (req, res) => {
     data.name = req.body.name;
     data.description = req.body.description;
     data.permissions = req.body.permissions;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

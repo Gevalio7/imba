@@ -1,9 +1,37 @@
 const fs = require('fs');
 const path = require('path');
 
-const configPath = path.join(__dirname, 'entities-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+// Создаём директорию models, если она не существует
+const modelsDir = path.join(__dirname, 'models');
+if (!fs.existsSync(modelsDir)) {
+  fs.mkdirSync(modelsDir, { recursive: true });
+}
+
+// Читаем извлечённые интерфейсы из файла
+const configPath = path.join(__dirname, 'extracted-interfaces.json');
+if (!fs.existsSync(configPath)) {
+  console.error('Файл extracted-interfaces.json не найден!');
+  process.exit(1);
+}
+
+let config;
+try {
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
+  process.exit(1);
+}
+
+if (typeof config !== 'object' || config === null) {
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
+  process.exit(1);
+}
+
 const entities = Object.keys(config);
+if (entities.length === 0) {
+  console.log('В extracted-interfaces.json нет сущностей для генерации моделей.');
+  process.exit(0);
+}
 
 function toSnakeCase(str) {
   return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
@@ -21,7 +49,7 @@ function generateModel(entity) {
   const singular = singularize(entity).toLowerCase();
   const fileName = entity.charAt(0).toLowerCase() + entity.slice(1) + '.js';
 
-  const fieldList = config[entity];
+  const fieldList = Object.keys(config[entity]);
   const fields = fieldList.join(', ');
 
   const code = `const { pool } = require('../config/db');
@@ -89,7 +117,7 @@ function generateModel(entity) {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => \`$\${i + 1}\`).join(', ');
       const values = fieldList.map(field => ${singular}[field]);
-      values.push(${singular}.status, ${singular}.isActive);
+      values.push(${singular}.status || 1, ${singular}.isActive !== undefined ? ${singular}.isActive : true);
       const result = await pool.query(\`INSERT INTO \${${className}.tableName} (\${this.fields}, status, is_active) VALUES (\${placeholders}, \$\${fieldList.length + 1}, \$\${fieldList.length + 2}) RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
 
       return result.rows[0];
@@ -104,8 +132,8 @@ function generateModel(entity) {
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => \`\${field} = \$\${i + 1}\`).join(', ');
       const values = fieldList.map(field => ${singular}[field]);
-      values.push(${singular}.status, ${singular}.isActive, id);
-      const result = await pool.query(\`UPDATE \${${className}.tableName} SET \${setClause}, status = \$\${fieldList.length + 1}, is_active = \$\${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = \$\${fieldList.length + 3} RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
+      values.push(${singular}.status !== undefined ? ${singular}.status : undefined, ${singular}.isActive !== undefined ? ${singular}.isActive : undefined, id);
+      const result = await pool.query(\`UPDATE \${${className}.tableName} SET \${setClause}\${${singular}.status !== undefined ? ', status = \$\${fieldList.length + 1}' : ''}\${${singular}.isActive !== undefined ? ', is_active = \$\${fieldList.length + ' + (${singular}.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = \$\${fieldList.length + ' + (${singular}.status !== undefined && ${singular}.isActive !== undefined ? 3 : ${singular}.status !== undefined || ${singular}.isActive !== undefined ? 2 : 1) + '} RETURNING id, \${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"\`, values);
 
       return result.rows[0] || null;
     } catch (error) {

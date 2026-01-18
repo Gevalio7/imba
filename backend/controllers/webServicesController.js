@@ -52,6 +52,11 @@ const createWebServices = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.endpoint = req.body.endpoint;
+    data.method = req.body.method;
+    data.isActive = req.body.isActive;
+    data.lastTested = req.body.lastTested;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +80,11 @@ const updateWebServices = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.endpoint = req.body.endpoint;
+    data.method = req.body.method;
+    data.isActive = req.body.isActive;
+    data.lastTested = req.body.lastTested;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

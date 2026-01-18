@@ -55,6 +55,8 @@ const createDynamicFields = async (req, res) => {
     data.fieldType = req.body.fieldType;
     data.defaultValue = req.body.defaultValue;
     data.isRequired = req.body.isRequired;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -81,6 +83,8 @@ const updateDynamicFields = async (req, res) => {
     data.fieldType = req.body.fieldType;
     data.defaultValue = req.body.defaultValue;
     data.isRequired = req.body.isRequired;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

@@ -120,7 +120,7 @@ async function initializeDatabase() {
       'performance_log', 'pgp_keys', 'post_master_filters', 'post_master_mail_accounts',
       'processes_automation_settings', 'process_management', 'queue_auto_response', 'queues',
       'roles', 'roles_groups', 'services', 'session_management', 'signatures', 'sla',
-      'smime_certificates', 'sql_box', 'states', 'system_configuration', 'system_file_support',
+      'smime_certificates', 'sql_box', 'states', 'types', 'system_configuration', 'system_file_support',
       'system_log', 'system_maintenance', 'template_attachments', 'template_queues', 'templates',
       'ticket_attribute_relations', 'ticket_notifications', 'translation', 'users_groups_roles_settings',
       'web_services'

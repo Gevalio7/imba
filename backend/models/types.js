@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class Types {
     static tableName = 'types';
-    static fields = 'name, description';
+    static fields = 'name, comment, status, isActive';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => type[field]);
-      values.push(type.status, type.isActive);
+      values.push(type.status || 1, type.isActive !== undefined ? type.isActive : true);
       const result = await pool.query(`INSERT INTO ${Types.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => type[field]);
-      values.push(type.status, type.isActive, id);
-      const result = await pool.query(`UPDATE ${Types.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(type.status !== undefined ? type.status : undefined, type.isActive !== undefined ? type.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${Types.tableName} SET ${setClause}${type.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${type.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (type.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (type.status !== undefined && type.isActive !== undefined ? 3 : type.status !== undefined || type.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

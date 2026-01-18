@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class SessionManagement {
     static tableName = 'session_management';
-    static fields = 'name, description';
+    static fields = 'username, ipAddress, userAgent, loginTime, lastActivity, isActive, status';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => sessionmanagement[field]);
-      values.push(sessionmanagement.status, sessionmanagement.isActive);
+      values.push(sessionmanagement.status || 1, sessionmanagement.isActive !== undefined ? sessionmanagement.isActive : true);
       const result = await pool.query(`INSERT INTO ${SessionManagement.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => sessionmanagement[field]);
-      values.push(sessionmanagement.status, sessionmanagement.isActive, id);
-      const result = await pool.query(`UPDATE ${SessionManagement.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(sessionmanagement.status !== undefined ? sessionmanagement.status : undefined, sessionmanagement.isActive !== undefined ? sessionmanagement.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${SessionManagement.tableName} SET ${setClause}${sessionmanagement.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${sessionmanagement.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (sessionmanagement.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (sessionmanagement.status !== undefined && sessionmanagement.isActive !== undefined ? 3 : sessionmanagement.status !== undefined || sessionmanagement.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

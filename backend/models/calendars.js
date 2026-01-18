@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class Calendars {
     static tableName = 'calendars';
-    static fields = 'name, description';
+    static fields = 'name, description, timezone, workHours, isActive, status';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => calendar[field]);
-      values.push(calendar.status, calendar.isActive);
+      values.push(calendar.status || 1, calendar.isActive !== undefined ? calendar.isActive : true);
       const result = await pool.query(`INSERT INTO ${Calendars.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => calendar[field]);
-      values.push(calendar.status, calendar.isActive, id);
-      const result = await pool.query(`UPDATE ${Calendars.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(calendar.status !== undefined ? calendar.status : undefined, calendar.isActive !== undefined ? calendar.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${Calendars.tableName} SET ${setClause}${calendar.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${calendar.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (calendar.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (calendar.status !== undefined && calendar.isActive !== undefined ? 3 : calendar.status !== undefined || calendar.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

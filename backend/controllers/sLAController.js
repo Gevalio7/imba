@@ -52,6 +52,10 @@ const createSLA = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.responseTime = req.body.responseTime;
+    data.resolutionTime = req.body.resolutionTime;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +79,10 @@ const updateSLA = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.responseTime = req.body.responseTime;
+    data.resolutionTime = req.body.resolutionTime;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

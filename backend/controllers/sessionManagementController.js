@@ -50,13 +50,18 @@ const getSessionManagementById = async (req, res) => {
 const createSessionManagement = async (req, res) => {
   try {
     const data = {};
-    data.name = req.body.name;
-    data.description = req.body.description;
+    data.username = req.body.username;
+    data.ipAddress = req.body.ipAddress;
+    data.userAgent = req.body.userAgent;
+    data.loginTime = req.body.loginTime;
+    data.lastActivity = req.body.lastActivity;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
-    if (!data.name) {
-      return res.status(400).json({ message: 'name is required' });
+    if (!data.username) {
+      return res.status(400).json({ message: 'username is required' });
     }
 
     const newSessionManagement = await SessionManagement.create(data);
@@ -73,8 +78,13 @@ const updateSessionManagement = async (req, res) => {
     const { id } = req.params;
     const sessionmanagementId = parseInt(id, 10);
     const data = {};
-    data.name = req.body.name;
-    data.description = req.body.description;
+    data.username = req.body.username;
+    data.ipAddress = req.body.ipAddress;
+    data.userAgent = req.body.userAgent;
+    data.loginTime = req.body.loginTime;
+    data.lastActivity = req.body.lastActivity;
+    data.isActive = req.body.isActive;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -82,8 +92,8 @@ const updateSessionManagement = async (req, res) => {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    if (!data.name) {
-      return res.status(400).json({ message: 'name is required' });
+    if (!data.username) {
+      return res.status(400).json({ message: 'username is required' });
     }
 
     const updatedSessionManagement = await SessionManagement.update(sessionmanagementId, data);

@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class PackageManager {
     static tableName = 'package_manager';
-    static fields = 'name, description, version, author';
+    static fields = 'name, description, version, author, isInstalled, isUpgradable, status';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => packagemanager[field]);
-      values.push(packagemanager.status, packagemanager.isActive);
+      values.push(packagemanager.status || 1, packagemanager.isActive !== undefined ? packagemanager.isActive : true);
       const result = await pool.query(`INSERT INTO ${PackageManager.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => packagemanager[field]);
-      values.push(packagemanager.status, packagemanager.isActive, id);
-      const result = await pool.query(`UPDATE ${PackageManager.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(packagemanager.status !== undefined ? packagemanager.status : undefined, packagemanager.isActive !== undefined ? packagemanager.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${PackageManager.tableName} SET ${setClause}${packagemanager.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${packagemanager.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (packagemanager.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (packagemanager.status !== undefined && packagemanager.isActive !== undefined ? 3 : packagemanager.status !== undefined || packagemanager.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

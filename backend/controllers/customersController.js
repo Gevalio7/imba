@@ -57,6 +57,8 @@ const createCustomers = async (req, res) => {
     data.comment = req.body.comment;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (!data.name) {
       return res.status(400).json({ message: 'name is required' });
@@ -81,6 +83,8 @@ const updateCustomers = async (req, res) => {
     data.zip = req.body.zip;
     data.city = req.body.city;
     data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

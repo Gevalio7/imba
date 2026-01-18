@@ -52,6 +52,12 @@ const createGenericAgent = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.triggerType = req.body.triggerType;
+    data.schedule = req.body.schedule;
+    data.isActive = req.body.isActive;
+    data.lastRun = req.body.lastRun;
+    data.nextRun = req.body.nextRun;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +81,12 @@ const updateGenericAgent = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.triggerType = req.body.triggerType;
+    data.schedule = req.body.schedule;
+    data.isActive = req.body.isActive;
+    data.lastRun = req.body.lastRun;
+    data.nextRun = req.body.nextRun;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

@@ -51,7 +51,11 @@ const createAttachments = async (req, res) => {
   try {
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.fileName = req.body.fileName;
+    data.type = req.body.type;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -74,7 +78,11 @@ const updateAttachments = async (req, res) => {
     const attachmentId = parseInt(id, 10);
     const data = {};
     data.name = req.body.name;
-    data.description = req.body.description;
+    data.fileName = req.body.fileName;
+    data.type = req.body.type;
+    data.comment = req.body.comment;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

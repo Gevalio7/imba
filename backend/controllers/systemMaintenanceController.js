@@ -52,6 +52,11 @@ const createSystemMaintenance = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.startTime = req.body.startTime;
+    data.endTime = req.body.endTime;
+    data.isActive = req.body.isActive;
+    data.isScheduled = req.body.isScheduled;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
@@ -75,6 +80,11 @@ const updateSystemMaintenance = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.description = req.body.description;
+    data.startTime = req.body.startTime;
+    data.endTime = req.body.endTime;
+    data.isActive = req.body.isActive;
+    data.isScheduled = req.body.isScheduled;
+    data.status = req.body.status;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

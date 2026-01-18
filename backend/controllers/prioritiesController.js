@@ -54,6 +54,8 @@ const createPriorities = async (req, res) => {
     data.color = req.body.color;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (!data.name) {
       return res.status(400).json({ message: 'name is required' });
@@ -75,6 +77,8 @@ const updatePriorities = async (req, res) => {
     const data = {};
     data.name = req.body.name;
     data.color = req.body.color;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 

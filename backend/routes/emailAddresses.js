@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getEmailAddresses,
-  getEmailAddressById,
+  getEmailAddresseById,
   createEmailAddresses,
   updateEmailAddresses,
   deleteEmailAddresses,
@@ -12,7 +12,7 @@ const {
 router.get('/', getEmailAddresses);
 
 // GET /emailAddresses/:id
-router.get('/:id', getEmailAddressById);
+router.get('/:id', getEmailAddresseById);
 
 // POST /emailAddresses
 router.post('/', createEmailAddresses);

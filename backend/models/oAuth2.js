@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class OAuth2 {
     static tableName = 'oauth2';
-    static fields = 'name, clientId, clientSecret, authorizationUrl, tokenUrl, scopes';
+    static fields = 'name, clientId, clientSecret, authorizationUrl, tokenUrl, scopes, status, isActive';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => oauth2[field]);
-      values.push(oauth2.status, oauth2.isActive);
+      values.push(oauth2.status || 1, oauth2.isActive !== undefined ? oauth2.isActive : true);
       const result = await pool.query(`INSERT INTO ${OAuth2.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => oauth2[field]);
-      values.push(oauth2.status, oauth2.isActive, id);
-      const result = await pool.query(`UPDATE ${OAuth2.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(oauth2.status !== undefined ? oauth2.status : undefined, oauth2.isActive !== undefined ? oauth2.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${OAuth2.tableName} SET ${setClause}${oauth2.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${oauth2.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (oauth2.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (oauth2.status !== undefined && oauth2.isActive !== undefined ? 3 : oauth2.status !== undefined || oauth2.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

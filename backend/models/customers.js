@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
   
   class Customers {
     static tableName = 'customers';
-    static fields = 'name, street, zip, city, comment';
+    static fields = 'name, street, zip, city, comment, status, isActive';
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
@@ -63,7 +63,7 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => customer[field]);
-      values.push(customer.status, customer.isActive);
+      values.push(customer.status || 1, customer.isActive !== undefined ? customer.isActive : true);
       const result = await pool.query(`INSERT INTO ${Customers.tableName} (${this.fields}, status, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0];
@@ -78,8 +78,8 @@ const { pool } = require('../config/db');
       const fieldList = this.fields.split(', ');
       const setClause = fieldList.map((field, i) => `${field} = $${i + 1}`).join(', ');
       const values = fieldList.map(field => customer[field]);
-      values.push(customer.status, customer.isActive, id);
-      const result = await pool.query(`UPDATE ${Customers.tableName} SET ${setClause}, status = $${fieldList.length + 1}, is_active = $${fieldList.length + 2}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + 3} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
+      values.push(customer.status !== undefined ? customer.status : undefined, customer.isActive !== undefined ? customer.isActive : undefined, id);
+      const result = await pool.query(`UPDATE ${Customers.tableName} SET ${setClause}${customer.status !== undefined ? ', status = $${fieldList.length + 1}' : ''}${customer.isActive !== undefined ? ', is_active = $${fieldList.length + ' + (customer.status !== undefined ? 2 : 1) + '}' : ''}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldList.length + ' + (customer.status !== undefined && customer.isActive !== undefined ? 3 : customer.status !== undefined || customer.isActive !== undefined ? 2 : 1) + '} RETURNING id, ${this.fields}, created_at as "createdAt", updated_at as "updatedAt", status, is_active as "isActive"`, values);
 
       return result.rows[0] || null;
     } catch (error) {

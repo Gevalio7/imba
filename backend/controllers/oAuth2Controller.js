@@ -58,6 +58,8 @@ const createOAuth2 = async (req, res) => {
     data.scopes = req.body.scopes;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
 
     if (!data.name) {
       return res.status(400).json({ message: 'name is required' });
@@ -83,6 +85,8 @@ const updateOAuth2 = async (req, res) => {
     data.authorizationUrl = req.body.authorizationUrl;
     data.tokenUrl = req.body.tokenUrl;
     data.scopes = req.body.scopes;
+    data.status = req.body.status;
+    data.isActive = req.body.isActive;
     data.status = req.body.status;
     data.isActive = req.body.isActive;
 
