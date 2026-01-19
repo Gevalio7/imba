@@ -42,8 +42,7 @@ const createSignatures = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.content = req.body.content;
-  data.comment = req.body.comment;
-
+  
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -70,8 +69,7 @@ const updateSignatures = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.content !== undefined) data.content = req.body.content;
-  if (req.body.comment !== undefined) data.comment = req.body.comment;
-
+  
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
