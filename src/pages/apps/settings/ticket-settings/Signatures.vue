@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Подпись
 interface Signatures {
   id: number
   name: string
   content: string
+  comment: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -104,12 +105,18 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
-  { title: 'Содержание', key: 'content', sortable: true },
+  { title: 'Содержание', key: 'content', sortable: false },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
+
+// Функция для удаления HTML-тегов
+const stripHtmlTags = (html: string) => {
+  return html.replace(/<[^>]*>/g, '')
+}
 
 // Фильтрация
 const filteredSignatures = computed(() => {
@@ -244,6 +251,7 @@ const defaultItem = ref<Signatures>({
   id: -1,
   name: '',
   content: '',
+  comment: '',
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -662,10 +670,7 @@ const addNewSignatures = () => {
           <VRow>
 
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
@@ -673,28 +678,30 @@ const addNewSignatures = () => {
             </VCol>
 
             <!-- Содержание -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextarea
+            <VCol cols="12">
+              <TiptapEditor
                 v-model="editedItem.content"
-                label="Содержание"
+                placeholder="Message"
+                style="border: 1px solid #ccc; border-radius: 4px; min-block-size: 200px;"
+              />
+            </VCol>
+
+            <!-- Комментарий -->
+            <VCol cols="12">
+              <AppTextarea
+                v-model="editedItem.comment"
+                label="Комментарий"
                 rows="3"
-                placeholder="Введите содержание..."
+                placeholder="Введите комментарий..."
               />
             </VCol>
 
             <!-- Активен -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12">
               <VSwitch
                 v-model="editedItem.isActive"
-                :label="editedItem.isActive ? 'Активен' : 'Не активен'"
+                label="Активен"
                 color="primary"
-                density="compact"
               />
             </VCol>
           </VRow>

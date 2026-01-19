@@ -131,6 +131,7 @@
   },
   "Greetings": {
     "name": "string",
+    "content": "string",
     "comment": "string",
     "isActive": "boolean"
   },

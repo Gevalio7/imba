@@ -11,16 +11,54 @@ async function initSignaturesTable() {
 
     // Тестовые данные для подписей
     const testSignatures = [
-      { name: 'Стандартная подпись', content: 'С уважением,\nКоманда поддержки', isActive: true },
-      { name: 'Техническая поддержка', content: 'Техническая поддержка\nsupport@company.com', isActive: true },
-      { name: 'Администратор', content: 'Администратор системы\nadmin@company.com', isActive: true },
-      { name: 'Менеджер', content: 'Менеджер по работе с клиентами\nmanager@company.com', isActive: true },
-      { name: 'Консультант', content: 'Консультационная служба\nconsultant@company.com', isActive: true },
-      { name: 'Служба безопасности', content: 'Служба информационной безопасности\nsecurity@company.com', isActive: true },
-      { name: 'Финансовый отдел', content: 'Финансовый отдел\nfinance@company.com', isActive: true },
-      { name: 'Отдел кадров', content: 'Отдел кадров\nhr@company.com', isActive: true },
-      { name: 'Юридический отдел', content: 'Юридический отдел\nlegal@company.com', isActive: true },
-      { name: 'Маркетинг', content: 'Отдел маркетинга\nmarketing@company.com', isActive: true },
+      {
+        name: 'С уважением',
+        content: '\n\nС уважением,\n[Ваше имя]\n[Ваша должность]\n[Название компании]',
+        comment: 'Стандартная подпись с уважением',
+        isActive: true
+      },
+      {
+        name: 'Лучшие пожелания',
+        content: '\n\nС лучшими пожеланиями,\n[Ваше имя]\n[Ваша должность]',
+        comment: 'Теплая подпись с пожеланиями',
+        isActive: true
+      },
+      {
+        name: 'Спасибо за обращение',
+        content: '\n\nСпасибо за Ваше обращение!\n\nС уважением,\n[Ваше имя]',
+        comment: 'Подпись с благодарностью',
+        isActive: true
+      },
+      {
+        name: 'Официальная подпись',
+        content: '\n\nС уважением,\n[Ваше имя]\n[Ваша должность]\n[Контактная информация]\n[Название компании]',
+        comment: 'Полная официальная подпись',
+        isActive: true
+      },
+      {
+        name: 'Короткая подпись',
+        content: '\n\nС уважением,\n[Ваше имя]',
+        comment: 'Краткая подпись',
+        isActive: true
+      },
+      {
+        name: 'Поддержка клиентов',
+        content: '\n\nКоманда поддержки\n[Название компании]\n[Контактная информация]',
+        comment: 'Подпись для службы поддержки',
+        isActive: true
+      },
+      {
+        name: 'Техническая поддержка',
+        content: '\n\nТехническая поддержка\n[Ваше имя]\n[Email]\n[Телефон]',
+        comment: 'Подпись для технической поддержки',
+        isActive: true
+      },
+      {
+        name: 'Менеджер по продажам',
+        content: '\n\nМенеджер по продажам\n[Ваше имя]\n[Телефон]\n[Email]',
+        comment: 'Подпись для отдела продаж',
+        isActive: true
+      }
     ];
 
     let addedCount = 0;

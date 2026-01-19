@@ -6,6 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 interface Greetings {
   id: number
   name: string
+  content: string
   comment: string
   isActive: boolean
   createdAt: string
@@ -97,12 +98,18 @@ onMounted(() => {
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
+  { title: 'Содержание', key: 'content', sortable: false },
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
+
+// Функция для удаления HTML-тегов
+const stripHtmlTags = (html: string) => {
+  return html.replace(/<[^>]*>/g, '')
+}
 
 // Фильтрация
 const filteredGreetings = computed(() => {
@@ -204,6 +211,7 @@ const deleteDialog = ref(false)
 const defaultItem = ref<Greetings>({
   id: -1,
   name: '',
+  content: '',
   comment: '',
   createdAt: '',
   updatedAt: '',
@@ -600,21 +608,24 @@ const addNewGreetings = () => {
           <VRow>
 
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
               />
             </VCol>
 
+            <!-- Содержание -->
+            <VCol cols="12">
+              <TiptapEditor
+                v-model="editedItem.content"
+                placeholder="Содержание"
+                style="border: 1px solid #ccc; border-radius: 4px; min-block-size: 200px;"
+              />
+            </VCol>
+
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"
@@ -624,10 +635,7 @@ const addNewGreetings = () => {
             </VCol>
 
             <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12">
               <VSwitch
                 v-model="editedItem.isActive"
                 label="Активен"
