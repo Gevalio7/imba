@@ -23,7 +23,7 @@
     "include": [
         "**/*.ts",
         "**/*.js"
-    ],
+, "middleware/errorHandler.ts1"    ],
     "exclude": [
         "node_modules",
         "dist"

@@ -16,6 +16,13 @@ interface Priorities {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Store
+const searchQuery = ref('')
+const itemsPerPage = ref(10)
+const page = ref(1)
+const sortBy = ref()
+const orderBy = ref()
+
 // Данные приоритеты
 const priorities = ref<Priorities[]>([])
 const total = ref(0)
@@ -47,7 +54,7 @@ const createPriorities = async (item: Omit<Priorities, 'id' | 'createdAt' | 'upd
       method: 'POST',
       body: item
     })
-    priorities.value.push(data)
+    priorities.value.unshift(data) // Добавляем в начало массива
     return data
   } catch (err) {
     console.error('Error creating priorities:', err)
@@ -108,9 +115,20 @@ const headers = [
 const filteredPriorities = computed(() => {
   let filtered = priorities.value
 
+  if (searchQuery.value.trim()) {
+    // Фильтруем по поисковому запросу (по названию)
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+  }
+
   if (statusFilter.value !== null) {
     // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+  }
+
+  if (selectedNames.value.length > 0) {
+    // Фильтруем по выбранным названиям
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
   }
 
   return filtered
@@ -118,8 +136,21 @@ const filteredPriorities = computed(() => {
 
 // Сброс фильтров
 const clearFilters = () => {
+  searchQuery.value = ''
   statusFilter.value = null
+  selectedNames.value = []
 }
+
+// Уникальные названия для фильтра
+const uniqueNames = computed(() => {
+  const names = priorities.value.map(p => p.name)
+  return [...new Set(names)].sort()
+})
+
+// Проверка активных фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
 
 // Массовые действия
 const bulkDelete = () => {
@@ -176,10 +207,11 @@ const resolveStatusVariant = (isActive: boolean) => {
 
 // Пагинация
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
@@ -196,6 +228,13 @@ watch(selectedItems, (newValue) => {
   console.log('📊 Количество выбранных:', newValue.length)
   console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
 }, { deep: true })
+
+// Ограничение количества выбранных названий
+watch(selectedNames, (value) => {
+  if (value.length > 10) {
+    nextTick(() => selectedNames.value.pop())
+  }
+})
 
 // Диалоги
 const editDialog = ref(false)
@@ -340,6 +379,7 @@ const addNewPriorities = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
+            v-model="searchQuery"
             placeholder="Поиск приоритеты"
             style="inline-size: 250px;"
             class="me-3"
@@ -350,10 +390,10 @@ const addNewPriorities = () => {
         <VBtn
           variant="tonal"
           color="secondary"
-          prepend-icon="bx-filter"
-          @click="isFilterDialogOpen = true"
+          :prepend-icon="hasActiveFilters ? 'bx-x' : 'bx-filter'"
+          @click="hasActiveFilters ? clearFilters() : isFilterDialogOpen = true"
         >
-          Фильтр
+          {{ hasActiveFilters ? 'Сбросить фильтр' : 'Фильтр' }}
         </VBtn>
 
         <!-- Кнопка массовых действий -->
@@ -427,6 +467,28 @@ const addNewPriorities = () => {
           <VCardText>
             <VRow>
               <VCol cols="12">
+                <AppCombobox
+                  v-model="selectedNames"
+                  v-model:search-input="searchNames"
+                  :items="uniqueNames"
+                  hide-selected
+                  :hide-no-data="false"
+                  placeholder="Выберите названия"
+                  hint="Максимум 10 названий"
+                  label="Названия приоритетов"
+                  multiple
+                  persistent-hint
+                >
+                  <template #no-data>
+                    <VListItem>
+                      <VListItemTitle>
+                        Нет результатов для "<strong>{{ searchNames }}</strong>"
+                      </VListItemTitle>
+                    </VListItem>
+                  </template>
+                </AppCombobox>
+              </VCol>
+              <VCol cols="12" md="6">
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -549,6 +611,17 @@ const addNewPriorities = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Цвет -->
+        <template #item.color="{ item }">
+          <div class="d-flex align-center gap-2">
+            <div
+              class="color-circle"
+              :style="{ backgroundColor: item.color }"
+            ></div>
+            <span>{{ item.color }}</span>
+          </div>
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
@@ -598,22 +671,19 @@ const addNewPriorities = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать приоритет' : 'Добавить приоритет'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
               />
             </VCol>
-
+          </VRow>
+          <VRow>
             <!-- Цвет -->
             <VCol
               cols="12"
-              
+              md="6"
             >
               <AppTextField
                 v-model="editedItem.color"
@@ -625,12 +695,13 @@ const addNewPriorities = () => {
             <!-- Активен -->
             <VCol
               cols="12"
-              sm="6"
+              md="6"
             >
               <VSwitch
                 v-model="editedItem.isActive"
-                label="Активен"
+                :label="editedItem.isActive ? 'Активен' : 'Не активен'"
                 color="primary"
+                density="compact"
               />
             </VCol>
           </VRow>
@@ -698,5 +769,13 @@ const addNewPriorities = () => {
 <style lang="scss" scoped>
 .v-card {
   margin-block-end: 1rem;
+}
+
+.color-circle {
+  display: inline-block;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  block-size: 20px;
+  inline-size: 20px;
 }
 </style>
