@@ -1,25 +1,80 @@
 {
-  "Acls": {
+  "Calendars": {
     "name": "string",
     "description": "string",
+    "timezone": "string",
+    "workHours": "string",
     "isActive": "boolean"
   },
-  "AdminNotifications": {
-    "name": "string",
-    "description": "string",
-    "isActive": "boolean"
-  },
-  "Agents": {
+  "GeneralCatalog": {
     "name": "string",
     "message": "string",
     "isActive": "boolean"
   },
-  "AgentsGroups": {
+  "PackageManager": {
+    "name": "string",
+    "description": "string",
+    "version": "string",
+    "author": "string",
+    "isInstalled": "boolean",
+    "isUpgradable": "boolean",
+    "status": "number // 1 - активен, 2 - не активен"
+  },
+  "PerformanceLog": {
     "name": "string",
     "message": "string",
     "isActive": "boolean"
   },
-  "AgentsRoles": {
+  "SessionManagement": {
+    "username": "string",
+    "ipAddress": "string",
+    "userAgent": "string",
+    "loginTime": "string",
+    "lastActivity": "string",
+    "isActive": "boolean"
+  },
+  "SqlBox": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "SupportDataCollector": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "SystemConfiguration": {
+    "name": "string",
+    "description": "string",
+    "value": "string",
+    "configType": "string",
+    "isEditable": "boolean",
+    "isActive": "boolean"
+  },
+  "SystemFileSupport": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "SystemLog": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "SystemMaintenance": {
+    "name": "string",
+    "description": "string",
+    "startTime": "string",
+    "endTime": "string",
+    "isActive": "boolean",
+    "isScheduled": "boolean"
+  },
+  "Translation": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "AdminNotification": {
     "name": "string",
     "message": "string",
     "isActive": "boolean"
@@ -28,6 +83,105 @@
     "name": "string",
     "message": "string",
     "isActive": "boolean"
+  },
+  "CommunicationLog": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "EmailAddresses": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "OAuth2": {
+    "name": "string",
+    "clientId": "string",
+    "clientSecret": "string",
+    "authorizationUrl": "string",
+    "tokenUrl": "string",
+    "scopes": "string[]",
+    "isActive": "boolean"
+  },
+  "PgpKeys": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "PostMasterFilters": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "PostMasterMailAccounts": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "SmimeCertificates": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "TicketNotifications": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "Acl": {
+    "name": "string",
+    "description": "string",
+    "permissions": "string[]",
+    "isActive": "boolean"
+  },
+  "DynamicFields": {
+    "name": "string",
+    "label": "string",
+    "fieldType": "string",
+    "defaultValue": "string",
+    "isRequired": "boolean",
+    "isActive": "boolean"
+  },
+  "DynamicFieldsScreens": {
+    "name": "string",
+    "screenName": "string",
+    "fieldName": "string",
+    "fieldType": "string",
+    "isActive": "boolean",
+    "isRequired": "boolean",
+    "position": "number"
+  },
+  "GenericAgent": {
+    "name": "string",
+    "description": "string",
+    "triggerType": "string // 'time' | 'event'",
+    "schedule": "string",
+    "isActive": "boolean",
+    "lastRun": "string | null",
+    "nextRun": "string"
+  },
+  "ProcessManagement": {
+    "name": "string",
+    "description": "string",
+    "processType": "string",
+    "isActive": "boolean",
+    "lastExecuted": "string | null",
+    "nextExecution": "string"
+  },
+  "TicketAttributeRelations": {
+    "name": "string",
+    "sourceAttribute": "string",
+    "targetAttribute": "string",
+    "relationType": "string",
+    "isActive": "boolean"
+  },
+  "WebServices": {
+    "name": "string",
+    "description": "string",
+    "endpoint": "string",
+    "method": "string",
+    "isActive": "boolean",
+    "lastTested": "string | null"
   },
   "Attachments": {
     "name": "string",
@@ -43,21 +197,83 @@
     "delay": "number",
     "isActive": "boolean"
   },
-  "Calendars": {
+  "Greetings": {
     "name": "string",
-    "description": "string",
-    "timezone": "string",
-    "workHours": "string",
+    "comment": "string",
     "isActive": "boolean"
   },
-  "CommunicationLog": {
+  "Priorities": {
+    "name": "string",
+    "color": "string",
+    "isActive": "boolean"
+  },
+  "QueueAutoResponse": {
     "name": "string",
     "message": "string",
     "isActive": "boolean"
   },
-  "CommunicationNotificationsSettings": {
+  "Queues": {
     "name": "string",
     "description": "string",
+    "maxTickets": "number",
+    "priority": "number",
+    "isActive": "boolean"
+  },
+  "sLA": {
+    "name": "string",
+    "description": "string",
+    "responseTime": "number // в часах",
+    "resolutionTime": "number // в часах",
+    "isActive": "boolean"
+  },
+  "Services": {
+    "name": "string",
+    "comment": "string",
+    "isActive": "boolean"
+  },
+  "Signatures": {
+    "name": "string",
+    "content": "string",
+    "isActive": "boolean"
+  },
+  "States": {
+    "name": "string",
+    "comment": "string",
+    "isActive": "boolean"
+  },
+  "TemplateAttachments": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "TemplateQueues": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "Templates": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "Types": {
+    "name": "string",
+    "comment": "string",
+    "isActive": "boolean"
+  },
+  "Agents": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "AgentsGroups": {
+    "name": "string",
+    "message": "string",
+    "isActive": "boolean"
+  },
+  "AgentsRoles": {
+    "name": "string",
+    "message": "string",
     "isActive": "boolean"
   },
   "CustomerUsers": {
@@ -93,117 +309,9 @@
     "message": "string",
     "isActive": "boolean"
   },
-  "DynamicFields": {
-    "name": "string",
-    "label": "string",
-    "fieldType": "string",
-    "defaultValue": "string",
-    "isRequired": "boolean",
-    "isActive": "boolean"
-  },
-  "DynamicFieldsScreens": {
-    "name": "string",
-    "screenName": "string",
-    "fieldName": "string",
-    "fieldType": "string",
-    "isActive": "boolean",
-    "isRequired": "boolean",
-    "position": "number"
-  },
-  "EmailAddresses": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "GeneralCatalog": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "GenericAgent": {
-    "name": "string",
-    "description": "string",
-    "triggerType": "string",
-    "schedule": "string",
-    "isActive": "boolean",
-    "lastRun": "string",
-    "nextRun": "string"
-  },
-  "Greetings": {
-    "name": "string",
-    "comment": "string",
-    "isActive": "boolean"
-  },
   "Groups": {
     "name": "string",
     "message": "string",
-    "isActive": "boolean"
-  },
-  "Oauth2": {
-    "name": "string",
-    "clientId": "string",
-    "clientSecret": "string",
-    "authorizationUrl": "string",
-    "tokenUrl": "string",
-    "scopes": "string[]",
-    "isActive": "boolean"
-  },
-  "PackageManager": {
-    "name": "string",
-    "description": "string",
-    "version": "string",
-    "author": "string",
-    "isInstalled": "boolean",
-    "isUpgradable": "boolean"
-  },
-  "PerformanceLog": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "PgpKeys": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "PostMasterFilters": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "PostMasterMailAccounts": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "Priorities": {
-    "name": "string",
-    "color": "string",
-    "isActive": "boolean"
-  },
-  "ProcessManagement": {
-    "name": "string",
-    "description": "string",
-    "processType": "string",
-    "isActive": "boolean",
-    "lastExecuted": "string",
-    "nextExecution": "string"
-  },
-  "ProcessesAutomationSettings": {
-    "name": "string",
-    "description": "string",
-    "isActive": "boolean"
-  },
-  "QueueAutoResponse": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "Queues": {
-    "name": "string",
-    "description": "string",
-    "maxTickets": "number",
-    "priority": "number",
     "isActive": "boolean"
   },
   "Roles": {
@@ -215,130 +323,5 @@
     "name": "string",
     "message": "string",
     "isActive": "boolean"
-  },
-  "Services": {
-    "name": "string",
-    "comment": "string",
-    "isActive": "boolean"
-  },
-  "SessionManagement": {
-    "username": "string",
-    "ipAddress": "string",
-    "userAgent": "string",
-    "loginTime": "string",
-    "lastActivity": "string",
-    "isActive": "boolean"
-  },
-  "Signatures": {
-    "name": "string",
-    "content": "string",
-    "isActive": "boolean"
-  },
-  "Sla": {
-    "name": "string",
-    "description": "string",
-    "responseTime": "number",
-    "resolutionTime": "number",
-    "isActive": "boolean"
-  },
-  "SmimeCertificates": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "SqlBox": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "States": {
-    "name": "string",
-    "comment": "string",
-    "isActive": "boolean"
-  },
-  "SupportDataCollector": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "SystemConfiguration": {
-    "name": "string",
-    "description": "string",
-    "value": "string",
-    "configType": "string",
-    "isEditable": "boolean",
-    "isActive": "boolean"
-  },
-  "SystemFileSupport": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "SystemLog": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "SystemMaintenance": {
-    "name": "string",
-    "description": "string",
-    "startTime": "string",
-    "endTime": "string",
-    "isActive": "boolean",
-    "isScheduled": "boolean"
-  },
-  "TemplateAttachments": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "TemplateQueues": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "Templates": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "TestEntities": {
-    "name": "string",
-    "comment": "string"
-  },
-  "TicketAttributeRelations": {
-    "name": "string",
-    "sourceAttribute": "string",
-    "targetAttribute": "string",
-    "relationType": "string",
-    "isActive": "boolean"
-  },
-  "TicketNotifications": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "Translation": {
-    "name": "string",
-    "message": "string",
-    "isActive": "boolean"
-  },
-  "Types": {
-    "name": "string",
-    "comment": "string",
-    "isActive": "boolean"
-  },
-  "UsersGroupsRolesSettings": {
-    "name": "string",
-    "description": "string",
-    "isActive": "boolean"
-  },
-  "WebServices": {
-    "name": "string",
-    "description": "string",
-    "endpoint": "string",
-    "method": "string",
-    "isActive": "boolean",
-    "lastTested": "string"
   }
 }

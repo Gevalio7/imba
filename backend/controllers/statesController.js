@@ -42,7 +42,9 @@ const createStates = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.comment = req.body.comment;
-  
+  data.type = req.body.type;
+  data.color = req.body.color;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -69,7 +71,9 @@ const updateStates = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.comment !== undefined) data.comment = req.body.comment;
-  
+  if (req.body.type !== undefined) data.type = req.body.type;
+  if (req.body.color !== undefined) data.color = req.body.color;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
