@@ -7,6 +7,7 @@ interface Signatures {
   id: number
   name: string
   content: string
+  comment: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -98,6 +99,7 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Содержание', key: 'content', sortable: true },
+  { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -205,6 +207,7 @@ const defaultItem = ref<Signatures>({
   id: -1,
   name: '',
   content: '',
+  comment: '',
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -613,13 +616,26 @@ const addNewSignatures = () => {
             <!-- Содержание -->
             <VCol
               cols="12"
-              
+              sm="6"
             >
               <AppTextarea
                 v-model="editedItem.content"
                 label="Содержание"
                 rows="3"
                 placeholder="Введите содержание..."
+              />
+            </VCol>
+
+            <!-- Комментарий -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextarea
+                v-model="editedItem.comment"
+                label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 
