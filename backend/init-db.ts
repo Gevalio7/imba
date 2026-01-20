@@ -6,7 +6,6 @@ const masterPool = new Pool({
   host: 'localhost',
   port: 5432,
   user: 'postgres',
-  password: 'postgres',
   database: 'postgres',
 });
 
@@ -148,7 +147,7 @@ async function initializeDatabase(): Promise<void> {
     console.log('Инициализация базы данных завершена успешно.');
   } catch (err) {
     console.error('Ошибка инициализации базы данных:', err);
-    throw err;
+    process.exit(1);
   }
 }
 

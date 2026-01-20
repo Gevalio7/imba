@@ -134,13 +134,22 @@ else
     print_color $GREEN "✅ Зависимости бэкенда уже установлены"
 fi
 
+# Инициализация базы данных
+print_color $CYAN "\n🗄️  Инициализация базы данных..."
+cd backend && npm run init-db && cd ..
+if [ $? -ne 0 ]; then
+    print_color $RED "❌ Ошибка инициализации базы данных"
+    exit 1
+fi
+print_color $GREEN "✅ База данных инициализирована"
+
 # Создание логов директории
 mkdir -p logs
 
 # Запуск бэкенда
 print_color $CYAN "\n🔧 Запуск бэкенда..."
 cd backend
-npm run dev > ../logs/backend.log 2>&1 &
+npm run dev 2>&1 | tee ../logs/backend.log &
 BACKEND_PID=$!
 cd ..
 
@@ -165,7 +174,7 @@ echo ""
 
 # Запуск фронтенда
 print_color $CYAN "\n🎨 Запуск фронтенда..."
-npm run dev > logs/frontend.log 2>&1 &
+npm run dev 2>&1 | tee logs/frontend.log &
 FRONTEND_PID=$!
 
 # Ждем запуска фронтенда
