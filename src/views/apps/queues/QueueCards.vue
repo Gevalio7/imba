@@ -28,6 +28,7 @@ const emit = defineEmits<{
   edit: [queue: Queues]
   delete: [queue: Queues]
   add: []
+  toggleStatus: [queue: Queues, newValue: boolean | null]
 }>()
 
 const editQueue = (queue: Queues) => {
@@ -40,6 +41,10 @@ const deleteQueue = (queue: Queues) => {
 
 const addNewQueue = () => {
   emit('add')
+}
+
+const toggleStatus = (queue: Queues, newValue: boolean | null) => {
+  emit('toggleStatus', queue, newValue)
 }
 </script>
 
@@ -66,12 +71,12 @@ const addNewQueue = () => {
 
           <VSpacer />
 
-          <VChip
-            :color="queue.isActive ? 'success' : 'error'"
-            size="small"
-          >
-            {{ queue.isActive ? 'Активна' : 'Не активна' }}
-          </VChip>
+          <VSwitch
+            :model-value="queue.isActive"
+            @update:model-value="(val) => toggleStatus(queue, val)"
+            color="primary"
+            hide-details
+          />
         </VCardText>
 
         <VCardText>

@@ -617,6 +617,7 @@ const stripHtmlTags = (html: string) => {
         @edit="editTemplatesItem"
         @delete="deleteTemplatesItem"
         @add="addNewTemplates"
+        @toggle-status="toggleTemplatesStatus"
       />
     </VCol>
 
@@ -859,6 +860,7 @@ const stripHtmlTags = (html: string) => {
         @edit="editQueuesItem"
         @delete="deleteQueuesItem"
         @add="addNewQueues"
+        @toggle-status="toggleQueuesStatus"
       />
     </VCol>
 

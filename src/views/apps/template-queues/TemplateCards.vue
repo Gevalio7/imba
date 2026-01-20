@@ -24,6 +24,7 @@ const emit = defineEmits<{
   edit: [template: Templates]
   delete: [template: Templates]
   add: []
+  toggleStatus: [template: Templates, newValue: boolean | null]
 }>()
 
 const editTemplate = (template: Templates) => {
@@ -36,6 +37,10 @@ const deleteTemplate = (template: Templates) => {
 
 const addNewTemplate = () => {
   emit('add')
+}
+
+const toggleStatus = (template: Templates, newValue: boolean | null) => {
+  emit('toggleStatus', template, newValue)
 }
 </script>
 
@@ -57,12 +62,12 @@ const addNewTemplate = () => {
 
           <VSpacer />
 
-          <VChip
-            :color="template.isActive ? 'success' : 'error'"
-            size="small"
-          >
-            {{ template.isActive ? 'Активен' : 'Не активен' }}
-          </VChip>
+          <VSwitch
+            :model-value="template.isActive"
+            @update:model-value="(val) => toggleStatus(template, val)"
+            color="primary"
+            hide-details
+          />
         </VCardText>
 
         <VCardText>
