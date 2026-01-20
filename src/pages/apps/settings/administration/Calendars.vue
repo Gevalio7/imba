@@ -289,7 +289,8 @@ const deleteItemConfirm = async () => {
 }
 
 // Переключение статуса
-const toggleStatus = async (item: Calendars, newValue: boolean) => {
+const toggleStatus = async (item: Calendars, newValue: boolean | null) => {
+  if (newValue === null) return
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
@@ -425,7 +426,7 @@ const addNewCalendars = () => {
       <!-- Диалог фильтров -->
       <VDialog
         v-model="isFilterDialogOpen"
-        max-width="500px"
+        :maxWidth="'500px'"
       >
         <VCard title="Фильтры">
           <VCardText>
@@ -475,7 +476,7 @@ const addNewCalendars = () => {
       <!-- Диалог массового удаления -->
       <VDialog
         v-model="isBulkDeleteDialogOpen"
-        max-width="500px"
+        :maxWidth="'500px'"
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
@@ -505,7 +506,7 @@ const addNewCalendars = () => {
       <!-- Диалог массового изменения статуса -->
       <VDialog
         v-model="isBulkStatusDialogOpen"
-        max-width="500px"
+        :maxWidth="'500px'"
       >
         <VCard title="Изменить статус">
           <VCardText>
@@ -597,7 +598,7 @@ const addNewCalendars = () => {
     <!-- Диалог редактирования -->
     <VDialog
       v-model="editDialog"
-      max-width="600px"
+      :maxWidth="'600px'"
     >
       <VCard :title="editedIndex > -1 ? 'Редактировать календарь' : 'Добавить календарь'">
         <VCardText>
@@ -687,7 +688,7 @@ const addNewCalendars = () => {
     <!-- Диалог удаления -->
     <VDialog
       v-model="deleteDialog"
-      max-width="500px"
+      :maxWidth="'500px'"
     >
       <VCard title="Вы уверены, что хотите удалить этот календарь?">
         <VCardText>
