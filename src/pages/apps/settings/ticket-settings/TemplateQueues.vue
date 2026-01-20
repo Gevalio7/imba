@@ -564,6 +564,11 @@ const addNewQueues = () => {
 
 // Переключатель вида шаблонов (карточки/таблица)
 const templatesViewMode = ref<'cards' | 'table'>('cards')
+
+// Функция для удаления HTML-тегов
+const stripHtmlTags = (html: string) => {
+  return html.replace(/<[^>]*>/g, '')
+}
 </script>
 
 <template>
@@ -788,6 +793,11 @@ const templatesViewMode = ref<'cards' | 'table'>('cards')
                 size="small"
               />
             </div>
+          </template>
+
+          <!-- Сообщение -->
+          <template #item.message="{ item }">
+            {{ stripHtmlTags(item.message) }}
           </template>
 
           <!-- Действия -->
@@ -1111,11 +1121,11 @@ const templatesViewMode = ref<'cards' | 'table'>('cards')
 
             <!-- Сообщение -->
             <VCol cols="12">
-              <AppTextarea
+              <label class="v-label">Сообщение</label>
+              <TiptapEditor
                 v-model="editedTemplatesItem.message"
-                label="Сообщение"
-                rows="3"
                 placeholder="Введите сообщение..."
+                style="border: 1px solid #ccc; border-radius: 4px; min-block-size: 200px;"
               />
             </VCol>
 
