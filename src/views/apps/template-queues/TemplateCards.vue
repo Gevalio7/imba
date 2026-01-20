@@ -11,6 +11,14 @@ interface Templates {
   updatedAt: string
 }
 
+// Функция для определения варианта статуса
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
+    return { color: 'primary', text: 'Активен' }
+  else
+    return { color: 'error', text: 'Не активен' }
+}
+
 // Props
 interface Props {
   templates: Templates[]

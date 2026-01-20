@@ -15,6 +15,14 @@ interface Queues {
   updatedAt: string
 }
 
+// Функция для определения варианта статуса
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
+    return { color: 'primary', text: 'Активен' }
+  else
+    return { color: 'error', text: 'Не активен' }
+}
+
 // Props
 interface Props {
   queues: Queues[]
@@ -65,18 +73,26 @@ const toggleStatus = (queue: Queues, newValue: boolean | null) => {
     >
       <VCard>
         <VCardText class="d-flex align-center pb-4">
-          <div class="text-body-1">
+          <div class="text-body-1" :class="{ 'text-success': queue.isActive, 'text-error': !queue.isActive }">
             Очередь {{ queue.isActive ? 'активна' : 'не активна' }}
           </div>
 
           <VSpacer />
 
-          <VSwitch
-            :model-value="queue.isActive"
-            @update:model-value="(val) => toggleStatus(queue, val)"
-            color="primary"
-            hide-details
-          />
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="queue.isActive"
+              @update:model-value="(val) => toggleStatus(queue, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(queue.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
         </VCardText>
 
         <VCardText>

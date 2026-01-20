@@ -30,6 +30,8 @@ interface Queues {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+
+
 // Данные шаблонов
 const templates = ref<Templates[]>([])
 const templatesTotal = ref(0)
@@ -85,7 +87,7 @@ const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updat
       method: 'POST',
       body: item
     })
-    templates.value.push(data)
+    templates.value.unshift(data)
     return data
   } catch (err) {
     console.error('Error creating templates:', err)
@@ -94,11 +96,11 @@ const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updat
 }
 
 // Обновление шаблона
-const updateTemplates = async (id: number, item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
+const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
     const data = await $fetch<Templates>(`${API_BASE}/templates/${id}`, {
       method: 'PUT',
-      body: item
+      body: updates
     })
     const index = templates.value.findIndex(p => p.id === id)
     if (index !== -1) {
@@ -134,7 +136,7 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
       method: 'POST',
       body: item
     })
-    queues.value.push(data)
+    queues.value.unshift(data)
     return data
   } catch (err) {
     console.error('Error creating queues:', err)
@@ -143,11 +145,11 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
 }
 
 // Обновление очереди
-const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
+const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
     const data = await $fetch<Queues>(`${API_BASE}/queues/${id}`, {
       method: 'PUT',
-      body: item
+      body: updates
     })
     const index = queues.value.findIndex(p => p.id === id)
     if (index !== -1) {
@@ -210,6 +212,12 @@ const queuesHeaders = [
 // Фильтрация шаблонов
 const filteredTemplates = computed(() => {
   let filtered = templates.value
+
+  if (templatesSearchQuery.value.trim()) {
+    const query = templatesSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+  }
+
   if (templatesStatusFilter.value !== null) {
     filtered = filtered.filter(p => p.isActive === (templatesStatusFilter.value === 1))
   }
@@ -222,18 +230,30 @@ const filteredQueues = computed(() => {
     ...queue,
     templateName: templates.value.find(t => t.id === queue.templateId)?.name || 'Не указан'
   }))
+
+  if (queuesSearchQuery.value.trim()) {
+    const query = queuesSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+  }
+
   if (queuesStatusFilter.value !== null) {
     filtered = filtered.filter(p => p.isActive === (queuesStatusFilter.value === 1))
   }
   return filtered
 })
 
+// Проверка активных фильтров
+const templatesHasActiveFilters = computed(() => templatesStatusFilter.value !== null)
+const queuesHasActiveFilters = computed(() => queuesStatusFilter.value !== null)
+
 // Сброс фильтров
 const clearTemplatesFilters = () => {
+  templatesSearchQuery.value = ''
   templatesStatusFilter.value = null
 }
 
 const clearQueuesFilters = () => {
+  queuesSearchQuery.value = ''
   queuesStatusFilter.value = null
 }
 
@@ -331,6 +351,8 @@ const queuesCurrentPage = ref(1)
 const queuesItemsPerPage = ref(10)
 
 // Фильтры
+const templatesSearchQuery = ref('')
+const queuesSearchQuery = ref('')
 const templatesStatusFilter = ref<number | null>(null)
 const queuesStatusFilter = ref<number | null>(null)
 const templatesFilterDialogOpen = ref(false)
@@ -640,6 +662,7 @@ const stripHtmlTags = (html: string) => {
           <div class="d-flex align-center">
             <!-- Поиск -->
             <AppTextField
+              v-model="templatesSearchQuery"
               placeholder="Поиск шаблонов"
               style="inline-size: 250px;"
               class="me-3"
@@ -650,10 +673,10 @@ const stripHtmlTags = (html: string) => {
           <VBtn
             variant="tonal"
             color="secondary"
-            prepend-icon="bx-filter"
-            @click="templatesFilterDialogOpen = true"
+            :prepend-icon="templatesHasActiveFilters ? 'bx-x' : 'bx-filter'"
+            @click="templatesHasActiveFilters ? clearTemplatesFilters() : templatesFilterDialogOpen = true"
           >
-            Фильтр
+            {{ templatesHasActiveFilters ? 'Сбросить фильтр' : 'Фильтр' }}
           </VBtn>
 
           <!-- Кнопка массовых действий -->
@@ -759,6 +782,72 @@ const stripHtmlTags = (html: string) => {
                   color="success"
                   variant="elevated"
                   @click="templatesFilterDialogOpen = false"
+                >
+                  Применить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <!-- Диалог массового удаления шаблонов -->
+        <VDialog
+          v-model="isTemplatesBulkDeleteDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Подтверждение удаления">
+            <VCardText>
+              Вы уверены, что хотите удалить выбранные шаблоны? Это действие нельзя отменить.
+            </VCardText>
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="isTemplatesBulkDeleteDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="confirmTemplatesBulkDelete"
+                >
+                  Удалить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <!-- Диалог массового изменения статуса шаблонов -->
+        <VDialog
+          v-model="isTemplatesBulkStatusDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Изменить статус">
+            <VCardText>
+              <AppSelect
+                v-model="templatesBulkStatusValue"
+                :items="statusOptions"
+                item-title="text"
+                item-value="value"
+                label="Новый статус"
+              />
+            </VCardText>
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="isTemplatesBulkStatusDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="confirmTemplatesBulkStatusChange"
                 >
                   Применить
                 </VBtn>
@@ -884,6 +973,7 @@ const stripHtmlTags = (html: string) => {
           <div class="d-flex align-center">
             <!-- Поиск -->
             <AppTextField
+              v-model="queuesSearchQuery"
               placeholder="Поиск очередей"
               style="inline-size: 250px;"
               class="me-3"
@@ -894,10 +984,10 @@ const stripHtmlTags = (html: string) => {
           <VBtn
             variant="tonal"
             color="secondary"
-            prepend-icon="bx-filter"
-            @click="queuesFilterDialogOpen = true"
+            :prepend-icon="queuesHasActiveFilters ? 'bx-x' : 'bx-filter'"
+            @click="queuesHasActiveFilters ? clearQueuesFilters() : queuesFilterDialogOpen = true"
           >
-            Фильтр
+            {{ queuesHasActiveFilters ? 'Сбросить фильтр' : 'Фильтр' }}
           </VBtn>
 
           <!-- Кнопка массовых действий -->
