@@ -39,11 +39,11 @@ src/plugins/iconify/icons.css
 public/mockServiceWorker.js
 
 # Env files
-.env*
-!.env.example
+
+
 
 # Database backups
-backend/backups/
+
 
 # Vite dependencies
 .vite/
