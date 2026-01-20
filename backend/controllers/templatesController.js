@@ -1,4 +1,5 @@
 const Templates = require('../models/templates');
+const Queues = require('../models/queues');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const getTemplates = asyncHandler(async (req, res) => {
@@ -90,6 +91,21 @@ const deleteTemplates = asyncHandler(async (req, res) => {
 
   if (isNaN(templateId)) {
     return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  // Проверяем, используется ли шаблон в очередях
+  const { pool } = require('../config/db');
+  const queuesCheck = await pool.query(
+    'SELECT COUNT(*) as count FROM queues WHERE template_id = $1',
+    [templateId]
+  );
+  
+  const queuesCount = parseInt(queuesCheck.rows[0].count);
+  if (queuesCount > 0) {
+    return res.status(400).json({
+      message: `Невозможно удалить шаблон. Он используется в ${queuesCount} очередях. Сначала удалите связь с очередями.`,
+      queuesCount
+    });
   }
 
   const deleted = await Templates.delete(templateId);

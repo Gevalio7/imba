@@ -44,3 +44,6 @@ public/mockServiceWorker.js
 
 # Database backups
 backend/backups/
+
+# Vite dependencies
+.vite/

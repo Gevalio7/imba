@@ -39,16 +39,25 @@ const getQueueById = asyncHandler(async (req, res) => {
 });
 
 const createQueues = asyncHandler(async (req, res) => {
+  console.log('📝 Создание очереди, тело запроса:', req.body);
+  
   const data = {};
   data.name = req.body.name;
   data.description = req.body.description;
   data.maxTickets = req.body.maxTickets;
   data.priority = req.body.priority;
-  
+
+  // Добавляем templateId если передан
+  if (req.body.templateId !== undefined) {
+    data.templateId = req.body.templateId;
+  }
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
+
+  console.log('📝 Данные для создания:', data);
 
   // Валидация обязательных полей
   if (!data.name) {
@@ -56,6 +65,8 @@ const createQueues = asyncHandler(async (req, res) => {
   }
 
   const newQueue = await Queues.create(data);
+  
+  console.log('✅ Очередь создана:', newQueue);
 
   res.status(201).json(newQueue);
 });
@@ -73,7 +84,12 @@ const updateQueues = asyncHandler(async (req, res) => {
   if (req.body.description !== undefined) data.description = req.body.description;
   if (req.body.maxTickets !== undefined) data.maxTickets = req.body.maxTickets;
   if (req.body.priority !== undefined) data.priority = req.body.priority;
-  
+
+  // Добавляем templateId если передан
+  if (req.body.templateId !== undefined) {
+    data.templateId = req.body.templateId;
+  }
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -112,3 +128,4 @@ module.exports = {
   updateQueues,
   deleteQueues,
 };
+

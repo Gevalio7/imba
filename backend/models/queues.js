@@ -44,7 +44,7 @@ class Queues {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -66,7 +66,7 @@ class Queues {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} WHERE id = $1`,
+        `SELECT id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} WHERE id = $1`,
         [id]
       );
 
@@ -82,18 +82,21 @@ class Queues {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => queue[field]);
-      
+
+      // Добавляем templateId
+      values.push(queue.templateId || null);
+
       // Добавляем isActive
       values.push(queue.isActive !== undefined ? queue.isActive : true);
-      
+
       // Преобразуем имена полей в snake_case для SQL
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      
-      const query = `INSERT INTO ${Queues.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+
+      const query = `INSERT INTO ${Queues.tableName} (${sqlFieldsInsert}, template_id, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -119,6 +122,13 @@ class Queues {
         }
       });
 
+      // Добавляем templateId если передан
+      if (queue.templateId !== undefined) {
+        updates.push(`template_id = $${paramIndex}`);
+        values.push(queue.templateId);
+        paramIndex++;
+      }
+
       // Добавляем isActive если передан
       if (queue.isActive !== undefined) {
         updates.push(`is_active = $${paramIndex}`);
@@ -138,7 +148,7 @@ class Queues {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
 
-      const query = `UPDATE ${Queues.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `UPDATE ${Queues.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

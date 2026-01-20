@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-// Типы данных для Очередь шаблона
-interface TemplateQueues {
+// Типы данных для Шаблон
+interface Templates {
   id: number
   name: string
   message: string
@@ -12,89 +13,176 @@ interface TemplateQueues {
   updatedAt: string
 }
 
+// Типы данных для Очередь
+interface Queues {
+  id: number
+  name: string
+  description: string
+  maxTickets: number
+  priority: number
+  templateId: number | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные очереди шаблонов
-const templateQueues = ref<TemplateQueues[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
+// Данные шаблонов
+const templates = ref<Templates[]>([])
+const templatesTotal = ref(0)
+const templatesLoading = ref(false)
+const templatesError = ref<string | null>(null)
 
-// Загрузка данных из API
-const fetchTemplateQueues = async () => {
+// Данные очередей
+const queues = ref<Queues[]>([])
+const queuesTotal = ref(0)
+const queuesLoading = ref(false)
+const queuesError = ref<string | null>(null)
+
+// Загрузка данных шаблонов из API
+const fetchTemplates = async () => {
   try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching templateQueues from:', `${API_BASE}/templateQueues`)
-    const data = await $fetch<{ templateQueues: TemplateQueues[], total: number }>(`${API_BASE}/templateQueues`)
-    console.log('Fetched templateQueues data:', data)
-    templateQueues.value = data.templateQueues
-    total.value = data.total
+    templatesLoading.value = true
+    templatesError.value = null
+    console.log('Fetching templates from:', `${API_BASE}/templates`)
+    const data = await $fetch<{ templates: Templates[], total: number }>(`${API_BASE}/templates`)
+    console.log('Fetched templates data:', data)
+    templates.value = data.templates
+    templatesTotal.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки очереди шаблонов'
-    console.error('Error fetching templateQueues:', err)
+    templatesError.value = 'Ошибка загрузки шаблонов'
+    console.error('Error fetching templates:', err)
   } finally {
-    loading.value = false
+    templatesLoading.value = false
   }
 }
 
-// Создание очередь шаблона
-const createTemplateQueues = async (item: Omit<TemplateQueues, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Загрузка данных очередей из API
+const fetchQueues = async () => {
   try {
-    const data = await $fetch<TemplateQueues>(`${API_BASE}/templateQueues`, {
+    queuesLoading.value = true
+    queuesError.value = null
+    console.log('Fetching queues from:', `${API_BASE}/queues`)
+    const data = await $fetch<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetched queues data:', data)
+    queues.value = data.queues
+    queuesTotal.value = data.total
+  } catch (err) {
+    queuesError.value = 'Ошибка загрузки очередей'
+    console.error('Error fetching queues:', err)
+  } finally {
+    queuesLoading.value = false
+  }
+}
+
+// Создание шаблона
+const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Templates>(`${API_BASE}/templates`, {
       method: 'POST',
       body: item
     })
-    templateQueues.value.push(data)
+    templates.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating templateQueues:', err)
+    console.error('Error creating templates:', err)
     throw err
   }
 }
 
-// Обновление очередь шаблона
-const updateTemplateQueues = async (id: number, item: Omit<TemplateQueues, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление шаблона
+const updateTemplates = async (id: number, item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<TemplateQueues>(`${API_BASE}/templateQueues/${id}`, {
+    const data = await $fetch<Templates>(`${API_BASE}/templates/${id}`, {
       method: 'PUT',
       body: item
     })
-    const index = templateQueues.value.findIndex(p => p.id === id)
+    const index = templates.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      templateQueues.value[index] = data
+      templates.value[index] = data
     }
     return data
   } catch (err) {
-    console.error('Error updating templateQueues:', err)
+    console.error('Error updating templates:', err)
     throw err
   }
 }
 
-// Удаление очередь шаблона
-const deleteTemplateQueues = async (id: number) => {
+// Удаление шаблона
+const deleteTemplates = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/templateQueues/${id}`, {
+    await $fetch(`${API_BASE}/templates/${id}`, {
       method: 'DELETE'
     })
-    const index = templateQueues.value.findIndex(p => p.id === id)
+    const index = templates.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      templateQueues.value.splice(index, 1)
+      templates.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting templateQueues:', err)
+    console.error('Error deleting templates:', err)
+    throw err
+  }
+}
+
+// Создание очереди
+const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Queues>(`${API_BASE}/queues`, {
+      method: 'POST',
+      body: item
+    })
+    queues.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating queues:', err)
+    throw err
+  }
+}
+
+// Обновление очереди
+const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Queues>(`${API_BASE}/queues/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = queues.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      queues.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating queues:', err)
+    throw err
+  }
+}
+
+// Удаление очереди
+const deleteQueues = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/queues/${id}`, {
+      method: 'DELETE'
+    })
+    const index = queues.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      queues.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting queues:', err)
     throw err
   }
 }
 
 // Инициализация
 onMounted(() => {
-  fetchTemplateQueues()
+  fetchTemplates()
+  fetchQueues()
 })
 
-const headers = [
+// Headers для шаблонов
+const templatesHeaders = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Сообщение', key: 'message', sortable: true },
@@ -104,64 +192,125 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
-// Фильтрация
-const filteredTemplateQueues = computed(() => {
-  let filtered = templateQueues.value
+// Headers для очередей
+const queuesHeaders = [
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
+  { title: 'Приоритет', key: 'priority', sortable: true },
+  { title: 'Шаблон', key: 'templateName', sortable: false },
+  { title: 'Создано', key: 'createdAt', sortable: true },
+  { title: 'Изменено', key: 'updatedAt', sortable: true },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
+]
 
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+// Фильтрация шаблонов
+const filteredTemplates = computed(() => {
+  let filtered = templates.value
+  if (templatesStatusFilter.value !== null) {
+    filtered = filtered.filter(p => p.isActive === (templatesStatusFilter.value === 1))
   }
+  return filtered
+})
 
+// Фильтрация очередей
+const filteredQueues = computed(() => {
+  let filtered = queues.value.map(queue => ({
+    ...queue,
+    templateName: templates.value.find(t => t.id === queue.templateId)?.name || 'Не указан'
+  }))
+  if (queuesStatusFilter.value !== null) {
+    filtered = filtered.filter(p => p.isActive === (queuesStatusFilter.value === 1))
+  }
   return filtered
 })
 
 // Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
+const clearTemplatesFilters = () => {
+  templatesStatusFilter.value = null
 }
 
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
+const clearQueuesFilters = () => {
+  queuesStatusFilter.value = null
 }
 
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
+// Массовые действия для шаблонов
+const templatesBulkDelete = () => {
+  isTemplatesBulkDeleteDialogOpen.value = true
 }
 
-const confirmBulkDelete = async () => {
+const templatesBulkChangeStatus = () => {
+  isTemplatesBulkStatusDialogOpen.value = true
+}
+
+const confirmTemplatesBulkDelete = async () => {
   try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await deleteTemplateQueues(item.id)
+    const count = templatesSelectedItems.value.length
+    for (const item of templatesSelectedItems.value) {
+      await deleteTemplates(item.id)
     }
-    selectedItems.value = []
-    showToast(`Удалено ${count} очереди шаблонов`)
-    isBulkDeleteDialogOpen.value = false
+    templatesSelectedItems.value = []
+    showToast(`Удалено ${count} шаблонов`)
+    isTemplatesBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
 
-const confirmBulkStatusChange = async () => {
+const confirmTemplatesBulkStatusChange = async () => {
   try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateTemplateQueues(item.id, {
+    const count = templatesSelectedItems.value.length
+    for (const item of templatesSelectedItems.value) {
+      await updateTemplates(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: templatesBulkStatusValue.value === 1
       })
     }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} очереди шаблонов`)
-    isBulkStatusDialogOpen.value = false
+    templatesSelectedItems.value = []
+    showToast(`Статус изменен для ${count} шаблонов`)
+    isTemplatesBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
+}
+
+// Массовые действия для очередей
+const queuesBulkDelete = () => {
+  isQueuesBulkDeleteDialogOpen.value = true
+}
+
+const queuesBulkChangeStatus = () => {
+  isQueuesBulkStatusDialogOpen.value = true
+}
+
+const confirmQueuesBulkDelete = async () => {
+  try {
+    const count = queuesSelectedItems.value.length
+    for (const item of queuesSelectedItems.value) {
+      await deleteQueues(item.id)
+    }
+    queuesSelectedItems.value = []
+    showToast(`Удалено ${count} очередей`)
+    isQueuesBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
+}
+
+const confirmQueuesBulkStatusChange = async () => {
+  try {
+    const count = queuesSelectedItems.value.length
+    for (const item of queuesSelectedItems.value) {
+      await updateQueues(item.id, {
+        ...item,
+        isActive: queuesBulkStatusValue.value === 1
+      })
+    }
+    queuesSelectedItems.value = []
+    showToast(`Статус изменен для ${count} очередей`)
+    isQueuesBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
@@ -175,33 +324,36 @@ const resolveStatusVariant = (isActive: boolean) => {
 }
 
 // Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const templatesCurrentPage = ref(1)
+const templatesItemsPerPage = ref(10)
+const queuesCurrentPage = ref(1)
+const queuesItemsPerPage = ref(10)
 
 // Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
+const templatesStatusFilter = ref<number | null>(null)
+const queuesStatusFilter = ref<number | null>(null)
+const templatesFilterDialogOpen = ref(false)
+const queuesFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
+const templatesSelectedItems = ref<any[]>([])
+const queuesSelectedItems = ref<any[]>([])
+const templatesBulkActionsMenuOpen = ref(false)
+const queuesBulkActionsMenuOpen = ref(false)
+const isTemplatesBulkDeleteDialogOpen = ref(false)
+const isTemplatesBulkStatusDialogOpen = ref(false)
+const isQueuesBulkDeleteDialogOpen = ref(false)
+const isQueuesBulkStatusDialogOpen = ref(false)
+const templatesBulkStatusValue = ref<number>(1)
+const queuesBulkStatusValue = ref<number>(1)
 
 // Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
+const templatesEditDialog = ref(false)
+const templatesDeleteDialog = ref(false)
+const queuesEditDialog = ref(false)
+const queuesDeleteDialog = ref(false)
 
-const defaultItem = ref<TemplateQueues>({
+const defaultTemplatesItem = ref<Templates>({
   id: -1,
   name: '',
   message: '',
@@ -210,8 +362,22 @@ const defaultItem = ref<TemplateQueues>({
   isActive: true,
 })
 
-const editedItem = ref<TemplateQueues>({ ...defaultItem.value })
-const editedIndex = ref(-1)
+const defaultQueuesItem = ref<Queues>({
+  id: -1,
+  name: '',
+  description: '',
+  maxTickets: 0,
+  priority: 0,
+  templateId: null,
+  createdAt: '',
+  updatedAt: '',
+  isActive: true,
+})
+
+const editedTemplatesItem = ref<Templates>({ ...defaultTemplatesItem.value })
+const editedQueuesItem = ref<Queues>({ ...defaultQueuesItem.value })
+const editedTemplatesIndex = ref(-1)
+const editedQueuesIndex = ref(-1)
 
 // Опции статуса
 const statusOptions = [
@@ -219,83 +385,154 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Методы
-const editItem = (item: TemplateQueues) => {
-  editedIndex.value = templateQueues.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+// Опции шаблонов для выбора
+const templateOptions = computed(() => {
+  return templates.value.map(t => ({ title: t.name, value: t.id }))
+})
+
+// Методы для шаблонов
+const editTemplatesItem = (item: Templates) => {
+  editedTemplatesIndex.value = templates.value.indexOf(item)
+  editedTemplatesItem.value = { ...item }
+  templatesEditDialog.value = true
 }
 
-const deleteItem = (item: TemplateQueues) => {
-  editedIndex.value = templateQueues.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
+const deleteTemplatesItem = (item: Templates) => {
+  editedTemplatesIndex.value = templates.value.indexOf(item)
+  editedTemplatesItem.value = { ...item }
+  templatesDeleteDialog.value = true
 }
 
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+const closeTemplates = () => {
+  templatesEditDialog.value = false
+  editedTemplatesIndex.value = -1
+  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
 }
 
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+const closeTemplatesDelete = () => {
+  templatesDeleteDialog.value = false
+  editedTemplatesIndex.value = -1
+  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
 }
 
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
+const saveTemplates = async () => {
+  if (!editedTemplatesItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
   }
 
   try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateTemplateQueues(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
+    if (editedTemplatesIndex.value > -1) {
+      const updated = await updateTemplates(editedTemplatesItem.value.id, {
+        ...editedTemplatesItem.value,
+        isActive: editedTemplatesItem.value.isActive
       })
-      showToast('Очередь шаблона успешно сохранен')
+      showToast('Шаблон успешно сохранен')
     } else {
-      // Добавление нового
-      const created = await createTemplateQueues({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
+      const created = await createTemplates({
+        ...editedTemplatesItem.value,
+        isActive: editedTemplatesItem.value.isActive
       })
-      showToast('Очередь шаблона успешно добавлен')
+      showToast('Шаблон успешно добавлен')
     }
-    close()
+    closeTemplates()
   } catch (err) {
-    showToast('Ошибка сохранения очередь шаблона', 'error')
+    showToast('Ошибка сохранения шаблона', 'error')
   }
 }
 
-const deleteItemConfirm = async () => {
+const deleteTemplatesItemConfirm = async () => {
   try {
-    await deleteTemplateQueues(editedItem.value.id)
-    showToast('Очередь шаблона успешно удален')
-    closeDelete()
+    await deleteTemplates(editedTemplatesItem.value.id)
+    showToast('Шаблон успешно удален')
+    closeTemplatesDelete()
   } catch (err) {
-    showToast('Ошибка удаления очередь шаблона', 'error')
+    showToast('Ошибка удаления шаблона', 'error')
   }
 }
 
-// Переключение статуса
-const toggleStatus = async (item: TemplateQueues, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
+const toggleTemplatesStatus = async (item: Templates, newValue: boolean | null) => {
   if (newValue === null) return
-
   try {
-    await updateTemplateQueues(item.id, {
+    await updateTemplates(item.id, {
       ...item,
       isActive: newValue
     })
-    showToast('Статус очередь шаблона изменен')
+    showToast('Статус шаблона изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
+  }
+}
+
+// Методы для очередей
+const editQueuesItem = (item: Queues) => {
+  editedQueuesIndex.value = queues.value.indexOf(item)
+  editedQueuesItem.value = { ...item }
+  queuesEditDialog.value = true
+}
+
+const deleteQueuesItem = (item: Queues) => {
+  editedQueuesIndex.value = queues.value.indexOf(item)
+  editedQueuesItem.value = { ...item }
+  queuesDeleteDialog.value = true
+}
+
+const closeQueues = () => {
+  queuesEditDialog.value = false
+  editedQueuesIndex.value = -1
+  editedQueuesItem.value = { ...defaultQueuesItem.value }
+}
+
+const closeQueuesDelete = () => {
+  queuesDeleteDialog.value = false
+  editedQueuesIndex.value = -1
+  editedQueuesItem.value = { ...defaultQueuesItem.value }
+}
+
+const saveQueues = async () => {
+  if (!editedQueuesItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+
+  try {
+    if (editedQueuesIndex.value > -1) {
+      const updated = await updateQueues(editedQueuesItem.value.id, {
+        ...editedQueuesItem.value,
+        isActive: editedQueuesItem.value.isActive
+      })
+      showToast('Очередь успешно сохранена')
+    } else {
+      const created = await createQueues({
+        ...editedQueuesItem.value,
+        isActive: editedQueuesItem.value.isActive
+      })
+      showToast('Очередь успешно добавлена')
+    }
+    closeQueues()
+  } catch (err) {
+    showToast('Ошибка сохранения очереди', 'error')
+  }
+}
+
+const deleteQueuesItemConfirm = async () => {
+  try {
+    await deleteQueues(editedQueuesItem.value.id)
+    showToast('Очередь успешно удалена')
+    closeQueuesDelete()
+  } catch (err) {
+    showToast('Ошибка удаления очереди', 'error')
+  }
+}
+
+const toggleQueuesStatus = async (item: Queues, newValue: boolean | null) => {
+  if (newValue === null) return
+  try {
+    await updateQueues(item.id, {
+      ...item,
+      isActive: newValue
+    })
+    showToast('Статус очереди изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -312,311 +549,570 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового очередь шаблона
-const addNewTemplateQueues = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+// Добавление новых элементов
+const addNewTemplates = () => {
+  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
+  editedTemplatesIndex.value = -1
+  templatesEditDialog.value = true
 }
+
+const addNewQueues = () => {
+  editedQueuesItem.value = { ...defaultQueuesItem.value }
+  editedQueuesIndex.value = -1
+  queuesEditDialog.value = true
+}
+
+// Переключатель вида шаблонов (карточки/таблица)
+const templatesViewMode = ref<'cards' | 'table'>('cards')
 </script>
 
 <template>
-  <div>
-    <VCard title="Очереди шаблонов">
+  <VRow>
+    <VCol cols="12">
+      <h4 class="text-h4 mb-1">
+        Шаблоны и Очереди
+      </h4>
+      <p class="text-body-1 mb-0">
+        Управление шаблонами и очередями тикетов. Каждая очередь может быть связана с одним шаблоном.
+      </p>
+    </VCol>
 
-      <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+    <!-- Шаблоны -->
+    <VCol cols="12">
+      <div class="d-flex justify-space-between align-center mb-1">
+        <div>
+          <h4 class="text-h4 mb-1">
+            Шаблоны
+          </h4>
+          <p class="text-body-1 mb-0">
+            Шаблоны предоставляют доступ к предопределенным сообщениям и настройкам, чтобы в зависимости от назначенного шаблона администратор имел доступ к тому, что ему нужно.
+          </p>
+        </div>
+        <VBtnToggle
+          v-model="templatesViewMode"
+          mandatory
+          variant="outlined"
+          divided
+        >
+          <VBtn value="cards" icon="bx-grid-alt" />
+          <VBtn value="table" icon="bx-list-ul" />
+        </VBtnToggle>
       </div>
+    </VCol>
 
-      <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
-          {{ error }}
-        </VAlert>
-      </div>
+    <!-- Карточный вид -->
+    <VCol v-if="templatesViewMode === 'cards'" cols="12">
+      <TemplateCards
+        :templates="filteredTemplates"
+        :loading="templatesLoading"
+        @edit="editTemplatesItem"
+        @delete="deleteTemplatesItem"
+        @add="addNewTemplates"
+      />
+    </VCol>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
-        <div class="d-flex align-center">
-          <!-- Поиск -->
-          <AppTextField
-            placeholder="Поиск очереди шаблонов"
-            style="inline-size: 250px;"
-            class="me-3"
-          />
+    <!-- Табличный вид -->
+    <VCol v-else cols="12">
+      <VCard title="Шаблоны">
+        <!-- Индикатор загрузки -->
+        <div v-if="templatesLoading" class="d-flex justify-center pa-6">
+          <VProgressCircular indeterminate color="primary" />
         </div>
 
-        <!-- Кнопка фильтра -->
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="bx-filter"
-          @click="isFilterDialogOpen = true"
-        >
-          Фильтр
-        </VBtn>
+        <!-- Сообщение об ошибке -->
+        <div v-else-if="templatesError" class="d-flex justify-center pa-6">
+          <VAlert type="error" class="ma-4">
+            {{ templatesError }}
+          </VAlert>
+        </div>
 
-        <!-- Кнопка массовых действий -->
-        <VMenu
-          v-model="isBulkActionsMenuOpen"
-          :close-on-content-click="false"
-        >
-          <template #activator="{ props }">
-            <VBtn
-              variant="tonal"
-              color="secondary"
-              prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedItems.length === 0"
-              v-bind="props"
-            >
-              Действия ({{ selectedItems.length }})
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Удалить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Изменить статус</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
+        <div v-else class="d-flex flex-wrap gap-4 pa-6">
+          <div class="d-flex align-center">
+            <!-- Поиск -->
+            <AppTextField
+              placeholder="Поиск шаблонов"
+              style="inline-size: 250px;"
+              class="me-3"
+            />
+          </div>
 
-        <VSpacer />
-        <div class="d-flex gap-4 flex-wrap align-center">
-          <AppSelect
-            v-model="itemsPerPage"
-            :items="[5, 10, 20, 25, 50]"
-          />
-          <!-- Экспорт -->
+          <!-- Кнопка фильтра -->
           <VBtn
             variant="tonal"
             color="secondary"
-            prepend-icon="bx-export"
+            prepend-icon="bx-filter"
+            @click="templatesFilterDialogOpen = true"
           >
-            Экспорт
+            Фильтр
           </VBtn>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewTemplateQueues"
+          <!-- Кнопка массовых действий -->
+          <VMenu
+            v-model="templatesBulkActionsMenuOpen"
+            :close-on-content-click="false"
           >
-            Добавить очередь шаблона
-          </VBtn>
-        </div>
-      </div>
-
-
-      <!-- Диалог фильтров -->
-      <VDialog
-        v-model="isFilterDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Фильтры">
-          <VCardText>
-            <VRow>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="statusFilter"
-                  placeholder="Статус"
-                  :items="[
-                    { title: 'Активен', value: 1 },
-                    { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-            </VRow>
-          </VCardText>
-
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
+            <template #activator="{ props }">
               <VBtn
-                variant="text"
-                @click="clearFilters"
+                variant="tonal"
+                color="secondary"
+                prepend-icon="bx-dots-vertical-rounded"
+                :disabled="templatesSelectedItems.length === 0"
+                v-bind="props"
               >
-                Сбросить
+                Действия ({{ templatesSelectedItems.length }})
               </VBtn>
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isFilterDialogOpen = false"
+            </template>
+            <VList>
+              <VListItem
+                @click="() => {
+                  templatesBulkDelete()
+                  templatesBulkActionsMenuOpen = false
+                }"
               >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="isFilterDialogOpen = false"
+                <VListItemTitle>Удалить</VListItemTitle>
+              </VListItem>
+              <VListItem
+                @click="() => {
+                  templatesBulkChangeStatus()
+                  templatesBulkActionsMenuOpen = false
+                }"
               >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
+                <VListItemTitle>Изменить статус</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
-      <!-- Диалог массового удаления -->
-      <VDialog
-        v-model="isBulkDeleteDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Подтверждение удаления">
-          <VCardText>
-            Вы уверены, что хотите удалить выбранные очереди шаблонов? Это действие нельзя отменить.
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkDeleteDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkDelete"
-              >
-                Удалить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <!-- Диалог массового изменения статуса -->
-      <VDialog
-        v-model="isBulkStatusDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Изменить статус">
-          <VCardText>
+          <VSpacer />
+          <div class="d-flex gap-4 flex-wrap align-center">
             <AppSelect
-              v-model="bulkStatusValue"
-              :items="statusOptions"
-              item-title="text"
-              item-value="value"
-              label="Новый статус"
+              v-model="templatesItemsPerPage"
+              :items="[5, 10, 20, 25, 50]"
             />
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkStatusDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkStatusChange"
-              >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
+            <!-- Экспорт -->
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              prepend-icon="bx-export"
+            >
+              Экспорт
+            </VBtn>
 
-      <VDivider />
-
-      <!-- Таблица -->
-      <VDataTable
-        v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
-        :headers="headers"
-        :items="filteredTemplateQueues"
-        show-select
-        :hide-default-footer="true"
-        item-value="id"
-        return-object
-        no-data-text="Нет данных"
-      >
-        <!-- Активен -->
-        <template #item.isActive="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VSwitch
-              :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
+            <VBtn
               color="primary"
-              hide-details
-            />
-            <VChip
-              v-bind="resolveStatusVariant(item.isActive)"
-              density="compact"
-              label
-              size="small"
+              prepend-icon="bx-plus"
+              @click="addNewTemplates"
+            >
+              Добавить шаблон
+            </VBtn>
+          </div>
+        </div>
+
+        <!-- Диалог фильтров шаблонов -->
+        <VDialog
+          v-model="templatesFilterDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Фильтры">
+            <VCardText>
+              <VRow>
+                <VCol cols="12">
+                  <AppSelect
+                    v-model="templatesStatusFilter"
+                    placeholder="Статус"
+                    :items="[
+                      { title: 'Активен', value: 1 },
+                      { title: 'Не активен', value: 2 },
+                    ]"
+                    clearable
+                    clear-icon="bx-x"
+                  />
+                </VCol>
+              </VRow>
+            </VCardText>
+
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  variant="text"
+                  @click="clearTemplatesFilters"
+                >
+                  Сбросить
+                </VBtn>
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="templatesFilterDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="templatesFilterDialogOpen = false"
+                >
+                  Применить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <VDivider />
+
+        <!-- Таблица шаблонов -->
+        <VDataTable
+          v-model="templatesSelectedItems"
+          v-model:items-per-page="templatesItemsPerPage"
+          v-model:page="templatesCurrentPage"
+          :headers="templatesHeaders"
+          :items="filteredTemplates"
+          show-select
+          :hide-default-footer="true"
+          item-value="id"
+          return-object
+          no-data-text="Нет данных"
+        >
+          <!-- Активен -->
+          <template #item.isActive="{ item }">
+            <div class="d-flex align-center gap-2">
+              <VSwitch
+                :model-value="item.isActive"
+                @update:model-value="(val) => toggleTemplatesStatus(item, val)"
+                color="primary"
+                hide-details
+              />
+              <VChip
+                v-bind="resolveStatusVariant(item.isActive)"
+                density="compact"
+                label
+                size="small"
+              />
+            </div>
+          </template>
+
+          <!-- Действия -->
+          <template #item.actions="{ item }">
+            <div class="d-flex gap-1">
+              <IconBtn @click="editTemplatesItem(item)">
+                <VIcon icon="bx-edit" />
+              </IconBtn>
+              <IconBtn @click="deleteTemplatesItem(item)">
+                <VIcon icon="bx-trash" />
+              </IconBtn>
+            </div>
+          </template>
+        </VDataTable>
+
+        <!-- Пагинация шаблонов -->
+        <div class="d-flex justify-center mt-4 pb-4">
+          <VPagination
+            v-model="templatesCurrentPage"
+            :length="Math.ceil(filteredTemplates.length / templatesItemsPerPage) || 1"
+            :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          />
+        </div>
+      </VCard>
+    </VCol>
+
+    <!-- Очереди -->
+    <VCol cols="12">
+      <h4 class="text-h4 mb-1 mt-6">
+        Очереди
+      </h4>
+      <p class="text-body-1 mb-0">
+        Найдите все очереди вашей компании и их связанные шаблоны.
+      </p>
+    </VCol>
+
+    <VCol cols="12">
+      <VCard title="Очереди">
+
+        <!-- Индикатор загрузки -->
+        <div v-if="queuesLoading" class="d-flex justify-center pa-6">
+          <VProgressCircular indeterminate color="primary" />
+        </div>
+
+        <!-- Сообщение об ошибке -->
+        <div v-else-if="queuesError" class="d-flex justify-center pa-6">
+          <VAlert type="error" class="ma-4">
+            {{ queuesError }}
+          </VAlert>
+        </div>
+
+        <div v-else class="d-flex flex-wrap gap-4 pa-6">
+          <div class="d-flex align-center">
+            <!-- Поиск -->
+            <AppTextField
+              placeholder="Поиск очередей"
+              style="inline-size: 250px;"
+              class="me-3"
             />
           </div>
-        </template>
 
-        <!-- Действия -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn @click="deleteItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
+          <!-- Кнопка фильтра -->
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            prepend-icon="bx-filter"
+            @click="queuesFilterDialogOpen = true"
+          >
+            Фильтр
+          </VBtn>
+
+          <!-- Кнопка массовых действий -->
+          <VMenu
+            v-model="queuesBulkActionsMenuOpen"
+            :close-on-content-click="false"
+          >
+            <template #activator="{ props }">
+              <VBtn
+                variant="tonal"
+                color="secondary"
+                prepend-icon="bx-dots-vertical-rounded"
+                :disabled="queuesSelectedItems.length === 0"
+                v-bind="props"
+              >
+                Действия ({{ queuesSelectedItems.length }})
+              </VBtn>
+            </template>
+            <VList>
+              <VListItem
+                @click="() => {
+                  queuesBulkDelete()
+                  queuesBulkActionsMenuOpen = false
+                }"
+              >
+                <VListItemTitle>Удалить</VListItemTitle>
+              </VListItem>
+              <VListItem
+                @click="() => {
+                  queuesBulkChangeStatus()
+                  queuesBulkActionsMenuOpen = false
+                }"
+              >
+                <VListItemTitle>Изменить статус</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VSpacer />
+          <div class="d-flex gap-4 flex-wrap align-center">
+            <AppSelect
+              v-model="queuesItemsPerPage"
+              :items="[5, 10, 20, 25, 50]"
+            />
+            <!-- Экспорт -->
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              prepend-icon="bx-export"
+            >
+              Экспорт
+            </VBtn>
+
+            <VBtn
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="addNewQueues"
+            >
+              Добавить очередь
+            </VBtn>
           </div>
-        </template>
-      </VDataTable>
+        </div>
 
-      <!-- Пагинация -->
-      <div class="d-flex justify-center mt-4 pb-4">
-        <VPagination
-          v-model="currentPage"
-          :length="Math.ceil(filteredTemplateQueues.length / itemsPerPage) || 1"
-          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
-        />
-      </div>
-    </VCard>
+        <!-- Диалог фильтров очередей -->
+        <VDialog
+          v-model="queuesFilterDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Фильтры">
+            <VCardText>
+              <VRow>
+                <VCol cols="12">
+                  <AppSelect
+                    v-model="queuesStatusFilter"
+                    placeholder="Статус"
+                    :items="[
+                      { title: 'Активен', value: 1 },
+                      { title: 'Не активен', value: 2 },
+                    ]"
+                    clearable
+                    clear-icon="bx-x"
+                  />
+                </VCol>
+              </VRow>
+            </VCardText>
 
-    <!-- Диалог редактирования -->
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  variant="text"
+                  @click="clearQueuesFilters"
+                >
+                  Сбросить
+                </VBtn>
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="queuesFilterDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="queuesFilterDialogOpen = false"
+                >
+                  Применить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <!-- Диалог массового удаления очередей -->
+        <VDialog
+          v-model="isQueuesBulkDeleteDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Подтверждение удаления">
+            <VCardText>
+              Вы уверены, что хотите удалить выбранные очереди? Это действие нельзя отменить.
+            </VCardText>
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="isQueuesBulkDeleteDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="confirmQueuesBulkDelete"
+                >
+                  Удалить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <!-- Диалог массового изменения статуса очередей -->
+        <VDialog
+          v-model="isQueuesBulkStatusDialogOpen"
+          max-width="500px"
+        >
+          <VCard title="Изменить статус">
+            <VCardText>
+              <AppSelect
+                v-model="queuesBulkStatusValue"
+                :items="statusOptions"
+                item-title="text"
+                item-value="value"
+                label="Новый статус"
+              />
+            </VCardText>
+            <VCardText>
+              <div class="d-flex justify-end gap-4">
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  @click="isQueuesBulkStatusDialogOpen = false"
+                >
+                  Отмена
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  @click="confirmQueuesBulkStatusChange"
+                >
+                  Применить
+                </VBtn>
+              </div>
+            </VCardText>
+          </VCard>
+        </VDialog>
+
+        <VDivider />
+
+        <!-- Таблица очередей -->
+        <VDataTable
+          v-model="queuesSelectedItems"
+          v-model:items-per-page="queuesItemsPerPage"
+          v-model:page="queuesCurrentPage"
+          :headers="queuesHeaders"
+          :items="filteredQueues"
+          show-select
+          :hide-default-footer="true"
+          item-value="id"
+          return-object
+          no-data-text="Нет данных"
+        >
+          <!-- Активен -->
+          <template #item.isActive="{ item }">
+            <div class="d-flex align-center gap-2">
+              <VSwitch
+                :model-value="item.isActive"
+                @update:model-value="(val) => toggleQueuesStatus(item, val)"
+                color="primary"
+                hide-details
+              />
+              <VChip
+                v-bind="resolveStatusVariant(item.isActive)"
+                density="compact"
+                label
+                size="small"
+              />
+            </div>
+          </template>
+
+          <!-- Действия -->
+          <template #item.actions="{ item }">
+            <div class="d-flex gap-1">
+              <IconBtn @click="editQueuesItem(item)">
+                <VIcon icon="bx-edit" />
+              </IconBtn>
+              <IconBtn @click="deleteQueuesItem(item)">
+                <VIcon icon="bx-trash" />
+              </IconBtn>
+            </div>
+          </template>
+        </VDataTable>
+
+        <!-- Пагинация очередей -->
+        <div class="d-flex justify-center mt-4 pb-4">
+          <VPagination
+            v-model="queuesCurrentPage"
+            :length="Math.ceil(filteredQueues.length / queuesItemsPerPage) || 1"
+            :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          />
+        </div>
+      </VCard>
+    </VCol>
+
+    <!-- Диалог редактирования шаблона -->
     <VDialog
-      v-model="editDialog"
+      v-model="templatesEditDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать очередь шаблона' : 'Добавить очередь шаблона'">
+      <VCard :title="editedTemplatesIndex > -1 ? 'Редактировать шаблон' : 'Добавить шаблон'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12" sm="6">
               <AppTextField
-                v-model="editedItem.name"
+                v-model="editedTemplatesItem.name"
                 label="Название *"
               />
             </VCol>
 
             <!-- Сообщение -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
-                v-model="editedItem.message"
+                v-model="editedTemplatesItem.message"
                 label="Сообщение"
                 rows="3"
                 placeholder="Введите сообщение..."
@@ -624,12 +1120,9 @@ const addNewTemplateQueues = () => {
             </VCol>
 
             <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12" sm="6">
               <VSwitch
-                v-model="editedItem.isActive"
+                v-model="editedTemplatesItem.isActive"
                 label="Активен"
                 color="primary"
               />
@@ -638,18 +1131,18 @@ const addNewTemplateQueues = () => {
         </VCardText>
 
         <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
+          <div class="d-flex gap-4 justify-end">
             <VBtn
               color="error"
               variant="outlined"
-              @click="close"
+              @click="closeTemplates"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="save"
+              @click="saveTemplates"
             >
               Сохранить
             </VBtn>
@@ -658,25 +1151,25 @@ const addNewTemplateQueues = () => {
       </VCard>
     </VDialog>
 
-    <!-- Диалог удаления -->
+    <!-- Диалог удаления шаблона -->
     <VDialog
-      v-model="deleteDialog"
+      v-model="templatesDeleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот очередь шаблона?">
+      <VCard title="Вы уверены, что хотите удалить этот шаблон?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
               color="error"
               variant="outlined"
-              @click="closeDelete"
+              @click="closeTemplatesDelete"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="deleteItemConfirm"
+              @click="deleteTemplatesItemConfirm"
             >
               Удалить
             </VBtn>
@@ -684,7 +1177,123 @@ const addNewTemplateQueues = () => {
         </VCardText>
       </VCard>
     </VDialog>
-  </div>
+
+    <!-- Диалог редактирования очереди -->
+    <VDialog
+      v-model="queuesEditDialog"
+      max-width="600px"
+    >
+      <VCard :title="editedQueuesIndex > -1 ? 'Редактировать очередь' : 'Добавить очередь'">
+        <VCardText>
+          <VRow>
+            <!-- Название -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedQueuesItem.name"
+                label="Название *"
+              />
+            </VCol>
+
+            <!-- Шаблон -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.templateId"
+                :items="templateOptions"
+                label="Шаблон"
+                clearable
+                placeholder="Выберите шаблон"
+              />
+            </VCol>
+
+            <!-- Описание -->
+            <VCol cols="12">
+              <AppTextarea
+                v-model="editedQueuesItem.description"
+                label="Описание"
+                rows="3"
+                placeholder="Введите описание..."
+              />
+            </VCol>
+
+            <!-- Макс. тикетов -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedQueuesItem.maxTickets"
+                label="Макс. тикетов"
+                type="number"
+                min="0"
+              />
+            </VCol>
+
+            <!-- Приоритет -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedQueuesItem.priority"
+                label="Приоритет"
+                type="number"
+                min="0"
+              />
+            </VCol>
+
+            <!-- Активен -->
+            <VCol cols="12" sm="6">
+              <VSwitch
+                v-model="editedQueuesItem.isActive"
+                label="Активен"
+                color="primary"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VCardText>
+          <div class="d-flex gap-4 justify-end">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeQueues"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="saveQueues"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог удаления очереди -->
+    <VDialog
+      v-model="queuesDeleteDialog"
+      max-width="500px"
+    >
+      <VCard title="Вы уверены, что хотите удалить эту очередь?">
+        <VCardText>
+          <div class="d-flex justify-center gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeQueuesDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteQueuesItemConfirm"
+            >
+              Удалить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+  </VRow>
 
   <!-- Уведомления -->
   <VSnackbar
