@@ -44,7 +44,12 @@ const addNewQueue = () => {
 </script>
 
 <template>
-  <VRow>
+  <!-- Индикатор загрузки -->
+  <div v-if="props.loading" class="d-flex justify-center pa-6">
+    <VProgressCircular indeterminate color="primary" />
+  </div>
+
+  <VRow v-else>
     <!-- 👉 Queues -->
     <VCol
       v-for="queue in props.queues"
