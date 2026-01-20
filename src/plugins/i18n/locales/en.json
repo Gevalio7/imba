@@ -240,7 +240,7 @@
   "Нет данных": "No data",
   "$vuetify": {
     "badge": "Badge",
-    "noDataText": "No data available",
+    "noDataText": "нет данных",
     "close": "Close",
     "open": "open",
     "loading": "loading",

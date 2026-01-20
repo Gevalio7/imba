@@ -10,7 +10,7 @@ type TicketSettingsWidget = {
   color: string
   // Пока без API — показываем 0. Позже можно подцепить реальные количества.
   count: number
-  to: { name: string; query: Record<string, string> }
+  to: { name: string }
 }
 
 const widgets: TicketSettingsWidget[] = [
@@ -20,7 +20,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-reply',
     color: 'primary',
     count: 0,
-    to: { name: 'settings', query: { tab: 'auto-responses' } },
+    to: { name: 'apps-settings-ticket-settings-AutoResponses' },
   },
   {
     title: 'Очереди',
@@ -28,7 +28,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-list-ul',
     color: 'success',
     count: 0,
-    to: { name: 'settings', query: { tab: 'queues' } },
+    to: { name: 'apps-settings-ticket-settings-Queues' },
   },
   {
     title: 'Подписи',
@@ -36,7 +36,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-pen',
     color: 'secondary',
     count: 0,
-    to: { name: 'settings', query: { tab: 'signatures' } },
+    to: { name: 'apps-settings-ticket-settings-Signatures' },
   },
   {
     title: 'Приветствия',
@@ -44,7 +44,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-message-rounded-dots',
     color: 'warning',
     count: 0,
-    to: { name: 'settings', query: { tab: 'greetings' } },
+    to: { name: 'apps-settings-ticket-settings-Greetings' },
   },
   {
     title: 'Прикрепленные файлы',
@@ -52,7 +52,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-paperclip',
     color: 'error',
     count: 0,
-    to: { name: 'settings', query: { tab: 'attachments' } },
+    to: { name: 'apps-settings-ticket-settings-Attachments' },
   },
   {
     title: 'Приоритеты',
@@ -60,7 +60,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-flag',
     color: 'primary',
     count: 0,
-    to: { name: 'settings', query: { tab: 'priorities' } },
+    to: { name: 'apps-settings-ticket-settings-Priorities' },
   },
   {
     title: 'Сервисы',
@@ -68,7 +68,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-briefcase-alt-2',
     color: 'success',
     count: 0,
-    to: { name: 'settings', query: { tab: 'services' } },
+    to: { name: 'apps-settings-ticket-settings-Services' },
   },
   {
     title: 'SLA',
@@ -76,7 +76,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-timer',
     color: 'warning',
     count: 0,
-    to: { name: 'settings', query: { tab: 'sla' } },
+    to: { name: 'apps-settings-ticket-settings-SLA' },
   },
   {
     title: 'Состояния',
@@ -84,7 +84,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-toggle-left',
     color: 'info',
     count: 0,
-    to: { name: 'settings', query: { tab: 'states' } },
+    to: { name: 'apps-settings-ticket-settings-States' },
   },
   {
     title: 'Типы',
@@ -92,7 +92,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-category',
     color: 'secondary',
     count: 0,
-    to: { name: 'settings', query: { tab: 'types' } },
+    to: { name: 'apps-settings-ticket-settings-Types' },
   },
   {
     title: 'Шаблоны',
@@ -100,7 +100,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-file',
     color: 'primary',
     count: 0,
-    to: { name: 'settings', query: { tab: 'templates' } },
+    to: { name: 'apps-settings-ticket-settings-Templates' },
   },
   {
     title: 'Шаблоны ↔️ Вложения',
@@ -108,7 +108,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-link',
     color: 'error',
     count: 0,
-    to: { name: 'settings', query: { tab: 'template-attachments' } },
+    to: { name: 'apps-settings-ticket-settings-TemplateAttachments' },
   },
   {
     title: 'Шаблоны ↔️ Очереди',
@@ -116,7 +116,7 @@ const widgets: TicketSettingsWidget[] = [
     icon: 'bx-link',
     color: 'success',
     count: 0,
-    to: { name: 'settings', query: { tab: 'template-queues' } },
+    to: { name: 'apps-settings-ticket-settings-TemplateQueues' },
   },
 ]
 </script>
@@ -130,7 +130,7 @@ const widgets: TicketSettingsWidget[] = [
       <VRow class="match-height">
         <VCol
           v-for="w in widgets"
-          :key="w.to.query.tab"
+          :key="w.to.name"
           cols="12"
           sm="6"
           lg="4"

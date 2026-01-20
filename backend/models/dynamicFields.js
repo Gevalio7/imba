@@ -6,7 +6,7 @@ function toSnakeCase(str) {
 }
 
 class DynamicFields {
-  static tableName = 'dynamic_fields';
+  static tableName = 'dynamicfields';
   static fields = 'name, label, fieldType, defaultValue, isRequired';
 
   static async getAll(options = {}) {
@@ -28,7 +28,7 @@ class DynamicFields {
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
       if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        orderClause = `ORDER BY ${toSnakeCase(sortBy)} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
       const offset = (page - 1) * itemsPerPage;

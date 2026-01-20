@@ -30,10 +30,10 @@ const fetchSLA = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching sLA from:', `${API_BASE}/sLA`)
-    const data = await $fetch<{ sLA: SLA[], total: number }>(`${API_BASE}/sLA`)
-    console.log('Fetched sLA data:', data)
-    sLA.value = data.sLA
+    console.log('Fetching sla from:', `${API_BASE}/sla`)
+    const data = await $fetch<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+    console.log('Fetched sla data:', data)
+    sLA.value = data.sla
     total.value = data.total
   } catch (err) {
     error.value = 'Ошибка загрузки sla'
@@ -46,14 +46,14 @@ const fetchSLA = async () => {
 // Создание sla
 const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SLA>(`${API_BASE}/sLA`, {
+    const data = await $fetch<SLA>(`${API_BASE}/sla`, {
       method: 'POST',
       body: item
     })
     sLA.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating sLA:', err)
+    console.error('Error creating sla:', err)
     throw err
   }
 }
@@ -61,7 +61,7 @@ const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
 // Обновление sla
 const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SLA>(`${API_BASE}/sLA/${id}`, {
+    const data = await $fetch<SLA>(`${API_BASE}/sla/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -71,7 +71,7 @@ const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updat
     }
     return data
   } catch (err) {
-    console.error('Error updating sLA:', err)
+    console.error('Error updating sla:', err)
     throw err
   }
 }
@@ -79,7 +79,7 @@ const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updat
 // Удаление sla
 const deleteSLA = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/sLA/${id}`, {
+    await $fetch(`${API_BASE}/sla/${id}`, {
       method: 'DELETE'
     })
     const index = sLA.value.findIndex(p => p.id === id)
@@ -87,7 +87,7 @@ const deleteSLA = async (id: number) => {
       sLA.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting sLA:', err)
+    console.error('Error deleting sla:', err)
     throw err
   }
 }
