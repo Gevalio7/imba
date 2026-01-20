@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref } from 'vue'
