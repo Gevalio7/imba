@@ -565,6 +565,9 @@ const addNewQueues = () => {
 // Переключатель вида шаблонов (карточки/таблица)
 const templatesViewMode = ref<'cards' | 'table'>('cards')
 
+// Переключатель вида очередей (карточки/таблица)
+const queuesViewMode = ref<'cards' | 'table'>('table')
+
 // Функция для удаления HTML-тегов
 const stripHtmlTags = (html: string) => {
   return html.replace(/<[^>]*>/g, '')
@@ -826,15 +829,40 @@ const stripHtmlTags = (html: string) => {
 
     <!-- Очереди -->
     <VCol cols="12">
-      <h4 class="text-h4 mb-1 mt-6">
-        Очереди
-      </h4>
-      <p class="text-body-1 mb-0">
-        Найдите все очереди вашей компании и их связанные шаблоны.
-      </p>
+      <div class="d-flex justify-space-between align-center mb-1 mt-6">
+        <div>
+          <h4 class="text-h4 mb-1">
+            Очереди
+          </h4>
+          <p class="text-body-1 mb-0">
+            Найдите все очереди вашей компании и их связанные шаблоны.
+          </p>
+        </div>
+        <VBtnToggle
+          v-model="queuesViewMode"
+          mandatory
+          variant="outlined"
+          divided
+        >
+          <VBtn value="cards" icon="bx-grid-alt" />
+          <VBtn value="table" icon="bx-list-ul" />
+        </VBtnToggle>
+      </div>
     </VCol>
 
-    <VCol cols="12">
+    <!-- Карточный вид очередей -->
+    <VCol v-if="queuesViewMode === 'cards'" cols="12">
+      <QueueCards
+        :queues="filteredQueues"
+        :loading="queuesLoading"
+        @edit="editQueuesItem"
+        @delete="deleteQueuesItem"
+        @add="addNewQueues"
+      />
+    </VCol>
+
+    <!-- Табличный вид очередей -->
+    <VCol v-else cols="12">
       <VCard title="Очереди">
 
         <!-- Индикатор загрузки -->
