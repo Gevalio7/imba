@@ -18,9 +18,16 @@ class CalendarEvents {
       let paramIndex = 1;
 
       if (calendarId) {
-        whereClause = `WHERE calendar_id = $${paramIndex}`;
-        params.push(calendarId);
-        paramIndex++;
+        if (Array.isArray(calendarId)) {
+          const placeholders = calendarId.map((_, i) => `$${paramIndex + i}`).join(', ');
+          whereClause = `WHERE calendar_id IN (${placeholders})`;
+          params.push(...calendarId);
+          paramIndex += calendarId.length;
+        } else {
+          whereClause = `WHERE calendar_id = $${paramIndex}`;
+          params.push(calendarId);
+          paramIndex++;
+        }
       }
 
       if (q) {

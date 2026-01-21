@@ -1,11 +1,11 @@
+import { useCalendarStore } from '@/views/apps/calendar/useCalendarStore'
+import { useConfigStore } from '@core/stores/config'
 import type { CalendarApi, CalendarOptions, EventApi, EventSourceFunc } from '@fullcalendar/core'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import type { Event, NewEvent } from './types'
-import { useConfigStore } from '@core/stores/config'
-import { useCalendarStore } from '@/views/apps/calendar/useCalendarStore'
 
 export const blankEvent: Event | NewEvent = {
   title: '',
@@ -282,6 +282,7 @@ export const useCalendar = (event: Ref<Event | NewEvent>, isEventHandlerSidebarA
 
   // 👉 onMounted
   onMounted(() => {
+    store.fetchCalendars();
     nextTick(() => {
       if (refCalendar.value)
         calendarApi.value = refCalendar.value.getApi()

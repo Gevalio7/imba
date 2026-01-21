@@ -1,4 +1,5 @@
 const Calendars = require('../models/calendars');
+const CalendarEvents = require('../models/calendarEvents');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const getCalendars = asyncHandler(async (req, res) => {
@@ -45,7 +46,10 @@ const createCalendars = asyncHandler(async (req, res) => {
   data.timezone = req.body.timezone;
   data.workHoursFrom = req.body.workHoursFrom;
   data.workHoursTo = req.body.workHoursTo;
-  data.includeWeekends = req.body.includeWeekends;
+  data.workDaysPerWeek = req.body.workDaysPerWeek;
+  data.color = req.body.color;
+  data.dateFrom = req.body.dateFrom;
+  data.dateTo = req.body.dateTo;
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
@@ -76,7 +80,10 @@ const updateCalendars = asyncHandler(async (req, res) => {
   if (req.body.timezone !== undefined) data.timezone = req.body.timezone;
   if (req.body.workHoursFrom !== undefined) data.workHoursFrom = req.body.workHoursFrom;
   if (req.body.workHoursTo !== undefined) data.workHoursTo = req.body.workHoursTo;
-  if (req.body.includeWeekends !== undefined) data.includeWeekends = req.body.includeWeekends;
+  if (req.body.workDaysPerWeek !== undefined) data.workDaysPerWeek = req.body.workDaysPerWeek;
+  if (req.body.color !== undefined) data.color = req.body.color;
+  if (req.body.dateFrom !== undefined) data.dateFrom = req.body.dateFrom;
+  if (req.body.dateTo !== undefined) data.dateTo = req.body.dateTo;
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
