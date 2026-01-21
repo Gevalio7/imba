@@ -9,7 +9,12 @@ const getCalendarEvents = asyncHandler(async (req, res) => {
   const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
   const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
-  const calendarIdLocal = typeof calendarId === 'string' ? parseInt(calendarId, 10) : undefined;
+  let calendarIdLocal;
+  if (Array.isArray(calendarId)) {
+    calendarIdLocal = calendarId.map(id => parseInt(id, 10));
+  } else if (typeof calendarId === 'string') {
+    calendarIdLocal = parseInt(calendarId, 10);
+  }
 
   const result = await CalendarEvents.getAll({
     calendarId: calendarIdLocal,

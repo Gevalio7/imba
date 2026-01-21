@@ -3,57 +3,84 @@ import type { Event, NewEvent } from './types'
 export const useCalendarStore = defineStore('calendar', {
   // arrow function recommended for full type inference
   state: () => ({
-    availableCalendars: [
-      {
-        color: 'error',
-        label: 'Personal',
-      },
-      {
-        color: 'primary',
-        label: 'Business',
-      },
-      {
-        color: 'warning',
-        label: 'Family',
-      },
-      {
-        color: 'success',
-        label: 'Holiday',
-      },
-      {
-        color: 'info',
-        label: 'ETC',
-      },
-    ],
-    selectedCalendars: ['Personal', 'Business', 'Family', 'Holiday', 'ETC'],
+    availableCalendars: [] as any[],
+    selectedCalendars: [] as string[],
   }),
   actions: {
+    async fetchCalendars() {
+      const { data, error } = await useApi<any>(createUrl('/api/calendars'))
+
+      if (error.value)
+        return error.value
+
+      const calendars = data.value.calendars || []
+      const activeCalendars = calendars.filter((cal: any) => cal.isActive)
+      this.availableCalendars = activeCalendars.map((cal: any) => ({
+        color: cal.color || 'primary',
+        label: cal.name,
+        id: cal.id,
+      }))
+      this.selectedCalendars = this.availableCalendars.map((cal: any) => cal.id)
+
+      return data.value
+    },
     async fetchEvents() {
-      const { data, error } = await useApi<any>(createUrl('/apps/calendar', {
+      const { data, error } = await useApi<any>(createUrl('/api/calendarEvents', {
         query: {
-          calendars: this.selectedCalendars,
+          calendarId: this.selectedCalendars,
         },
       }))
 
       if (error.value)
         return error.value
 
-      return data.value
+      const events = data.value.events || []
+      return events.map((e: any) => {
+        const cal = this.availableCalendars.find((c: any) => c.id === e.calendarId)
+        return {
+          ...e,
+          end: e.eventEnd, // map eventEnd to end
+          extendedProps: {
+            calendar: cal ? cal.label : 'Unknown',
+            location: '',
+            description: e.description || '',
+            guests: [],
+          },
+        }
+      })
     },
     async addEvent(event: NewEvent) {
-      await $api('/apps/calendar', {
+      const cal = this.availableCalendars.find((c: any) => c.label === event.extendedProps.calendar)
+      const body = {
+        calendarId: cal ? cal.id : 1,
+        title: event.title,
+        start: event.start,
+        eventEnd: event.end,
+        allDay: event.allDay,
+        description: event.extendedProps.description,
+      }
+      await $api('/api/calendarEvents', {
         method: 'POST',
-        body: event,
+        body,
       })
     },
     async updateEvent(event: Event) {
-      return await $api(`/apps/calendar/${event.id}`, {
+      const cal = this.availableCalendars.find((c: any) => c.label === event.extendedProps.calendar)
+      const body = {
+        calendarId: cal ? cal.id : 1,
+        title: event.title,
+        start: event.start,
+        eventEnd: event.end,
+        allDay: event.allDay,
+        description: event.extendedProps.description,
+      }
+      return await $api(`/api/calendarEvents/${event.id}`, {
         method: 'PUT',
-        body: event,
+        body,
       })
     },
     async removeEvent(eventId: string) {
-      return await $api(`/apps/calendar/${eventId}`, {
+      return await $api(`/api/calendarEvents/${eventId}`, {
         method: 'DELETE',
       })
     },
