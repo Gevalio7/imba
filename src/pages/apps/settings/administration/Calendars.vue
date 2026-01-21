@@ -8,7 +8,9 @@ interface Calendars {
   name: string
   description: string
   timezone: string
-  workHours: string
+  workHoursFrom: string
+  workHoursTo: string
+  includeWeekends: boolean
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -101,7 +103,9 @@ const headers = [
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Описание', key: 'description', sortable: true },
   { title: 'Часовой пояс', key: 'timezone', sortable: true },
-  { title: 'Рабочие часы', key: 'workHours', sortable: true },
+  { title: 'Рабочие часы с', key: 'workHoursFrom', sortable: true },
+  { title: 'Рабочие часы по', key: 'workHoursTo', sortable: true },
+  { title: 'Включая выходные', key: 'includeWeekends', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -210,7 +214,9 @@ const defaultItem = ref<Calendars>({
   name: '',
   description: '',
   timezone: '',
-  workHours: '',
+  workHoursFrom: '',
+  workHoursTo: '',
+  includeWeekends: false,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -223,6 +229,17 @@ const editedIndex = ref(-1)
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
+]
+
+// Опции часовых поясов
+const timezoneOptions = [
+  { text: 'UTC', value: 'UTC' },
+  { text: 'Europe/Moscow', value: 'Europe/Moscow' },
+  { text: 'Europe/London', value: 'Europe/London' },
+  { text: 'America/New_York', value: 'America/New_York' },
+  { text: 'Asia/Tokyo', value: 'Asia/Tokyo' },
+  { text: 'Asia/Shanghai', value: 'Asia/Shanghai' },
+  { text: 'Australia/Sydney', value: 'Australia/Sydney' },
 ]
 
 // Методы
@@ -554,6 +571,28 @@ const addNewCalendars = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Рабочие часы с -->
+        <template #item.workHoursFrom="{ item }">
+          {{ item.workHoursFrom || '-' }}
+        </template>
+
+        <!-- Рабочие часы по -->
+        <template #item.workHoursTo="{ item }">
+          {{ item.workHoursTo || '-' }}
+        </template>
+
+        <!-- Включая выходные -->
+        <template #item.includeWeekends="{ item }">
+          <VChip
+            :color="item.includeWeekends ? 'success' : 'grey'"
+            density="compact"
+            label
+            size="small"
+          >
+            {{ item.includeWeekends ? 'Да' : 'Нет' }}
+          </VChip>
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
@@ -631,22 +670,51 @@ const addNewCalendars = () => {
             <!-- Часовой пояс -->
             <VCol
               cols="12"
-              
+              sm="6"
             >
-              <AppTextField
+              <AppSelect
                 v-model="editedItem.timezone"
+                :items="timezoneOptions"
+                item-title="text"
+                item-value="value"
                 label="Часовой пояс"
+                placeholder="Выберите часовой пояс"
               />
             </VCol>
 
-            <!-- Рабочие часы -->
+            <!-- Рабочие часы с -->
             <VCol
               cols="12"
-              
+              sm="6"
             >
               <AppTextField
-                v-model="editedItem.workHours"
-                label="Рабочие часы"
+                v-model="editedItem.workHoursFrom"
+                label="Рабочие часы с"
+                type="time"
+              />
+            </VCol>
+
+            <!-- Рабочие часы по -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.workHoursTo"
+                label="Рабочие часы по"
+                type="time"
+              />
+            </VCol>
+
+            <!-- Учитывать выходные -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VSwitch
+                v-model="editedItem.includeWeekends"
+                label="Учитывать выходные дни"
+                color="primary"
               />
             </VCol>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import FullCalendar from '@fullcalendar/vue3'
 import { blankEvent, useCalendar } from '@/views/apps/calendar/useCalendar'
 import { useCalendarStore } from '@/views/apps/calendar/useCalendarStore'
+import FullCalendar from '@fullcalendar/vue3'
 
 // Components
 import CalendarEventHandler from '@/views/apps/calendar/CalendarEventHandler.vue'
@@ -18,7 +18,8 @@ watch(isEventHandlerSidebarActive, val => {
     event.value = structuredClone(blankEvent)
 })
 
-const { isLeftSidebarOpen } = useResponsiveLeftSidebar()
+// const { isLeftSidebarOpen } = useResponsiveLeftSidebar()
+const isLeftSidebarOpen = ref(false)
 
 // 👉 useCalendar
 const {
@@ -57,7 +58,7 @@ const jumpToDateFn = (date: string) => {
   <div>
     <VCard>
       <!-- `z-index: 0` Allows overlapping vertical nav on calendar -->
-      <VLayout style="z-index: 0">
+      <VLayout style="z-index: 0;">
         <!-- 👉 Navigation drawer -->
         <VNavigationDrawer
           v-model="isLeftSidebarOpen"
@@ -69,7 +70,7 @@ const jumpToDateFn = (date: string) => {
           class="calendar-add-event-drawer"
           :temporary="$vuetify.display.mdAndDown"
         >
-          <div style="margin: 1.5rem">
+          <div style="margin: 1.5rem;">
             <VBtn
               block
               prepend-icon="bx-plus"

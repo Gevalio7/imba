@@ -5,22 +5,28 @@ function toSnakeCase(str) {
   return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
 }
 
-class Calendars {
-  static tableName = 'calendars';
-  static fields = 'name, description, timezone, workHoursFrom, workHoursTo, includeWeekends';
+class CalendarEvents {
+  static tableName = 'calendar_events';
+  static fields = 'calendarId, title, start, eventEnd, allDay, description';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { calendarId, q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
     try {
       let whereClause = '';
       let params = [];
       let paramIndex = 1;
 
+      if (calendarId) {
+        whereClause = `WHERE calendar_id = $${paramIndex}`;
+        params.push(calendarId);
+        paramIndex++;
+      }
+
       if (q) {
         const searchFields = this.fields.split(', ');
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        whereClause = whereClause ? `${whereClause} AND (${conditions})` : `WHERE ${conditions}`;
         params.push(`%${q}%`);
         paramIndex++;
       }
@@ -34,22 +40,21 @@ class Calendars {
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Calendars.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${CalendarEvents.tableName} ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Calendars.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt" FROM ${CalendarEvents.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
       return {
-        calendars: dataResult.rows,
+        events: dataResult.rows,
         total,
       };
     } catch (error) {
@@ -60,13 +65,12 @@ class Calendars {
 
   static async getById(id) {
     try {
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Calendars.tableName} WHERE id = $1`,
+        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt" FROM ${CalendarEvents.tableName} WHERE id = $1`,
         [id]
       );
 
@@ -77,23 +81,19 @@ class Calendars {
     }
   }
 
-  static async create(calendar) {
+  static async create(event) {
     try {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => calendar[field]);
-      
-      // Добавляем isActive
-      values.push(calendar.isActive !== undefined ? calendar.isActive : true);
-      
-      // Преобразуем имена полей в snake_case для SQL
+      const values = fieldList.map(field => event[field]);
+
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      
-      const query = `INSERT INTO ${Calendars.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+
+      const query = `INSERT INTO ${CalendarEvents.tableName} (${sqlFieldsInsert}) VALUES (${placeholders}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt"`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -103,42 +103,64 @@ class Calendars {
     }
   }
 
-  static async update(id, calendar) {
+  static async createMultiple(events) {
+    try {
+      if (events.length === 0) return [];
+
+      const fieldList = this.fields.split(', ');
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
+      const sqlFieldsSelect = fieldList.map(f => {
+        const snake = toSnakeCase(f);
+        return snake === f ? f : `${snake} as "${f}"`;
+      }).join(', ');
+
+      const values = [];
+      const placeholders = [];
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const eventValues = fieldList.map(field => event[field]);
+        values.push(...eventValues);
+        const startIndex = i * fieldList.length + 1;
+        const endIndex = startIndex + fieldList.length - 1;
+        placeholders.push(`(${Array.from({ length: fieldList.length }, (_, j) => `$${startIndex + j}`).join(', ')})`);
+      }
+
+      const query = `INSERT INTO ${CalendarEvents.tableName} (${sqlFieldsInsert}) VALUES ${placeholders.join(', ')} RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt"`;
+      const result = await pool.query(query, values);
+
+      return result.rows;
+    } catch (error) {
+      console.error('Error in createMultiple:', error);
+      throw error;
+    }
+  }
+
+  static async update(id, event) {
     try {
       const fieldList = this.fields.split(', ');
       const updates = [];
       const values = [];
       let paramIndex = 1;
 
-      // Обновляем только переданные поля
       fieldList.forEach(field => {
-        if (calendar[field] !== undefined) {
+        if (event[field] !== undefined) {
           updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(calendar[field]);
+          values.push(event[field]);
           paramIndex++;
         }
       });
 
-      // Добавляем isActive если передан
-      if (calendar.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(calendar.isActive);
-        paramIndex++;
-      }
-
-      // Всегда обновляем updated_at
       updates.push('updated_at = CURRENT_TIMESTAMP');
 
-      // Добавляем id в конец
       values.push(id);
 
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
 
-      const query = `UPDATE ${Calendars.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `UPDATE ${CalendarEvents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;
@@ -150,7 +172,7 @@ class Calendars {
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${Calendars.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${CalendarEvents.tableName} WHERE id = $1`, [id]);
 
       return result.rowCount > 0;
     } catch (error) {
@@ -158,6 +180,17 @@ class Calendars {
       throw error;
     }
   }
+
+  static async deleteByCalendarId(calendarId) {
+    try {
+      const result = await pool.query(`DELETE FROM ${CalendarEvents.tableName} WHERE calendar_id = $1`, [calendarId]);
+
+      return result.rowCount;
+    } catch (error) {
+      console.error('Error in deleteByCalendarId:', error);
+      throw error;
+    }
+  }
 }
 
-module.exports = Calendars;
+module.exports = CalendarEvents;
