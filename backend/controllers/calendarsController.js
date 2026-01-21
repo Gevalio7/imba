@@ -43,8 +43,10 @@ const createCalendars = asyncHandler(async (req, res) => {
   data.name = req.body.name;
   data.description = req.body.description;
   data.timezone = req.body.timezone;
-  data.workHours = req.body.workHours;
-  
+  data.workHoursFrom = req.body.workHoursFrom;
+  data.workHoursTo = req.body.workHoursTo;
+  data.includeWeekends = req.body.includeWeekends;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -72,8 +74,10 @@ const updateCalendars = asyncHandler(async (req, res) => {
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.description !== undefined) data.description = req.body.description;
   if (req.body.timezone !== undefined) data.timezone = req.body.timezone;
-  if (req.body.workHours !== undefined) data.workHours = req.body.workHours;
-  
+  if (req.body.workHoursFrom !== undefined) data.workHoursFrom = req.body.workHoursFrom;
+  if (req.body.workHoursTo !== undefined) data.workHoursTo = req.body.workHoursTo;
+  if (req.body.includeWeekends !== undefined) data.includeWeekends = req.body.includeWeekends;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
