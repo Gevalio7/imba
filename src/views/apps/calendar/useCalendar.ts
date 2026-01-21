@@ -82,7 +82,11 @@ export const useCalendar = (event: Ref<Event | NewEvent>, isEventHandlerSidebarA
     if (!info)
       return
 
-    store.fetchEvents()
+    // Pass date range to filter events
+    const startDate = info.startStr
+    const endDate = info.endStr
+
+    store.fetchEvents(startDate, endDate)
       .then(r => {
         successCallback(r.map((e: Event) => ({
           ...e,

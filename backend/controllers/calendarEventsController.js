@@ -2,12 +2,14 @@ const CalendarEvents = require('../models/calendarEvents');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const getCalendarEvents = asyncHandler(async (req, res) => {
-  const { calendarId, q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { calendarId, q, sortBy, orderBy, itemsPerPage, page, startDate, endDate } = req.query;
 
   const searchQuery = typeof q === 'string' ? q : undefined;
   const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
   const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
+  // Если указаны даты или calendarId, возвращаем все события без пагинации
+  const hasDateFilter = startDate || endDate;
+  const itemsPerPageLocal = (calendarId || hasDateFilter) ? 10000 : (typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10);
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
   let calendarIdLocal;
   if (Array.isArray(calendarId)) {
@@ -23,6 +25,8 @@ const getCalendarEvents = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
+    startDate: typeof startDate === 'string' ? startDate : undefined,
+    endDate: typeof endDate === 'string' ? endDate : undefined,
   });
 
   res.json(result);
