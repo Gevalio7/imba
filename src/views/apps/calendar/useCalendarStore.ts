@@ -24,18 +24,28 @@ export const useCalendarStore = defineStore('calendar', {
 
       return data.value
     },
-    async fetchEvents() {
+    async fetchEvents(startDate?: string, endDate?: string) {
+      const query: any = {
+        calendarId: this.selectedCalendars,
+      }
+
+      if (startDate) query.startDate = startDate
+      if (endDate) query.endDate = endDate
+
       const { data, error } = await useApi<any>(createUrl('/api/calendarEvents', {
-        query: {
-          calendarId: this.selectedCalendars,
-        },
+        query,
       }))
 
       if (error.value)
         return error.value
 
       const events = data.value.events || []
-      return events.map((e: any) => {
+      // Фильтруем события только для активных календарей
+      const filteredEvents = events.filter((e: any) =>
+        this.availableCalendars.some((cal: any) => cal.id === e.calendarId)
+      )
+
+      return filteredEvents.map((e: any) => {
         const cal = this.availableCalendars.find((c: any) => c.id === e.calendarId)
         return {
           ...e,

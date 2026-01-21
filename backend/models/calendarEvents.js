@@ -10,7 +10,7 @@ class CalendarEvents {
   static fields = 'calendarId, title, start, eventEnd, allDay, description';
 
   static async getAll(options = {}) {
-    const { calendarId, q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { calendarId, q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, startDate, endDate } = options;
 
     try {
       let whereClause = '';
@@ -35,6 +35,19 @@ class CalendarEvents {
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereClause = whereClause ? `${whereClause} AND (${conditions})` : `WHERE ${conditions}`;
         params.push(`%${q}%`);
+        paramIndex++;
+      }
+
+      // Фильтрация по диапазону дат
+      if (startDate) {
+        whereClause = whereClause ? `${whereClause} AND start::date >= $${paramIndex}::date` : `WHERE start::date >= $${paramIndex}::date`;
+        params.push(startDate);
+        paramIndex++;
+      }
+
+      if (endDate) {
+        whereClause = whereClause ? `${whereClause} AND start::date <= $${paramIndex}::date` : `WHERE start::date <= $${paramIndex}::date`;
+        params.push(endDate);
         paramIndex++;
       }
 

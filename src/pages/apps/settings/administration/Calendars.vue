@@ -10,7 +10,10 @@ interface Calendars {
   timezone: string
   workHoursFrom: string
   workHoursTo: string
-  includeWeekends: boolean
+  workDaysPerWeek: number
+  color: string
+  dateFrom: string
+  dateTo: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -105,7 +108,10 @@ const headers = [
   { title: 'Часовой пояс', key: 'timezone', sortable: true },
   { title: 'Рабочие часы с', key: 'workHoursFrom', sortable: true },
   { title: 'Рабочие часы по', key: 'workHoursTo', sortable: true },
-  { title: 'Включая выходные', key: 'includeWeekends', sortable: true },
+  { title: 'Дней в неделю', key: 'workDaysPerWeek', sortable: true },
+  { title: 'Цвет', key: 'color', sortable: true },
+  { title: 'Дата с', key: 'dateFrom', sortable: true },
+  { title: 'Дата по', key: 'dateTo', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -216,7 +222,10 @@ const defaultItem = ref<Calendars>({
   timezone: '',
   workHoursFrom: '',
   workHoursTo: '',
-  includeWeekends: false,
+  workDaysPerWeek: 5,
+  color: 'primary',
+  dateFrom: '',
+  dateTo: '',
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -245,7 +254,11 @@ const timezoneOptions = [
 // Методы
 const editItem = (item: Calendars) => {
   editedIndex.value = calendars.value.indexOf(item)
-  editedItem.value = { ...item }
+  editedItem.value = {
+    ...item,
+    dateFrom: item.dateFrom ? new Date(item.dateFrom).toISOString().split('T')[0] : '',
+    dateTo: item.dateTo ? new Date(item.dateTo).toISOString().split('T')[0] : ''
+  }
   editDialog.value = true
 }
 
@@ -274,19 +287,21 @@ const save = async () => {
   }
 
   try {
+    // Преобразуем даты в формат ISO для отправки на сервер
+    const dataToSend = {
+      ...editedItem.value,
+      dateFrom: editedItem.value.dateFrom ? new Date(editedItem.value.dateFrom).toISOString() : null,
+      dateTo: editedItem.value.dateTo ? new Date(editedItem.value.dateTo).toISOString() : null,
+      isActive: editedItem.value.isActive
+    }
+
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateCalendars(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const updated = await updateCalendars(editedItem.value.id, dataToSend)
       showToast('Календарь успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createCalendars({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const created = await createCalendars(dataToSend)
       showToast('Календарь успешно добавлен')
     }
     close()
@@ -581,16 +596,31 @@ const addNewCalendars = () => {
           {{ item.workHoursTo || '-' }}
         </template>
 
-        <!-- Включая выходные -->
-        <template #item.includeWeekends="{ item }">
+        <!-- Дней в неделю -->
+        <template #item.workDaysPerWeek="{ item }">
+          {{ item.workDaysPerWeek || '-' }}
+        </template>
+
+        <!-- Цвет -->
+        <template #item.color="{ item }">
           <VChip
-            :color="item.includeWeekends ? 'success' : 'grey'"
+            :color="item.color || 'primary'"
             density="compact"
             label
             size="small"
           >
-            {{ item.includeWeekends ? 'Да' : 'Нет' }}
+            {{ item.color || 'primary' }}
           </VChip>
+        </template>
+
+        <!-- Дата с -->
+        <template #item.dateFrom="{ item }">
+          {{ item.dateFrom ? new Date(item.dateFrom).toLocaleDateString() : '-' }}
+        </template>
+
+        <!-- Дата по -->
+        <template #item.dateTo="{ item }">
+          {{ item.dateTo ? new Date(item.dateTo).toLocaleDateString() : '-' }}
         </template>
 
         <!-- Активен -->
@@ -706,15 +736,63 @@ const addNewCalendars = () => {
               />
             </VCol>
 
-            <!-- Учитывать выходные -->
+            <!-- Дней в неделю -->
             <VCol
               cols="12"
               sm="6"
             >
-              <VSwitch
-                v-model="editedItem.includeWeekends"
-                label="Учитывать выходные дни"
-                color="primary"
+              <AppTextField
+                v-model.number="editedItem.workDaysPerWeek"
+                label="Дней в неделю"
+                type="number"
+                :min="3"
+                :max="7"
+              />
+            </VCol>
+
+            <!-- Цвет -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.color"
+                :items="[
+                  { text: 'Основной', value: 'primary' },
+                  { text: 'Вторичный', value: 'secondary' },
+                  { text: 'Успех', value: 'success' },
+                  { text: 'Ошибка', value: 'error' },
+                  { text: 'Предупреждение', value: 'warning' },
+                  { text: 'Информация', value: 'info' }
+                ]"
+                item-title="text"
+                item-value="value"
+                label="Цвет"
+                placeholder="Выберите цвет"
+              />
+            </VCol>
+
+            <!-- Дата с -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.dateFrom"
+                label="Дата с"
+                type="date"
+              />
+            </VCol>
+
+            <!-- Дата по -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.dateTo"
+                label="Дата по"
+                type="date"
               />
             </VCol>
 
