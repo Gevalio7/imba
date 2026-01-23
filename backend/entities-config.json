@@ -220,6 +220,7 @@
   "Services": {
     "name": "string",
     "comment": "string",
+    "type": "string",
     "isActive": "boolean"
   },
   "SessionManagement": {

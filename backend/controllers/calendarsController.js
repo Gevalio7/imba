@@ -2,6 +2,33 @@ const Calendars = require('../models/calendars');
 const CalendarEvents = require('../models/calendarEvents');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+function generateCalendarEvents(calendarId, calendar) {
+  const events = [];
+  const { workHoursFrom, workHoursTo, workDaysPerWeek, dateFrom, dateTo } = calendar;
+  const [hFrom, mFrom] = workHoursFrom.split(':').map(Number);
+  const [hTo, mTo] = workHoursTo.split(':').map(Number);
+  const startDate = new Date(dateFrom);
+  const endDate = new Date(dateTo);
+
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    const isWorkDay = workDaysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= workDaysPerWeek);
+    if (isWorkDay) {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hFrom, mFrom);
+      const eventEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hTo, mTo);
+      events.push({
+        calendarId,
+        title: 'Рабочие часы',
+        start: start.toISOString(),
+        eventEnd: eventEnd.toISOString(),
+        allDay: false,
+        description: ''
+      });
+    }
+  }
+  return events;
+}
+
 const getCalendars = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 

@@ -1,5 +1,25 @@
 const Attachments = require('../models/attachments');
 const { asyncHandler } = require('../middleware/errorHandler');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../public/uploads/attachments');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
 
 const getAttachments = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
@@ -44,7 +64,12 @@ const createAttachments = asyncHandler(async (req, res) => {
   data.fileName = req.body.fileName;
   data.type = req.body.type;
   data.comment = req.body.comment;
-  
+
+  // If file uploaded, use the stored filename
+  if (req.file) {
+    data.fileName = req.file.filename;
+  }
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -105,10 +130,35 @@ const deleteAttachments = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+const downloadAttachment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const attachmentId = parseInt(id, 10);
+
+  if (isNaN(attachmentId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const attachment = await Attachments.getById(attachmentId);
+
+  if (!attachment) {
+    return res.status(404).json({ message: 'Attachment not found' });
+  }
+
+  const filePath = path.join(uploadsDir, attachment.fileName);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: 'File not found' });
+  }
+
+  res.download(filePath);
+});
+
 module.exports = {
   getAttachments,
   getAttachmentById,
   createAttachments,
   updateAttachments,
   deleteAttachments,
+  downloadAttachment,
+  upload,
 };

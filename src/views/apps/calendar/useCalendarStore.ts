@@ -8,19 +8,25 @@ export const useCalendarStore = defineStore('calendar', {
   }),
   actions: {
     async fetchCalendars() {
+      console.log('Fetching calendars...')
       const { data, error } = await useApi<any>(createUrl('/api/calendars'))
 
-      if (error.value)
+      if (error.value) {
+        console.error('Error fetching calendars:', error.value)
         return error.value
+      }
 
       const calendars = data.value.calendars || []
+      console.log('All calendars from API:', calendars)
       const activeCalendars = calendars.filter((cal: any) => cal.isActive)
+      console.log('Active calendars after filter:', activeCalendars)
       this.availableCalendars = activeCalendars.map((cal: any) => ({
         color: cal.color || 'primary',
         label: cal.name,
         id: cal.id,
       }))
-      this.selectedCalendars = this.availableCalendars.map((cal: any) => cal.id)
+      this.selectedCalendars = this.availableCalendars.map((cal: any) => cal.label)
+      console.log('Available calendars set:', this.availableCalendars)
 
       return data.value
     },
@@ -52,6 +58,7 @@ export const useCalendarStore = defineStore('calendar', {
           end: e.eventEnd, // map eventEnd to end
           extendedProps: {
             calendar: cal ? cal.label : 'Unknown',
+            color: cal ? cal.color : '#1976d2',
             location: '',
             description: e.description || '',
             guests: [],

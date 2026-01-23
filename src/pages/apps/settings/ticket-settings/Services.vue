@@ -7,6 +7,7 @@ interface Services {
   id: number
   name: string
   comment: string
+  type: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -105,6 +106,7 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
+  { title: 'Тип', key: 'type', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -131,6 +133,11 @@ const filteredServices = computed(() => {
     filtered = filtered.filter(p => selectedNames.value.includes(p.name))
   }
 
+  if (selectedTypes.value.length > 0) {
+    // Фильтруем по выбранным типам
+    filtered = filtered.filter(p => selectedTypes.value.includes(p.type))
+  }
+
   return filtered
 })
 
@@ -139,6 +146,7 @@ const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = null
   selectedNames.value = []
+  selectedTypes.value = []
 }
 
 // Уникальные названия для фильтра
@@ -149,7 +157,7 @@ const uniqueNames = computed(() => {
 
 // Проверка активных фильтров
 const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0
+  return statusFilter.value !== null || selectedNames.value.length > 0 || selectedTypes.value.length > 0
 })
 
 // Массовые действия
@@ -211,6 +219,7 @@ const currentPage = ref(1)
 // Фильтры
 const statusFilter = ref<number | null>(null)
 const selectedNames = ref<string[]>([])
+const selectedTypes = ref<string[]>([])
 const searchNames = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
@@ -244,6 +253,7 @@ const defaultItem = ref<Services>({
   id: -1,
   name: '',
   comment: '',
+  type: '',
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -256,6 +266,22 @@ const editedIndex = ref(-1)
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
+]
+
+// Опции типа
+const typeOptions = [
+  'Обучение',
+  'Демонстрация',
+  'Другое',
+  'Интерфейсная часть',
+  'Конечный сервис пользователя',
+  'Контракт поддержки',
+  'Планирование',
+  'Сервисная часть',
+  'Составление отчетов',
+  'Управление ИТ',
+  'Эксплуатация',
+  'Ит'
 ]
 
 // Методы
@@ -489,6 +515,17 @@ const addNewServices = () => {
                 </AppCombobox>
               </VCol>
               <VCol cols="12" md="6">
+                <AppCombobox
+                  v-model="selectedTypes"
+                  :items="typeOptions"
+                  placeholder="Выберите типы"
+                  label="Типы сервисов"
+                  multiple
+                  clearable
+                  chips
+                />
+              </VCol>
+              <VCol cols="12" md="6">
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -672,10 +709,24 @@ const addNewServices = () => {
               />
             </VCol>
 
+            <!-- Тип -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.type"
+                :items="typeOptions"
+                label="Тип"
+                placeholder="Выберите тип"
+                clearable
+              />
+            </VCol>
+
             <!-- Комментарий -->
             <VCol
               cols="12"
-              
+
             >
               <AppTextarea
                 v-model="editedItem.comment"

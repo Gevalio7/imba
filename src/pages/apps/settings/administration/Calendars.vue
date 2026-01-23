@@ -12,8 +12,8 @@ interface Calendars {
   workHoursTo: string
   workDaysPerWeek: number
   color: string
-  dateFrom: string
-  dateTo: string
+  dateFrom: string | null
+  dateTo: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -281,6 +281,7 @@ const closeDelete = () => {
 }
 
 const save = async () => {
+  console.log('DEBUG: Saving calendar with color:', editedItem.value.color)
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
     return
@@ -294,18 +295,22 @@ const save = async () => {
       dateTo: editedItem.value.dateTo ? new Date(editedItem.value.dateTo).toISOString() : null,
       isActive: editedItem.value.isActive
     }
+    console.log('DEBUG: Data to send:', dataToSend)
 
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updateCalendars(editedItem.value.id, dataToSend)
+      console.log('DEBUG: Updated calendar:', updated)
       showToast('Календарь успешно сохранен')
     } else {
       // Добавление нового
       const created = await createCalendars(dataToSend)
+      console.log('DEBUG: Created calendar:', created)
       showToast('Календарь успешно добавлен')
     }
     close()
   } catch (err) {
+    console.error('DEBUG: Error saving calendar:', err)
     showToast('Ошибка сохранения календарь', 'error')
   }
 }
@@ -755,18 +760,9 @@ const addNewCalendars = () => {
               cols="12"
               sm="6"
             >
-              <AppSelect
+              <input
                 v-model="editedItem.color"
-                :items="[
-                  { text: 'Основной', value: 'primary' },
-                  { text: 'Вторичный', value: 'secondary' },
-                  { text: 'Успех', value: 'success' },
-                  { text: 'Ошибка', value: 'error' },
-                  { text: 'Предупреждение', value: 'warning' },
-                  { text: 'Информация', value: 'info' }
-                ]"
-                item-title="text"
-                item-value="value"
+                type="color"
                 label="Цвет"
                 placeholder="Выберите цвет"
               />

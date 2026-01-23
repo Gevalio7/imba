@@ -109,7 +109,7 @@ const refInputEl = ref<HTMLElement>()
       absolute
       class="user-profile-sidebar"
       location="start"
-      border="none"
+      border=""
       width="370"
     >
       <ChatUserProfileSidebarContent @close="isUserProfileSidebarOpen = false" />
