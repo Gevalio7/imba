@@ -32,6 +32,11 @@ kill_port() {
     local pids=$(lsof -ti:$port 2>/dev/null)
     if [ ! -z "$pids" ]; then
         print_color $YELLOW "⚠️  Останавливаем процесс на порту $port..."
+        # Логируем процессы перед убийством
+        echo "DEBUG: Процессы на порту $port:" >> logs/debug.log
+        for pid in $pids; do
+            ps -p $pid -o pid,ppid,cmd 2>/dev/null >> logs/debug.log || echo "PID $pid: не найден" >> logs/debug.log
+        done
         kill -9 $pids 2>/dev/null
         sleep 1
         print_color $GREEN "✅ Процесс на порту $port остановлен"

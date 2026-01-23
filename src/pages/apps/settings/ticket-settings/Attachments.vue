@@ -43,14 +43,30 @@ const fetchAttachments = async () => {
 }
 
 // Создание вложение
-const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>) => {
+const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>, file?: File | null) => {
   try {
-    const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
-      method: 'POST',
-      body: item
-    })
-    attachments.value.push(data)
-    return data
+    if (file) {
+      const formData = new FormData()
+      formData.append('name', item.name)
+      formData.append('fileName', item.fileName)
+      formData.append('type', item.type.toString())
+      formData.append('comment', item.comment)
+      formData.append('isActive', item.isActive.toString())
+      formData.append('file', file)
+      const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
+        method: 'POST',
+        body: formData
+      })
+      attachments.value.push(data)
+      return data
+    } else {
+      const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
+        method: 'POST',
+        body: item
+      })
+      attachments.value.push(data)
+      return data
+    }
   } catch (err) {
     console.error('Error creating attachments:', err)
     throw err
@@ -100,7 +116,7 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Имя файла', key: 'fileName', sortable: true },
-  { title: 'Тип', key: 'type', sortable: true },
+  { title: 'Тип файла', key: 'type', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -218,11 +234,22 @@ const defaultItem = ref<Attachments>({
 
 const editedItem = ref<Attachments>({ ...defaultItem.value })
 const editedIndex = ref(-1)
+const selectedFile = ref<File | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 // Опции статуса
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
+]
+
+// Опции типов файлов
+const typeOptions = [
+  { text: 'Неизвестный', value: 0, icon: 'bx-file-blank' },
+  { text: 'Изображение', value: 1, icon: 'bx-image' },
+  { text: 'Видео', value: 2, icon: 'bx-video' },
+  { text: 'PDF', value: 3, icon: 'bx-file' },
+  { text: 'Текст', value: 4, icon: 'bx-text' },
 ]
 
 // Методы
@@ -242,6 +269,10 @@ const close = () => {
   editDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
 }
 
 const closeDelete = () => {
@@ -269,7 +300,7 @@ const save = async () => {
       const created = await createAttachments({
         ...editedItem.value,
         isActive: editedItem.value.isActive
-      })
+      }, selectedFile.value)
       showToast('Вложение успешно добавлен')
     }
     close()
@@ -322,7 +353,83 @@ const showToast = (message: string, color: string = 'success') => {
 const addNewAttachments = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
+  selectedFile.value = null
   editDialog.value = true
+}
+
+const getFileType = (file: File): number => {
+  if (file.type.startsWith('image/')) return 1
+  if (file.type.startsWith('video/')) return 2
+  if (file.type === 'application/pdf') return 3
+  if (file.type.startsWith('text/')) return 4
+  return 0
+}
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    // Проверка размера файла (20 МБ)
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('Файл слишком большой. Максимальный размер: 20 МБ', 'error')
+      return
+    }
+    // Проверка типа файла
+    const allowedTypes = ['image/', 'video/', 'application/pdf', 'text/']
+    const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.type === 'application/pdf')
+    if (!isAllowed) {
+      showToast('Недопустимый тип файла. Разрешены: изображения, видео, PDF, текстовые файлы', 'error')
+      return
+    }
+    selectedFile.value = file
+    editedItem.value.fileName = file.name
+    editedItem.value.type = getFileType(file)
+  }
+}
+
+const getTypeIcon = (type: number): string => {
+  switch (type) {
+    case 1: return 'bx-image'
+    case 2: return 'bx-video'
+    case 3: return 'bx-file'
+    case 4: return 'bx-text'
+    default: return 'bx-file-blank'
+  }
+}
+
+const getTypeText = (type: number): string => {
+  switch (type) {
+    case 1: return 'Изображение'
+    case 2: return 'Видео'
+    case 3: return 'PDF'
+    case 4: return 'Текст'
+    default: return 'Неизвестный'
+  }
+}
+
+const clearFile = () => {
+  selectedFile.value = null
+  editedItem.value.fileName = ''
+  editedItem.value.type = 0
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const downloadItem = async (item: Attachments) => {
+  try {
+    const response = await fetch(`${API_BASE}/attachments/${item.id}/download`)
+    if (!response.ok) throw new Error('Download failed')
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = item.fileName
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    showToast('Ошибка скачивания файла', 'error')
+  }
 }
 </script>
 
@@ -555,6 +662,11 @@ const addNewAttachments = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Тип файла -->
+        <template #item.type="{ item }">
+          <VIcon :icon="getTypeIcon(item.type)" />
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
@@ -576,6 +688,9 @@ const addNewAttachments = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
+            <IconBtn @click="downloadItem(item)">
+              <VIcon icon="bx-download" />
+            </IconBtn>
             <IconBtn @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
@@ -605,11 +720,42 @@ const addNewAttachments = () => {
         <VCardText>
           <VRow>
 
+            <!-- Выбор файла -->
+            <VCol cols="12">
+              <div>
+                <div class="d-flex align-center gap-2">
+                  <VBtn
+                    color="primary"
+                    variant="outlined"
+                    prepend-icon="bx-paperclip"
+                    @click="fileInput?.click()"
+                  >
+                    Выбрать файл
+                  </VBtn>
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/*,video/*,.pdf,text/*"
+                    style="display: none;"
+                    @change="handleFileSelect"
+                  />
+                  <span v-if="selectedFile || (editedIndex > -1 && editedItem.fileName)" class="text-body-2 text-truncate">{{ selectedFile ? selectedFile.name : editedItem.fileName }}</span>
+                  <VBtn
+                    v-if="selectedFile || (editedIndex > -1 && editedItem.fileName)"
+                    color="error"
+                    variant="text"
+                    prepend-icon="bx-trash"
+                    @click="clearFile"
+                  >
+                    Удалить
+                  </VBtn>
+                </div>
+                <small class="text-caption mt-1 d-block">Максимальный размер: 20 МБ. Разрешенные типы: изображения, видео, PDF, текстовые файлы.</small>
+              </div>
+            </VCol>
+
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
@@ -617,10 +763,7 @@ const addNewAttachments = () => {
             </VCol>
 
             <!-- Имя файла -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol v-if="!selectedFile" cols="12">
               <AppTextField
                 v-model="editedItem.fileName"
                 label="Имя файла"
@@ -629,15 +772,14 @@ const addNewAttachments = () => {
 
             <!-- Тип -->
             <VCol
+              v-if="selectedFile"
               cols="12"
               sm="6"
             >
-              <AppTextField
-                v-model="editedItem.type"
-                label="Тип"
-                type="number"
-                min="0"
-              />
+              <div class="d-flex align-center gap-2">
+                <VIcon :icon="getTypeIcon(editedItem.type)" />
+                <span>{{ getTypeText(editedItem.type) }}</span>
+              </div>
             </VCol>
 
             <!-- Комментарий -->

@@ -225,7 +225,8 @@ export const useCalendar = (event: Ref<Event | NewEvent>, isEventHandlerSidebarA
     navLinks: true,
 
     eventClassNames({ event: calendarEvent }) {
-      const colorName = calendarsColor[calendarEvent._def.extendedProps.calendar as keyof typeof calendarsColor]
+      const colorName = calendarEvent._def.extendedProps.color || 'primary'
+      console.log('DEBUG: Event color:', colorName, 'for calendar:', calendarEvent._def.extendedProps.calendar)
 
       return [
         // Background Color

@@ -42,7 +42,8 @@ const createServices = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.comment = req.body.comment;
-  
+  data.type = req.body.type;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -69,7 +70,8 @@ const updateServices = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.comment !== undefined) data.comment = req.body.comment;
-  
+  if (req.body.type !== undefined) data.type = req.body.type;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
