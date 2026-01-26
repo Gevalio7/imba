@@ -8,10 +8,16 @@ async function applyMigration() {
     await pool.query('SELECT NOW()');
     console.log('✅ Подключение установлено');
 
-    const migrationPath = path.join(__dirname, 'migrations', 'add-working-hours-to-calendars.sql');
+    const migrationName = process.argv[2];
+    if (!migrationName) {
+      console.error('❌ Укажите имя миграции: node apply-single-migration.js <migration-file.sql>');
+      process.exit(1);
+    }
+
+    const migrationPath = path.join(__dirname, 'migrations', migrationName);
     const sql = fs.readFileSync(migrationPath, 'utf8');
 
-    console.log('📄 Выполнение миграции...');
+    console.log(`📄 Выполнение миграции ${migrationName}...`);
     await pool.query(sql);
     console.log('✅ Миграция выполнена успешно');
 

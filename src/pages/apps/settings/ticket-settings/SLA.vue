@@ -9,7 +9,10 @@ interface SLA {
   description: string
   responseTime: number // в часах
   resolutionTime: number // в часах
-  status?: number // необязательное поле
+  calendarId?: number
+  calendarName?: string
+  serviceIds?: number[]
+  serviceNames?: string[]
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -24,6 +27,36 @@ const sLA = ref<SLA[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Справочники
+const calendars = ref([])
+const services = ref([])
+
+// Загрузка справочников
+const fetchCalendars = async () => {
+  console.log('fetchCalendars called')
+  try {
+    console.log('Fetching calendars from:', `${API_BASE}/calendars`)
+    const data = await $fetch(`${API_BASE}/calendars`)
+    console.log('Fetched calendars:', data)
+    calendars.value = data.calendars || []
+    console.log('Calendars set to:', calendars.value)
+  } catch (err) {
+    console.log('Error fetching calendars:', err)
+  }
+}
+
+const fetchServices = async () => {
+  try {
+    console.log('Fetching services from:', `${API_BASE}/services`)
+    const data = await $fetch(`${API_BASE}/services`)
+    console.log('Fetched services:', data)
+    services.value = data.services || []
+    console.log('Services set to:', services.value)
+  } catch (err) {
+    console.log('Error fetching services:', err)
+  }
+}
 
 // Загрузка данных из API
 const fetchSLA = async () => {
@@ -93,7 +126,10 @@ const deleteSLA = async (id: number) => {
 }
 
 // Инициализация
-onMounted(() => {
+onMounted(async () => {
+  console.log('onMounted called')
+  await Promise.all([fetchCalendars(), fetchServices()])
+  console.log('fetchCalendars and fetchServices done')
   fetchSLA()
 })
 
@@ -103,7 +139,8 @@ const headers = [
   { title: 'Описание', key: 'description', sortable: true },
   { title: 'Время ответа (ч)', key: 'responseTime', sortable: true },
   { title: 'Время решения (ч)', key: 'resolutionTime', sortable: true },
-  { title: 'status', key: 'status', sortable: true },
+  { title: 'Календарь', key: 'calendarName', sortable: true },
+  { title: 'Сервисы', key: 'serviceNames', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -121,6 +158,12 @@ const filteredSLA = computed(() => {
 
   return filtered
 })
+
+// Форматирование сервисов для отображения
+const formatServices = (serviceNames: string[]) => {
+  if (!serviceNames || serviceNames.length === 0) return '-'
+  return serviceNames.join(', ')
+}
 
 // Сброс фильтров
 const clearFilters = () => {
@@ -213,6 +256,8 @@ const defaultItem = ref<SLA>({
   description: '',
   responseTime: 4,
   resolutionTime: 4,
+  calendarId: undefined,
+  serviceIds: [],
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -259,19 +304,25 @@ const save = async () => {
   }
 
   try {
+    console.log('editedItem.value:', editedItem.value)
+    const dataToSend = {
+      name: editedItem.value.name,
+      description: editedItem.value.description,
+      responseTime: editedItem.value.responseTime,
+      resolutionTime: editedItem.value.resolutionTime,
+      calendarId: editedItem.value.calendarId,
+      services: editedItem.value.serviceIds,
+      isActive: editedItem.value.isActive
+    }
+    console.log('Data to send:', dataToSend)
+
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateSLA(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const updated = await updateSLA(editedItem.value.id, dataToSend)
       showToast('SLA успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createSLA({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const created = await createSLA(dataToSend)
       showToast('SLA успешно добавлен')
     }
     close()
@@ -557,6 +608,16 @@ const addNewSLA = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Календарь -->
+        <template #item.calendarName="{ item }">
+          {{ item.calendarName || '-' }}
+        </template>
+
+        <!-- Сервисы -->
+        <template #item.serviceNames="{ item }">
+          {{ formatServices(item.serviceNames) }}
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
@@ -659,16 +720,36 @@ const addNewSLA = () => {
               />
             </VCol>
 
-            <!-- status -->
+            <!-- Календарь -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppTextField
-                v-model="editedItem.status"
-                label="status"
-                type="number"
-                min="0"
+              <AppSelect
+                v-model="editedItem.calendarId"
+                :items="calendars"
+                item-title="name"
+                item-value="id"
+                label="Календарь"
+                clearable
+                placeholder="Выберите календарь"
+              />
+            </VCol>
+
+            <!-- Сервисы -->
+            <VCol
+              cols="12"
+            >
+              <AppSelect
+                v-model="editedItem.serviceIds"
+                :items="services"
+                item-title="name"
+                item-value="id"
+                label="Сервисы"
+                multiple
+                chips
+                clearable
+                placeholder="Выберите сервисы"
               />
             </VCol>
 
