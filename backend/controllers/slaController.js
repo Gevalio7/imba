@@ -42,12 +42,18 @@ const createSla = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.description = req.body.description;
-  data.responseTime = req.body.responseTime;
-  data.resolutionTime = req.body.resolutionTime;
-  
+  data.responseTime = parseFloat(req.body.responseTime) || 0;
+  data.resolutionTime = parseFloat(req.body.resolutionTime) || 0;
+  data.calendarId = req.body.calendarId ? parseInt(req.body.calendarId, 10) : null;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
+    data.isActive = Boolean(req.body.isActive);
+  }
+
+  // Добавляем services если переданы
+  if (req.body.services && Array.isArray(req.body.services)) {
+    data.services = req.body.services.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
   }
 
   // Валидация обязательных полей
@@ -71,12 +77,18 @@ const updateSla = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.description !== undefined) data.description = req.body.description;
-  if (req.body.responseTime !== undefined) data.responseTime = req.body.responseTime;
-  if (req.body.resolutionTime !== undefined) data.resolutionTime = req.body.resolutionTime;
-  
+  if (req.body.responseTime !== undefined) data.responseTime = parseFloat(req.body.responseTime) || 0;
+  if (req.body.resolutionTime !== undefined) data.resolutionTime = parseFloat(req.body.resolutionTime) || 0;
+  if (req.body.calendarId !== undefined) data.calendarId = req.body.calendarId ? parseInt(req.body.calendarId, 10) : null;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
+    data.isActive = Boolean(req.body.isActive);
+  }
+
+  // Добавляем services если переданы
+  if (req.body.services !== undefined) {
+    data.services = req.body.services.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
   }
 
   const updatedSla = await Sla.update(slaId, data);
