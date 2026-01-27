@@ -44,6 +44,13 @@ const createSla = asyncHandler(async (req, res) => {
   data.description = req.body.description;
   data.responseTime = parseFloat(req.body.responseTime) || 0;
   data.resolutionTime = parseFloat(req.body.resolutionTime) || 0;
+  data.notificationPercentage = parseInt(req.body.notificationPercentage) || 0;
+  data.type = req.body.type;
+  data.solutionTime = parseInt(req.body.solutionTime) || 0;
+  data.minIncidentTime = parseInt(req.body.minIncidentTime) || 10;
+  data.responseNotification = parseInt(req.body.responseNotification) || 20;
+  data.updateNotification = parseInt(req.body.updateNotification) || 80;
+  data.solutionNotification = parseInt(req.body.solutionNotification) || 80;
   data.calendarId = req.body.calendarId ? parseInt(req.body.calendarId, 10) : null;
 
   // Добавляем isActive если передан
@@ -79,6 +86,13 @@ const updateSla = asyncHandler(async (req, res) => {
   if (req.body.description !== undefined) data.description = req.body.description;
   if (req.body.responseTime !== undefined) data.responseTime = parseFloat(req.body.responseTime) || 0;
   if (req.body.resolutionTime !== undefined) data.resolutionTime = parseFloat(req.body.resolutionTime) || 0;
+  if (req.body.notificationPercentage !== undefined) data.notificationPercentage = parseInt(req.body.notificationPercentage) || 0;
+  if (req.body.type !== undefined) data.type = req.body.type;
+  if (req.body.solutionTime !== undefined) data.solutionTime = parseInt(req.body.solutionTime) || 0;
+  if (req.body.minIncidentTime !== undefined) data.minIncidentTime = parseInt(req.body.minIncidentTime) || 10;
+  if (req.body.responseNotification !== undefined) data.responseNotification = parseInt(req.body.responseNotification) || 20;
+  if (req.body.updateNotification !== undefined) data.updateNotification = parseInt(req.body.updateNotification) || 80;
+  if (req.body.solutionNotification !== undefined) data.solutionNotification = parseInt(req.body.solutionNotification) || 80;
   if (req.body.calendarId !== undefined) data.calendarId = req.body.calendarId ? parseInt(req.body.calendarId, 10) : null;
 
   // Добавляем isActive если передан

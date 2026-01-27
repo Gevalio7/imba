@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Sla {
   static tableName = 'sla';
-  static fields = 'name, description, responseTime, resolutionTime';
+  static fields = 'name, description, responseTime, resolutionTime, notificationPercentage, type, solutionTime, minIncidentTime, responseNotification, updateNotification, solutionNotification';
 
   static async getAll(options = {}) {
     console.log('getAll called with options:', options);
@@ -42,13 +42,10 @@ class Sla {
 
       // Get paginated data with calendar and services
       // Сначала получаем SLA
-      const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
       const dataQuery = `
         SELECT
-          s.id, s.name, s.description, s.response_time as "responseTime", s.resolution_time as "resolutionTime",
+          s.id, s.name, s.description, s.response_time as "responseTime", s.resolution_time as "resolutionTime", s.notification_percentage as "notificationPercentage",
+          s.type, s.solution_time as "solutionTime", s.min_incident_time as "minIncidentTime", s.response_notification as "responseNotification", s.update_notification as "updateNotification", s.solution_notification as "solutionNotification",
           s.calendar_id as "calendarId",
           s.created_at as "createdAt",
           s.updated_at as "updatedAt",
@@ -95,7 +92,8 @@ class Sla {
       }).join(', ');
       const result = await pool.query(
         `SELECT
-          s.id, s.name, s.description, s.response_time as "responseTime", s.resolution_time as "resolutionTime",
+          s.id, s.name, s.description, s.response_time as "responseTime", s.resolution_time as "resolutionTime", s.notification_percentage as "notificationPercentage",
+          s.type, s.solution_time as "solutionTime", s.min_incident_time as "minIncidentTime", s.response_notification as "responseNotification", s.update_notification as "updateNotification", s.solution_notification as "solutionNotification",
           s.calendar_id as "calendarId",
           s.created_at as "createdAt",
           s.updated_at as "updatedAt",
