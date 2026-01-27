@@ -4,23 +4,32 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для SLA
 interface SLA {
-  id: number
-  name: string
-  description: string
-  responseTime: number // в часах
-  resolutionTime: number // в часах
-  calendarId?: number
-  calendarName?: string
-  serviceIds?: number[]
-  serviceNames?: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+   id: number
+   name: string
+   description: string
+   type: string // тип SLA
+   responseTime: number // в минутах - время первого ответа
+   resolutionTime: number // в минутах - время обновления
+   solutionTime: number // в минутах - время решения
+   minIncidentTime: number // в минутах - минимальное время между инцидентами
+   responseNotification: number // процент уведомления для первого ответа
+   updateNotification: number // процент уведомления для обновления
+   solutionNotification: number // процент уведомления для решения
+   calendarId?: number
+   calendarName?: string
+   serviceIds?: number[]
+   serviceNames?: string[]
+   isActive: boolean
+   createdAt: string
+   updatedAt: string
 }
 
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Роутер
+const router = useRouter()
 
 // Данные sla
 const sLA = ref<SLA[]>([])
@@ -134,17 +143,19 @@ onMounted(async () => {
 })
 
 const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: true },
-  { title: 'Время ответа (ч)', key: 'responseTime', sortable: true },
-  { title: 'Время решения (ч)', key: 'resolutionTime', sortable: true },
-  { title: 'Календарь', key: 'calendarName', sortable: true },
-  { title: 'Сервисы', key: 'serviceNames', sortable: false },
-  { title: 'Создано', key: 'createdAt', sortable: true },
-  { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+   { title: 'ID', key: 'id', sortable: true },
+   { title: 'Название', key: 'name', sortable: true },
+   { title: 'Описание', key: 'description', sortable: true },
+   { title: 'Эскалация - время первого ответа (мин)', key: 'responseTime', sortable: true },
+   { title: 'Эскалация - время обновления (мин)', key: 'resolutionTime', sortable: true },
+   { title: 'Эскалация - время решения (мин)', key: 'solutionTime', sortable: true },
+   { title: 'Мин. время между инцидентами (мин)', key: 'minIncidentTime', sortable: true },
+   { title: 'Календарь', key: 'calendarName', sortable: true },
+   { title: 'Сервисы', key: 'serviceNames', sortable: false },
+   { title: 'Создано', key: 'createdAt', sortable: true },
+   { title: 'Изменено', key: 'updatedAt', sortable: true },
+   { title: 'Активен', key: 'isActive', sortable: false },
+   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
@@ -160,7 +171,7 @@ const filteredSLA = computed(() => {
 })
 
 // Форматирование сервисов для отображения
-const formatServices = (serviceNames: string[]) => {
+const formatServices = (serviceNames?: string[]) => {
   if (!serviceNames || serviceNames.length === 0) return '-'
   return serviceNames.join(', ')
 }
@@ -247,24 +258,26 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Диалоги
-const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<SLA>({
-  id: -1,
-  name: '',
-  description: '',
-  responseTime: 4,
-  resolutionTime: 4,
-  calendarId: undefined,
-  serviceIds: [],
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
+const editedItem = ref<SLA>({
+   id: -1,
+   name: '',
+   description: '',
+   type: '',
+   responseTime: 15,
+   resolutionTime: 4,
+   solutionTime: 0,
+   minIncidentTime: 10,
+   responseNotification: 20,
+   updateNotification: 80,
+   solutionNotification: 80,
+   calendarId: undefined,
+   serviceIds: [],
+   createdAt: '',
+   updatedAt: '',
+   isActive: true,
 })
-
-const editedItem = ref<SLA>({ ...defaultItem.value })
-const editedIndex = ref(-1)
 
 // Опции статуса
 const statusOptions = [
@@ -274,71 +287,26 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SLA) => {
-  editedIndex.value = sLA.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+   router.push(`/apps/settings/ticket-settings/SLA-${item.id}`)
 }
 
 const deleteItem = (item: SLA) => {
-  editedIndex.value = sLA.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+   editedItem.value = { ...item }
+   deleteDialog.value = true
 }
 
 const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  try {
-    console.log('editedItem.value:', editedItem.value)
-    const dataToSend = {
-      name: editedItem.value.name,
-      description: editedItem.value.description,
-      responseTime: editedItem.value.responseTime,
-      resolutionTime: editedItem.value.resolutionTime,
-      calendarId: editedItem.value.calendarId,
-      services: editedItem.value.serviceIds,
-      isActive: editedItem.value.isActive
-    }
-    console.log('Data to send:', dataToSend)
-
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateSLA(editedItem.value.id, dataToSend)
-      showToast('SLA успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createSLA(dataToSend)
-      showToast('SLA успешно добавлен')
-    }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения sla', 'error')
-  }
+   deleteDialog.value = false
 }
 
 const deleteItemConfirm = async () => {
-  try {
-    await deleteSLA(editedItem.value.id)
-    showToast('SLA успешно удален')
-    closeDelete()
-  } catch (err) {
-    showToast('Ошибка удаления sla', 'error')
-  }
+   try {
+     await deleteSLA(editedItem.value.id)
+     showToast('SLA успешно удален')
+     closeDelete()
+   } catch (err) {
+     showToast('Ошибка удаления sla', 'error')
+   }
 }
 
 // Переключение статуса
@@ -373,9 +341,7 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового sla
 const addNewSLA = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+   router.push('/apps/settings/ticket-settings/SLA-new')
 }
 </script>
 
@@ -658,135 +624,6 @@ const addNewSLA = () => {
         />
       </div>
     </VCard>
-
-    <!-- Диалог редактирования -->
-    <VDialog
-      v-model="editDialog"
-      max-width="600px"
-    >
-      <VCard :title="editedIndex > -1 ? 'Редактировать sla' : 'Добавить sla'">
-        <VCardText>
-          <VRow>
-
-            <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
-              />
-            </VCol>
-
-            <!-- Описание -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextarea
-                v-model="editedItem.description"
-                label="Описание"
-                rows="3"
-                placeholder="Введите описание..."
-              />
-            </VCol>
-
-            <!-- Время ответа (часы) -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.responseTime"
-                label="Время ответа (часы)"
-                type="number"
-                min="0"
-                step="0.25"
-              />
-            </VCol>
-
-            <!-- Время решения (часы) -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.resolutionTime"
-                label="Время решения (часы)"
-                type="number"
-                min="0"
-                step="0.25"
-              />
-            </VCol>
-
-            <!-- Календарь -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.calendarId"
-                :items="calendars"
-                item-title="name"
-                item-value="id"
-                label="Календарь"
-                clearable
-                placeholder="Выберите календарь"
-              />
-            </VCol>
-
-            <!-- Сервисы -->
-            <VCol
-              cols="12"
-            >
-              <AppSelect
-                v-model="editedItem.serviceIds"
-                :items="services"
-                item-title="name"
-                item-value="id"
-                label="Сервисы"
-                multiple
-                chips
-                clearable
-                placeholder="Выберите сервисы"
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
 
     <!-- Диалог удаления -->
     <VDialog
