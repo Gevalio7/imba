@@ -271,6 +271,13 @@ const deleteItem = (item: Agents) => {
           >
             Экспорт
           </VBtn>
+
+          <VBtn
+            color="primary"
+            prepend-icon="bx-plus"
+          >
+            Добавить агента
+          </VBtn>
         </div>
       </div>
 
