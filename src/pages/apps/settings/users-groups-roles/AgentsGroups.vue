@@ -34,6 +34,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 // Роутер
 const router = useRouter()
 
+// Refs
+const agentsGroupsTable = ref()
+
 // Данные группы агентов
 const agentsGroups = ref<AgentsGroups[]>([])
 const loading = ref(false)
@@ -283,21 +286,27 @@ const statusOptions = [
                 v-model="itemsPerPage"
                 :items="[5, 10, 20, 25, 50]"
               />
+              <VBtn
+                color="primary"
+                prepend-icon="bx-plus"
+                @click="$refs.agentsGroupsTable?.addNewGroup()"
+              >
+                Создать группу
+              </VBtn>
             </div>
           </div>
 
           <VDivider />
 
           <AgentsGroupsTable
+            ref="agentsGroupsTable"
             v-model:current-page="currentPage"
             v-model:items-per-page="itemsPerPage"
             v-model:selected-items="selectedItems"
             :agents-groups="filteredGroups"
             :loading="loading"
             :error="error"
-            @edit="() => {}"
-            @delete="deleteGroup"
-            @add="() => {}"
+            @group-updated="fetchAgentsGroups"
             @toggle-status="toggleGroupStatus"
           />
         </template>

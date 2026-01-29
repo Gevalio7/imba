@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { $fetch } from 'ofetch'
+import { ref, watch } from 'vue'
+
 // Типы данных для Группа агентов
 interface AgentsGroups {
   id: number
@@ -18,6 +21,9 @@ interface Agent {
   email: string
   isActive: boolean
 }
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Props
 interface Props {
@@ -40,6 +46,7 @@ const emit = defineEmits<{
   'update:currentPage': [page: number]
   'update:itemsPerPage': [items: number]
   'update:selectedItems': [items: AgentsGroups[]]
+  'group-updated': []
 }>()
 
 // Headers для таблицы
@@ -60,19 +67,35 @@ const resolveStatusVariant = (isActive: boolean) => {
 }
 
 const editGroup = (group: AgentsGroups) => {
-  emit('edit', group)
+  editedIndex.value = props.agentsGroups.indexOf(group)
+  editedItem.value = { ...group }
+  editDialog.value = true
 }
 
 const deleteGroup = (group: AgentsGroups) => {
-  emit('delete', group)
+  editedIndex.value = props.agentsGroups.indexOf(group)
+  editedItem.value = { ...group }
+  deleteDialog.value = true
 }
 
 const addNewGroup = () => {
-  emit('add')
+  editedItem.value = { ...defaultItem.value }
+  editedIndex.value = -1
+  editDialog.value = true
 }
 
-const toggleStatus = (group: AgentsGroups, newValue: boolean | null) => {
-  emit('toggleStatus', group, newValue)
+const toggleStatus = async (group: AgentsGroups, newValue: boolean | null) => {
+  if (newValue === null) return
+  try {
+    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
+      method: 'PUT',
+      body: { ...group, isActive: newValue }
+    })
+    group.isActive = newValue
+    emit('group-updated')
+  } catch (err) {
+    console.error('Error toggling status:', err)
+  }
 }
 
 const updatePage = (page: number) => {
@@ -86,6 +109,77 @@ const updateItemsPerPage = (items: number) => {
 const updateSelectedItems = (items: AgentsGroups[]) => {
   emit('update:selectedItems', items)
 }
+
+// Диалоги
+const editDialog = ref(false)
+const deleteDialog = ref(false)
+
+const defaultItem = ref<AgentsGroups>({
+  id: -1,
+  name: '',
+  agents: [],
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+})
+
+const editedItem = ref<AgentsGroups>({ ...defaultItem.value })
+const editedIndex = ref(-1)
+
+const close = () => {
+  editDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+const closeDelete = () => {
+  deleteDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
+    return
+  }
+
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующей группы
+      await $fetch(`${API_BASE}/agentsGroups/${editedItem.value.id}`, {
+        method: 'PUT',
+        body: { ...editedItem.value, isActive: editedItem.value.isActive }
+      })
+    } else {
+      // Создание новой группы
+      await $fetch(`${API_BASE}/agentsGroups`, {
+        method: 'POST',
+        body: { ...editedItem.value, isActive: editedItem.value.isActive }
+      })
+    }
+    emit('group-updated')
+    close()
+  } catch (err) {
+    console.error('Error saving group:', err)
+  }
+}
+
+const deleteItemConfirm = async () => {
+  try {
+    await $fetch(`${API_BASE}/agentsGroups/${editedItem.value.id}`, {
+      method: 'DELETE'
+    })
+    emit('group-updated')
+    closeDelete()
+  } catch (err) {
+    console.error('Error deleting group:', err)
+  }
+}
+
+// Отслеживание изменений выбранных элементов
+watch(() => props.selectedItems, (newValue) => {
+  console.log('Selected items:', newValue)
+}, { deep: true })
 </script>
 
 <template>
@@ -190,5 +284,80 @@ const updateSelectedItems = (items: AgentsGroups[]) => {
         />
       </div>
     </template>
+
+    <!-- Диалог редактирования/добавления -->
+    <VDialog
+      v-model="editDialog"
+      max-width="600px"
+    >
+      <VCard :title="editedIndex > -1 ? 'Редактировать группу' : 'Добавить группу'">
+        <VCardText>
+          <VRow>
+            <!-- Название -->
+            <VCol cols="12">
+              <AppTextField
+                v-model="editedItem.name"
+                label="Название *"
+              />
+            </VCol>
+
+            <!-- Активен -->
+            <VCol cols="12">
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VCardText>
+          <div class="d-flex gap-4 justify-end">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="close"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог удаления -->
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
+      <VCard title="Вы уверены, что хотите удалить эту группу?">
+        <VCardText>
+          <div class="d-flex justify-center gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </VCard>
 </template>
