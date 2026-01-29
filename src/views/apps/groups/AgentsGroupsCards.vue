@@ -34,7 +34,7 @@ const emit = defineEmits<{
   edit: [group: AgentsGroups]
   delete: [group: AgentsGroups]
   add: []
-  toggleStatus: [group: AgentsGroups, newValue: boolean | null]
+  toggleStatus: [group: AgentsGroups, newValue: boolean]
 }>()
 
 const editGroup = (group: AgentsGroups) => {
@@ -49,7 +49,7 @@ const addNewGroup = () => {
   emit('add')
 }
 
-const toggleStatus = (group: AgentsGroups, newValue: boolean | null) => {
+const toggleStatus = (group: AgentsGroups, newValue: boolean) => {
   emit('toggleStatus', group, newValue)
 }
 </script>
@@ -126,12 +126,17 @@ const toggleStatus = (group: AgentsGroups, newValue: boolean | null) => {
                 hide-details
                 density="compact"
               />
-              <IconBtn @click="deleteGroup(group)">
-                <VIcon
-                  icon="bx-trash"
-                  class="text-error"
-                />
-              </IconBtn>
+              <div class="d-flex gap-1">
+                <IconBtn @click="editGroup(group)">
+                  <VIcon icon="bx-edit" />
+                </IconBtn>
+                <IconBtn @click="deleteGroup(group)">
+                  <VIcon
+                    icon="bx-trash"
+                    class="text-error"
+                  />
+                </IconBtn>
+              </div>
             </div>
           </div>
         </VCardText>
