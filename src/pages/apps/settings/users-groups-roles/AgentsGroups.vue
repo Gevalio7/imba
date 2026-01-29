@@ -91,8 +91,7 @@ const deleteGroup = async (group: AgentsGroups) => {
 }
 
 // Переключение статуса группы
-const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean | null = null) => {
-  if (newValue === null) return
+const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
   try {
     await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
       method: 'PUT',
@@ -220,19 +219,19 @@ const statusOptions = [
       </div>
 
       <template v-else>
-        <!-- Карточный вид -->
+        <!-- Карточный вид - без VCard обертки -->
         <AgentsGroupsCards
           v-if="groupsViewMode === 'cards'"
           :agents-groups="filteredGroups"
           :loading="loading"
-          @edit="() => {}"
+          @edit="(group) => router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)"
           @delete="deleteGroup"
-          @add="() => {}"
+          @add="() => router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')"
           @toggle-status="toggleGroupStatus"
         />
 
-        <!-- Табличный вид -->
-        <template v-else>
+        <!-- Табличный вид - с VCard оберткой -->
+        <VCard v-else title="Группы агентов">
           <!-- Табличный вид - панель инструментов -->
           <div class="d-flex flex-wrap gap-4 pa-6">
             <div class="d-flex align-center">
@@ -289,7 +288,7 @@ const statusOptions = [
               <VBtn
                 color="primary"
                 prepend-icon="bx-plus"
-                @click="$refs.agentsGroupsTable?.addNewGroup()"
+                @click="router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')"
               >
                 Создать группу
               </VBtn>
@@ -309,7 +308,7 @@ const statusOptions = [
             @group-updated="fetchAgentsGroups"
             @toggle-status="toggleGroupStatus"
           />
-        </template>
+        </VCard>
       </template>
     </VCol>
 
