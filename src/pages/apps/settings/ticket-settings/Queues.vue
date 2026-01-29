@@ -18,6 +18,9 @@ interface Queues {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Роутер
+const router = useRouter()
+
 // Данные очереди
 const queues = ref<Queues[]>([])
 const total = ref(0)
@@ -324,6 +327,11 @@ const addNewQueues = () => {
   editedIndex.value = -1
   editDialog.value = true
 }
+
+// Добавление нового очередь версия 2
+const addNewQueuesV2 = () => {
+  router.push('/apps/settings/ticket-settings/Queues-create')
+}
 </script>
 
 <template>
@@ -419,6 +427,15 @@ const addNewQueues = () => {
             @click="addNewQueues"
           >
             Добавить очередь
+          </VBtn>
+
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            prepend-icon="bx-plus"
+            @click="addNewQueuesV2"
+          >
+            Добавить очередь версия 2
           </VBtn>
         </div>
       </div>

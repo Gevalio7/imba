@@ -40,17 +40,22 @@ const getAgentById = asyncHandler(async (req, res) => {
 
 const createAgents = asyncHandler(async (req, res) => {
   const data = {};
-  data.name = req.body.name;
-  data.message = req.body.message;
-  
+  data.firstName = req.body.firstName;
+  data.lastName = req.body.lastName;
+  data.login = req.body.login;
+  data.password = req.body.password;
+  data.email = req.body.email;
+  data.mobilePhone = req.body.mobilePhone;
+  data.telegramAccount = req.body.telegramAccount;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
+  if (!data.firstName || !data.lastName) {
+    return res.status(400).json({ message: 'firstName and lastName are required' });
   }
 
   const newAgent = await Agents.create(data);

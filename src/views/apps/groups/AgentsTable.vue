@@ -17,7 +17,6 @@ interface Agents {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -32,35 +31,29 @@ const fetchAgents = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching agents from:', `${API_BASE}/agents`)
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`)
-    console.log('Fetched agents data:', data)
     agents.value = data.agents
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки агенты'
+    error.value = 'Ошибка загрузки агентов'
     console.error('Error fetching agents:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание агент
-const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Удаление агента
+const deleteAgents = async (id: number) => {
   try {
-    const data = await $fetch<Agents>(`${API_BASE}/agents`, {
-      method: 'POST',
-      body: item
-    })
-    agents.value.push(data)
-    return data
+    await $fetch(`${API_BASE}/agents/${id}`, { method: 'DELETE' })
+    const index = agents.value.findIndex(p => p.id === id)
+    if (index !== -1) agents.value.splice(index, 1)
   } catch (err) {
-    console.error('Error creating agents:', err)
-    throw err
+    console.error('Error deleting agents:', err)
   }
 }
 
-// Обновление агент
+// Обновление агента
 const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     const data = await $fetch<Agents>(`${API_BASE}/agents/${id}`, {
@@ -68,28 +61,10 @@ const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 
       body: item
     })
     const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      agents.value[index] = data
-    }
+    if (index !== -1) agents.value[index] = data
     return data
   } catch (err) {
     console.error('Error updating agents:', err)
-    throw err
-  }
-}
-
-// Удаление агент
-const deleteAgents = async (id: number) => {
-  try {
-    await $fetch(`${API_BASE}/agents/${id}`, {
-      method: 'DELETE'
-    })
-    const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      agents.value.splice(index, 1)
-    }
-  } catch (err) {
-    console.error('Error deleting agents:', err)
     throw err
   }
 }
@@ -116,7 +91,6 @@ const filteredAgents = computed(() => {
   let filtered = agents.value
 
   if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
@@ -130,36 +104,27 @@ const clearFilters = () => {
 
 // Массовые действия
 const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkDeleteDialogOpen.value = true
 }
 
 const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkStatusDialogOpen.value = true
 }
 
 const confirmBulkDelete = async () => {
   try {
-    const count = selectedItems.value.length
     for (const item of selectedItems.value) {
       await deleteAgents(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} агенты`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
-    showToast('Ошибка массового удаления', 'error')
+    console.error('Error bulk delete:', err)
   }
 }
 
 const confirmBulkStatusChange = async () => {
   try {
-    const count = selectedItems.value.length
     for (const item of selectedItems.value) {
       await updateAgents(item.id, {
         ...item,
@@ -167,10 +132,9 @@ const confirmBulkStatusChange = async () => {
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} агенты`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
+    console.error('Error bulk status change:', err)
   }
 }
 
@@ -198,32 +162,8 @@ const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
 watch(selectedItems, (newValue) => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
+  console.log('Selected items:', newValue)
 }, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Agents>({
-  id: -1,
-  firstName: '',
-  lastName: '',
-  login: '',
-  password: '',
-  email: '',
-  mobilePhone: '',
-  telegramAccount: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Agents>({ ...defaultItem.value })
-const editedIndex = ref(-1)
 
 // Опции статуса
 const statusOptions = [
@@ -231,89 +171,9 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
-// Методы
-const editItem = (item: Agents) => {
-  editedIndex.value = agents.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: Agents) => {
-  editedIndex.value = agents.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim()) {
-    showToast('Имя и Фамилия обязательны для заполнения', 'error')
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateAgents(editedItem.value.id, {
-        firstName: editedItem.value.firstName,
-        lastName: editedItem.value.lastName,
-        login: editedItem.value.login,
-        password: editedItem.value.password,
-        email: editedItem.value.email,
-        mobilePhone: editedItem.value.mobilePhone,
-        telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Агент успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createAgents({
-        firstName: editedItem.value.firstName,
-        lastName: editedItem.value.lastName,
-        login: editedItem.value.login,
-        password: editedItem.value.password,
-        email: editedItem.value.email,
-        mobilePhone: editedItem.value.mobilePhone,
-        telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Агент успешно добавлен')
-    }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения агент', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteAgents(editedItem.value.id)
-    showToast('Агент успешно удален')
-    closeDelete()
-  } catch (err) {
-    showToast('Ошибка удаления агент', 'error')
-  }
-}
-
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
   if (newValue === null) return
-
   try {
     await updateAgents(item.id, {
       firstName: item.firstName,
@@ -325,38 +185,20 @@ const toggleStatus = async (item: Agents, newValue: boolean | null) => {
       telegramAccount: item.telegramAccount,
       isActive: newValue
     })
-    showToast('Статус агент изменен')
   } catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
+    console.error('Error toggling status:', err)
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
-
-// Показ пароля
-const showPassword = ref(false)
-
-// Добавление нового агент
-const addNewAgents = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+// Удаление
+const deleteItem = (item: Agents) => {
+  deleteAgents(item.id)
 }
 </script>
 
 <template>
   <div>
     <VCard title="Агенты">
-
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
         <VProgressCircular indeterminate color="primary" />
@@ -373,7 +215,7 @@ const addNewAgents = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск агенты"
+            placeholder="Поиск агентов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -406,20 +248,10 @@ const addNewAgents = () => {
             </VBtn>
           </template>
           <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
+            <VListItem @click="bulkDelete(); isBulkActionsMenuOpen = false">
               <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
+            <VListItem @click="bulkChangeStatus(); isBulkActionsMenuOpen = false">
               <VListItemTitle>Изменить статус</VListItemTitle>
             </VListItem>
           </VList>
@@ -439,17 +271,8 @@ const addNewAgents = () => {
           >
             Экспорт
           </VBtn>
-
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewAgents"
-          >
-            Добавить агент
-          </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -508,7 +331,7 @@ const addNewAgents = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные агенты? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранных агентов? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -603,9 +426,6 @@ const addNewAgents = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
             <IconBtn @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
@@ -622,169 +442,5 @@ const addNewAgents = () => {
         />
       </div>
     </VCard>
-
-    <!-- Диалог редактирования -->
-    <VDialog
-      v-model="editDialog"
-      max-width="600px"
-    >
-      <VCard :title="editedIndex > -1 ? 'Редактировать агент' : 'Добавить агент'">
-        <VCardText>
-          <VRow>
-
-            <!-- Имя -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.firstName"
-                label="Имя *"
-              />
-            </VCol>
-
-            <!-- Фамилия -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.lastName"
-                label="Фамилия *"
-              />
-            </VCol>
-
-            <!-- Логин -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.login"
-                label="Логин"
-              />
-            </VCol>
-
-            <!-- Пароль -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.password"
-                label="Пароль"
-                type="password"
-              />
-            </VCol>
-
-            <!-- Email -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.email"
-                label="Email"
-              />
-            </VCol>
-
-            <!-- Мобильный телефон -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.mobilePhone"
-                label="Мобильный телефон"
-              />
-            </VCol>
-
-            <!-- Телеграмм акк -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.telegramAccount"
-                label="Телеграмм акк"
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог удаления -->
-    <VDialog
-      v-model="deleteDialog"
-      max-width="500px"
-    >
-      <VCard title="Вы уверены, что хотите удалить этот агент?">
-        <VCardText>
-          <div class="d-flex justify-center gap-4">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="closeDelete"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="deleteItemConfirm"
-            >
-              Удалить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
   </div>
-
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
-
-<style lang="scss" scoped>
-.v-card {
-  margin-block-end: 1rem;
-}
-</style>
