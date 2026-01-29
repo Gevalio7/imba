@@ -54,7 +54,7 @@ export default defineConfig({
 
     // Docs: https://github.com/antfu/unplugin-vue-components#unplugin-vue-components
     Components({
-      dirs: ['src/@core/components', 'src/views/demos', 'src/components'],
+      dirs: ['src/@core/components', 'src/views/demos', 'src/components', 'src/views/apps'],
       dts: true,
       resolvers: [
         componentName => {
@@ -106,6 +106,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5173,
     proxy: {
       '/api': 'http://localhost:3000',
     },

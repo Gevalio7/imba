@@ -1,24 +1,41 @@
 <script setup lang="ts">
+import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
+import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+// Переключатель вида групп (карточки/таблица)
+const groupsViewMode = ref<'cards' | 'table'>('cards')
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
   id: number
   name: string
-  message: string
+  agents: Agent[]
   isActive: boolean
   createdAt: string
   updatedAt: string
 }
 
+// Тип для агента
+interface Agent {
+  id: number
+  firstName: string
+  lastName: string
+  login: string
+  email: string
+  isActive: boolean
+}
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Роутер
+const router = useRouter()
+
 // Данные группы агентов
 const agentsGroups = ref<AgentsGroups[]>([])
-const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -27,11 +44,14 @@ const fetchAgentsGroups = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching agentsGroups from:', `${API_BASE}/agentsGroups`)
     const data = await $fetch<{ agentsGroups: AgentsGroups[], total: number }>(`${API_BASE}/agentsGroups`)
-    console.log('Fetched agentsGroups data:', data)
+
+    // Для каждой группы загрузим агентов
+    for (const group of data.agentsGroups) {
+      group.agents = await fetchAgentsInGroup(group.id)
+    }
+
     agentsGroups.value = data.agentsGroups
-    total.value = data.total
   } catch (err) {
     error.value = 'Ошибка загрузки группы агентов'
     console.error('Error fetching agentsGroups:', err)
@@ -40,52 +60,14 @@ const fetchAgentsGroups = async () => {
   }
 }
 
-// Создание группа агентов
-const createAgentsGroups = async (item: Omit<AgentsGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Загрузка агентов в группе
+const fetchAgentsInGroup = async (groupId: number): Promise<Agent[]> => {
   try {
-    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups`, {
-      method: 'POST',
-      body: item
-    })
-    agentsGroups.value.push(data)
-    return data
+    const agents = await $fetch<Agent[]>(`${API_BASE}/agentsGroups/${groupId}/agents`)
+    return agents
   } catch (err) {
-    console.error('Error creating agentsGroups:', err)
-    throw err
-  }
-}
-
-// Обновление группа агентов
-const updateAgentsGroups = async (id: number, item: Omit<AgentsGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups/${id}`, {
-      method: 'PUT',
-      body: item
-    })
-    const index = agentsGroups.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      agentsGroups.value[index] = data
-    }
-    return data
-  } catch (err) {
-    console.error('Error updating agentsGroups:', err)
-    throw err
-  }
-}
-
-// Удаление группа агентов
-const deleteAgentsGroups = async (id: number) => {
-  try {
-    await $fetch(`${API_BASE}/agentsGroups/${id}`, {
-      method: 'DELETE'
-    })
-    const index = agentsGroups.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      agentsGroups.value.splice(index, 1)
-    }
-  } catch (err) {
-    console.error('Error deleting agentsGroups:', err)
-    throw err
+    console.error('Error fetching agents in group:', err)
+    return []
   }
 }
 
@@ -94,84 +76,29 @@ onMounted(() => {
   fetchAgentsGroups()
 })
 
-const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: true },
-  { title: 'Создано', key: 'createdAt', sortable: true },
-  { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
-]
-
-// Фильтрация
-const filteredAgentsGroups = computed(() => {
-  let filtered = agentsGroups.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
+// Удаление группы
+const deleteGroup = async (group: AgentsGroups) => {
   try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await deleteAgentsGroups(item.id)
-    }
-    selectedItems.value = []
-    showToast(`Удалено ${count} группы агентов`)
-    isBulkDeleteDialogOpen.value = false
+    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, { method: 'DELETE' })
+    const index = agentsGroups.value.findIndex(g => g.id === group.id)
+    if (index !== -1) agentsGroups.value.splice(index, 1)
   } catch (err) {
-    showToast('Ошибка массового удаления', 'error')
+    console.error('Error deleting group:', err)
   }
 }
 
-const confirmBulkStatusChange = async () => {
+// Переключение статуса группы
+const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean | null = null) => {
+  if (newValue === null) return
   try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateAgentsGroups(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} группы агентов`)
-    isBulkStatusDialogOpen.value = false
+    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
+      method: 'PUT',
+      body: { ...group, isActive: newValue }
+    })
+    group.isActive = newValue
   } catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
+    console.error('Error toggling group status:', err)
   }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
 }
 
 // Пагинация
@@ -183,145 +110,100 @@ const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<AgentsGroups[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<AgentsGroups>({
-  id: -1,
-  name: '',
-  message: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
+// Фильтрация
+const filteredGroups = computed(() => {
+  let filtered = agentsGroups.value
+  if (statusFilter.value !== null) {
+    filtered = filtered.filter(g => g.isActive === (statusFilter.value === 1))
+  }
+  return filtered
 })
 
-const editedItem = ref<AgentsGroups>({ ...defaultItem.value })
-const editedIndex = ref(-1)
+// Сброс фильтров
+const clearFilters = () => {
+  statusFilter.value = null
+}
+
+// Массовые действия
+const bulkDelete = () => {
+  isBulkDeleteDialogOpen.value = true
+}
+
+const bulkChangeStatus = () => {
+  isBulkStatusDialogOpen.value = true
+}
+
+const confirmBulkDelete = async () => {
+  try {
+    for (const item of selectedItems.value) {
+      await $fetch(`${API_BASE}/agentsGroups/${item.id}`, { method: 'DELETE' })
+      const index = agentsGroups.value.findIndex(g => g.id === item.id)
+      if (index !== -1) agentsGroups.value.splice(index, 1)
+    }
+    selectedItems.value = []
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    console.error('Error bulk deleting:', err)
+  }
+}
+
+const confirmBulkStatusChange = async () => {
+  try {
+    for (const item of selectedItems.value) {
+      await $fetch(`${API_BASE}/agentsGroups/${item.id}`, {
+        method: 'PUT',
+        body: { ...item, isActive: bulkStatusValue.value === 1 }
+      })
+      const group = agentsGroups.value.find(g => g.id === item.id)
+      if (group) group.isActive = bulkStatusValue.value === 1
+    }
+    selectedItems.value = []
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    console.error('Error bulk status change:', err)
+  }
+}
 
 // Опции статуса
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
 ]
-
-// Методы
-const editItem = (item: AgentsGroups) => {
-  editedIndex.value = agentsGroups.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: AgentsGroups) => {
-  editedIndex.value = agentsGroups.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateAgentsGroups(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Группа агентов успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createAgentsGroups({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Группа агентов успешно добавлен')
-    }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения группа агентов', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteAgentsGroups(editedItem.value.id)
-    showToast('Группа агентов успешно удален')
-    closeDelete()
-  } catch (err) {
-    showToast('Ошибка удаления группа агентов', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: AgentsGroups, newValue: boolean) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  try {
-    await updateAgentsGroups(item.id, {
-      ...item,
-      isActive: newValue
-    })
-    showToast('Статус группа агентов изменен')
-  } catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
-
-// Добавление нового группа агентов
-const addNewAgentsGroups = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>
-  <div>
-    <VCard title="Группы агентов">
+  <VRow>
+    <!-- Заголовок групп -->
+    <VCol cols="12">
+      <div class="d-flex justify-space-between align-center">
+        <div>
+          <h4 class="text-h4 mb-1">
+            Группы агентов
+          </h4>
+          <p class="text-body-1 mb-0">
+            Группа агентов предоставляет доступ к определенным агентам для совместной работы.
+          </p>
+        </div>
+        <VBtnToggle
+          v-model="groupsViewMode"
+          mandatory
+          variant="outlined"
+          divided
+        >
+          <VBtn value="cards" icon="bx-grid-alt" />
+          <VBtn value="table" icon="bx-list-ul" />
+        </VBtnToggle>
+      </div>
+    </VCol>
 
+    <!-- Группы -->
+    <VCol cols="12">
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
         <VProgressCircular indeterminate color="primary" />
@@ -334,347 +216,166 @@ const addNewAgentsGroups = () => {
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
-        <div class="d-flex align-center">
-          <!-- Поиск -->
-          <AppTextField
-            placeholder="Поиск группы агентов"
-            style="inline-size: 250px;"
-            class="me-3"
-          />
-        </div>
+      <template v-else>
+        <!-- Карточный вид -->
+        <AgentsGroupsCards
+          v-if="groupsViewMode === 'cards'"
+          :agents-groups="filteredGroups"
+          :loading="loading"
+          @edit="() => {}"
+          @delete="deleteGroup"
+          @add="() => {}"
+          @toggle-status="toggleGroupStatus"
+        />
 
-        <!-- Кнопка фильтра -->
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="bx-filter"
-          @click="isFilterDialogOpen = true"
-        >
-          Фильтр
-        </VBtn>
+        <!-- Табличный вид -->
+        <template v-else>
+          <!-- Табличный вид - панель инструментов -->
+          <div class="d-flex flex-wrap gap-4 pa-6">
+            <div class="d-flex align-center">
+              <!-- Поиск -->
+              <AppTextField
+                placeholder="Поиск групп"
+                style="inline-size: 250px;"
+                class="me-3"
+              />
+            </div>
 
-        <!-- Кнопка массовых действий -->
-        <VMenu
-          v-model="isBulkActionsMenuOpen"
-          :close-on-content-click="false"
-        >
-          <template #activator="{ props }">
+            <!-- Кнопка фильтра -->
             <VBtn
               variant="tonal"
               color="secondary"
-              prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedItems.length === 0"
-              v-bind="props"
+              prepend-icon="bx-filter"
+              @click="isFilterDialogOpen = true"
             >
-              Действия ({{ selectedItems.length }})
+              Фильтр
             </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Удалить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Изменить статус</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
 
-        <VSpacer />
-        <div class="d-flex gap-4 flex-wrap align-center">
-          <AppSelect
-            v-model="itemsPerPage"
-            :items="[5, 10, 20, 25, 50]"
+            <!-- Кнопка массовых действий -->
+            <VMenu
+              v-model="isBulkActionsMenuOpen"
+              :close-on-content-click="false"
+            >
+              <template #activator="{ props }">
+                <VBtn
+                  variant="tonal"
+                  color="secondary"
+                  prepend-icon="bx-dots-vertical-rounded"
+                  :disabled="selectedItems.length === 0"
+                  v-bind="props"
+                >
+                  Действия ({{ selectedItems.length }})
+                </VBtn>
+              </template>
+              <VList>
+                <VListItem @click="bulkDelete(); isBulkActionsMenuOpen = false">
+                  <VListItemTitle>Удалить</VListItemTitle>
+                </VListItem>
+                <VListItem @click="bulkChangeStatus(); isBulkActionsMenuOpen = false">
+                  <VListItemTitle>Изменить статус</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
+
+            <VSpacer />
+            <div class="d-flex gap-4 flex-wrap align-center">
+              <AppSelect
+                v-model="itemsPerPage"
+                :items="[5, 10, 20, 25, 50]"
+              />
+            </div>
+          </div>
+
+          <VDivider />
+
+          <AgentsGroupsTable
+            v-model:current-page="currentPage"
+            v-model:items-per-page="itemsPerPage"
+            v-model:selected-items="selectedItems"
+            :agents-groups="filteredGroups"
+            :loading="loading"
+            :error="error"
+            @edit="() => {}"
+            @delete="deleteGroup"
+            @add="() => {}"
+            @toggle-status="toggleGroupStatus"
           />
-          <!-- Экспорт -->
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            prepend-icon="bx-export"
-          >
-            Экспорт
-          </VBtn>
-
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewAgentsGroups"
-          >
-            Добавить группа агентов
-          </VBtn>
-        </div>
-      </div>
-
-
-      <!-- Диалог фильтров -->
-      <VDialog
-        v-model="isFilterDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Фильтры">
-          <VCardText>
-            <VRow>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="statusFilter"
-                  placeholder="Статус"
-                  :items="[
-                    { title: 'Активен', value: 1 },
-                    { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-            </VRow>
-          </VCardText>
-
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                variant="text"
-                @click="clearFilters"
-              >
-                Сбросить
-              </VBtn>
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isFilterDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="isFilterDialogOpen = false"
-              >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <!-- Диалог массового удаления -->
-      <VDialog
-        v-model="isBulkDeleteDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Подтверждение удаления">
-          <VCardText>
-            Вы уверены, что хотите удалить выбранные группы агентов? Это действие нельзя отменить.
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkDeleteDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkDelete"
-              >
-                Удалить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <!-- Диалог массового изменения статуса -->
-      <VDialog
-        v-model="isBulkStatusDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Изменить статус">
-          <VCardText>
-            <AppSelect
-              v-model="bulkStatusValue"
-              :items="statusOptions"
-              item-title="text"
-              item-value="value"
-              label="Новый статус"
-            />
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkStatusDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkStatusChange"
-              >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <VDivider />
-
-      <!-- Таблица -->
-      <VDataTable
-        v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
-        :headers="headers"
-        :items="filteredAgentsGroups"
-        show-select
-        :hide-default-footer="true"
-        item-value="id"
-        return-object
-        no-data-text="Нет данных"
-      >
-        <!-- Активен -->
-        <template #item.isActive="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VSwitch
-              :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
-              color="primary"
-              hide-details
-            />
-            <VChip
-              v-bind="resolveStatusVariant(item.isActive)"
-              density="compact"
-              label
-              size="small"
-            />
-          </div>
         </template>
+      </template>
+    </VCol>
 
-        <!-- Действия -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn @click="deleteItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
-          </div>
-        </template>
-      </VDataTable>
-
-      <!-- Пагинация -->
-      <div class="d-flex justify-center mt-4 pb-4">
-        <VPagination
-          v-model="currentPage"
-          :length="Math.ceil(filteredAgentsGroups.length / itemsPerPage) || 1"
-          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
-        />
-      </div>
-    </VCard>
-
-    <!-- Диалог редактирования -->
+    <!-- Диалог фильтров -->
     <VDialog
-      v-model="editDialog"
-      max-width="600px"
+      v-model="isFilterDialogOpen"
+      max-width="500px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать группа агентов' : 'Добавить группа агентов'">
+      <VCard title="Фильтры">
         <VCardText>
           <VRow>
-
-            <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
-              />
-            </VCol>
-
-            <!-- Сообщение -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextarea
-                v-model="editedItem.message"
-                label="Сообщение"
-                rows="3"
-                placeholder="Введите сообщение..."
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
+            <VCol cols="12">
+              <AppSelect
+                v-model="statusFilter"
+                placeholder="Статус"
+                :items="[
+                  { title: 'Активен', value: 1 },
+                  { title: 'Не активен', value: 2 },
+                ]"
+                clearable
+                clear-icon="bx-x"
               />
             </VCol>
           </VRow>
         </VCardText>
 
         <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
+          <div class="d-flex justify-end gap-4">
+            <VBtn
+              variant="text"
+              @click="clearFilters"
+            >
+              Сбросить
+            </VBtn>
             <VBtn
               color="error"
               variant="outlined"
-              @click="close"
+              @click="isFilterDialogOpen = false"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="save"
+              @click="isFilterDialogOpen = false"
             >
-              Сохранить
+              Применить
             </VBtn>
           </div>
         </VCardText>
       </VCard>
     </VDialog>
 
-    <!-- Диалог удаления -->
+    <!-- Диалог массового удаления -->
     <VDialog
-      v-model="deleteDialog"
+      v-model="isBulkDeleteDialogOpen"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот группа агентов?">
+      <VCard title="Подтверждение удаления">
         <VCardText>
-          <div class="d-flex justify-center gap-4">
+          Вы уверены, что хотите удалить выбранные группы? Это действие нельзя отменить.
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end gap-4">
             <VBtn
               color="error"
               variant="outlined"
-              @click="closeDelete"
+              @click="isBulkDeleteDialogOpen = false"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="deleteItemConfirm"
+              @click="confirmBulkDelete"
             >
               Удалить
             </VBtn>
@@ -682,16 +383,58 @@ const addNewAgentsGroups = () => {
         </VCardText>
       </VCard>
     </VDialog>
-  </div>
 
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
+    <!-- Диалог массового изменения статуса -->
+    <VDialog
+      v-model="isBulkStatusDialogOpen"
+      max-width="500px"
+    >
+      <VCard title="Изменить статус">
+        <VCardText>
+          <AppSelect
+            v-model="bulkStatusValue"
+            :items="statusOptions"
+            item-title="text"
+            item-value="value"
+            label="Новый статус"
+          />
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="isBulkStatusDialogOpen = false"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="confirmBulkStatusChange"
+            >
+              Применить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Заголовок агентов -->
+    <VCol cols="12">
+      <h4 class="text-h4 mb-1 mt-6">
+        Все агенты
+      </h4>
+      <p class="text-body-1 mb-0">
+        Список всех агентов системы с возможностью фильтрации и массовых действий.
+      </p>
+    </VCol>
+
+    <!-- Агенты -->
+    <VCol cols="12">
+      <AgentsTable />
+    </VCol>
+  </VRow>
 </template>
 
 <style lang="scss" scoped>

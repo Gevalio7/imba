@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class AgentsGroups {
   static tableName = 'agents_groups';
-  static fields = 'name, message';
+  static fields = 'name';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -155,6 +155,57 @@ class AgentsGroups {
       return result.rowCount > 0;
     } catch (error) {
       console.error('Error in delete:', error);
+      throw error;
+    }
+  }
+
+  static async getAgents(groupId) {
+    try {
+      // Поля агента в camelCase
+      const agentFields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount';
+      const sqlFields = agentFields.split(', ').map(f => {
+        const snake = toSnakeCase(f);
+        return snake === f ? f : `${snake} as "${f}"`;
+      }).join(', ');
+
+      const result = await pool.query(
+        `SELECT a.id, ${sqlFields}, a.created_at as "createdAt", a.updated_at as "updatedAt", a.is_active as "isActive"
+         FROM agents a
+         JOIN agents_groups_agents aga ON a.id = aga.agent_id
+         WHERE aga.agents_group_id = $1
+         ORDER BY a.first_name, a.last_name`,
+        [groupId]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getAgents:', error);
+      throw error;
+    }
+  }
+
+  static async addAgent(groupId, agentId) {
+    try {
+      await pool.query(
+        `INSERT INTO agents_groups_agents (agents_group_id, agent_id)
+         VALUES ($1, $2)
+         ON CONFLICT (agents_group_id, agent_id) DO NOTHING`,
+        [groupId, agentId]
+      );
+    } catch (error) {
+      console.error('Error in addAgent:', error);
+      throw error;
+    }
+  }
+
+  static async removeAgent(groupId, agentId) {
+    try {
+      await pool.query(
+        `DELETE FROM agents_groups_agents
+         WHERE agents_group_id = $1 AND agent_id = $2`,
+        [groupId, agentId]
+      );
+    } catch (error) {
+      console.error('Error in removeAgent:', error);
       throw error;
     }
   }

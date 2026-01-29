@@ -41,8 +41,7 @@ const getAgentsGroupById = asyncHandler(async (req, res) => {
 const createAgentsGroups = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
-  data.message = req.body.message;
-  
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -68,8 +67,7 @@ const updateAgentsGroups = asyncHandler(async (req, res) => {
 
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
-  
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -101,10 +99,52 @@ const deleteAgentsGroups = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+const getAgentsInGroup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const groupId = parseInt(id, 10);
+
+  if (isNaN(groupId)) {
+    return res.status(400).json({ message: 'Invalid group ID' });
+  }
+
+  const agents = await AgentsGroups.getAgents(groupId);
+  res.json(agents);
+});
+
+const addAgentToGroup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { agentId } = req.body;
+  const groupId = parseInt(id, 10);
+  const agentIdNum = parseInt(agentId, 10);
+
+  if (isNaN(groupId) || isNaN(agentIdNum)) {
+    return res.status(400).json({ message: 'Invalid IDs' });
+  }
+
+  await AgentsGroups.addAgent(groupId, agentIdNum);
+  res.status(201).json({ message: 'Agent added to group' });
+});
+
+const removeAgentFromGroup = asyncHandler(async (req, res) => {
+  const { id, agentId } = req.params;
+  const groupId = parseInt(id, 10);
+  const agentIdNum = parseInt(agentId, 10);
+
+  if (isNaN(groupId) || isNaN(agentIdNum)) {
+    return res.status(400).json({ message: 'Invalid IDs' });
+  }
+
+  await AgentsGroups.removeAgent(groupId, agentIdNum);
+  res.status(204).send();
+});
+
 module.exports = {
   getAgentsGroups,
   getAgentsGroupById,
   createAgentsGroups,
   updateAgentsGroups,
   deleteAgentsGroups,
+  getAgentsInGroup,
+  addAgentToGroup,
+  removeAgentFromGroup,
 };
