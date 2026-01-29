@@ -42,14 +42,18 @@ const fetchAgents = async () => {
   }
 }
 
-// Удаление агента
-const deleteAgents = async (id: number) => {
+// Создание агента
+const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    await $fetch(`${API_BASE}/agents/${id}`, { method: 'DELETE' })
-    const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) agents.value.splice(index, 1)
+    const data = await $fetch<Agents>(`${API_BASE}/agents`, {
+      method: 'POST',
+      body: item
+    })
+    agents.value.push(data)
+    return data
   } catch (err) {
-    console.error('Error deleting agents:', err)
+    console.error('Error creating agents:', err)
+    throw err
   }
 }
 
@@ -66,6 +70,17 @@ const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 
   } catch (err) {
     console.error('Error updating agents:', err)
     throw err
+  }
+}
+
+// Удаление агента
+const deleteAgents = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/agents/${id}`, { method: 'DELETE' })
+    const index = agents.value.findIndex(p => p.id === id)
+    if (index !== -1) agents.value.splice(index, 1)
+  } catch (err) {
+    console.error('Error deleting agents:', err)
   }
 }
 
@@ -160,16 +175,37 @@ const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
-  console.log('Selected items:', newValue)
-}, { deep: true })
+// Диалоги
+const editDialog = ref(false)
+const deleteDialog = ref(false)
+
+const defaultItem = ref<Agents>({
+  id: -1,
+  firstName: '',
+  lastName: '',
+  login: '',
+  password: '',
+  email: '',
+  mobilePhone: '',
+  telegramAccount: '',
+  createdAt: '',
+  updatedAt: '',
+  isActive: true,
+})
+
+const editedItem = ref<Agents>({ ...defaultItem.value })
+const editedIndex = ref(-1)
 
 // Опции статуса
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
 ]
+
+// Отслеживание изменений выбранных элементов
+watch(selectedItems, (newValue) => {
+  console.log('Selected items:', newValue)
+}, { deep: true })
 
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
@@ -192,7 +228,81 @@ const toggleStatus = async (item: Agents, newValue: boolean | null) => {
 
 // Удаление
 const deleteItem = (item: Agents) => {
-  deleteAgents(item.id)
+  editedIndex.value = agents.value.indexOf(item)
+  editedItem.value = { ...item }
+  deleteDialog.value = true
+}
+
+const deleteItemConfirm = async () => {
+  try {
+    await deleteAgents(editedItem.value.id)
+    deleteDialog.value = false
+    editedIndex.value = -1
+    editedItem.value = { ...defaultItem.value }
+  } catch (err) {
+    console.error('Error deleting:', err)
+  }
+}
+
+const closeDelete = () => {
+  deleteDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+// Редактирование
+const editItem = (item: Agents) => {
+  editedIndex.value = agents.value.indexOf(item)
+  editedItem.value = { ...item }
+  editDialog.value = true
+}
+
+const close = () => {
+  editDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+const save = async () => {
+  if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim()) {
+    return
+  }
+
+  try {
+    if (editedIndex.value > -1) {
+      await updateAgents(editedItem.value.id, {
+        firstName: editedItem.value.firstName,
+        lastName: editedItem.value.lastName,
+        login: editedItem.value.login,
+        password: editedItem.value.password,
+        email: editedItem.value.email,
+        mobilePhone: editedItem.value.mobilePhone,
+        telegramAccount: editedItem.value.telegramAccount,
+        isActive: editedItem.value.isActive
+      })
+    } else {
+      await createAgents({
+        firstName: editedItem.value.firstName,
+        lastName: editedItem.value.lastName,
+        login: editedItem.value.login,
+        password: editedItem.value.password,
+        email: editedItem.value.email,
+        mobilePhone: editedItem.value.mobilePhone,
+        telegramAccount: editedItem.value.telegramAccount,
+        isActive: editedItem.value.isActive
+      })
+    }
+    close()
+  } catch (err) {
+    console.error('Error saving:', err)
+  }
+}
+
+// Добавление нового агента
+const addNewAgents = () => {
+  editedItem.value = { ...defaultItem.value }
+  editedIndex.value = -1
+  editDialog.value = true
 }
 </script>
 
@@ -275,6 +385,7 @@ const deleteItem = (item: Agents) => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
+            @click="addNewAgents"
           >
             Добавить агента
           </VBtn>
@@ -433,6 +544,9 @@ const deleteItem = (item: Agents) => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
+            <IconBtn @click="editItem(item)">
+              <VIcon icon="bx-edit" />
+            </IconBtn>
             <IconBtn @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
@@ -449,5 +563,129 @@ const deleteItem = (item: Agents) => {
         />
       </div>
     </VCard>
+
+    <!-- Диалог редактирования -->
+    <VDialog
+      v-model="editDialog"
+      max-width="600px"
+    >
+      <VCard :title="editedIndex > -1 ? 'Редактировать агент' : 'Добавить агент'">
+        <VCardText>
+          <VRow>
+            <!-- Имя -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.firstName"
+                label="Имя *"
+              />
+            </VCol>
+
+            <!-- Фамилия -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.lastName"
+                label="Фамилия *"
+              />
+            </VCol>
+
+            <!-- Логин -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.login"
+                label="Логин"
+              />
+            </VCol>
+
+            <!-- Пароль -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.password"
+                label="Пароль"
+                type="password"
+              />
+            </VCol>
+
+            <!-- Email -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.email"
+                label="Email"
+              />
+            </VCol>
+
+            <!-- Мобильный телефон -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.mobilePhone"
+                label="Мобильный телефон"
+              />
+            </VCol>
+
+            <!-- Телеграмм акк -->
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="editedItem.telegramAccount"
+                label="Телеграмм акк"
+              />
+            </VCol>
+
+            <!-- Активен -->
+            <VCol cols="12" sm="6">
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VCardText>
+          <div class="d-flex gap-4 justify-end">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="close"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог удаления -->
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
+      <VCard title="Вы уверены, что хотите удалить этот агент?">
+        <VCardText>
+          <div class="d-flex justify-center gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
 </template>
