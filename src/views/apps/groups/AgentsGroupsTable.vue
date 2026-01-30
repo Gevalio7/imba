@@ -84,6 +84,17 @@ const addNewGroup = () => {
   router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')
 }
 
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
 const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
   const previousValue = group.isActive
 
@@ -100,11 +111,13 @@ const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
       body: { isActive: newValue }
     })
 
-    // Успешно — ничего не делаем, статус уже обновлен
+    // Показываем уведомление об успехе
+    showToast(`Статус группы "${group.name}" изменен на "${newValue ? 'Активна' : 'Не активна'}"`)
   } catch (err) {
     console.error('Error toggling status:', err)
     // Откатываем при ошибке
     group.isActive = previousValue
+    showToast('Ошибка изменения статуса группы', 'error')
   } finally {
     // Убираем из загрузки
     statusLoading.value = statusLoading.value.filter(id => id !== group.id)
@@ -304,5 +317,14 @@ watch(() => props.selectedItems, (newValue) => {
         </VCardText>
       </VCard>
     </VDialog>
+
+    <!-- Уведомления -->
+    <VSnackbar
+      v-model="isToastVisible"
+      :color="toastColor"
+      timeout="3000"
+    >
+      {{ toastMessage }}
+    </VSnackbar>
   </VCard>
 </template>

@@ -217,18 +217,118 @@ const cancel = () => {
   router.push('/apps/settings/users-groups-roles/AgentsGroups')
 }
 
+// Диалог подтверждения сохранения
+const saveConfirmDialog = ref(false)
+const hasUnsavedChanges = ref(false)
+const originalGroup = ref<AgentsGroups | null>(null)
+
+// Отслеживание изменений для подтверждения
+watch(() => group.value, (newVal) => {
+  if (originalGroup.value) {
+    hasUnsavedChanges.value = JSON.stringify(newVal) !== JSON.stringify(originalGroup.value)
+  }
+}, { deep: true })
+
+watch(() => selectedAgents.value, () => {
+  hasUnsavedChanges.value = true
+}, { deep: true })
+
+// Открытие диалога подтверждения сохранения
+const openSaveConfirm = () => {
+  if (!group.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+  saveConfirmDialog.value = true
+}
+
+// Подтвержденное сохранение
+const confirmSave = async () => {
+  saveConfirmDialog.value = false
+  await performSave()
+}
+
+// Фактическое сохранение
+const performSave = async () => {
+  try {
+    saving.value = true
+    
+    if (isNew.value) {
+      // Создание новой группы
+      const newGroup = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups`, {
+        method: 'POST',
+        body: {
+          name: group.value.name,
+          isActive: group.value.isActive,
+          agents: selectedAgents.value.map(a => a.id),
+        }
+      })
+      showToast('Группа агентов успешно создана')
+    } else {
+      // Обновление группы
+      await $fetch(`${API_BASE}/agentsGroups/${groupId.value}`, {
+        method: 'PUT',
+        body: {
+          name: group.value.name,
+          isActive: group.value.isActive,
+        }
+      })
+      
+      // Обновляем агентов в группе
+      // Сначала получаем текущих агентов
+      const currentAgents = await $fetch<Agent[]>(`${API_BASE}/agentsGroups/${groupId.value}/agents`)
+      const currentAgentIds = currentAgents.map(a => a.id)
+      const newAgentIds = selectedAgents.value.map(a => a.id)
+      
+      // Добавляем новых агентов
+      for (const agentId of newAgentIds) {
+        if (!currentAgentIds.includes(agentId)) {
+          await $fetch(`${API_BASE}/agentsGroups/${groupId.value}/agents`, {
+            method: 'POST',
+            body: { agentId }
+          })
+        }
+      }
+      
+      // Удаляем агентов которых больше нет в выборе
+      for (const agentId of currentAgentIds) {
+        if (!newAgentIds.includes(agentId)) {
+          await $fetch(`${API_BASE}/agentsGroups/${groupId.value}/agents/${agentId}`, {
+            method: 'DELETE'
+          })
+        }
+      }
+      
+      showToast('Группа агентов успешно обновлена')
+    }
+    
+    hasUnsavedChanges.value = false
+    router.push('/apps/settings/users-groups-roles/AgentsGroups')
+  } catch (err) {
+    showToast('Ошибка сохранения группы агентов', 'error')
+  } finally {
+    saving.value = false
+  }
+}
+
 // Инициализация
 onMounted(async () => {
   await fetchAllAgents()
   if (!isNew.value) {
     await fetchGroup()
   }
+  // Сохраняем исходное состояние для отслеживания изменений
+  originalGroup.value = JSON.parse(JSON.stringify(group.value))
 })
 
 // Уведомления
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
+
+// Диалог подтверждения сохранения
+const saveConfirmDialog = ref(false)
+const saving = ref(false)
 
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
@@ -672,7 +772,7 @@ watch(selectedItems, (newValue, oldValue) => {
           <VBtn
             color="success"
             :loading="saving"
-            @click="save"
+            @click="openSaveConfirm"
           >
             {{ isNew ? 'Создать' : 'Сохранить' }}
           </VBtn>
@@ -688,6 +788,40 @@ watch(selectedItems, (newValue, oldValue) => {
     >
       {{ toastMessage }}
     </VSnackbar>
+
+    <!-- Диалог подтверждения сохранения -->
+    <VDialog
+      v-model="saveConfirmDialog"
+      max-width="500px"
+    >
+      <VCard :title="isNew ? 'Подтверждение создания' : 'Подтверждение сохранения'">
+        <VCardText>
+          {{ isNew 
+            ? 'Вы уверены, что хотите создать новую группу агентов?' 
+            : 'Вы уверены, что хотите сохранить изменения в группе агентов?' 
+          }}
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="saveConfirmDialog = false"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              :loading="saving"
+              @click="confirmSave"
+            >
+              {{ isNew ? 'Создать' : 'Сохранить' }}
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

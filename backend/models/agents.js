@@ -86,6 +86,32 @@ class Agents {
 
   static async create(agent) {
     try {
+      // Проверяем уникальность login
+      if (agent.login) {
+        const loginCheck = await pool.query(
+          'SELECT id FROM agents WHERE login = $1',
+          [agent.login]
+        );
+        if (loginCheck.rows.length > 0) {
+          const error = new Error('Агент с таким логином уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      // Проверяем уникальность email
+      if (agent.email) {
+        const emailCheck = await pool.query(
+          'SELECT id FROM agents WHERE email = $1',
+          [agent.email]
+        );
+        if (emailCheck.rows.length > 0) {
+          const error = new Error('Агент с таким email уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => agent[field]);
@@ -113,6 +139,32 @@ class Agents {
 
   static async update(id, agent) {
     try {
+      // Проверяем уникальность login (исключая текущего агента)
+      if (agent.login) {
+        const loginCheck = await pool.query(
+          'SELECT id FROM agents WHERE login = $1 AND id != $2',
+          [agent.login, id]
+        );
+        if (loginCheck.rows.length > 0) {
+          const error = new Error('Агент с таким логином уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      // Проверяем уникальность email (исключая текущего агента)
+      if (agent.email) {
+        const emailCheck = await pool.query(
+          'SELECT id FROM agents WHERE email = $1 AND id != $2',
+          [agent.email, id]
+        );
+        if (emailCheck.rows.length > 0) {
+          const error = new Error('Агент с таким email уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       const fieldList = this.fields.split(', ');
       const updates = [];
       const values = [];

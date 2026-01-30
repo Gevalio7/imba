@@ -90,6 +90,17 @@ const deleteGroup = async (group: AgentsGroups) => {
   }
 }
 
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
 // Переключение статуса группы
 const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
   try {
@@ -98,8 +109,10 @@ const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
       body: { ...group, isActive: newValue }
     })
     group.isActive = newValue
+    showToast(`Статус группы "${group.name}" изменен на "${newValue ? 'Активна' : 'Не активна'}"`)
   } catch (err) {
     console.error('Error toggling group status:', err)
+    showToast('Ошибка изменения статуса группы', 'error')
   }
 }
 
@@ -443,6 +456,15 @@ const statusOptions = [
       <AgentsTable />
     </VCol>
   </VRow>
+
+  <!-- Уведомления -->
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="3000"
+  >
+    {{ toastMessage }}
+  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>
