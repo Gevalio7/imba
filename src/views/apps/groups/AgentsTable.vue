@@ -53,6 +53,10 @@ const bulkStatusLoading = ref(false)
 // Статусы групп для визуального отображения
 const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean }>>(new Map())
 
+// Список групп для выбора
+const availableGroups = ref<{ id: number; name: string; isActive: boolean }[]>([])
+const selectedGroupIds = ref<number[]>([])
+
 // Загрузка данных из API
 const fetchAgents = async (silent = false) => {
   try {
@@ -99,8 +103,16 @@ const fetchGroupsStatus = async () => {
     console.log('✅ Groups data:', groupsData)
 
     groupsStatusMap.value.clear()
+    availableGroups.value = []
+    
     groupsData.forEach((group: any) => {
       groupsStatusMap.value.set(group.id, {
+        name: group.name,
+        isActive: group.isActive
+      })
+      // Добавляем в список доступных групп
+      availableGroups.value.push({
+        id: group.id,
         name: group.name,
         isActive: group.isActive
       })
@@ -345,6 +357,17 @@ watch(selectedItems, (newValue) => {
   console.log('Selected items:', newValue)
 }, { deep: true })
 
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
   if (newValue === null) return
@@ -363,10 +386,14 @@ const toggleStatus = async (item: Agents, newValue: boolean | null) => {
 
     // Отправляем только изменение статуса
     await updateAgents(item.id, { isActive: newValue })
+
+    // Показываем уведомление об успехе
+    showToast(`Статус агента "${item.firstName} ${item.lastName}" изменен на "${newValue ? 'Активен' : 'Не активен'}"`)
   } catch (err) {
     console.error('Error toggling status:', err)
     // Откатываем при ошибке
     agents.value[agentIndex].isActive = previousValue
+    showToast('Ошибка изменения статуса агента', 'error')
   } finally {
     // Убираем из загрузки
     statusLoading.value = statusLoading.value.filter(id => id !== item.id)
@@ -397,10 +424,35 @@ const closeDelete = () => {
   editedItem.value = { ...defaultItem.value }
 }
 
+// Обновление выбранных групп при открытии диалога
+const updateSelectedGroups = () => {
+  if (editedItem.value.groups) {
+    const groupNames = editedItem.value.groups.split(', ').filter(Boolean)
+    selectedGroupIds.value = groupNames.map(name => {
+      for (const [id, group] of groupsStatusMap.value.entries()) {
+        if (group.name === name) return id
+      }
+      return null
+    }).filter((id): id is number => id !== null)
+  } else {
+    selectedGroupIds.value = []
+  }
+  console.log('🔄 Selected groups updated:', selectedGroupIds.value)
+}
+
 // Редактирование
 const editItem = (item: Agents) => {
   editedIndex.value = agents.value.indexOf(item)
   editedItem.value = { ...item }
+  updateSelectedGroups()
+  editDialog.value = true
+}
+
+// Добавление нового агента
+const addNewAgents = () => {
+  editedItem.value = { ...defaultItem.value }
+  editedIndex.value = -1
+  selectedGroupIds.value = []
   editDialog.value = true
 }
 
@@ -417,6 +469,7 @@ const save = async () => {
 
   try {
     if (editedIndex.value > -1) {
+      // Обновляем агента
       await updateAgents(editedItem.value.id, {
         firstName: editedItem.value.firstName,
         lastName: editedItem.value.lastName,
@@ -427,13 +480,26 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
+      
+      // Сохраняем группы агента
+      await $fetch(`${API_BASE}/agents/${editedItem.value.id}/groups`, {
+        method: 'PUT',
+        body: { groupIds: selectedGroupIds.value }
+      })
+      
       // Обновляем локальные данные агента
       const agent = agents.value.find(a => a.id === editedItem.value.id)
       if (agent) {
         Object.assign(agent, editedItem.value)
+        // Обновляем отображаемые группы
+        agent.groups = selectedGroupIds.value
+          .map(id => availableGroups.value.find(g => g.id === id)?.name)
+          .filter(Boolean)
+          .join(', ')
       }
     } else {
-      await createAgents({
+      // Создаем нового агента
+      const newAgent = await createAgents({
         firstName: editedItem.value.firstName,
         lastName: editedItem.value.lastName,
         login: editedItem.value.login,
@@ -443,7 +509,16 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
-      // Перезагружаем данные для нового агента
+      
+      // Сохраняем группы для нового агента
+      if (selectedGroupIds.value.length > 0) {
+        await $fetch(`${API_BASE}/agents/${newAgent.id}/groups`, {
+          method: 'PUT',
+          body: { groupIds: selectedGroupIds.value }
+        })
+      }
+      
+      // Перезагружаем данные
       await fetchAgents()
     }
     close()
@@ -452,12 +527,6 @@ const save = async () => {
   }
 }
 
-// Добавление нового агента
-const addNewAgents = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>
@@ -834,6 +903,56 @@ const addNewAgents = () => {
                 color="primary"
               />
             </VCol>
+
+            <!-- Группы агентов -->
+            <VCol cols="12">
+              <AppSelect
+                v-model="selectedGroupIds"
+                :items="availableGroups"
+                item-title="name"
+                item-value="id"
+                label="Группы агентов"
+                placeholder="Выберите группы"
+                multiple
+                chips
+                clearable
+                :menu-props="{ maxHeight: '300px' }"
+              >
+                <template #chip="{ props, item }">
+                  <VChip
+                    v-bind="props"
+                    :color="item.raw.isActive ? 'primary' : 'grey'"
+                    :variant="item.raw.isActive ? 'flat' : 'outlined'"
+                    density="compact"
+                    size="small"
+                  >
+                    <VIcon
+                      v-if="!item.raw.isActive"
+                      icon="bx-pause-circle"
+                      size="small"
+                      class="me-1"
+                    />
+                    {{ item.raw.name }}
+                  </VChip>
+                </template>
+                <template #item="{ props, item }">
+                  <VListItem v-bind="props" :title="item.raw.name">
+                    <template #prepend>
+                      <VIcon
+                        v-if="!item.raw.isActive"
+                        icon="bx-pause-circle"
+                        color="grey"
+                        size="small"
+                        class="me-2"
+                      />
+                    </template>
+                    <template v-if="!item.raw.isActive" #subtitle>
+                      <span class="text-caption text-grey">Неактивная группа</span>
+                    </template>
+                  </VListItem>
+                </template>
+              </AppSelect>
+            </VCol>
           </VRow>
         </VCardText>
 
@@ -884,5 +1003,14 @@ const addNewAgents = () => {
         </VCardText>
       </VCard>
     </VDialog>
+
+    <!-- Уведомления -->
+    <VSnackbar
+      v-model="isToastVisible"
+      :color="toastColor"
+      timeout="3000"
+    >
+      {{ toastMessage }}
+    </VSnackbar>
   </div>
 </template>

@@ -7,7 +7,21 @@ const notFound = (req, res, next) => {
 
 // Общий обработчик ошибок
 const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  // Если ошибка имеет statusCode (например, 409 для конфликта), используем его
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  
+  // Обработка ошибок уникальности PostgreSQL
+  if (err.code === '23505') {
+    statusCode = 409;
+    // Извлекаем понятное сообщение из ошибки PostgreSQL
+    if (err.message.includes('agents_login_key')) {
+      err.message = 'Агент с таким логином уже существует';
+    } else if (err.message.includes('agents_email_key')) {
+      err.message = 'Агент с таким email уже существует';
+    } else {
+      err.message = 'Запись с такими данными уже существует';
+    }
+  }
   
   res.status(statusCode).json({
     message: err.message,

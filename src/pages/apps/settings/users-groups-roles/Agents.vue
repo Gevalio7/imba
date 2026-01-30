@@ -166,7 +166,13 @@ const confirmBulkStatusChange = async () => {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
       await updateAgents(item.id, {
-        ...item,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        login: item.login,
+        password: item.password,
+        email: item.email,
+        mobilePhone: item.mobilePhone,
+        telegramAccount: item.telegramAccount,
         isActive: bulkStatusValue.value === 1
       })
     }
