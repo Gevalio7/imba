@@ -26,6 +26,7 @@ interface Agent {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  groups?: string
 }
 
 // API base URL
@@ -60,7 +61,7 @@ const group = ref<AgentsGroups>({
 // Загрузка группы
 const fetchGroup = async () => {
   if (!groupId.value) return
-  
+
   try {
     loadingGroup.value = true
     const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups/${groupId.value}`)
@@ -68,6 +69,8 @@ const fetchGroup = async () => {
     // Загружаем агентов группы
     const agents = await $fetch<Agent[]>(`${API_BASE}/agentsGroups/${groupId.value}/agents`)
     selectedAgents.value = agents
+    // Синхронизируем чекбоксы с объектами из allAgents
+    selectedItems.value = agents.map(agent => allAgents.value.find(a => a.id === agent.id)).filter(Boolean) as Agent[]
   } catch (err) {
     console.log('Error fetching group:', err)
     showToast('Ошибка загрузки группы', 'error')
@@ -86,6 +89,45 @@ const fetchAllAgents = async () => {
     console.log('Error fetching all agents:', err)
   } finally {
     loading.value = false
+  }
+}
+
+// Обновление агента
+const updateAgents = async (id: number, item: Omit<Agent, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Agent>(`${API_BASE}/agents/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = allAgents.value.findIndex(a => a.id === id)
+    if (index !== -1) {
+      allAgents.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating agent:', err)
+    throw err
+  }
+}
+
+// Удаление агента
+const deleteAgents = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/agents/${id}`, {
+      method: 'DELETE'
+    })
+    const index = allAgents.value.findIndex(a => a.id === id)
+    if (index !== -1) {
+      allAgents.value.splice(index, 1)
+    }
+    // Также удалить из selectedAgents, если там есть
+    const selectedIndex = selectedAgents.value.findIndex(a => a.id === id)
+    if (selectedIndex !== -1) {
+      selectedAgents.value.splice(selectedIndex, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting agent:', err)
+    throw err
   }
 }
 
@@ -202,8 +244,8 @@ const headers = [
   { title: 'Email', key: 'email', sortable: true },
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Группы', key: 'groups', sortable: true },
+  { title: 'Активен', key: 'isActive', sortable: false }
 ]
 
 // Фильтрация
@@ -307,6 +349,34 @@ const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
 ]
+
+// Отслеживание изменений selectedAgents
+watch(selectedAgents, (newValue) => {
+  console.log('✅ Изменение selectedAgents')
+  console.log('📋 Новое значение selectedAgents:', newValue)
+  console.log('📊 Количество выбранных:', newValue.length)
+}, { deep: true })
+
+// Синхронизация selectedItems с selectedAgents
+watch(selectedItems, (newValue, oldValue) => {
+  // Добавленные
+  for (const item of newValue) {
+    if (!oldValue.some(o => o.id === item.id)) {
+      if (!selectedAgents.value.some(a => a.id === item.id)) {
+        selectedAgents.value.push(item)
+      }
+    }
+  }
+  // Удаленные
+  for (const item of oldValue) {
+    if (!newValue.some(n => n.id === item.id)) {
+      const index = selectedAgents.value.findIndex(a => a.id === item.id)
+      if (index !== -1) {
+        selectedAgents.value.splice(index, 1)
+      }
+    }
+  }
+}, { deep: true })
 </script>
 
 <template>
@@ -571,14 +641,9 @@ const statusOptions = [
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <VBtn
-              variant="tonal"
-              :color="isAgentSelected(item) ? 'primary' : 'secondary'"
-              :prepend-icon="isAgentSelected(item) ? 'bx-check' : 'bx-plus'"
-              @click="toggleAgentSelection(item)"
-            >
-              {{ isAgentSelected(item) ? 'Выбран' : 'Выбрать' }}
-            </VBtn>
+            <IconBtn @click="toggleAgentSelection(item)">
+              <VIcon icon="bx-x" />
+            </IconBtn>
           </div>
         </template>
       </VDataTable>
@@ -591,65 +656,6 @@ const statusOptions = [
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
-
-      <VDivider />
-
-      <!-- Выбранные агенты -->
-      <VCardText>
-        <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 font-weight-medium">
-              Выбранные агенты ({{ selectedAgents.length }})
-            </h6>
-            <p class="mb-0">
-              Агенты, которые {{ isNew ? 'будут добавлены в группу' : 'входят в группу' }}
-            </p>
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <VDataTable
-        :items="selectedAgents"
-        :headers="[
-          { title: 'ID', key: 'id', sortable: true },
-          { title: 'Имя', key: 'firstName', sortable: true },
-          { title: 'Фамилия', key: 'lastName', sortable: true },
-          { title: 'Логин', key: 'login', sortable: true },
-          { title: 'Email', key: 'email', sortable: true },
-          { title: 'Активен', key: 'isActive', sortable: false },
-          { title: 'Действия', key: 'actions', sortable: false }
-        ]"
-        item-key="id"
-        :items-per-page="5"
-        no-data-text="Агенты не выбраны"
-      >
-        <template #item.isActive="{ item }">
-          <VChip
-            v-if="item.isActive"
-            color="primary"
-            density="compact"
-            label
-            size="small"
-          >
-            Активен
-          </VChip>
-          <VChip
-            v-else
-            color="error"
-            density="compact"
-            label
-            size="small"
-          >
-            Не активен
-          </VChip>
-        </template>
-
-        <template #item.actions="{ item }">
-          <IconBtn @click="toggleAgentSelection(item)">
-            <VIcon icon="bx-x" />
-          </IconBtn>
-        </template>
-      </VDataTable>
 
       <VDivider />
 

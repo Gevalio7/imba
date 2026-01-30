@@ -4,17 +4,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Агент
 interface Agents {
-  id: number
-  firstName: string
-  lastName: string
-  login: string
-  password: string
-  email: string
-  mobilePhone: string
-  telegramAccount: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+   id: number
+   firstName: string
+   lastName: string
+   login: string
+   password: string
+   email: string
+   mobilePhone: string
+   telegramAccount: string
+   isActive: boolean
+   createdAt: string
+   updatedAt: string
+   groups: string
 }
 
 
@@ -61,15 +62,17 @@ const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>
 }
 
 // Обновление агент
-const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
+const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>, updateLocal: boolean = true) => {
   try {
     const data = await $fetch<Agents>(`${API_BASE}/agents/${id}`, {
       method: 'PUT',
       body: item
     })
-    const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      agents.value[index] = data
+    if (updateLocal) {
+      const index = agents.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        Object.assign(agents.value[index], data)
+      }
     }
     return data
   } catch (err) {
@@ -108,6 +111,7 @@ const headers = [
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Группы', key: 'groups', sortable: true },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 

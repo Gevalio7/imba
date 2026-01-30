@@ -53,6 +53,11 @@ const createAgents = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
+  // Добавляем roleId если передан
+  if (req.body.roleId !== undefined) {
+    data.roleId = req.body.roleId;
+  }
+
   // Валидация обязательных полей
   if (!data.firstName || !data.lastName) {
     return res.status(400).json({ message: 'firstName and lastName are required' });
@@ -72,12 +77,22 @@ const updateAgents = asyncHandler(async (req, res) => {
   }
 
   const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
-  
+  if (req.body.firstName !== undefined) data.firstName = req.body.firstName;
+  if (req.body.lastName !== undefined) data.lastName = req.body.lastName;
+  if (req.body.login !== undefined) data.login = req.body.login;
+  if (req.body.password !== undefined) data.password = req.body.password;
+  if (req.body.email !== undefined) data.email = req.body.email;
+  if (req.body.mobilePhone !== undefined) data.mobilePhone = req.body.mobilePhone;
+  if (req.body.telegramAccount !== undefined) data.telegramAccount = req.body.telegramAccount;
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
+  }
+
+  // Добавляем roleId если передан
+  if (req.body.roleId !== undefined) {
+    data.roleId = req.body.roleId;
   }
 
   const updatedAgent = await Agents.update(agentId, data);

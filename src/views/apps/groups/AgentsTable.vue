@@ -15,6 +15,27 @@ interface Agents {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  groups?: string
+}
+
+// Тип для Группы агентов
+interface AgentsGroups {
+  id: number
+  name: string
+  agents: Agent[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Тип для агента
+interface Agent {
+  id: number
+  firstName: string
+  lastName: string
+  login: string
+  email: string
+  isActive: boolean
 }
 
 // API base URL
@@ -24,12 +45,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 const agents = ref<Agents[]>([])
 const total = ref(0)
 const loading = ref(false)
+const tableLoading = ref(false)
 const error = ref<string | null>(null)
+const statusLoading = ref<number[]>([])
+const bulkStatusLoading = ref(false)
+
+// Статусы групп для визуального отображения
+const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean }>>(new Map())
 
 // Загрузка данных из API
-const fetchAgents = async () => {
+const fetchAgents = async (silent = false) => {
   try {
-    loading.value = true
+    if (!silent) {
+      loading.value = true
+    } else {
+      tableLoading.value = true
+    }
     error.value = null
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`)
     agents.value = data.agents
@@ -38,7 +69,44 @@ const fetchAgents = async () => {
     error.value = 'Ошибка загрузки агентов'
     console.error('Error fetching agents:', err)
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    } else {
+      tableLoading.value = false
+    }
+  }
+}
+
+// Получение статусов групп
+const fetchGroupsStatus = async () => {
+  try {
+    const response = await $fetch(`${API_BASE}/agentsGroups`)
+    console.log('📋 Groups API response:', response)
+    console.log('📊 Type:', typeof response)
+    console.log('🔍 Has agentsGroups:', !!response.agentsGroups)
+
+    // Извлекаем массив в зависимости от структуры ответа
+    let groupsData = []
+
+    if (Array.isArray(response)) {
+      groupsData = response
+    } else if (response.agentsGroups) {
+      groupsData = response.agentsGroups
+    } else if (response.data) {
+      groupsData = response.data
+    }
+
+    console.log('✅ Groups data:', groupsData)
+
+    groupsStatusMap.value.clear()
+    groupsData.forEach((group: any) => {
+      groupsStatusMap.value.set(group.id, {
+        name: group.name,
+        isActive: group.isActive
+      })
+    })
+  } catch (err) {
+    console.error('Error fetching groups status:', err)
   }
 }
 
@@ -58,17 +126,28 @@ const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>
 }
 
 // Обновление агента
-const updateAgents = async (id: number, item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
+const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
     const data = await $fetch<Agents>(`${API_BASE}/agents/${id}`, {
       method: 'PUT',
-      body: item
+      body: updates
     })
+
     const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) agents.value[index] = data
-    return data
+    if (index !== -1) {
+      // Сохраняем критически важные поля, которые сервер может не вернуть
+      const existingAgent = agents.value[index]
+
+      agents.value[index] = {
+        ...existingAgent,  // сохраняем старые данные (включая groups!)
+        ...data,           // перезаписываем обновленными данными
+        // Явно гарантируем сохранение groups
+        groups: data.groups ?? existingAgent.groups
+      }
+    }
+    return agents.value[index]
   } catch (err) {
-    console.error('Error updating agents:', err)
+    console.error('Error updating agent:', err)
     throw err
   }
 }
@@ -87,6 +166,13 @@ const deleteAgents = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchAgents()
+  fetchGroupsStatus()
+
+  // Периодическое обновление статусов групп (каждые 2 секунды)
+  setInterval(fetchGroupsStatus, 2000)
+
+  // Обновление при фокусе окна
+  window.addEventListener('focus', fetchGroupsStatus)
 })
 
 const headers = [
@@ -97,6 +183,7 @@ const headers = [
   { title: 'Email', key: 'email', sortable: true },
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
+  { title: 'Группы', key: 'groups', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -140,16 +227,39 @@ const confirmBulkDelete = async () => {
 
 const confirmBulkStatusChange = async () => {
   try {
+    bulkStatusLoading.value = true
+
+    // Оптимистично обновляем локально
+    const previousStates = new Map<number, boolean>()
     for (const item of selectedItems.value) {
-      await updateAgents(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1
-      })
+      const agentIndex = agents.value.findIndex(a => a.id === item.id)
+      if (agentIndex !== -1) {
+        previousStates.set(item.id, agents.value[agentIndex].isActive)
+        agents.value[agentIndex].isActive = bulkStatusValue.value === 1
+      }
     }
+
+    // Отправляем на сервер
+    await Promise.all(
+      selectedItems.value.map(item =>
+        updateAgents(item.id, { isActive: bulkStatusValue.value === 1 })
+      )
+    )
+
     selectedItems.value = []
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     console.error('Error bulk status change:', err)
+    // Откатываем при ошибке
+    const previousStates = new Map<number, boolean>()
+    for (const item of selectedItems.value) {
+      const agentIndex = agents.value.findIndex(a => a.id === item.id)
+      if (agentIndex !== -1) {
+        agents.value[agentIndex].isActive = previousStates.get(item.id) ?? item.isActive
+      }
+    }
+  } finally {
+    bulkStatusLoading.value = false
   }
 }
 
@@ -158,6 +268,34 @@ const resolveStatusVariant = (isActive: boolean) => {
     return { color: 'primary', text: 'Активен' }
   else
     return { color: 'error', text: 'Не активен' }
+}
+
+// Получить статус группы по имени
+const getGroupStatus = (groupName: string) => {
+  for (const [id, group] of groupsStatusMap.value.entries()) {
+    if (group.name === groupName) {
+      return { id, isActive: group.isActive }
+    }
+  }
+  return { id: null, isActive: true } // по умолчанию активна
+}
+
+// Определить цвет для группы
+const getGroupColor = (groupName: string) => {
+  const { isActive } = getGroupStatus(groupName)
+  return isActive ? 'primary' : 'grey'
+}
+
+// Определить вариант для группы
+const getGroupVariant = (groupName: string) => {
+  const { isActive } = getGroupStatus(groupName)
+  return isActive ? 'flat' : 'outlined'
+}
+
+// Определить иконку для группы
+const getGroupIcon = (groupName: string) => {
+  const { isActive } = getGroupStatus(groupName)
+  return isActive ? undefined : 'bx-pause-circle'
 }
 
 // Пагинация
@@ -210,19 +348,28 @@ watch(selectedItems, (newValue) => {
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
   if (newValue === null) return
+
+  const previousValue = item.isActive
+  const agentIndex = agents.value.findIndex(a => a.id === item.id)
+
+  if (agentIndex === -1) return
+
   try {
-    await updateAgents(item.id, {
-      firstName: item.firstName,
-      lastName: item.lastName,
-      login: item.login,
-      password: item.password,
-      email: item.email,
-      mobilePhone: item.mobilePhone,
-      telegramAccount: item.telegramAccount,
-      isActive: newValue
-    })
+    // Добавляем в загрузку
+    statusLoading.value.push(item.id)
+
+    // Оптимистично обновляем локальное состояние
+    agents.value[agentIndex].isActive = newValue
+
+    // Отправляем только изменение статуса
+    await updateAgents(item.id, { isActive: newValue })
   } catch (err) {
     console.error('Error toggling status:', err)
+    // Откатываем при ошибке
+    agents.value[agentIndex].isActive = previousValue
+  } finally {
+    // Убираем из загрузки
+    statusLoading.value = statusLoading.value.filter(id => id !== item.id)
   }
 }
 
@@ -280,6 +427,11 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
+      // Обновляем локальные данные агента
+      const agent = agents.value.find(a => a.id === editedItem.value.id)
+      if (agent) {
+        Object.assign(agent, editedItem.value)
+      }
     } else {
       await createAgents({
         firstName: editedItem.value.firstName,
@@ -291,6 +443,8 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
+      // Перезагружаем данные для нового агента
+      await fetchAgents()
     }
     close()
   } catch (err) {
@@ -499,6 +653,7 @@ const addNewAgents = () => {
               <VBtn
                 color="success"
                 variant="elevated"
+                :loading="bulkStatusLoading"
                 @click="confirmBulkStatusChange"
               >
                 Применить
@@ -523,16 +678,58 @@ const addNewAgents = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Группы -->
+        <template #item.groups="{ item }">
+          <div class="d-flex flex-wrap gap-1 align-center">
+            <template v-if="item.groups">
+              <VChip
+                v-for="group in item.groups.split(', ')"
+                :key="group"
+                :color="getGroupColor(group)"
+                :variant="getGroupVariant(group)"
+                density="compact"
+                label
+                size="small"
+                class="me-1"
+              >
+                <VIcon
+                  v-if="!getGroupStatus(group).isActive"
+                  icon="bx-pause-circle"
+                  size="small"
+                  class="me-1"
+                />
+                {{ group }}
+                <VTooltip
+                  v-if="!getGroupStatus(group).isActive"
+                  activator="parent"
+                  location="top"
+                >
+                  Группа неактивна
+                </VTooltip>
+              </VChip>
+            </template>
+            <span v-else class="text-disabled">—</span>
+          </div>
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
+              :disabled="statusLoading.includes(item.id)"
               @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
             />
+            <VProgressCircular
+              v-if="statusLoading.includes(item.id)"
+              indeterminate
+              size="16"
+              color="primary"
+            />
             <VChip
+              v-else
               v-bind="resolveStatusVariant(item.isActive)"
               density="compact"
               label

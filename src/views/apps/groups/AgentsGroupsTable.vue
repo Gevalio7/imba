@@ -85,15 +85,29 @@ const addNewGroup = () => {
 }
 
 const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
+  const previousValue = group.isActive
+
   try {
+    // Добавляем в загрузку
+    statusLoading.value.push(group.id)
+
+    // Оптимистично обновляем локальное состояние
+    group.isActive = newValue
+
+    // Отправляем на сервер
     await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
       method: 'PUT',
-      body: { ...group, isActive: newValue }
+      body: { isActive: newValue }
     })
-    group.isActive = newValue
-    emit('group-updated')
+
+    // Успешно — ничего не делаем, статус уже обновлен
   } catch (err) {
     console.error('Error toggling status:', err)
+    // Откатываем при ошибке
+    group.isActive = previousValue
+  } finally {
+    // Убираем из загрузки
+    statusLoading.value = statusLoading.value.filter(id => id !== group.id)
   }
 }
 
@@ -115,6 +129,9 @@ const deleteDialog = ref(false)
 const editedItem = ref<AgentsGroups | null>(null)
 const editedIndex = ref(-1)
 
+const statusLoading = ref<number[]>([])
+const deleteLoading = ref<number[]>([])
+
 const closeDelete = () => {
   deleteDialog.value = false
   editedIndex.value = -1
@@ -124,14 +141,21 @@ const closeDelete = () => {
 const deleteItemConfirm = async () => {
   try {
     if (editedItem.value) {
+      deleteLoading.value.push(editedItem.value.id)
+
       await $fetch(`${API_BASE}/agentsGroups/${editedItem.value.id}`, {
         method: 'DELETE'
       })
-      emit('group-updated')
+
+      emit('group-updated')  // <-- удаление всё равно требует перезагрузки
       closeDelete()
     }
   } catch (err) {
     console.error('Error deleting group:', err)
+  } finally {
+    if (editedItem.value) {
+      deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value?.id)
+    }
   }
 }
 
@@ -142,7 +166,7 @@ watch(() => props.selectedItems, (newValue) => {
 </script>
 
 <template>
-  <VCard title="Группы агентов">
+  <VCard>
     <!-- Индикатор загрузки -->
     <div v-if="loading" class="d-flex justify-center pa-6">
       <VProgressCircular indeterminate color="primary" />
@@ -207,11 +231,19 @@ watch(() => props.selectedItems, (newValue) => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
+              :disabled="statusLoading.includes(item.id)"
               @update:model-value="(val) => toggleStatus(item, val as boolean)"
               color="primary"
               hide-details
             />
+            <VProgressCircular
+              v-if="statusLoading.includes(item.id)"
+              indeterminate
+              size="16"
+              color="primary"
+            />
             <VChip
+              v-else
               v-bind="resolveStatusVariant(item.isActive)"
               density="compact"
               label
@@ -263,6 +295,7 @@ watch(() => props.selectedItems, (newValue) => {
             <VBtn
               color="success"
               variant="elevated"
+              :loading="editedItem && deleteLoading.includes(editedItem.id)"
               @click="deleteItemConfirm"
             >
               Удалить
