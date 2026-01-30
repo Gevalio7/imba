@@ -12,6 +12,7 @@ class Agents {
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
 
+
     try {
       let whereClause = '';
       let params = [];
@@ -19,32 +20,38 @@ class Agents {
 
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        const conditions = searchFields.map(field => `a.${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereClause = `WHERE ${conditions}`;
         params.push(`%${q}%`);
         paramIndex++;
       }
 
       let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at', 'groups']);
       if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        if (sortBy === 'groups') {
+          orderClause = `ORDER BY COALESCE(string_agg(ag.name, ', '), '') ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        } else {
+          const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : `a.${toSnakeCase(sortBy)}`;
+          orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        }
       }
 
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Agents.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM (SELECT a.id FROM ${Agents.tableName} a LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true ${whereClause} GROUP BY a.id) as sub`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
+        return `a.${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Agents.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      // Для GROUP BY используем оригинальные имена полей без алиасов
+      const groupByFields = this.fields.split(', ').map(f => `a.${toSnakeCase(f)}`).join(', ');
+      const dataQuery = `SELECT a.id, ${sqlFields}, a.created_at as "createdAt", a.updated_at as "updatedAt", a.is_active as "isActive", a.role_id as "roleId", string_agg(ag.name, ', ') as groups FROM ${Agents.tableName} a LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true ${whereClause} GROUP BY a.id, ${groupByFields}, a.created_at, a.updated_at, a.is_active, a.role_id ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -66,7 +73,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Agents.tableName} WHERE id = $1`,
+        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId" FROM ${Agents.tableName} WHERE id = $1`,
         [id]
       );
 
@@ -93,7 +100,8 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       
-      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active, role_id) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
+      values.push(agent.roleId !== undefined ? agent.roleId : null);
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -138,7 +146,14 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
 
-      const query = `UPDATE ${Agents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      // Добавляем roleId если передан
+      if (agent.roleId !== undefined) {
+        updates.push(`role_id = $${paramIndex}`);
+        values.push(agent.roleId);
+        paramIndex++;
+      }
+
+      const query = `UPDATE ${Agents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;
