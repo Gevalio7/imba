@@ -480,13 +480,13 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
-      
+
       // Сохраняем группы агента
       await $fetch(`${API_BASE}/agents/${editedItem.value.id}/groups`, {
         method: 'PUT',
         body: { groupIds: selectedGroupIds.value }
       })
-      
+
       // Обновляем локальные данные агента
       const agent = agents.value.find(a => a.id === editedItem.value.id)
       if (agent) {
@@ -497,6 +497,9 @@ const save = async () => {
           .filter(Boolean)
           .join(', ')
       }
+
+      // Генерируем событие для обновления списка групп (счётчики агентов)
+      emit('agent-updated')
     } else {
       // Создаем нового агента
       const newAgent = await createAgents({
@@ -509,7 +512,7 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
-      
+
       // Сохраняем группы для нового агента
       if (selectedGroupIds.value.length > 0) {
         await $fetch(`${API_BASE}/agents/${newAgent.id}/groups`, {
@@ -517,15 +520,28 @@ const save = async () => {
           body: { groupIds: selectedGroupIds.value }
         })
       }
-      
+
       // Перезагружаем данные
       await fetchAgents()
+
+      // Генерируем событие для обновления списка групп (счётчики агентов)
+      emit('agent-updated')
     }
     close()
   } catch (err) {
     console.error('Error saving:', err)
   }
 }
+
+// Эмиты
+const emit = defineEmits<{
+  (e: 'agent-updated'): void
+}>()
+
+// Экспортируем методы для родительского компонента
+defineExpose({
+  refresh: fetchAgents
+})
 
 </script>
 

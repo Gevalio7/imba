@@ -54,6 +54,13 @@ const createAgentsGroups = asyncHandler(async (req, res) => {
 
   const newAgentsGroup = await AgentsGroups.create(data);
 
+  // Добавляем агентов в группу, если они переданы
+  if (req.body.agents && Array.isArray(req.body.agents) && req.body.agents.length > 0) {
+    for (const agentId of req.body.agents) {
+      await AgentsGroups.addAgent(newAgentsGroup.id, agentId);
+    }
+  }
+
   res.status(201).json(newAgentsGroup);
 });
 

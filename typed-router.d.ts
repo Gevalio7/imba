@@ -97,7 +97,6 @@ declare module 'vue-router/auto-routes' {
     'apps-settings-ticket-settings': RouteRecordInfo<'apps-settings-ticket-settings', '/apps/settings/TicketSettings', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-agents': RouteRecordInfo<'apps-settings-users-groups-roles-agents', '/apps/settings/users-groups-roles/Agents', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-agents-groups': RouteRecordInfo<'apps-settings-users-groups-roles-agents-groups', '/apps/settings/users-groups-roles/AgentsGroups', Record<never, never>, Record<never, never>>,
-    'apps-settings-users-groups-roles-agents-groups-create': RouteRecordInfo<'apps-settings-users-groups-roles-agents-groups-create', '/apps/settings/users-groups-roles/AgentsGroupsCreate', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-agents-groups-edit': RouteRecordInfo<'apps-settings-users-groups-roles-agents-groups-edit', '/apps/settings/users-groups-roles/AgentsGroupsEdit', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-agents-roles': RouteRecordInfo<'apps-settings-users-groups-roles-agents-roles', '/apps/settings/users-groups-roles/AgentsRoles', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-customers': RouteRecordInfo<'apps-settings-users-groups-roles-customers', '/apps/settings/users-groups-roles/Customers', Record<never, never>, Record<never, never>>,

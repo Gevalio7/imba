@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
 import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
+import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 // Переключатель вида групп (карточки/таблица)
-const groupsViewMode = ref<'cards' | 'table'>('cards')
+const groupsViewMode = ref<'cards' | 'table'>(
+  (localStorage.getItem('agentsGroupsViewMode') as 'cards' | 'table') || 'cards'
+)
+
+// Сохраняем состояние при изменении
+watch(groupsViewMode, (newValue) => {
+  localStorage.setItem('agentsGroupsViewMode', newValue)
+})
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -35,7 +43,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 const router = useRouter()
 
 // Refs
-const agentsGroupsTable = ref()
+const agentsGroupsTable = ref<InstanceType<typeof AgentsGroupsTable> | null>(null)
+const agentsTableRef = ref<InstanceType<typeof AgentsTable> | null>(null)
 
 // Данные группы агентов
 const agentsGroups = ref<AgentsGroups[]>([])
@@ -85,8 +94,17 @@ const deleteGroup = async (group: AgentsGroups) => {
     await $fetch(`${API_BASE}/agentsGroups/${group.id}`, { method: 'DELETE' })
     const index = agentsGroups.value.findIndex(g => g.id === group.id)
     if (index !== -1) agentsGroups.value.splice(index, 1)
+
+    // Обновляем список агентов для синхронизации поля groups
+    agentsTableRef.value?.refresh?.()
+
+    // Обновляем список групп для синхронизации счётчиков
+    await fetchAgentsGroups()
+
+    showToast(`Группа "${group.name}" успешно удалена`)
   } catch (err) {
     console.error('Error deleting group:', err)
+    showToast('Ошибка удаления группы', 'error')
   }
 }
 
@@ -163,8 +181,17 @@ const confirmBulkDelete = async () => {
     }
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
+
+    // Обновляем список агентов для синхронизации поля groups
+    agentsTableRef.value?.refresh?.()
+
+    // Обновляем список групп для синхронизации счётчиков
+    await fetchAgentsGroups()
+
+    showToast('Выбранные группы успешно удалены')
   } catch (err) {
     console.error('Error bulk deleting:', err)
+    showToast('Ошибка массового удаления групп', 'error')
   }
 }
 
@@ -239,7 +266,7 @@ const statusOptions = [
           :loading="loading"
           @edit="(group) => router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)"
           @delete="deleteGroup"
-          @add="() => router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')"
+          @add="() => router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')"
           @toggle-status="toggleGroupStatus"
         />
 
@@ -301,7 +328,7 @@ const statusOptions = [
               <VBtn
                 color="primary"
                 prepend-icon="bx-plus"
-                @click="router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')"
+                @click="router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')"
               >
                 Создать группу
               </VBtn>
@@ -441,19 +468,52 @@ const statusOptions = [
       </VCard>
     </VDialog>
 
-    <!-- Заголовок агентов -->
+    <!-- Аккордеон для Агентов и Ролей -->
     <VCol cols="12">
-      <h4 class="text-h4 mb-1 mt-6">
-        Все агенты
-      </h4>
-      <p class="text-body-1 mb-0">
-        Список всех агентов системы с возможностью фильтрации и массовых действий.
-      </p>
-    </VCol>
+      <VExpansionPanels
+        variant="accordion"
+        class="expansion-panels-width-border mt-6"
+      >
+        <VExpansionPanel elevation="0">
+          <VExpansionPanelTitle
+            collapse-icon="bx-minus"
+            expand-icon="bx-plus"
+          >
+            <div>
+              <h4 class="text-h4 mb-1">
+                Все агенты
+              </h4>
+              <p class="text-body-1 mb-0">
+                Список всех агентов системы с возможностью фильтрации и массовых действий.
+              </p>
+            </div>
+          </VExpansionPanelTitle>
 
-    <!-- Агенты -->
-    <VCol cols="12">
-      <AgentsTable />
+          <VExpansionPanelText>
+            <AgentsTable ref="agentsTableRef" @agent-updated="fetchAgentsGroups" />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+
+        <VExpansionPanel elevation="0">
+          <VExpansionPanelTitle
+            collapse-icon="bx-minus"
+            expand-icon="bx-plus"
+          >
+            <div>
+              <h4 class="text-h4 mb-1">
+                Роли
+              </h4>
+              <p class="text-body-1 mb-0">
+                Список всех ролей системы с возможностью управления правами доступа.
+              </p>
+            </div>
+          </VExpansionPanelTitle>
+
+          <VExpansionPanelText>
+            <RolesTable />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
     </VCol>
   </VRow>
 
