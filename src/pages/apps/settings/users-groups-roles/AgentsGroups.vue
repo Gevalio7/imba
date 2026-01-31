@@ -16,6 +16,16 @@ watch(groupsViewMode, (newValue) => {
   localStorage.setItem('agentsGroupsViewMode', newValue)
 })
 
+// Состояние аккордеонов (какие панели открыты)
+const expandedPanels = ref<number[]>(
+  JSON.parse(localStorage.getItem('agentsGroupsExpandedPanels') || '[]')
+)
+
+// Сохраняем состояние аккордеонов при изменении
+watch(expandedPanels, (newValue) => {
+  localStorage.setItem('agentsGroupsExpandedPanels', JSON.stringify(newValue))
+}, { deep: true })
+
 // Типы данных для Группа агентов
 interface AgentsGroups {
   id: number
@@ -88,19 +98,17 @@ onMounted(() => {
   fetchAgentsGroups()
 })
 
+// Единый обработчик обновления групп - обновляет и группы, и агентов
+const handleGroupsUpdated = async () => {
+  await fetchAgentsGroups() // Перезагружает группы + агентов в группах
+  agentsTableRef.value?.refresh?.() // КРИТИЧЕСКИ ВАЖНО: обновляет список ВСЕХ агентов
+}
+
 // Удаление группы
 const deleteGroup = async (group: AgentsGroups) => {
   try {
     await $fetch(`${API_BASE}/agentsGroups/${group.id}`, { method: 'DELETE' })
-    const index = agentsGroups.value.findIndex(g => g.id === group.id)
-    if (index !== -1) agentsGroups.value.splice(index, 1)
-
-    // Обновляем список агентов для синхронизации поля groups
-    agentsTableRef.value?.refresh?.()
-
-    // Обновляем список групп для синхронизации счётчиков
-    await fetchAgentsGroups()
-
+    await handleGroupsUpdated()
     showToast(`Группа "${group.name}" успешно удалена`)
   } catch (err) {
     console.error('Error deleting group:', err)
@@ -176,17 +184,12 @@ const confirmBulkDelete = async () => {
   try {
     for (const item of selectedItems.value) {
       await $fetch(`${API_BASE}/agentsGroups/${item.id}`, { method: 'DELETE' })
-      const index = agentsGroups.value.findIndex(g => g.id === item.id)
-      if (index !== -1) agentsGroups.value.splice(index, 1)
     }
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
 
-    // Обновляем список агентов для синхронизации поля groups
-    agentsTableRef.value?.refresh?.()
-
-    // Обновляем список групп для синхронизации счётчиков
-    await fetchAgentsGroups()
+    // Используем единый обработчик для обновления
+    await handleGroupsUpdated()
 
     showToast('Выбранные группы успешно удалены')
   } catch (err) {
@@ -209,6 +212,55 @@ const confirmBulkStatusChange = async () => {
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     console.error('Error bulk status change:', err)
+  }
+}
+
+// Добавить агентов в группу (открыть редактирование группы)
+const addAgentsToGroup = () => {
+  if (selectedItems.value.length === 1) {
+    const group = selectedItems.value[0]
+    router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)
+  }
+}
+
+// Модальное окно создания группы
+const isCreateGroupDialogOpen = ref(false)
+const newGroupName = ref('')
+const creatingGroup = ref(false)
+
+const openCreateGroupDialog = () => {
+  newGroupName.value = ''
+  isCreateGroupDialogOpen.value = true
+}
+
+const closeCreateGroupDialog = () => {
+  isCreateGroupDialogOpen.value = false
+  newGroupName.value = ''
+}
+
+const createGroup = async () => {
+  if (!newGroupName.value.trim()) {
+    showToast('Название группы обязательно для заполнения', 'error')
+    return
+  }
+
+  try {
+    creatingGroup.value = true
+    await $fetch(`${API_BASE}/agentsGroups`, {
+      method: 'POST',
+      body: {
+        name: newGroupName.value.trim(),
+        isActive: true,
+      }
+    })
+    showToast('Группа успешно создана')
+    closeCreateGroupDialog()
+    await fetchAgentsGroups()
+  } catch (err) {
+    console.error('Error creating group:', err)
+    showToast('Ошибка создания группы', 'error')
+  } finally {
+    creatingGroup.value = false
   }
 }
 
@@ -266,7 +318,7 @@ const statusOptions = [
           :loading="loading"
           @edit="(group) => router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)"
           @delete="deleteGroup"
-          @add="() => router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')"
+          @add="openCreateGroupDialog"
           @toggle-status="toggleGroupStatus"
         />
 
@@ -316,6 +368,12 @@ const statusOptions = [
                 <VListItem @click="bulkChangeStatus(); isBulkActionsMenuOpen = false">
                   <VListItemTitle>Изменить статус</VListItemTitle>
                 </VListItem>
+                <VListItem
+                  :disabled="selectedItems.length !== 1"
+                  @click="addAgentsToGroup(); isBulkActionsMenuOpen = false"
+                >
+                  <VListItemTitle>Добавить агентов</VListItemTitle>
+                </VListItem>
               </VList>
             </VMenu>
 
@@ -328,7 +386,7 @@ const statusOptions = [
               <VBtn
                 color="primary"
                 prepend-icon="bx-plus"
-                @click="router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')"
+                @click="openCreateGroupDialog"
               >
                 Создать группу
               </VBtn>
@@ -345,7 +403,7 @@ const statusOptions = [
             :agents-groups="filteredGroups"
             :loading="loading"
             :error="error"
-            @group-updated="fetchAgentsGroups"
+            @group-updated="handleGroupsUpdated"
             @toggle-status="toggleGroupStatus"
           />
         </VCard>
@@ -468,13 +526,50 @@ const statusOptions = [
       </VCard>
     </VDialog>
 
+    <!-- Диалог создания группы -->
+    <VDialog
+      v-model="isCreateGroupDialogOpen"
+      max-width="500px"
+    >
+      <VCard title="Создать группу">
+        <VCardText>
+          <AppTextField
+            v-model="newGroupName"
+            label="Название группы *"
+            placeholder="Введите название группы"
+            @keyup.enter="createGroup"
+          />
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeCreateGroupDialog"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              :loading="creatingGroup"
+              @click="createGroup"
+            >
+              Создать
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
     <!-- Аккордеон для Агентов и Ролей -->
     <VCol cols="12">
       <VExpansionPanels
+        v-model="expandedPanels"
         variant="accordion"
         class="expansion-panels-width-border mt-6"
       >
-        <VExpansionPanel elevation="0">
+        <VExpansionPanel elevation="0" :value="0">
           <VExpansionPanelTitle
             collapse-icon="bx-minus"
             expand-icon="bx-plus"
@@ -494,7 +589,7 @@ const statusOptions = [
           </VExpansionPanelText>
         </VExpansionPanel>
 
-        <VExpansionPanel elevation="0">
+        <VExpansionPanel elevation="0" :value="1">
           <VExpansionPanelTitle
             collapse-icon="bx-minus"
             expand-icon="bx-plus"
