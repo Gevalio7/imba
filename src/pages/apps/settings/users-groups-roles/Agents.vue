@@ -15,7 +15,7 @@ interface Agents {
    isActive: boolean
    createdAt: string
    updatedAt: string
-   groups: string
+   groups?: string
 }
 
 

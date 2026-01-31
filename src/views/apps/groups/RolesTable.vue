@@ -1,28 +1,12 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 
-// Типы данных для Группа агентов
-interface AgentsGroups {
+// Типы данных для Роль
+interface Roles {
   id: number
   name: string
-  agents: Agent[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-// Тип для агента
-interface Agent {
-  id: number
-  firstName: string
-  lastName: string
-  login: string
-  password: string
-  email: string
-  mobilePhone: string
-  telegramAccount: string
+  message: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -31,118 +15,97 @@ interface Agent {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Роутер
-const router = useRouter()
-
-// Данные
+// Данные роли
+const roles = ref<Roles[]>([])
+const total = ref(0)
 const loading = ref(false)
-const saving = ref(false)
+const error = ref<string | null>(null)
 
-// Справочники
-const allAgents = ref<Agent[]>([])
-const selectedAgents = ref<Agent[]>([])
-
-// Загрузка справочников
-const fetchAllAgents = async () => {
+// Загрузка данных из API
+const fetchRoles = async () => {
   try {
     loading.value = true
-    const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`)
-    allAgents.value = data.agents
+    error.value = null
+    console.log('Fetching roles from:', `${API_BASE}/roles`)
+    const data = await $fetch<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
+    console.log('Fetched roles data:', data)
+    roles.value = data.roles
+    total.value = data.total
   } catch (err) {
-    console.log('Error fetching all agents:', err)
+    error.value = 'Ошибка загрузки роли'
+    console.error('Error fetching roles:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Форма
-const agentsGroup = ref<AgentsGroups>({
-  id: -1,
-  name: '',
-  agents: [],
-  isActive: true,
-  createdAt: '',
-  updatedAt: '',
-})
-
-// Выбор агентов
-const toggleAgentSelection = (agent: Agent) => {
-  const index = selectedAgents.value.findIndex(a => a.id === agent.id)
-  if (index === -1) {
-    selectedAgents.value.push(agent)
-  } else {
-    selectedAgents.value.splice(index, 1)
-  }
-}
-
-const isAgentSelected = (agent: Agent): boolean => {
-  return selectedAgents.value.some(a => a.id === agent.id)
-}
-
-// Сохранение
-const save = async () => {
-  if (!agentsGroup.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
+// Создание роль
+const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    saving.value = true
-    const dataToSend = {
-      name: agentsGroup.value.name,
-      agents: selectedAgents.value.map(a => a.id),
-      isActive: agentsGroup.value.isActive,
-    }
-
-    await $fetch(`${API_BASE}/agentsGroups`, {
+    const data = await $fetch<Roles>(`${API_BASE}/roles`, {
       method: 'POST',
-      body: dataToSend
+      body: item
     })
-    showToast('Группа агентов успешно создана')
-    router.push('/apps/settings/users-groups-roles/AgentsGroups')
+    roles.value.push(data)
+    return data
   } catch (err) {
-    showToast('Ошибка сохранения группы агентов', 'error')
-  } finally {
-    saving.value = false
+    console.error('Error creating roles:', err)
+    throw err
   }
 }
 
-// Отмена
-const cancel = () => {
-  router.push('/apps/settings/users-groups-roles/AgentsGroups')
+// Обновление роль
+const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Roles>(`${API_BASE}/roles/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = roles.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      roles.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating roles:', err)
+    throw err
+  }
+}
+
+// Удаление роль
+const deleteRoles = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/roles/${id}`, {
+      method: 'DELETE'
+    })
+    const index = roles.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      roles.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting roles:', err)
+    throw err
+  }
 }
 
 // Инициализация
-onMounted(async () => {
-  await fetchAllAgents()
+onMounted(() => {
+  fetchRoles()
 })
-
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Имя', key: 'firstName', sortable: true },
-  { title: 'Фамилия', key: 'lastName', sortable: true },
-  { title: 'Логин', key: 'login', sortable: true },
-  { title: 'Email', key: 'email', sortable: true },
-  { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
-  { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
+  { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Создано', key: 'createdAt', sortable: true },
+  { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Фильтрация
-const filteredAgents = computed(() => {
-  let filtered = allAgents.value
+const filteredRoles = computed(() => {
+  let filtered = roles.value
 
   if (statusFilter.value !== null) {
     // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
@@ -176,13 +139,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      const index = selectedAgents.value.findIndex(a => a.id === item.id)
-      if (index !== -1) {
-        selectedAgents.value.splice(index, 1)
-      }
+      await deleteRoles(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} агентов из выбранных`)
+    showToast(`Удалено ${count} роли`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -193,13 +153,13 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      const agent = selectedAgents.value.find(a => a.id === item.id)
-      if (agent) {
-        agent.isActive = bulkStatusValue.value === 1
-      }
+      await updateRoles(item.id, {
+        ...item,
+        isActive: bulkStatusValue.value === 1
+      })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} агентов`)
+    showToast(`Статус изменен для ${count} роли`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -222,7 +182,7 @@ const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<Agent[]>([])
+const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
@@ -236,63 +196,136 @@ watch(selectedItems, (newValue) => {
   console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
 }, { deep: true })
 
+// Диалоги
+const editDialog = ref(false)
+const deleteDialog = ref(false)
+
+const defaultItem = ref<Roles>({
+  id: -1,
+  name: '',
+  message: '',
+  createdAt: '',
+  updatedAt: '',
+  isActive: true,
+})
+
+const editedItem = ref<Roles>({ ...defaultItem.value })
+const editedIndex = ref(-1)
+
 // Опции статуса
 const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
 ]
+
+// Методы
+const editItem = (item: Roles) => {
+  editedIndex.value = roles.value.indexOf(item)
+  editedItem.value = { ...item }
+  editDialog.value = true
+}
+
+const deleteItem = (item: Roles) => {
+  editedIndex.value = roles.value.indexOf(item)
+  editedItem.value = { ...item }
+  deleteDialog.value = true
+}
+
+const close = () => {
+  editDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+const closeDelete = () => {
+  deleteDialog.value = false
+  editedIndex.value = -1
+  editedItem.value = { ...defaultItem.value }
+}
+
+const save = async () => {
+  if (!editedItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+
+  try {
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateRoles(editedItem.value.id, {
+        ...editedItem.value,
+        isActive: editedItem.value.isActive
+      })
+      showToast('Роль успешно сохранен')
+    } else {
+      // Добавление нового
+      const created = await createRoles({
+        ...editedItem.value,
+        isActive: editedItem.value.isActive
+      })
+      showToast('Роль успешно добавлен')
+    }
+    close()
+  } catch (err) {
+    showToast('Ошибка сохранения роль', 'error')
+  }
+}
+
+const deleteItemConfirm = async () => {
+  try {
+    await deleteRoles(editedItem.value.id)
+    showToast('Роль успешно удален')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления роль', 'error')
+  }
+}
+
+// Переключение статуса
+const toggleStatus = async (item: Roles, newValue: boolean) => {
+  console.log('🔄 toggleStatus вызван')
+  console.log('📝 Элемент:', item)
+  console.log('🔢 Новое значение isActive:', newValue)
+
+  try {
+    await updateRoles(item.id, {
+      ...item,
+      isActive: newValue
+    })
+    showToast('Статус роль изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
+  }
+}
+
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
+// Добавление нового роль
+const addNewRoles = () => {
+  editedItem.value = { ...defaultItem.value }
+  editedIndex.value = -1
+  editDialog.value = true
+}
 </script>
 
 <template>
   <div>
-    <VCard>
-      <VCardTitle>
-        Создание группы агентов
-      </VCardTitle>
+    <VCard title="Роли">
 
-      <VCardText>
-        <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 font-weight-medium">
-              Основное
-            </h6>
-            <p class="mb-0">
-              Введите название группы и выберите агентов
-            </p>
-          </VCol>
-
-          <VCol cols="12" md="6">
-            <AppTextField
-              v-model="agentsGroup.name"
-              label="Название группы *"
-            />
-          </VCol>
-
-          <VCol
-            cols="12"
-            md="6"
-          >
-            <VSwitch
-              v-model="agentsGroup.isActive"
-              label="Активно"
-              color="primary"
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <VDivider />
-
-      <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
-      </div>
-
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div class="d-flex flex-wrap gap-4 pa-6">
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск агентов"
+            placeholder="Поиск роли"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -331,7 +364,7 @@ const statusOptions = [
                 isBulkActionsMenuOpen = false
               }"
             >
-              <VListItemTitle>Удалить из выбранных</VListItemTitle>
+              <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
             <VListItem
               @click="() => {
@@ -350,8 +383,25 @@ const statusOptions = [
             v-model="itemsPerPage"
             :items="[5, 10, 20, 25, 50]"
           />
+          <!-- Экспорт -->
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            prepend-icon="bx-export"
+          >
+            Экспорт
+          </VBtn>
+
+          <VBtn
+            color="primary"
+            prepend-icon="bx-plus"
+            @click="addNewRoles"
+          >
+            Добавить роль
+          </VBtn>
         </div>
       </div>
+
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -410,7 +460,7 @@ const statusOptions = [
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранных агентов из списка? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные роли? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -471,13 +521,13 @@ const statusOptions = [
 
       <VDivider />
 
-      <!-- Таблица доступных агентов -->
+      <!-- Таблица -->
       <VDataTable
         v-model="selectedItems"
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredAgents"
+        :items="filteredRoles"
         show-select
         :hide-default-footer="true"
         item-value="id"
@@ -489,7 +539,7 @@ const statusOptions = [
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => item.isActive = val"
+              @update:model-value="(val) => toggleStatus(item, val as boolean)"
               color="primary"
               hide-details
             />
@@ -505,14 +555,12 @@ const statusOptions = [
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <VBtn
-              variant="tonal"
-              :color="isAgentSelected(item) ? 'primary' : 'secondary'"
-              :prepend-icon="isAgentSelected(item) ? 'bx-check' : 'bx-plus'"
-              @click="toggleAgentSelection(item)"
-            >
-              {{ isAgentSelected(item) ? 'Выбран' : 'Выбрать' }}
-            </VBtn>
+            <IconBtn @click="editItem(item)">
+              <VIcon icon="bx-edit" />
+            </IconBtn>
+            <IconBtn @click="deleteItem(item)">
+              <VIcon icon="bx-trash" />
+            </IconBtn>
           </div>
         </template>
       </VDataTable>
@@ -521,102 +569,116 @@ const statusOptions = [
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAgents.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredRoles.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
-
-      <VDivider />
-
-      <!-- Выбранные агенты -->
-      <VCardText>
-        <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 font-weight-medium">
-              Выбранные агенты ({{ selectedAgents.length }})
-            </h6>
-            <p class="mb-0">
-              Агенты, которые будут добавлены в группу
-            </p>
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <VDataTable
-        :items="selectedAgents"
-        :headers="[
-          { title: 'ID', key: 'id', sortable: true },
-          { title: 'Имя', key: 'firstName', sortable: true },
-          { title: 'Фамилия', key: 'lastName', sortable: true },
-          { title: 'Логин', key: 'login', sortable: true },
-          { title: 'Email', key: 'email', sortable: true },
-          { title: 'Активен', key: 'isActive', sortable: false },
-          { title: 'Действия', key: 'actions', sortable: false }
-        ]"
-        item-key="id"
-        :items-per-page="5"
-        no-data-text="Агенты не выбраны"
-      >
-        <template #item.isActive="{ item }">
-          <VChip
-            v-if="item.isActive"
-            color="primary"
-            density="compact"
-            label
-            size="small"
-          >
-            Активен
-          </VChip>
-          <VChip
-            v-else
-            color="error"
-            density="compact"
-            label
-            size="small"
-          >
-            Не активен
-          </VChip>
-        </template>
-
-        <template #item.actions="{ item }">
-          <IconBtn @click="toggleAgentSelection(item)">
-            <VIcon icon="bx-x" />
-          </IconBtn>
-        </template>
-      </VDataTable>
-
-      <VDivider />
-
-      <VCardText>
-        <div class="d-flex flex-wrap gap-4 justify-space-between mt-8">
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            @click="cancel"
-          >
-            Отмена
-          </VBtn>
-
-          <VBtn
-            color="success"
-            :loading="saving"
-            @click="save"
-          >
-            Сохранить
-          </VBtn>
-        </div>
-      </VCardText>
     </VCard>
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
+    <!-- Диалог редактирования -->
+    <VDialog
+      v-model="editDialog"
+      max-width="600px"
     >
-      {{ toastMessage }}
-    </VSnackbar>
+      <VCard :title="editedIndex > -1 ? 'Редактировать роль' : 'Добавить роль'">
+        <VCardText>
+          <VRow>
+
+            <!-- Название -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.name"
+                label="Название *"
+              />
+            </VCol>
+
+            <!-- Сообщение -->
+            <VCol
+              cols="12"
+
+            >
+              <AppTextarea
+                v-model="editedItem.message"
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
+              />
+            </VCol>
+
+            <!-- Активен -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VSwitch
+                v-model="editedItem.isActive"
+                label="Активен"
+                color="primary"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VCardText>
+          <div class="self-align-end d-flex gap-4 justify-end">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="close"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог удаления -->
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
+      <VCard title="Вы уверены, что хотите удалить этот роль?">
+        <VCardText>
+          <div class="d-flex justify-center gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
+
+  <!-- Уведомления -->
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="3000"
+  >
+    {{ toastMessage }}
+  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>

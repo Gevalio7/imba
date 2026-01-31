@@ -424,6 +424,7 @@ declare module 'vue' {
     QueueCards: typeof import('./src/views/apps/queues/QueueCards.vue')['default']
     ReferAndEarnDialog: typeof import('./src/components/dialogs/ReferAndEarnDialog.vue')['default']
     RoleCards: typeof import('./src/views/apps/roles/RoleCards.vue')['default']
+    RolesTable: typeof import('./src/views/apps/groups/RolesTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ScrollToTop: typeof import('./src/@core/components/ScrollToTop.vue')['default']

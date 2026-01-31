@@ -81,7 +81,7 @@ const deleteGroup = (group: AgentsGroups) => {
 }
 
 const addNewGroup = () => {
-  router.push('/apps/settings/users-groups-roles/AgentsGroupsCreate')
+  router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')
 }
 
 // Уведомления
