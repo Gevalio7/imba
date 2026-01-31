@@ -154,20 +154,24 @@ const closeDelete = () => {
 const deleteItemConfirm = async () => {
   try {
     if (editedItem.value) {
-      deleteLoading.value.push(editedItem.value.id)
+      const deletedGroupId = editedItem.value.id
+      deleteLoading.value.push(deletedGroupId)
 
-      await $fetch(`${API_BASE}/agentsGroups/${editedItem.value.id}`, {
+      await $fetch(`${API_BASE}/agentsGroups/${deletedGroupId}`, {
         method: 'DELETE'
       })
 
-      emit('group-updated')  // <-- удаление всё равно требует перезагрузки
+      // Только эмитим событие - не изменяем пропсы напрямую!
+      emit('group-updated')
       closeDelete()
+      showToast('Группа успешно удалена')
     }
   } catch (err) {
     console.error('Error deleting group:', err)
+    showToast('Ошибка удаления группы', 'error')
   } finally {
     if (editedItem.value) {
-      deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value?.id)
+      deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value.id)
     }
   }
 }
