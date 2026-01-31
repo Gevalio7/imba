@@ -66,7 +66,13 @@ const fetchAgents = async (silent = false) => {
       tableLoading.value = true
     }
     error.value = null
-    const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`)
+    const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
+      query: {
+        page: currentPage.value,
+        itemsPerPage: itemsPerPage.value,
+        q: searchQuery.value || undefined,
+      },
+    })
     agents.value = data.agents
     total.value = data.total
   } catch (err) {
@@ -318,6 +324,9 @@ const itemsPerPage = ref(10)
 const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
+// Поиск
+const searchQuery = ref('')
+
 // Массовые действия
 const selectedItems = ref<Agents[]>([])
 const isBulkActionsMenuOpen = ref(false)
@@ -356,6 +365,23 @@ const statusOptions = [
 watch(selectedItems, (newValue) => {
   console.log('Selected items:', newValue)
 }, { deep: true })
+
+// Отслеживание изменений пагинации для перезагрузки данных
+watch([currentPage, itemsPerPage], () => {
+  fetchAgents(true)
+})
+
+// Отслеживание изменений поискового запроса с debounce
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+watch(searchQuery, (newValue) => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1 // Сброс на первую страницу при поиске
+    fetchAgents(true)
+  }, 300)
+})
 
 // Уведомления
 const isToastVisible = ref(false)
@@ -564,6 +590,7 @@ defineExpose({
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
+            v-model="searchQuery"
             placeholder="Поиск агентов"
             style="inline-size: 250px;"
             class="me-3"
@@ -840,7 +867,7 @@ defineExpose({
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAgents.length / itemsPerPage) || 1"
+          :length="Math.ceil(total / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>

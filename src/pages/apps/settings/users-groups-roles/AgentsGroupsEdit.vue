@@ -51,6 +51,8 @@ const loading = ref(false)
 const saving = ref(false)
 const loadingGroup = ref(false)
 
+const allAgentsTotal = ref(0)
+
 // Справочники
 const allAgents = ref<Agent[]>([])
 const selectedAgents = ref<Agent[]>([])
@@ -85,11 +87,19 @@ const fetchGroup = async () => {
 }
 
 // Загрузка всех агентов
-const fetchAllAgents = async () => {
+const fetchAllAgents = async (silent = false) => {
   try {
-    loading.value = true
-    const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`)
+    if (!silent) {
+      loading.value = true
+    }
+    const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`, {
+      query: {
+        page: currentPage.value,
+        itemsPerPage: itemsPerPage.value,
+      },
+    })
     allAgents.value = data.agents
+    allAgentsTotal.value = data.total
   } catch (err) {
     console.log('Error fetching all agents:', err)
   } finally {
@@ -391,6 +401,11 @@ watch(selectedAgents, (newValue) => {
   console.log('📊 Количество выбранных:', newValue.length)
 }, { deep: true })
 
+// Отслеживание изменений пагинации для перезагрузки данных
+watch([currentPage, itemsPerPage], () => {
+  fetchAllAgents(true)
+})
+
 // Синхронизация selectedItems с selectedAgents
 watch(selectedItems, (newValue, oldValue) => {
   // Добавленные
@@ -676,7 +691,7 @@ watch(selectedItems, (newValue, oldValue) => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredAgents.length / itemsPerPage) || 1"
+          :length="Math.ceil(allAgentsTotal / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
