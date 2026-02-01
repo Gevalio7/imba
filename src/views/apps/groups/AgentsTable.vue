@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 // Типы данных для Агент
 interface Agents {
@@ -66,12 +66,21 @@ const fetchAgents = async (silent = false) => {
       tableLoading.value = true
     }
     error.value = null
+    
+    // Формируем параметры запроса с пагинацией И фильтрами
+    const query: Record<string, any> = {
+      page: currentPage.value,
+      itemsPerPage: itemsPerPage.value,
+      q: searchQuery.value || undefined,
+    }
+    
+    // Передаём фильтр статуса на сервер
+    if (statusFilter.value !== null) {
+      query.isActive = statusFilter.value === 1
+    }
+    
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
-      query: {
-        page: currentPage.value,
-        itemsPerPage: itemsPerPage.value,
-        q: searchQuery.value || undefined,
-      },
+      query,
     })
     agents.value = data.agents
     total.value = data.total
@@ -206,21 +215,29 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
-// Фильтрация
-const filteredAgents = computed(() => {
-  let filtered = agents.value
+// Пагинация
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
-  if (statusFilter.value !== null) {
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
+// Фильтры
+const statusFilter = ref<number | null>(null)
+const isFilterDialogOpen = ref(false)
 
-  return filtered
-})
+// Поиск
+const searchQuery = ref('')
 
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
+  currentPage.value = 1
+  fetchAgents(true)
 }
+
+// Отслеживание изменения фильтра статуса
+watch(statusFilter, () => {
+  currentPage.value = 1
+  fetchAgents(true)
+})
 
 // Массовые действия
 const bulkDelete = () => {
@@ -316,17 +333,6 @@ const getGroupIcon = (groupName: string) => {
   return isActive ? undefined : 'bx-pause-circle'
 }
 
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Поиск
-const searchQuery = ref('')
-
 // Массовые действия
 const selectedItems = ref<Agents[]>([])
 const isBulkActionsMenuOpen = ref(false)
@@ -366,10 +372,14 @@ watch(selectedItems, (newValue) => {
   console.log('Selected items:', newValue)
 }, { deep: true })
 
-// Отслеживание изменений пагинации для перезагрузки данных
-watch([currentPage, itemsPerPage], () => {
+// Отслеживание изменений itemsPerPage
+watch(itemsPerPage, () => {
+  currentPage.value = 1
   fetchAgents(true)
 })
+
+// Отслеживание изменения страницы только от VPagination
+// VDataTable не должен управлять страницей при hide-default-footer
 
 // Отслеживание изменений поискового запроса с debounce
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -780,10 +790,10 @@ defineExpose({
       <!-- Таблица -->
       <VDataTable
         v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
+        :items-per-page="itemsPerPage"
+        :page="currentPage"
         :headers="headers"
-        :items="filteredAgents"
+        :items="agents"
         show-select
         :hide-default-footer="true"
         item-value="id"
@@ -869,6 +879,7 @@ defineExpose({
           v-model="currentPage"
           :length="Math.ceil(total / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="fetchAgents(true)"
         />
       </div>
     </VCard>

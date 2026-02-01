@@ -92,11 +92,20 @@ const fetchAllAgents = async (silent = false) => {
     if (!silent) {
       loading.value = true
     }
+    
+    // Формируем параметры запроса с пагинацией И фильтрами
+    const query: Record<string, any> = {
+      page: currentPage.value,
+      itemsPerPage: itemsPerPage.value,
+    }
+    
+    // Передаём фильтр статуса на сервер
+    if (statusFilter.value !== null) {
+      query.isActive = statusFilter.value === 1
+    }
+    
     const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`, {
-      query: {
-        page: currentPage.value,
-        itemsPerPage: itemsPerPage.value,
-      },
+      query,
     })
     allAgents.value = data.agents
     allAgentsTotal.value = data.total
@@ -292,22 +301,26 @@ const headers = [
   { title: 'Активен', key: 'isActive', sortable: false }
 ]
 
-// Фильтрация
-const filteredAgents = computed(() => {
-  let filtered = allAgents.value
+// Пагинация
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
+// Фильтры
+const statusFilter = ref<number | null>(null)
+const isFilterDialogOpen = ref(false)
 
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
+  currentPage.value = 1
+  fetchAllAgents(true)
 }
+
+// Отслеживание изменения фильтра статуса
+watch(statusFilter, () => {
+  currentPage.value = 1
+  fetchAllAgents(true)
+})
 
 // Массовые действия
 const bulkDelete = () => {
@@ -365,14 +378,6 @@ const resolveStatusVariant = (isActive: boolean) => {
     return { color: 'error', text: 'Не активен' }
 }
 
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
 // Массовые действия
 const selectedItems = ref<Agent[]>([])
 const isBulkActionsMenuOpen = ref(false)
@@ -401,8 +406,9 @@ watch(selectedAgents, (newValue) => {
   console.log('📊 Количество выбранных:', newValue.length)
 }, { deep: true })
 
-// Отслеживание изменений пагинации для перезагрузки данных
-watch([currentPage, itemsPerPage], () => {
+// Отслеживание изменений itemsPerPage
+watch(itemsPerPage, () => {
+  currentPage.value = 1
   fetchAllAgents(true)
 })
 
@@ -649,10 +655,10 @@ watch(selectedItems, (newValue, oldValue) => {
       <!-- Таблица доступных агентов -->
       <VDataTable
         v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
+        :items-per-page="itemsPerPage"
+        :page="currentPage"
         :headers="headers"
-        :items="filteredAgents"
+        :items="allAgents"
         show-select
         :hide-default-footer="true"
         item-value="id"
@@ -693,6 +699,7 @@ watch(selectedItems, (newValue, oldValue) => {
           v-model="currentPage"
           :length="Math.ceil(allAgentsTotal / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="fetchAllAgents(true)"
         />
       </div>
 
