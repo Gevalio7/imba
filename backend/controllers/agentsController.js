@@ -3,13 +3,19 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { pool } = require('../config/db');
 
 const getAgents = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page, isActive } = req.query;
 
   const searchQuery = typeof q === 'string' ? q : undefined;
   const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
   const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
   const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  
+  // Обрабатываем фильтр по статусу
+  let isActiveFilter = undefined;
+  if (isActive !== undefined) {
+    isActiveFilter = isActive === 'true' || isActive === true;
+  }
 
   const result = await Agents.getAll({
     q: searchQuery,
@@ -17,6 +23,7 @@ const getAgents = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
+    isActive: isActiveFilter,
   });
 
   res.json(result);
