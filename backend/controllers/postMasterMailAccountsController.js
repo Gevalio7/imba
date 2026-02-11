@@ -23,34 +23,57 @@ const getPostMasterMailAccounts = asyncHandler(async (req, res) => {
 
 const getPostMasterMailAccountById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const postmastermailaccountId = parseInt(id, 10);
+  const postMasterMailAccountId = parseInt(id, 10);
 
-  if (isNaN(postmastermailaccountId)) {
+  if (isNaN(postMasterMailAccountId)) {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  const postmastermailaccount = await PostMasterMailAccounts.getById(postmastermailaccountId);
+  const postMasterMailAccount = await PostMasterMailAccounts.getById(postMasterMailAccountId);
 
-  if (!postmastermailaccount) {
+  if (!postMasterMailAccount) {
     return res.status(404).json({ message: 'PostMasterMailAccount not found' });
   }
 
-  res.json(postmastermailaccount);
+  res.json(postMasterMailAccount);
 });
 
-const createPostMasterMailAccounts = asyncHandler(async (req, res) => {
+const createPostMasterMailAccount = asyncHandler(async (req, res) => {
   const data = {};
-  data.name = req.body.name;
-  data.message = req.body.message;
   
-  // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  // Обязательные поля
+  data.type = req.body.type;
+  data.authenticationType = req.body.authenticationType;
+  data.login = req.body.login;
+  data.host = req.body.host;
+  
+  // Опциональные поля
+  if (req.body.password !== undefined) data.password = req.body.password;
+  if (req.body.imapFolder !== undefined) data.imapFolder = req.body.imapFolder;
+  if (req.body.trusted !== undefined) data.trusted = req.body.trusted;
+  if (req.body.dispatchingBy !== undefined) data.dispatchingBy = req.body.dispatchingBy;
+  if (req.body.queueId !== undefined) data.queueId = req.body.queueId;
+  if (req.body.comment !== undefined) data.comment = req.body.comment;
+  if (req.body.oauth2TokenConfigID !== undefined) data.oauth2TokenConfigID = req.body.oauth2TokenConfigID;
+  if (req.body.isActive !== undefined) data.isActive = req.body.isActive;
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
+  if (!data.type) {
+    return res.status(400).json({ message: 'type is required' });
+  }
+  if (!data.authenticationType) {
+    return res.status(400).json({ message: 'authenticationType is required' });
+  }
+  if (!data.login) {
+    return res.status(400).json({ message: 'login is required' });
+  }
+  if (!data.host) {
+    return res.status(400).json({ message: 'host is required' });
+  }
+
+  // Для password - требуется если authenticationType = 'password'
+  if (data.authenticationType === 'password' && !data.password) {
+    return res.status(400).json({ message: 'password is required when authenticationType is password' });
   }
 
   const newPostMasterMailAccount = await PostMasterMailAccounts.create(data);
@@ -58,24 +81,31 @@ const createPostMasterMailAccounts = asyncHandler(async (req, res) => {
   res.status(201).json(newPostMasterMailAccount);
 });
 
-const updatePostMasterMailAccounts = asyncHandler(async (req, res) => {
+const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const postmastermailaccountId = parseInt(id, 10);
+  const postMasterMailAccountId = parseInt(id, 10);
 
-  if (isNaN(postmastermailaccountId)) {
+  if (isNaN(postMasterMailAccountId)) {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
   const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
   
-  // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  // Опциональные поля
+  if (req.body.type !== undefined) data.type = req.body.type;
+  if (req.body.authenticationType !== undefined) data.authenticationType = req.body.authenticationType;
+  if (req.body.login !== undefined) data.login = req.body.login;
+  if (req.body.password !== undefined) data.password = req.body.password;
+  if (req.body.host !== undefined) data.host = req.body.host;
+  if (req.body.imapFolder !== undefined) data.imapFolder = req.body.imapFolder;
+  if (req.body.trusted !== undefined) data.trusted = req.body.trusted;
+  if (req.body.dispatchingBy !== undefined) data.dispatchingBy = req.body.dispatchingBy;
+  if (req.body.queueId !== undefined) data.queueId = req.body.queueId;
+  if (req.body.comment !== undefined) data.comment = req.body.comment;
+  if (req.body.oauth2TokenConfigID !== undefined) data.oauth2TokenConfigID = req.body.oauth2TokenConfigID;
+  if (req.body.isActive !== undefined) data.isActive = req.body.isActive;
 
-  const updatedPostMasterMailAccount = await PostMasterMailAccounts.update(postmastermailaccountId, data);
+  const updatedPostMasterMailAccount = await PostMasterMailAccounts.update(postMasterMailAccountId, data);
 
   if (!updatedPostMasterMailAccount) {
     return res.status(404).json({ message: 'PostMasterMailAccount not found' });
@@ -84,15 +114,15 @@ const updatePostMasterMailAccounts = asyncHandler(async (req, res) => {
   res.json(updatedPostMasterMailAccount);
 });
 
-const deletePostMasterMailAccounts = asyncHandler(async (req, res) => {
+const deletePostMasterMailAccount = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const postmastermailaccountId = parseInt(id, 10);
+  const postMasterMailAccountId = parseInt(id, 10);
 
-  if (isNaN(postmastermailaccountId)) {
+  if (isNaN(postMasterMailAccountId)) {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  const deleted = await PostMasterMailAccounts.delete(postmastermailaccountId);
+  const deleted = await PostMasterMailAccounts.delete(postMasterMailAccountId);
 
   if (!deleted) {
     return res.status(404).json({ message: 'PostMasterMailAccount not found' });
@@ -104,7 +134,7 @@ const deletePostMasterMailAccounts = asyncHandler(async (req, res) => {
 module.exports = {
   getPostMasterMailAccounts,
   getPostMasterMailAccountById,
-  createPostMasterMailAccounts,
-  updatePostMasterMailAccounts,
-  deletePostMasterMailAccounts,
+  createPostMasterMailAccount,
+  updatePostMasterMailAccount,
+  deletePostMasterMailAccount,
 };
