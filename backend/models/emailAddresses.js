@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class EmailAddresses {
   static tableName = 'email_addresses';
-  static fields = 'name, message';
+  static fields = 'name, message, queueId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -44,7 +44,7 @@ class EmailAddresses {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${EmailAddresses.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${sqlFields}, queue_id as "queueId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${EmailAddresses.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -66,7 +66,7 @@ class EmailAddresses {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${EmailAddresses.tableName} WHERE id = $1`,
+        `SELECT id, ${sqlFields}, queue_id as "queueId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${EmailAddresses.tableName} WHERE id = $1`,
         [id]
       );
 
@@ -82,18 +82,18 @@ class EmailAddresses {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => emailaddresse[field]);
-      
+
       // Добавляем isActive
       values.push(emailaddresse.isActive !== undefined ? emailaddresse.isActive : true);
-      
+
       // Преобразуем имена полей в snake_case для SQL
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      
-      const query = `INSERT INTO ${EmailAddresses.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+
+      const query = `INSERT INTO ${EmailAddresses.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, queue_id as "queueId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -138,7 +138,7 @@ class EmailAddresses {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
 
-      const query = `UPDATE ${EmailAddresses.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `UPDATE ${EmailAddresses.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, queue_id as "queueId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

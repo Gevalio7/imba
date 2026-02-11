@@ -7,6 +7,19 @@ interface EmailAddresses {
   id: number
   name: string
   message: string
+  queueId: number | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Типы данных для Очереди
+interface Queue {
+  id: number
+  name: string
+  description: string
+  maxTickets: number
+  priority: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -21,6 +34,11 @@ const emailAddresses = ref<EmailAddresses[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Данные очередей
+const queues = ref<Queue[]>([])
+const queuesLoading = ref(false)
+const queuesError = ref<string | null>(null)
 
 // Загрузка данных из API
 const fetchEmailAddresses = async () => {
@@ -37,6 +55,23 @@ const fetchEmailAddresses = async () => {
     console.error('Error fetching emailAddresses:', err)
   } finally {
     loading.value = false
+  }
+}
+
+// Загрузка данных очередей
+const fetchQueues = async () => {
+  try {
+    queuesLoading.value = true
+    queuesError.value = null
+    console.log('Fetching queues from:', `${API_BASE}/queues`)
+    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetched queues data:', data)
+    queues.value = data.queues
+  } catch (err) {
+    queuesError.value = 'Ошибка загрузки очередей'
+    console.error('Error fetching queues:', err)
+  } finally {
+    queuesLoading.value = false
   }
 }
 
@@ -92,12 +127,14 @@ const deleteEmailAddresses = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchEmailAddresses()
+  fetchQueues()
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Адрес электронной почты', key: 'name', sortable: true },
+  { title: 'Отображаемое имя', key: 'message', sortable: true },
+  { title: 'Очередь', key: 'queueId', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -115,6 +152,13 @@ const filteredEmailAddresses = computed(() => {
 
   return filtered
 })
+
+// Получение имени очереди по ID
+const getQueueName = (queueId: number | null) => {
+  if (!queueId) return '-'
+  const queue = queues.value.find(q => q.id === queueId)
+  return queue ? queue.name : '-'
+}
 
 // Сброс фильтров
 const clearFilters = () => {
@@ -205,6 +249,7 @@ const defaultItem = ref<EmailAddresses>({
   id: -1,
   name: '',
   message: '',
+  queueId: null,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -246,7 +291,7 @@ const closeDelete = () => {
 
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
+    showToast('Адрес электронной почты обязателен для заполнения', 'error')
     return
   }
 
@@ -565,6 +610,11 @@ const addNewEmailAddresses = () => {
           </div>
         </template>
 
+        <!-- Очередь -->
+        <template #item.queueId="{ item }">
+          {{ getQueueName(item.queueId) }}
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -597,27 +647,44 @@ const addNewEmailAddresses = () => {
         <VCardText>
           <VRow>
 
-            <!-- Название -->
+            <!-- Адрес электронной почты -->
             <VCol
               cols="12"
               sm="6"
             >
               <AppTextField
                 v-model="editedItem.name"
-                label="Название *"
+                label="Адрес электронной почты *"
               />
             </VCol>
 
-            <!-- Сообщение -->
+            <!-- Отображаемое имя -->
             <VCol
               cols="12"
-              
+
             >
               <AppTextarea
                 v-model="editedItem.message"
-                label="Сообщение"
+                label="Отображаемое имя"
                 rows="3"
-                placeholder="Введите сообщение..."
+                placeholder="Введите отображаемое имя..."
+              />
+            </VCol>
+
+            <!-- Очередь -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.queueId"
+                label="Очередь"
+                :items="queues.map(q => ({ title: q.name, value: q.id }))"
+                item-title="title"
+                item-value="value"
+                clearable
+                clear-icon="bx-x"
+                placeholder="Выберите очередь"
               />
             </VCol>
 

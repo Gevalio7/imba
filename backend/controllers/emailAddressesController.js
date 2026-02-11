@@ -42,7 +42,12 @@ const createEmailAddresses = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.message = req.body.message;
-  
+
+  // Добавляем queueId если передан
+  if (req.body.queueId !== undefined) {
+    data.queueId = req.body.queueId;
+  }
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -69,7 +74,12 @@ const updateEmailAddresses = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.message !== undefined) data.message = req.body.message;
-  
+
+  // Добавляем queueId если передан
+  if (req.body.queueId !== undefined) {
+    data.queueId = req.body.queueId;
+  }
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
