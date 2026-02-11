@@ -2,12 +2,16 @@ const { pool } = require('../config/db');
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  // Сначала обрабатываем: заглавная + заглавная + строчная -> заглавная_заглавная_строчная
+  let result = str.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2');
+  // Затем: строчная/цифра + заглавная -> строчная/цифра_заглавная
+  result = result.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+  return result.toLowerCase();
 }
 
 class PostMasterMailAccounts {
   static tableName = 'post_master_mail_accounts';
-  static fields = 'name, message';
+  static fields = 'type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -18,7 +22,7 @@ class PostMasterMailAccounts {
       let paramIndex = 1;
 
       if (q) {
-        const searchFields = this.fields.split(', ');
+        const searchFields = ['type', 'host', 'login'];
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereClause = `WHERE ${conditions}`;
         params.push(`%${q}%`);
@@ -26,7 +30,7 @@ class PostMasterMailAccounts {
       }
 
       let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      const sortableFields = ['type', 'host', 'login', 'created_at', 'updated_at'];
       if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
@@ -44,7 +48,7 @@ class PostMasterMailAccounts {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -60,7 +64,6 @@ class PostMasterMailAccounts {
 
   static async getById(id) {
     try {
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
@@ -77,22 +80,22 @@ class PostMasterMailAccounts {
     }
   }
 
-  static async create(postmastermailaccount) {
+  static async create(postMasterMailAccount) {
     try {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => postmastermailaccount[field]);
-      
+      const values = fieldList.map(field => postMasterMailAccount[field]);
+
       // Добавляем isActive
-      values.push(postmastermailaccount.isActive !== undefined ? postmastermailaccount.isActive : true);
-      
+      values.push(postMasterMailAccount.isActive !== undefined ? postMasterMailAccount.isActive : true);
+
       // Преобразуем имена полей в snake_case для SQL
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      
+
       const query = `INSERT INTO ${PostMasterMailAccounts.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
@@ -103,7 +106,7 @@ class PostMasterMailAccounts {
     }
   }
 
-  static async update(id, postmastermailaccount) {
+  static async update(id, postMasterMailAccount) {
     try {
       const fieldList = this.fields.split(', ');
       const updates = [];
@@ -112,17 +115,17 @@ class PostMasterMailAccounts {
 
       // Обновляем только переданные поля
       fieldList.forEach(field => {
-        if (postmastermailaccount[field] !== undefined) {
+        if (postMasterMailAccount[field] !== undefined) {
           updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(postmastermailaccount[field]);
+          values.push(postMasterMailAccount[field]);
           paramIndex++;
         }
       });
 
       // Добавляем isActive если передан
-      if (postmastermailaccount.isActive !== undefined) {
+      if (postMasterMailAccount.isActive !== undefined) {
         updates.push(`is_active = $${paramIndex}`);
-        values.push(postmastermailaccount.isActive);
+        values.push(postMasterMailAccount.isActive);
         paramIndex++;
       }
 

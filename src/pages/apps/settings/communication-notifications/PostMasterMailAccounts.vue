@@ -2,11 +2,32 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для Почтовый аккаунт PostMaster
-interface PostMasterMailAccounts {
+// Типы данных для PostMasterMailAccount
+interface PostMasterMailAccount {
+  id: number
+  type: 'IMAP' | 'IMAPS' | 'IMAPTLS' | 'MSGraph' | 'POP3' | 'POP3S' | 'POP3TLS'
+  authenticationType: 'oauth2_token' | 'password'
+  login: string
+  password?: string
+  host: string
+  imapFolder?: string
+  trusted: boolean
+  dispatchingBy: 'Queue' | 'From'
+  queueId?: number
+  comment?: string
+  oauth2TokenConfigID?: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Типы данных для Очереди
+interface Queue {
   id: number
   name: string
-  message: string
+  description: string
+  maxTickets: number
+  priority: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -16,11 +37,39 @@ interface PostMasterMailAccounts {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные почтовые аккаунты postmaster
-const postMasterMailAccounts = ref<PostMasterMailAccounts[]>([])
+// Данные PostMasterMailAccount
+const postMasterMailAccounts = ref<PostMasterMailAccount[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Данные очередей
+const queues = ref<Queue[]>([])
+const queuesLoading = ref(false)
+const queuesError = ref<string | null>(null)
+
+// Типы протоколов
+const typeOptions = [
+  { title: 'IMAP', value: 'IMAP' },
+  { title: 'IMAPS', value: 'IMAPS' },
+  { title: 'IMAPTLS', value: 'IMAPTLS' },
+  { title: 'MSGraph', value: 'MSGraph' },
+  { title: 'POP3', value: 'POP3' },
+  { title: 'POP3S', value: 'POP3S' },
+  { title: 'POP3TLS', value: 'POP3TLS' },
+]
+
+// Типы аутентификации
+const authenticationTypeOptions = [
+  { title: 'OAuth2 Token', value: 'oauth2_token' },
+  { title: 'Password', value: 'password' },
+]
+
+// Методы маршрутизации
+const dispatchingByOptions = [
+  { title: 'Queue', value: 'Queue' },
+  { title: 'From', value: 'From' },
+]
 
 // Загрузка данных из API
 const fetchPostMasterMailAccounts = async () => {
@@ -28,37 +77,54 @@ const fetchPostMasterMailAccounts = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching postMasterMailAccounts from:', `${API_BASE}/postMasterMailAccounts`)
-    const data = await $fetch<{ postMasterMailAccounts: PostMasterMailAccounts[], total: number }>(`${API_BASE}/postMasterMailAccounts`)
+    const data = await $fetch<{ postMasterMailAccounts: PostMasterMailAccount[], total: number }>(`${API_BASE}/postMasterMailAccounts`)
     console.log('Fetched postMasterMailAccounts data:', data)
     postMasterMailAccounts.value = data.postMasterMailAccounts
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки почтовые аккаунты postmaster'
+    error.value = 'Ошибка загрузки почтовых аккаунтов'
     console.error('Error fetching postMasterMailAccounts:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание почтовый аккаунт postmaster
-const createPostMasterMailAccounts = async (item: Omit<PostMasterMailAccounts, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Загрузка данных очередей
+const fetchQueues = async () => {
   try {
-    const data = await $fetch<PostMasterMailAccounts>(`${API_BASE}/postMasterMailAccounts`, {
+    queuesLoading.value = true
+    queuesError.value = null
+    console.log('Fetching queues from:', `${API_BASE}/queues`)
+    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetched queues data:', data)
+    queues.value = data.queues
+  } catch (err) {
+    queuesError.value = 'Ошибка загрузки очередей'
+    console.error('Error fetching queues:', err)
+  } finally {
+    queuesLoading.value = false
+  }
+}
+
+// Создание PostMasterMailAccount
+const createPostMasterMailAccount = async (item: Omit<PostMasterMailAccount, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<PostMasterMailAccount>(`${API_BASE}/postMasterMailAccounts`, {
       method: 'POST',
       body: item
     })
     postMasterMailAccounts.value.push(data)
     return data
   } catch (err) {
-    console.error('Error creating postMasterMailAccounts:', err)
+    console.error('Error creating postMasterMailAccount:', err)
     throw err
   }
 }
 
-// Обновление почтовый аккаунт postmaster
-const updatePostMasterMailAccounts = async (id: number, item: Omit<PostMasterMailAccounts, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление PostMasterMailAccount
+const updatePostMasterMailAccount = async (id: number, item: Omit<PostMasterMailAccount, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<PostMasterMailAccounts>(`${API_BASE}/postMasterMailAccounts/${id}`, {
+    const data = await $fetch<PostMasterMailAccount>(`${API_BASE}/postMasterMailAccounts/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -68,13 +134,13 @@ const updatePostMasterMailAccounts = async (id: number, item: Omit<PostMasterMai
     }
     return data
   } catch (err) {
-    console.error('Error updating postMasterMailAccounts:', err)
+    console.error('Error updating postMasterMailAccount:', err)
     throw err
   }
 }
 
-// Удаление почтовый аккаунт postmaster
-const deletePostMasterMailAccounts = async (id: number) => {
+// Удаление PostMasterMailAccount
+const deletePostMasterMailAccount = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/postMasterMailAccounts/${id}`, {
       method: 'DELETE'
@@ -84,7 +150,7 @@ const deletePostMasterMailAccounts = async (id: number) => {
       postMasterMailAccounts.value.splice(index, 1)
     }
   } catch (err) {
-    console.error('Error deleting postMasterMailAccounts:', err)
+    console.error('Error deleting postMasterMailAccount:', err)
     throw err
   }
 }
@@ -92,12 +158,17 @@ const deletePostMasterMailAccounts = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchPostMasterMailAccounts()
+  fetchQueues()
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Тип', key: 'type', sortable: true },
+  { title: 'Хост', key: 'host', sortable: true },
+  { title: 'Логин', key: 'login', sortable: true },
+  { title: 'Аутентификация', key: 'authenticationType', sortable: true },
+  { title: 'Маршрутизация', key: 'dispatchingBy', sortable: true },
+  { title: 'Очередь', key: 'queueId', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -109,12 +180,24 @@ const filteredPostMasterMailAccounts = computed(() => {
   let filtered = postMasterMailAccounts.value
 
   if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
   return filtered
 })
+
+// Получение имени очереди по ID
+const getQueueName = (queueId: number | undefined) => {
+  if (!queueId) return '-'
+  const queue = queues.value.find(q => q.id === queueId)
+  return queue ? queue.name : '-'
+}
+
+// Получение отображаемого имени типа аутентификации
+const getAuthTypeName = (authType: string) => {
+  const option = authenticationTypeOptions.find(o => o.value === authType)
+  return option ? option.title : authType
+}
 
 // Сброс фильтров
 const clearFilters = () => {
@@ -140,10 +223,10 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await deletePostMasterMailAccounts(item.id)
+      await deletePostMasterMailAccount(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} почтовые аккаунты postmaster`)
+    showToast(`Удалено ${count} почтовых аккаунтов`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -154,13 +237,13 @@ const confirmBulkStatusChange = async () => {
   try {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
-      await updatePostMasterMailAccounts(item.id, {
+      await updatePostMasterMailAccount(item.id, {
         ...item,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} почтовые аккаунты postmaster`)
+    showToast(`Статус изменен для ${count} почтовых аккаунтов`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -201,16 +284,25 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
-const defaultItem = ref<PostMasterMailAccounts>({
+const defaultItem = ref<PostMasterMailAccount>({
   id: -1,
-  name: '',
-  message: '',
+  type: 'IMAP',
+  authenticationType: 'password',
+  login: '',
+  password: '',
+  host: '',
+  imapFolder: '',
+  trusted: false,
+  dispatchingBy: 'Queue',
+  queueId: undefined,
+  comment: '',
+  oauth2TokenConfigID: undefined,
   createdAt: '',
   updatedAt: '',
   isActive: true,
 })
 
-const editedItem = ref<PostMasterMailAccounts>({ ...defaultItem.value })
+const editedItem = ref<PostMasterMailAccount>({ ...defaultItem.value })
 const editedIndex = ref(-1)
 
 // Опции статуса
@@ -220,13 +312,13 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: PostMasterMailAccounts) => {
+const editItem = (item: PostMasterMailAccount) => {
   editedIndex.value = postMasterMailAccounts.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: PostMasterMailAccounts) => {
+const deleteItem = (item: PostMasterMailAccount) => {
   editedIndex.value = postMasterMailAccounts.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
@@ -245,55 +337,72 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
+  // Валидация
+  if (!editedItem.value.type?.trim()) {
+    showToast('Тип протокола обязателен для заполнения', 'error')
+    return
+  }
+  if (!editedItem.value.authenticationType?.trim()) {
+    showToast('Тип аутентификации обязателен для заполнения', 'error')
+    return
+  }
+  if (!editedItem.value.login?.trim()) {
+    showToast('Логин обязателен для заполнения', 'error')
+    return
+  }
+  if (!editedItem.value.host?.trim()) {
+    showToast('Хост обязателен для заполнения', 'error')
+    return
+  }
+  if (editedItem.value.authenticationType === 'password' && !editedItem.value.password?.trim()) {
+    showToast('Пароль обязателен при выборе аутентификации по паролю', 'error')
     return
   }
 
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updatePostMasterMailAccounts(editedItem.value.id, {
+      const updated = await updatePostMasterMailAccount(editedItem.value.id, {
         ...editedItem.value,
         isActive: editedItem.value.isActive
       })
-      showToast('Почтовый аккаунт PostMaster успешно сохранен')
+      showToast('Почтовый аккаунт успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createPostMasterMailAccounts({
+      const created = await createPostMasterMailAccount({
         ...editedItem.value,
         isActive: editedItem.value.isActive
       })
-      showToast('Почтовый аккаунт PostMaster успешно добавлен')
+      showToast('Почтовый аккаунт успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения почтовый аккаунт postmaster', 'error')
+    showToast('Ошибка сохранения почтового аккаунта', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deletePostMasterMailAccounts(editedItem.value.id)
-    showToast('Почтовый аккаунт PostMaster успешно удален')
+    await deletePostMasterMailAccount(editedItem.value.id)
+    showToast('Почтовый аккаунт успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления почтовый аккаунт postmaster', 'error')
+    showToast('Ошибка удаления почтового аккаунта', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: PostMasterMailAccounts, newValue: boolean) => {
+const toggleStatus = async (item: PostMasterMailAccount, newValue: boolean) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
   try {
-    await updatePostMasterMailAccounts(item.id, {
+    await updatePostMasterMailAccount(item.id, {
       ...item,
       isActive: newValue
     })
-    showToast('Статус почтовый аккаунт postmaster изменен')
+    showToast('Статус почтового аккаунта изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -310,8 +419,8 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового почтовый аккаунт postmaster
-const addNewPostMasterMailAccounts = () => {
+// Добавление нового PostMasterMailAccount
+const addNewPostMasterMailAccount = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
@@ -338,7 +447,7 @@ const addNewPostMasterMailAccounts = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск почтовые аккаунты postmaster"
+            placeholder="Поиск почтового аккаунта"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -408,9 +517,9 @@ const addNewPostMasterMailAccounts = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewPostMasterMailAccounts"
+            @click="addNewPostMasterMailAccount"
           >
-            Добавить почтовый аккаунт postmaster
+            Добавить почтовый аккаунт
           </VBtn>
         </div>
       </div>
@@ -473,7 +582,7 @@ const addNewPostMasterMailAccounts = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные почтовые аккаунты postmaster? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные почтовые аккаунты? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -565,6 +674,32 @@ const addNewPostMasterMailAccounts = () => {
           </div>
         </template>
 
+        <!-- Тип -->
+        <template #item.type="{ item }">
+          <VChip color="info" density="compact" label size="small">
+            {{ item.type }}
+          </VChip>
+        </template>
+
+        <!-- Аутентификация -->
+        <template #item.authenticationType="{ item }">
+          {{ getAuthTypeName(item.authenticationType) }}
+        </template>
+
+        <!-- Очередь -->
+        <template #item.queueId="{ item }">
+          {{ getQueueName(item.queueId) }}
+        </template>
+
+        <!-- Доверенный -->
+        <template #item.trusted="{ item }">
+          <VCheckbox
+            :model-value="item.trusted"
+            disabled
+            hide-details
+          />
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -591,33 +726,154 @@ const addNewPostMasterMailAccounts = () => {
     <!-- Диалог редактирования -->
     <VDialog
       v-model="editDialog"
-      max-width="600px"
+      max-width="700px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать почтовый аккаунт postmaster' : 'Добавить почтовый аккаунт postmaster'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать почтовый аккаунт' : 'Добавить почтовый аккаунт'">
         <VCardText>
           <VRow>
 
-            <!-- Название -->
+            <!-- Тип протокола -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.type"
+                label="Тип протокола *"
+                :items="typeOptions"
+                item-title="title"
+                item-value="value"
+              />
+            </VCol>
+
+            <!-- Тип аутентификации -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.authenticationType"
+                label="Тип аутентификации *"
+                :items="authenticationTypeOptions"
+                item-title="title"
+                item-value="value"
+              />
+            </VCol>
+
+            <!-- Хост -->
             <VCol
               cols="12"
               sm="6"
             >
               <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
+                v-model="editedItem.host"
+                label="Хост *"
+                placeholder="mail.example.com"
               />
             </VCol>
 
-            <!-- Сообщение -->
+            <!-- Логин -->
             <VCol
               cols="12"
-              
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.login"
+                label="Логин *"
+                placeholder="user@example.com"
+              />
+            </VCol>
+
+            <!-- Пароль -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.password"
+                label="Пароль *"
+                type="password"
+                placeholder="Введите пароль"
+              />
+            </VCol>
+
+            <!-- IMAP папка -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.imapFolder"
+                label="IMAP папка"
+                placeholder="INBOX"
+              />
+            </VCol>
+
+            <!-- Доверенный -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VSwitch
+                v-model="editedItem.trusted"
+                label="Доверенный аккаунт"
+                color="primary"
+              />
+            </VCol>
+
+            <!-- Маршрутизация -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.dispatchingBy"
+                label="Маршрутизация"
+                :items="dispatchingByOptions"
+                item-title="title"
+                item-value="value"
+              />
+            </VCol>
+
+            <!-- Очередь -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.queueId"
+                label="Очередь"
+                :items="queues.map(q => ({ title: q.name, value: q.id }))"
+                item-title="title"
+                item-value="value"
+                clearable
+                clear-icon="bx-x"
+                placeholder="Выберите очередь"
+              />
+            </VCol>
+
+            <!-- OAuth2 Token Config ID -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.oauth2TokenConfigID"
+                label="OAuth2 Token Config ID"
+                type="number"
+                placeholder="ID конфигурации OAuth2"
+              />
+            </VCol>
+
+            <!-- Комментарий -->
+            <VCol
+              cols="12"
             >
               <AppTextarea
-                v-model="editedItem.message"
-                label="Сообщение"
-                rows="3"
-                placeholder="Введите сообщение..."
+                v-model="editedItem.comment"
+                label="Комментарий"
+                rows="2"
+                placeholder="Введите комментарий..."
               />
             </VCol>
 
@@ -632,6 +888,7 @@ const addNewPostMasterMailAccounts = () => {
                 color="primary"
               />
             </VCol>
+
           </VRow>
         </VCardText>
 
@@ -661,7 +918,7 @@ const addNewPostMasterMailAccounts = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот почтовый аккаунт postmaster?">
+      <VCard title="Вы уверены, что хотите удалить этот почтовый аккаунт?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

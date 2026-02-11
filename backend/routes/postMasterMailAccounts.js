@@ -3,9 +3,9 @@ const router = express.Router();
 const {
   getPostMasterMailAccounts,
   getPostMasterMailAccountById,
-  createPostMasterMailAccounts,
-  updatePostMasterMailAccounts,
-  deletePostMasterMailAccounts,
+  createPostMasterMailAccount,
+  updatePostMasterMailAccount,
+  deletePostMasterMailAccount,
 } = require('../controllers/postMasterMailAccountsController');
 
 // GET /postMasterMailAccounts - список с query params
@@ -15,12 +15,12 @@ router.get('/', getPostMasterMailAccounts);
 router.get('/:id', getPostMasterMailAccountById);
 
 // POST /postMasterMailAccounts
-router.post('/', createPostMasterMailAccounts);
+router.post('/', createPostMasterMailAccount);
 
 // PUT /postMasterMailAccounts/:id
-router.put('/:id', updatePostMasterMailAccounts);
+router.put('/:id', updatePostMasterMailAccount);
 
 // DELETE /postMasterMailAccounts/:id
-router.delete('/:id', deletePostMasterMailAccounts);
+router.delete('/:id', deletePostMasterMailAccount);
 
 module.exports = router;
