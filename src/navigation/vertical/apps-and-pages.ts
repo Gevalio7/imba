@@ -107,6 +107,14 @@ export default [
     to: 'apps-test-entities',
   },
   {
+    title: 'Tickets',
+    icon: { icon: 'bx-ticket' },
+    children: [
+      { title: 'Список', to: 'apps-tickets' },
+      { title: 'Создать', to: { path: '/apps/tickets/add' } },
+    ],
+  },
+  {
     title: 'Settings',
     icon: { icon: 'bx-cog' },
     children: [
