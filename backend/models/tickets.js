@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Tickets {
   static tableName = 'tickets';
-  static fields = 'ticketNumber, title, typeId, priorityId, queueId, stateId, ownerId, companyId, slaId';
+  static fields = 'ticketNumber, title, description, typeId, priorityId, queueId, stateId, ownerId, companyId, slaId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -106,6 +106,7 @@ class Tickets {
           t.id,
           t.ticket_number as "ticketNumber",
           t.title,
+          t.description,
           t.type_id as "typeId",
           typ.name as "typeName",
           t.priority_id as "priorityId",
@@ -155,10 +156,10 @@ class Tickets {
     try {
       const query = `
         INSERT INTO ${Tickets.tableName} (
-          ticket_number, title, type_id, priority_id, queue_id, state_id, 
+          ticket_number, title, description, type_id, priority_id, queue_id, state_id, 
           owner_id, company_id, sla_id, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id, ticket_number as "ticketNumber", title, type_id as "typeId", 
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
           owner_id as "ownerId", company_id as "companyId", sla_id as "slaId",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
@@ -167,6 +168,7 @@ class Tickets {
       const values = [
         ticket.ticketNumber,
         ticket.title,
+        ticket.description || null,
         ticket.typeId || null,
         ticket.priorityId || null,
         ticket.queueId || null,
@@ -194,6 +196,7 @@ class Tickets {
       const fieldMap = {
         ticketNumber: 'ticket_number',
         title: 'title',
+        description: 'description',
         typeId: 'type_id',
         priorityId: 'priority_id',
         queueId: 'queue_id',
@@ -224,7 +227,7 @@ class Tickets {
         UPDATE ${Tickets.tableName} 
         SET ${updates.join(', ')} 
         WHERE id = $${paramIndex}
-        RETURNING id, ticket_number as "ticketNumber", title, type_id as "typeId", 
+        RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
           owner_id as "ownerId", company_id as "companyId", sla_id as "slaId",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"

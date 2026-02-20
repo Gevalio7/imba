@@ -1,7 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router/auto'
 
 const emailRouteComponent = () => import('@/pages/apps/email/index.vue')
-const ticketsEditRouteComponent = () => import('@/pages/apps/tickets/edit.vue')
 
 // 👉 Redirects
 export const redirects: RouteRecordRaw[] = [
@@ -73,14 +72,5 @@ export const routes: RouteRecordRaw[] = [
     path: '/apps/ecommerce/dashboard',
     name: 'apps-ecommerce-dashboard',
     component: () => import('@/pages/dashboards/ecommerce.vue'),
-  },
-  // Tickets edit
-  {
-    path: '/apps/tickets/edit',
-    name: 'apps-tickets-edit',
-    component: ticketsEditRouteComponent,
-    meta: {
-      navActiveLink: 'apps-tickets',
-    },
   },
 ]
