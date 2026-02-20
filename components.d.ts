@@ -23,7 +23,6 @@ declare module 'vue' {
     AddPaymentMethodDialog: typeof import('./src/components/dialogs/AddPaymentMethodDialog.vue')['default']
     AgentsGroupsCards: typeof import('./src/views/apps/groups/AgentsGroupsCards.vue')['default']
     AgentsGroupsTable: typeof import('./src/views/apps/groups/AgentsGroupsTable.vue')['default']
-    AgentsList: typeof import('./src/views/apps/groups/AgentsList.vue')['default']
     AgentsTable: typeof import('./src/views/apps/groups/AgentsTable.vue')['default']
     AppAutocomplete: typeof import('./src/@core/components/app-form-elements/AppAutocomplete.vue')['default']
     AppBarSearch: typeof import('./src/@core/components/AppBarSearch.vue')['default']

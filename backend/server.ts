@@ -16,6 +16,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Статическая раздача загруженных файлов
+const uploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath));
+console.log(`📁 Static files served from /uploads`);
+
 // Логирование запросов в dev режиме
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
@@ -26,14 +34,18 @@ if (process.env.NODE_ENV === 'development') {
 
 // Import all routes dynamically
 const routesPath = path.join(__dirname, 'routes');
+console.log(`🔍 Looking for routes in: ${routesPath}`);
 if (fs.existsSync(routesPath)) {
   const routeFiles = fs.readdirSync(routesPath).filter(file => file.endsWith('.js'));
+  console.log(`📁 Found ${routeFiles.length} route files`);
   routeFiles.forEach(file => {
     const routeName = file.replace('.js', '');
     const route = require(path.join(routesPath, file));
     app.use(`/api/${routeName}`, route);
     console.log(`✅ Loaded route: /api/${routeName}`);
   });
+} else {
+  console.log(`❌ Routes directory not found: ${routesPath}`);
 }
 
 // Health check

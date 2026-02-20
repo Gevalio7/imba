@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""
+Скрипт обработки данных из XML в базу adp-sap
+1. Подключается к базе adp-sap (схема public)
+2. Выполняет JAR файл XmlToDbProcessor
+3. Генерирует SQL скрипты для обновления employee и flight_info
+"""
+
+import os
+import sys
+import subprocess
+import json
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+# Константы
+JAR_FILE = "XmlToDbProcessor-1.0.0-20250603102613-all.jar"
+CONFIG_FILE = "db_config.json"
+
+# Фиксированные параметры базы
+DB_NAME = "adp-sap"
+DB_SCHEMA = "public"
+
+
+def load_config():
+    """Загрузка конфигурации"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+
+def save_config(config):
+    """Сохранение конфигурации"""
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+
+def get_connection_params():
+    """Получение параметров подключения"""
+    config = load_config()
+    
+    print("\n" + "="*60)
+    print("ПОДКЛЮЧЕНИЕ К БАЗЕ ADP-SAP")
+    print("="*60)
+    print(f"База данных: {DB_NAME}")
+    print(f"Схема: {DB_SCHEMA}")
+    
+    if config:
+        print(f"\nСохранённые настройки:")
+        print(f"  Хост: {config.get('host', '')}")
+        print(f"  Порт: {config.get('port', '')}")
+        print(f"  Пользователь: {config.get('user', '')}")
+        
+        use_saved = input("\nИспользовать сохранённые настройки? (да/нет) [да]: ").strip().lower()
+        if use_saved in ['', 'да', 'yes', 'y', 'д', '1']:
+            return config
+    
+    # Ввод новых параметров
+    print("\nВведите параметры подключения:")
+    host = input("Хост [192.168.1.62]: ").strip() or "192.168.1.62"
+    port = input("Порт [5432]: ").strip() or "5432"
+    user = input("Пользователь [postgres]: ").strip() or "postgres"
+    password = input("Пароль: ").strip()
+    
+    config = {
+        'host': host,
+        'port': port,
+        'user': user,
+        'password': password
+    }
+    
+    # Сохраняем
+    save_config(config)
+    print("\n✓ Настройки сохранены")
+    
+    return config
+
+
+def connect_to_db(config):
+    """Подключение к базе данных"""
+    try:
+        conn = psycopg2.connect(
+            host=config['host'],
+            port=config['port'],
+            database=DB_NAME,
+            user=config['user'],
+            password=config['password']
+        )
+        print("✓ Успешное подключение к базе")
+        return conn
+    except Exception as e:
+        print(f"✗ Ошибка подключения: {e}")
+        return None
+
+
+def run_jar_processor():
+    """Запуск JAR файла XmlToDbProcessor"""
+    if not os.path.exists(JAR_FILE):
+        print(f"✗ Файл {JAR_FILE} не найден")
+        return False
+    
+    try:
+        print(f"\nЗапуск {JAR_FILE}...")
+        result = subprocess.run(
+            ['java', '-jar', JAR_FILE],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print(result.stdout)
+        print("✓ JAR файл успешно выполнен")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Ошибка выполнения JAR: {e}")
+        print(f"stdout: {e.stdout}")
+        print(f"stderr: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("✗ Java не установлена. Установите JRE:")
+        print("  sudo apt install openjdk-17-jre-headless")
+        return False
+
+
+def get_user_ids():
+    """Получение ID пользователей от пользователя"""
+    while True:
+        user_input = input("\nВведите ID пользователей через запятую: ").strip()
+        if not user_input:
+            print("ID пользователей не могут быть пустыми")
+            continue
+        
+        try:
+            ids = [int(x.strip()) for x in user_input.split(',') if x.strip()]
+            if ids:
+                return ids
+            else:
+                print("Введите хотя бы один ID")
+        except ValueError:
+            print("Ошибка: введите числовые ID через запятую")
+
+
+def generate_employee_updates(conn, user_ids):
+    """Генерация SQL обновлений для таблицы employee"""
+    print("\n" + "="*60)
+    print("ГЕНЕРАЦИЯ ОБНОВЛЕНИЙ ДЛЯ ТАБЛИЦЫ EMPLOYEE")
+    print("(ФИО, возраст, гражданство)")
+    print("="*60)
+    
+    ids_array = "ARRAY[" + ",".join(map(str, user_ids)) + "]"
+    
+    query = f"""
+    select * from (
+        select ids
+            , row_number() over (partition by ids ORDER BY creationtime desc) id_rn  
+            , 'UPDATE personnel_v2.employee SET "name"='''||phl.vorna||''', patronymic='''||coalesce(phl.nach2,'')||''', surname='''||phl.nachn||''', initials='''||phl.inits||''', sex='''||case when gesch = '2' then 'F' else 'M' end||''', birth_date='''||to_date(phl.gbdat, 'YYYYMMDD')||''', citizenship='''||phl.natio||''', marital_status='||coalesce(phl.FAMST, '1')::int||', marital_status_date='||coalesce(case when phl.famdt='00000000' then null else to_char(to_date(phl.famdt, 'YYYYMMDD'),'''YYYY-MM-DD''') end, 'null')||', update_user=''SYSTEM'', update_date=now(), status=1, expired=false WHERE employee_number='||phl.pernr||';' sql_update_no_type
+            , 'INSERT INTO personnel_v2.employee (employee_number, "type", "name", patronymic, surname, initials, sex, birth_date, citizenship, marital_status, marital_status_date, create_user, create_date, update_user, update_date, status, expired, akk_pers_main_id, akk_pers_public_id) VALUES('||phl.pernr||', 2, '''||phl.vorna||''', '''||coalesce(phl.nach2,'')||''', '''||phl.nachn||''', '''||phl.inits||''', '''||case when gesch = '2' then 'F' else 'M' end||''', '''||to_date(phl.gbdat, 'YYYYMMDD')||''', '''||phl.natio||''', '||coalesce(phl.FAMST, '1')::int||', '||coalesce(case when phl.famdt='00000000' then null else to_char(to_date(phl.famdt, 'YYYYMMDD'),'''YYYY-MM-DD''') end, 'null')||', ''HF_0000'', now(), ''HF_0000'', now(), 1, false, null, null); ' sql_insert
+            , id, anzkd, begda, endda, FAMST, famdt, gbdat, gesch, inits, nach2, nachn, natio, opera, pernr, seqnr, vorna, zzl_nach2_dat, zzl_nach2_rod, zzl_nachn_dat, zzl_nachn_rod, zzl_vorna_dat, zzl_vorna_rod, create_date, created_by, creationtime, idocnum, p_code, raw_message_id
+        from unnest({ids_array}) ids
+        left join {DB_SCHEMA}.parced_hrmd_lines_2 phl 
+        on phl.p_code = 'P0002'
+        and phl.pernr = LPAD(ids::text,8,'0')
+        and phl.endda = '99991231'
+    ) sorted 
+    where sorted.id_rn = 1
+    and id is not null
+    order by 1, creationtime;
+    """
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query)
+            results = cur.fetchall()
+            
+            if not results:
+                print("⚠ Нет данных для указанных ID пользователей")
+                return
+            
+            print(f"\nНайдено записей: {len(results)}")
+            print("\n" + "-"*60)
+            print("UPDATE запросы:")
+            print("-"*60)
+            
+            update_count = 0
+            for row in results:
+                if row.get('sql_update_no_type'):
+                    print(row['sql_update_no_type'])
+                    update_count += 1
+            
+            print(f"\nВсего UPDATE: {update_count}")
+            
+            print("\n" + "-"*60)
+            print("INSERT запросы:")
+            print("-"*60)
+            
+            insert_count = 0
+            for row in results:
+                if row.get('sql_insert'):
+                    print(row['sql_insert'])
+                    insert_count += 1
+            
+            print(f"\nВсего INSERT: {insert_count}")
+            
+    except Exception as e:
+        print(f"✗ Ошибка выполнения запроса: {e}")
+        conn.rollback()
+
+
+def generate_flight_info_updates(conn, user_ids):
+    """Генерация SQL обновлений для таблицы flight_info"""
+    print("\n" + "="*60)
+    print("ГЕНЕРАЦИЯ ОБНОВЛЕНИЙ ДЛЯ ТАБЛИЦЫ FLIGHT_INFO")
+    print("(Базоваый аэропорт)")
+    print("="*60)
+    
+    ids_array = "ARRAY[" + ",".join(map(str, user_ids)) + "]"
+    
+    query = f"""
+    select * from (
+        select ids
+            , row_number() over (partition by ids ORDER BY creationtime desc) id_rn    
+            , 'update personnel_v2.flight_info set category = '||persk||', "section" = '||st.st_id||', base_airport = '||coalesce(sa.sa_id::text,'null')||', "position" = '''||plans||''', expired = false, update_user = ''SYSTEM'', update_date = now() where employee_number = '||ids||';' sql_update_flight_info
+            , 'INSERT INTO personnel_v2.flight_info (employee_number, category, "section", base_airport, "position", expired, create_user, create_date, update_user, update_date, akk_pers_main_id) VALUES('||ids||', '||persk||', '||st.st_id||', '||coalesce(sa.sa_id::text,'null')||', '''||plans||''', false, ''HF_0000'', now(), ''HF_0000'', now(), null);' sql_insert_flight_info
+            , id,abkrs,begda,btrtl,endda,opera,pernr,persk, "plans",sacha,sachz,sbmod,seqnr,werks,st.st_id,sa_id,create_date,created_by,creationtime,idocnum,p_code,raw_message_id
+        from unnest({ids_array}) ids
+        left join {DB_SCHEMA}.parced_hrmd_lines_2 phl 
+        on p_code = 'P0001'
+        and pernr = LPAD(ids::text,8,'0')
+        and endda = '99991231'
+        and raw_message_id not like 'P%'
+        left join dblink('dbname=ms-personnel host=192.168.199.217 port=5432 user=postgres password=password', 'select id as st_id,code from personnel_v2.section_type') as st(st_id int, code text) on st.code = phl.werks
+        left join dblink('dbname=ms-personnel host=192.168.199.217 port=5432 user=postgres password=password', 'select id as sa_id from personnel_v2.section_airport') as sa(sa_id int) on LPAD(sa.sa_id::text,4,'0') = phl.werks
+    ) sorted 
+    where sorted.id_rn = 1
+    and id is not null
+    order by 1, creationtime;
+    """
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query)
+            results = cur.fetchall()
+            
+            if not results:
+                print("⚠ Нет данных для указанных ID пользователей")
+                return
+            
+            print(f"\nНайдено записей: {len(results)}")
+            print("\n" + "-"*60)
+            print("UPDATE запросы:")
+            print("-"*60)
+            
+            update_count = 0
+            for row in results:
+                if row.get('sql_update_flight_info'):
+                    print(row['sql_update_flight_info'])
+                    update_count += 1
+            
+            print(f"\nВсего UPDATE: {update_count}")
+            
+            print("\n" + "-"*60)
+            print("INSERT запросы:")
+            print("-"*60)
+            
+            insert_count = 0
+            for row in results:
+                if row.get('sql_insert_flight_info'):
+                    print(row['sql_insert_flight_info'])
+                    insert_count += 1
+            
+            print(f"\nВсего INSERT: {insert_count}")
+            
+    except Exception as e:
+        print(f"✗ Ошибка выполнения запроса: {e}")
+        conn.rollback()
+
+
+def main():
+    """Основная функция"""
+    print("="*60)
+    print("ЗАПУСК ОБРАБОТЧИКА XML TO DB")
+    print("="*60)
+    
+    # Шаг 1: Получение параметров подключения
+    print("\n[1/5] Подключение к базе...")
+    db_config = get_connection_params()
+    
+    # Подключение к базе
+    conn = connect_to_db(db_config)
+    if not conn:
+        print("✗ Не удалось подключиться к базе")
+        sys.exit(1)
+    
+    # Шаг 2: Выполнение JAR файла
+    print("\n[2/5] Выполнение JAR файла...")
+    jar_success = run_jar_processor()
+    if not jar_success:
+        print("⚠ JAR файл не выполнен, продолжаем работу...")
+    
+    # Шаг 3: Получение ID пользователей
+    print("\n[3/5] Ввод ID пользователей...")
+    user_ids = get_user_ids()
+    print(f"Выбраны ID: {user_ids}")
+    
+    # Шаг 4: Генерация обновлений для employee
+    print("\n[4/5] Генерация обновлений для таблицы employee...")
+    while True:
+        answer = input("Сгенерировать обновления для таблицы employee (ФИО, возраст, гражданство)? (да/нет): ").strip().lower()
+        if answer in ['да', 'yes', 'y', 'д', '1']:
+            generate_employee_updates(conn, user_ids)
+            break
+        elif answer in ['нет', 'no', 'n', 'н', '0']:
+            print("Пропущено")
+            break
+        else:
+            print("Введите 'да' или 'нет'")
+    
+    # Шаг 5: Генерация обновлений для flight_info
+    print("\n[5/5] Генерация обновлений для таблицы flight_info...")
+    while True:
+        answer = input("Сгенерировать обновления для таблицы flight_info (базовый аэропорт)? (да/нет): ").strip().lower()
+        if answer in ['да', 'yes', 'y', 'д', '1']:
+            generate_flight_info_updates(conn, user_ids)
+            break
+        elif answer in ['нет', 'no', 'n', 'н', '0']:
+            print("Пропущено")
+            break
+        else:
+            print("Введите 'да' или 'нет'")
+    
+    # Завершение
+    conn.close()
+    print("\n" + "="*60)
+    print("РАБОТА ЗАВЕРШЕНА")
+    print("="*60)
+
+
+if __name__ == "__main__":
+    main()
+

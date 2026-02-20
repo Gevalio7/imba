@@ -49,6 +49,7 @@ const createTicket = asyncHandler(async (req, res) => {
   }
   
   data.title = req.body.title;
+  data.description = req.body.description || null;
   data.typeId = req.body.typeId || null;
   data.priorityId = req.body.priorityId || null;
   data.queueId = req.body.queueId || null;
@@ -82,6 +83,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.ticketNumber !== undefined) data.ticketNumber = req.body.ticketNumber;
   if (req.body.title !== undefined) data.title = req.body.title;
+  if (req.body.description !== undefined) data.description = req.body.description;
   if (req.body.typeId !== undefined) data.typeId = req.body.typeId;
   if (req.body.priorityId !== undefined) data.priorityId = req.body.priorityId;
   if (req.body.queueId !== undefined) data.queueId = req.body.queueId;
