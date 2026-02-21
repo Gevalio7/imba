@@ -87,6 +87,22 @@ const widgets: TicketSettingsWidget[] = [
     to: { name: 'apps-settings-ticket-settings-States' },
   },
   {
+    title: 'Переходы статусов',
+    description: 'Настройка workflow переходов между статусами.',
+    icon: 'bx-git-branch',
+    color: 'info',
+    count: 0,
+    to: { name: 'apps-settings-ticket-settings-StateTransitions' },
+  },
+  {
+    title: 'Воркфлоу',
+    description: 'Визуальный редактор жизненных циклов тикетов.',
+    icon: 'bx-network-chart',
+    color: 'success',
+    count: 0,
+    to: { name: 'apps-settings-ticket-settings-Workflows' },
+  },
+  {
     title: 'Типы',
     description: 'Создание типов заявок и управление ими.',
     icon: 'bx-category',
