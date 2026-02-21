@@ -703,33 +703,24 @@ const getEdgePoints = (sourceId: number | string, targetId: number | string): { 
   const ny = dy / dist
   
   // Точка на границе source (с небольшим отступом)
-  const sx = scx + nx * (NODE_WIDTH / 2 + 5)
-  const sy = scy + ny * (NODE_HEIGHT / 2 + 5)
+  const sx = scx + nx * (NODE_WIDTH / 2 + 3)
+  const sy = scy + ny * (NODE_HEIGHT / 2 + 3)
   
-  // Точка на границе target (с отступом для стрелки)
-  const tx = tcx - nx * (NODE_WIDTH / 2 + 15)
-  const ty = tcy - ny * (NODE_HEIGHT / 2 + 15)
+  // Точка на границе target (с отступом для стрелки - меньше для маленькой стрелки)
+  const tx = tcx - nx * (NODE_WIDTH / 2 + 10)
+  const ty = tcy - ny * (NODE_HEIGHT / 2 + 10)
   
   return { sx, sy, tx, ty }
 }
 
-// Вычисление пути для ребра
+// Вычисление пути для ребра (прямая линия)
 const getEdgePath = (sourceId: number | string, targetId: number | string): string => {
   const { sx, sy, tx, ty } = getEdgePoints(sourceId, targetId)
   
   if (sx === 0 && sy === 0 && tx === 0 && ty === 0) return ''
   
-  // Определяем направление
-  const dx = tx - sx
-  const dy = ty - sy
-  
-  // Контрольные точки для кривой Безье
-  const cx1 = sx + dx * 0.5
-  const cy1 = sy
-  const cx2 = sx + dx * 0.5
-  const cy2 = ty
-  
-  return `M ${sx} ${sy} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${tx} ${ty}`
+  // Простая прямая линия
+  return `M ${sx} ${sy} L ${tx} ${ty}`
 }
 
 // Получение середины ребра для метки
@@ -950,25 +941,26 @@ watch(selectedWorkflowId, () => {
                   >
                     <!-- Определения -->
                     <defs>
+                      <!-- Маленькая аккуратная стрелка -->
                       <marker
                         id="arrowhead"
-                        markerWidth="12"
-                        markerHeight="8"
-                        refX="10"
-                        refY="4"
+                        markerWidth="8"
+                        markerHeight="6"
+                        refX="7"
+                        refY="3"
                         orient="auto"
                       >
-                        <polygon points="0 0, 12 4, 0 8" :fill="themeColors.edgeColor" />
+                        <polygon points="0 0, 8 3, 0 6" :fill="themeColors.edgeColor" />
                       </marker>
                       <marker
                         id="arrowhead-selected"
-                        markerWidth="14"
-                        markerHeight="10"
-                        refX="12"
-                        refY="5"
+                        markerWidth="10"
+                        markerHeight="7"
+                        refX="9"
+                        refY="3.5"
                         orient="auto"
                       >
-                        <polygon points="0 0, 14 5, 0 10" :fill="themeColors.edgeSelected" />
+                        <polygon points="0 0, 10 3.5, 0 7" :fill="themeColors.edgeSelected" />
                       </marker>
                       <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.2"/>
