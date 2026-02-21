@@ -778,13 +778,9 @@ watch(selectedWorkflowId, () => {
             </VBtn>
           </VCol>
           <VCol cols="12" md="6" class="d-flex justify-end align-center">
-            <VBtnToggle v-model="viewMode" mandatory density="compact" variant="outlined">
-              <VBtn value="visual" title="Визуальный редактор">
-                <VIcon icon="bx-diagram" />
-              </VBtn>
-              <VBtn value="table" title="Табличный вид">
-                <VIcon icon="bx-table" />
-              </VBtn>
+            <VBtnToggle v-model="viewMode" mandatory variant="outlined" divided>
+              <VBtn value="visual" icon="bx-diagram" title="Визуальный редактор" />
+              <VBtn value="table" icon="bx-table" title="Табличный вид" />
             </VBtnToggle>
           </VCol>
         </VRow>
