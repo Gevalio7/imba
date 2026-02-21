@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Types {
   static tableName = 'types';
-  static fields = 'name, comment';
+  static fields = 'name, comment, workflowId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -18,17 +18,17 @@ class Types {
       let paramIndex = 1;
 
       if (q) {
-        const searchFields = this.fields.split(', ');
+        const searchFields = ['name', 'comment'];
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereClause = `WHERE ${conditions}`;
         params.push(`%${q}%`);
         paramIndex++;
       }
 
-      let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      let orderClause = 'ORDER BY id ASC';
+      const sortableFields = ['id', 'name', 'createdAt', 'updatedAt'];
       if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        orderClause = `ORDER BY ${toSnakeCase(sortBy)} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
       const offset = (page - 1) * itemsPerPage;
@@ -38,13 +38,24 @@ class Types {
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
-      // Get paginated data
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Types.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      // Get paginated data with workflow info
+      const dataQuery = `
+        SELECT 
+          t.id, 
+          t.name, 
+          t.comment, 
+          t.workflow_id as "workflowId",
+          t.created_at as "createdAt", 
+          t.updated_at as "updatedAt", 
+          t.is_active as "isActive",
+          w.name as "workflowName"
+        FROM ${Types.tableName} t
+        LEFT JOIN workflows w ON t.workflow_id = w.id
+        ${whereClause}
+        ${orderClause}
+        LIMIT $${paramIndex} 
+        OFFSET $${paramIndex + 1}
+      `;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -60,13 +71,19 @@ class Types {
 
   static async getById(id) {
     try {
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Types.tableName} WHERE id = $1`,
+        `SELECT 
+          t.id, 
+          t.name, 
+          t.comment, 
+          t.workflow_id as "workflowId",
+          t.created_at as "createdAt", 
+          t.updated_at as "updatedAt", 
+          t.is_active as "isActive",
+          w.name as "workflowName"
+        FROM ${Types.tableName} t
+        LEFT JOIN workflows w ON t.workflow_id = w.id
+        WHERE t.id = $1`,
         [id]
       );
 
@@ -79,22 +96,24 @@ class Types {
 
   static async create(type) {
     try {
-      const fieldList = this.fields.split(', ');
-      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => type[field]);
-      
-      // Добавляем isActive
-      values.push(type.isActive !== undefined ? type.isActive : true);
-      
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
-      const sqlFieldsSelect = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      
-      const query = `INSERT INTO ${Types.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+      const query = `
+        INSERT INTO ${Types.tableName} (name, comment, workflow_id, is_active) 
+        VALUES ($1, $2, $3, $4) 
+        RETURNING 
+          id, 
+          name, 
+          comment, 
+          workflow_id as "workflowId",
+          created_at as "createdAt", 
+          updated_at as "updatedAt", 
+          is_active as "isActive"
+      `;
+      const result = await pool.query(query, [
+        type.name,
+        type.comment || null,
+        type.workflowId || null,
+        type.isActive !== undefined ? type.isActive : true,
+      ]);
 
       return result.rows[0];
     } catch (error) {
@@ -105,25 +124,36 @@ class Types {
 
   static async update(id, type) {
     try {
-      const fieldList = this.fields.split(', ');
       const updates = [];
       const values = [];
       let paramIndex = 1;
 
-      // Обновляем только переданные поля
-      fieldList.forEach(field => {
-        if (type[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(type[field]);
-          paramIndex++;
-        }
-      });
+      if (type.name !== undefined) {
+        updates.push(`name = $${paramIndex}`);
+        values.push(type.name);
+        paramIndex++;
+      }
 
-      // Добавляем isActive если передан
+      if (type.comment !== undefined) {
+        updates.push(`comment = $${paramIndex}`);
+        values.push(type.comment);
+        paramIndex++;
+      }
+
+      if (type.workflowId !== undefined) {
+        updates.push(`workflow_id = $${paramIndex}`);
+        values.push(type.workflowId || null);
+        paramIndex++;
+      }
+
       if (type.isActive !== undefined) {
         updates.push(`is_active = $${paramIndex}`);
         values.push(type.isActive);
         paramIndex++;
+      }
+
+      if (updates.length === 0) {
+        return this.getById(id);
       }
 
       // Всегда обновляем updated_at
@@ -132,13 +162,19 @@ class Types {
       // Добавляем id в конец
       values.push(id);
 
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-
-      const query = `UPDATE ${Types.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `
+        UPDATE ${Types.tableName} 
+        SET ${updates.join(', ')} 
+        WHERE id = $${paramIndex} 
+        RETURNING 
+          id, 
+          name, 
+          comment, 
+          workflow_id as "workflowId",
+          created_at as "createdAt", 
+          updated_at as "updatedAt", 
+          is_active as "isActive"
+      `;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

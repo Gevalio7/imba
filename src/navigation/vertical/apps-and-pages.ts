@@ -178,10 +178,12 @@ export default [
           { title: 'Signatures', to: 'apps-settings-ticket-settings-signatures' },
           { title: 'SLA', to: 'apps-settings-ticket-settings-sla' },
           { title: 'States', to: 'apps-settings-ticket-settings-states' },
+          { title: 'State Transitions', to: 'apps-settings-ticket-settings-state-transitions' },
           { title: 'Template Attachments', to: 'apps-settings-ticket-settings-template-attachments' },
           { title: 'Template Queues', to: 'apps-settings-ticket-settings-template-queues' },
           { title: 'Templates', to: 'apps-settings-ticket-settings-templates' },
           { title: 'Types', to: 'apps-settings-ticket-settings-types' },
+          { title: 'Workflows', to: 'apps-settings-ticket-settings-workflows' },
         ],
       },
       {
