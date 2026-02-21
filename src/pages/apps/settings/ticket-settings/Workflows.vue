@@ -1077,33 +1077,16 @@ watch(selectedWorkflowId, () => {
                           :rx="`${NODE_RADIUS} ${NODE_RADIUS} 0 0`"
                           :fill="node.color"
                         />
-                        <!-- Иконка -->
-                        <circle
-                          cx="20"
-                          :cy="NODE_HEIGHT / 2"
-                          r="12"
-                          :fill="node.color"
-                          opacity="0.1"
-                        />
+                        <!-- Название по центру узла -->
                         <text
-                          x="20"
-                          :y="NODE_HEIGHT / 2 + 4"
-                          text-anchor="middle"
-                          font-size="12"
-                          :fill="node.color"
-                        >
-                          {{ node.isStart ? '▶' : '●' }}
-                        </text>
-                        <!-- Название -->
-                        <text
-                          x="NODE_WIDTH / 2 + 10"
+                          :x="NODE_WIDTH / 2"
                           :y="NODE_HEIGHT / 2 + 4"
                           text-anchor="middle"
                           font-size="12"
                           font-weight="500"
                           :fill="themeColors.nodeText"
                         >
-                          {{ node.name.length > 12 ? node.name.substring(0, 12) + '...' : node.name }}
+                          {{ node.name.length > 14 ? node.name.substring(0, 14) + '...' : node.name }}
                         </text>
                         <!-- Индикатор создания перехода -->
                         <circle
