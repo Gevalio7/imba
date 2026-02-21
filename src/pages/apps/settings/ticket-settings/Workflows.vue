@@ -680,17 +680,44 @@ const deleteSelectedEdge = () => {
   }
 }
 
-// Вычисление пути для ребра
-const getEdgePath = (sourceId: number | string, targetId: number | string): string => {
+// Вычисление точек начала и конца ребра (у границ узлов)
+const getEdgePoints = (sourceId: number | string, targetId: number | string): { sx: number; sy: number; tx: number; ty: number } => {
   const source = nodes.value.find(n => n.id === sourceId)
   const target = nodes.value.find(n => n.id === targetId)
   
-  if (!source || !target) return ''
+  if (!source || !target) return { sx: 0, sy: 0, tx: 0, ty: 0 }
   
-  const sx = source.x + NODE_WIDTH / 2
-  const sy = source.y + NODE_HEIGHT / 2
-  const tx = target.x + NODE_WIDTH / 2
-  const ty = target.y + NODE_HEIGHT / 2
+  // Центры узлов
+  const scx = source.x + NODE_WIDTH / 2
+  const scy = source.y + NODE_HEIGHT / 2
+  const tcx = target.x + NODE_WIDTH / 2
+  const tcy = target.y + NODE_HEIGHT / 2
+  
+  // Направление от source к target
+  const dx = tcx - scx
+  const dy = tcy - scy
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1
+  
+  // Нормализованный вектор направления
+  const nx = dx / dist
+  const ny = dy / dist
+  
+  // Точка на границе source (с небольшим отступом)
+  const sx = scx + nx * (NODE_WIDTH / 2 + 5)
+  const sy = scy + ny * (NODE_HEIGHT / 2 + 5)
+  
+  // Точка на границе target (с отступом для стрелки)
+  const tx = tcx - nx * (NODE_WIDTH / 2 + 15)
+  const ty = tcy - ny * (NODE_HEIGHT / 2 + 15)
+  
+  return { sx, sy, tx, ty }
+}
+
+// Вычисление пути для ребра
+const getEdgePath = (sourceId: number | string, targetId: number | string): string => {
+  const { sx, sy, tx, ty } = getEdgePoints(sourceId, targetId)
+  
+  if (sx === 0 && sy === 0 && tx === 0 && ty === 0) return ''
   
   // Определяем направление
   const dx = tx - sx
@@ -707,14 +734,11 @@ const getEdgePath = (sourceId: number | string, targetId: number | string): stri
 
 // Получение середины ребра для метки
 const getEdgeLabelPos = (sourceId: number | string, targetId: number | string): { x: number; y: number } => {
-  const source = nodes.value.find(n => n.id === sourceId)
-  const target = nodes.value.find(n => n.id === targetId)
-  
-  if (!source || !target) return { x: 0, y: 0 }
+  const { sx, sy, tx, ty } = getEdgePoints(sourceId, targetId)
   
   return {
-    x: (source.x + target.x + NODE_WIDTH) / 2,
-    y: (source.y + target.y + NODE_HEIGHT) / 2
+    x: (sx + tx) / 2,
+    y: (sy + ty) / 2
   }
 }
 
@@ -928,23 +952,23 @@ watch(selectedWorkflowId, () => {
                     <defs>
                       <marker
                         id="arrowhead"
-                        markerWidth="10"
-                        markerHeight="7"
-                        refX="9"
-                        refY="3.5"
+                        markerWidth="12"
+                        markerHeight="8"
+                        refX="10"
+                        refY="4"
                         orient="auto"
                       >
-                        <polygon points="0 0, 10 3.5, 0 7" :fill="themeColors.edgeColor" />
+                        <polygon points="0 0, 12 4, 0 8" :fill="themeColors.edgeColor" />
                       </marker>
                       <marker
                         id="arrowhead-selected"
-                        markerWidth="10"
-                        markerHeight="7"
-                        refX="9"
-                        refY="3.5"
+                        markerWidth="14"
+                        markerHeight="10"
+                        refX="12"
+                        refY="5"
                         orient="auto"
                       >
-                        <polygon points="0 0, 10 3.5, 0 7" :fill="themeColors.edgeSelected" />
+                        <polygon points="0 0, 14 5, 0 10" :fill="themeColors.edgeSelected" />
                       </marker>
                       <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.2"/>
@@ -977,31 +1001,41 @@ watch(selectedWorkflowId, () => {
                           :d="getEdgePath(edge.sourceId, edge.targetId)"
                           fill="none"
                           :stroke="selectedEdge?.id === edge.id ? themeColors.edgeSelected : themeColors.edgeColor"
-                          stroke-width="2"
+                          stroke-width="2.5"
                           :marker-end="selectedEdge?.id === edge.id ? 'url(#arrowhead-selected)' : 'url(#arrowhead)'"
-                          :stroke-dasharray="selectedEdge?.id === edge.id ? 'none' : 'none'"
                         />
-                        <!-- Метка перехода -->
-                        <rect
-                          :x="getEdgeLabelPos(edge.sourceId, edge.targetId).x - 40"
-                          :y="getEdgeLabelPos(edge.sourceId, edge.targetId).y - 10"
-                          width="80"
-                          height="20"
-                          rx="4"
-                          :fill="selectedEdge?.id === edge.id ? themeColors.labelBgSelected : themeColors.labelBg"
-                          :stroke="selectedEdge?.id === edge.id ? themeColors.edgeSelected : themeColors.labelBorder"
-                          stroke-width="1"
-                        />
-                        <text
-                          :x="getEdgeLabelPos(edge.sourceId, edge.targetId).x"
-                          :y="getEdgeLabelPos(edge.sourceId, edge.targetId).y + 4"
-                          text-anchor="middle"
-                          :fill="selectedEdge?.id === edge.id ? themeColors.labelTextSelected : themeColors.labelText"
-                          font-size="11"
-                          font-weight="500"
-                        >
-                          {{ edge.label.length > 12 ? edge.label.substring(0, 12) + '...' : edge.label }}
-                        </text>
+                        <!-- Метка перехода с направлением -->
+                        <g :transform="`translate(${getEdgeLabelPos(edge.sourceId, edge.targetId).x}, ${getEdgeLabelPos(edge.sourceId, edge.targetId).y})`">
+                          <rect
+                            x="-50"
+                            y="-12"
+                            width="100"
+                            height="24"
+                            rx="4"
+                            :fill="selectedEdge?.id === edge.id ? themeColors.labelBgSelected : themeColors.labelBg"
+                            :stroke="selectedEdge?.id === edge.id ? themeColors.edgeSelected : themeColors.labelBorder"
+                            stroke-width="1.5"
+                          />
+                          <!-- Название действия -->
+                          <text
+                            y="-2"
+                            text-anchor="middle"
+                            :fill="selectedEdge?.id === edge.id ? themeColors.labelTextSelected : themeColors.labelText"
+                            font-size="10"
+                            font-weight="600"
+                          >
+                            {{ edge.label.length > 14 ? edge.label.substring(0, 14) + '...' : edge.label }}
+                          </text>
+                          <!-- Направление (откуда → куда) -->
+                          <text
+                            y="8"
+                            text-anchor="middle"
+                            :fill="selectedEdge?.id === edge.id ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.5)'"
+                            font-size="8"
+                          >
+                            {{ (edge.transition.sourceStatusName || 'Начало').substring(0, 8) }} → {{ edge.transition.targetStatusName.substring(0, 8) }}
+                          </text>
+                        </g>
                       </g>
                     </g>
 
