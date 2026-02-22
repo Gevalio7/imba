@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const TicketAttachments = require('../models/ticketAttachments');
+const TicketHistory = require('../models/ticketHistory');
 
 // Настройка multer для загрузки файлов в память
 const storage = multer.memoryStorage();
@@ -72,6 +73,15 @@ router.post('/', upload.single('file'), async (req, res) => {
       uploaderId: uploaderId ? parseInt(uploaderId) : null,
     });
 
+    // Записываем в историю
+    await TicketHistory.create({
+      ticketId: parseInt(ticketId),
+      changedBy: uploaderId ? parseInt(uploaderId) : null,
+      fieldName: 'attachment',
+      oldValue: null,
+      newValue: `Добавлен файл: ${req.file.originalname}`,
+    });
+
     res.status(201).json(attachment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -81,10 +91,27 @@ router.post('/', upload.single('file'), async (req, res) => {
 // DELETE /ticket-attachments/:id
 router.delete('/:id', async (req, res) => {
   try {
+    // Получаем информацию о вложении перед удалением
+    const attachment = await TicketAttachments.getById(req.params.id);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+    
     const deleted = await TicketAttachments.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ error: 'Attachment not found' });
     }
+    
+    // Записываем в историю (используем uploaderId из вложения если нет req.user)
+    const changedBy = req.user?.id || attachment.uploaderId || null;
+    await TicketHistory.create({
+      ticketId: attachment.ticketId,
+      changedBy,
+      fieldName: 'attachment',
+      oldValue: `Файл: ${attachment.originalName || attachment.filename}`,
+      newValue: 'Удалён',
+    });
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

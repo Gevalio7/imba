@@ -23,18 +23,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/ticketHistory/state-transitions/:ticketId - Получить историю переходов статусов
-router.get('/state-transitions/:ticketId', async (req, res) => {
-  try {
-    const { ticketId } = req.params;
-    const result = await TicketHistory.getStateTransitions(ticketId);
-    res.json({ transitions: result });
-  } catch (error) {
-    console.error('Error fetching state transitions:', error);
-    res.status(500).json({ error: 'Ошибка при получении истории переходов' });
-  }
-});
-
 // GET /api/ticketHistory/approval/:ticketId - Получить историю согласования
 router.get('/approval/:ticketId', async (req, res) => {
   try {

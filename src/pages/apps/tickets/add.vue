@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 definePage({
@@ -22,6 +22,12 @@ const types = ref<any[]>([])
 const agents = ref<any[]>([])
 const customers = ref<any[]>([])
 const slaList = ref<any[]>([])
+
+// Workflow данные
+const currentWorkflow = ref<any>(null)
+const availableStatuses = ref<any[]>([])
+const initialStatus = ref<any>(null)
+const loadingWorkflow = ref(false)
 
 // Загрузка справочников
 const fetchPriorities = async () => {
@@ -94,6 +100,32 @@ const fetchSla = async () => {
   }
 }
 
+// Загрузка workflow и доступных статусов по типу
+const fetchTypeWorkflow = async (typeId: number) => {
+  try {
+    loadingWorkflow.value = true
+    const data = await $fetch(`${API_BASE}/types/${typeId}/workflow`)
+    
+    currentWorkflow.value = (data as any).workflow
+    initialStatus.value = (data as any).initialStatus
+    availableStatuses.value = (data as any).availableStatuses || []
+    
+    // Автоматически устанавливаем начальный статус если есть
+    if (initialStatus.value) {
+      ticket.value.stateId = initialStatus.value.id
+    }
+  }
+  catch (err) {
+    console.error('Error fetching type workflow:', err)
+    currentWorkflow.value = null
+    initialStatus.value = null
+    availableStatuses.value = []
+  }
+  finally {
+    loadingWorkflow.value = false
+  }
+}
+
 // Форма
 const saving = ref(false)
 const description = ref('')
@@ -108,6 +140,19 @@ const ticket = ref({
   companyId: undefined as number | undefined,
   slaId: undefined as number | undefined,
   isActive: true,
+})
+
+// Watcher для изменения типа
+watch(() => ticket.value.typeId, async (newTypeId) => {
+  if (newTypeId) {
+    await fetchTypeWorkflow(newTypeId)
+  }
+  else {
+    currentWorkflow.value = null
+    initialStatus.value = null
+    availableStatuses.value = []
+    ticket.value.stateId = undefined
+  }
 })
 
 // Вложения
@@ -139,6 +184,25 @@ const agentOptions = computed(() => {
   return agents.value.map((a: any) => ({
     title: `${a.firstName || ''} ${a.lastName || ''} (${a.login})`.trim(),
     value: a.id,
+  }))
+})
+
+// Вычисляемый список статусов для выбора
+const statusOptions = computed(() => {
+  // Если есть workflow и доступные статусы
+  if (availableStatuses.value.length > 0) {
+    return availableStatuses.value.map(s => ({
+      title: s.name,
+      value: s.id,
+      color: s.color,
+    }))
+  }
+  
+  // Если нет workflow - возвращаем все статусы
+  return states.value.map((s: any) => ({
+    title: s.name,
+    value: s.id,
+    color: s.color,
   }))
 })
 
@@ -399,6 +463,26 @@ onMounted(async () => {
                 clearable
               />
 
+              <!-- Информация о workflow -->
+              <VAlert
+                v-if="currentWorkflow"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-2"
+              >
+                <div class="text-body-2">
+                  <strong>Workflow:</strong> {{ currentWorkflow.name }}
+                </div>
+              </VAlert>
+
+              <VProgressLinear
+                v-if="loadingWorkflow"
+                indeterminate
+                color="primary"
+                class="mb-2"
+              />
+
               <AppSelect
                 v-model="ticket.priorityId"
                 :items="priorities"
@@ -419,15 +503,47 @@ onMounted(async () => {
                 clearable
               />
 
+              <!-- Статус - ограничен доступными из workflow или все если тип не выбран -->
               <AppSelect
                 v-model="ticket.stateId"
-                :items="states"
-                item-title="name"
-                item-value="id"
+                :items="statusOptions"
+                item-title="title"
+                item-value="value"
                 label="Статус"
-                placeholder="Выберите статус"
+                :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
+                :hint="availableStatuses.length > 0 ? 'Доступные статусы из workflow' : ''"
+                :persistent-hint="availableStatuses.length > 0"
                 clearable
-              />
+              >
+                <template #selection="{ item }">
+                  <VChip
+                    v-if="item.raw.color"
+                    :color="item.raw.color"
+                    density="compact"
+                    label
+                    size="small"
+                  >
+                    {{ item.title }}
+                  </VChip>
+                  <span v-else>{{ item.title }}</span>
+                </template>
+                <template #item="{ props, item }">
+                  <VListItem v-bind="props">
+                    <template #prepend>
+                      <VChip
+                        v-if="item.raw.color"
+                        :color="item.raw.color"
+                        density="compact"
+                        label
+                        size="small"
+                        class="mr-2"
+                      >
+                        &nbsp;
+                      </VChip>
+                    </template>
+                  </VListItem>
+                </template>
+              </AppSelect>
 
               <AppSelect
                 v-model="ticket.ownerId"
