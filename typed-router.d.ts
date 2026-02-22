@@ -90,7 +90,6 @@ declare module 'vue-router/auto-routes' {
     'apps-settings-ticket-settings-sla': RouteRecordInfo<'apps-settings-ticket-settings-sla', '/apps/settings/ticket-settings/SLA', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-slaid': RouteRecordInfo<'apps-settings-ticket-settings-slaid', '/apps/settings/ticket-settings/SLA-:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'apps-settings-ticket-settings-states': RouteRecordInfo<'apps-settings-ticket-settings-states', '/apps/settings/ticket-settings/States', Record<never, never>, Record<never, never>>,
-    'apps-settings-ticket-settings-state-transitions': RouteRecordInfo<'apps-settings-ticket-settings-state-transitions', '/apps/settings/ticket-settings/StateTransitions', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-template-attachments': RouteRecordInfo<'apps-settings-ticket-settings-template-attachments', '/apps/settings/ticket-settings/TemplateAttachments', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-template-queues': RouteRecordInfo<'apps-settings-ticket-settings-template-queues', '/apps/settings/ticket-settings/TemplateQueues', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-templates': RouteRecordInfo<'apps-settings-ticket-settings-templates', '/apps/settings/ticket-settings/Templates', Record<never, never>, Record<never, never>>,

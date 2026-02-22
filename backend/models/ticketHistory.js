@@ -21,6 +21,7 @@ class TicketHistory {
     companyId: 'Компания',
     slaId: 'SLA',
     isActive: 'Активность',
+    attachment: 'Вложение',
   };
 
   static async getAll(options = {}) {
@@ -155,41 +156,6 @@ class TicketHistory {
       return result.rows[0];
     } catch (error) {
       console.error('Error in create:', error);
-      throw error;
-    }
-  }
-
-  // Получить историю переходов статусов
-  static async getStateTransitions(ticketId) {
-    try {
-      const result = await pool.query(
-        `SELECT 
-          th.id, 
-          th.ticket_id as "ticketId", 
-          th.changed_by as "changedBy",
-          th.old_value as "oldValue",
-          th.new_value as "newValue",
-          th.created_at as "createdAt",
-          a.first_name as "changedByFirstName",
-          a.last_name as "changedByLastName",
-          a.login as "changedByLogin",
-          os.name as "oldStateName",
-          ns.name as "newStateName"
-        FROM ${TicketHistory.tableName} th
-        LEFT JOIN agents a ON th.changed_by = a.id
-        LEFT JOIN states os ON th.old_value::integer = os.id
-        LEFT JOIN states ns ON th.new_value::integer = ns.id
-        WHERE th.ticket_id = $1 AND th.field_name = 'stateId'
-        ORDER BY th.created_at DESC`,
-        [ticketId]
-      );
-
-      return result.rows.map(row => ({
-        ...row,
-        changedByName: [row.changedByFirstName, row.changedByLastName].filter(Boolean).join(' ') || row.changedByLogin || 'Система',
-      }));
-    } catch (error) {
-      console.error('Error in getStateTransitions:', error);
       throw error;
     }
   }

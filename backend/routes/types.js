@@ -6,10 +6,14 @@ const {
   createTypes,
   updateTypes,
   deleteTypes,
+  getTypeWithWorkflow,
 } = require('../controllers/typesController');
 
 // GET /types - список с query params
 router.get('/', getTypes);
+
+// GET /types/:id/workflow - получить тип с workflow и доступными статусами
+router.get('/:id/workflow', getTypeWithWorkflow);
 
 // GET /types/:id
 router.get('/:id', getTypeById);

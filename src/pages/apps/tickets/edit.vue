@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 definePage({
@@ -33,6 +33,11 @@ const types = ref<any[]>([])
 const agents = ref<any[]>([])
 const customers = ref<any[]>([])
 const slaList = ref<any[]>([])
+
+// Workflow данные
+const currentWorkflow = ref<any>(null)
+const availableStatuses = ref<any[]>([])
+const loadingWorkflow = ref(false)
 
 // Загрузка справочников
 const fetchPriorities = async () => {
@@ -91,6 +96,40 @@ const fetchSla = async () => {
   catch (err) { console.log('Error fetching sla:', err) }
 }
 
+// Загрузка workflow и доступных статусов по типу
+const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null) => {
+  try {
+    loadingWorkflow.value = true
+    
+    // Формируем URL с параметром currentStatusId если он передан
+    let url = `${API_BASE}/types/${typeId}/workflow`
+    if (currentStatusId) {
+      url += `?currentStatusId=${currentStatusId}`
+    }
+    
+    const data = await $fetch(url)
+    
+    currentWorkflow.value = (data as any).workflow
+    
+    // Если передан текущий статус и есть workflow, используем переходы из текущего статуса
+    if (currentStatusId && currentWorkflow.value && (data as any).currentStatusTransitions) {
+      availableStatuses.value = (data as any).currentStatusTransitions
+    }
+    else {
+      // Для нового тикета используем начальные статусы
+      availableStatuses.value = (data as any).availableStatuses || []
+    }
+  }
+  catch (err) {
+    console.error('Error fetching type workflow:', err)
+    currentWorkflow.value = null
+    availableStatuses.value = []
+  }
+  finally {
+    loadingWorkflow.value = false
+  }
+}
+
 // Форма
 const description = ref('')
 
@@ -106,6 +145,31 @@ const ticket = ref({
   companyId: undefined as number | undefined,
   slaId: undefined as number | undefined,
   isActive: true,
+})
+
+// Watcher для изменения типа
+watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
+  // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
+  if (oldTypeId === undefined && ticket.value.stateId) return
+  
+  if (newTypeId) {
+    await fetchTypeWorkflow(newTypeId, ticket.value.stateId)
+  }
+  else {
+    currentWorkflow.value = null
+    availableStatuses.value = []
+  }
+})
+
+// Watcher для изменения статуса - обновляем доступные переходы
+watch(() => ticket.value.stateId, async (newStateId, oldStateId) => {
+  // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
+  if (oldStateId === undefined) return
+  
+  // Если есть тип и workflow, обновляем доступные переходы
+  if (ticket.value.typeId && currentWorkflow.value) {
+    await fetchTypeWorkflow(ticket.value.typeId, newStateId)
+  }
 })
 
 // Вложения
@@ -129,19 +193,53 @@ const activeTab = ref('comments')
 const historyChanges = ref<any[]>([])
 const loadingHistory = ref(false)
 
-// История переходов статусов
-const stateTransitions = ref<any[]>([])
-const loadingTransitions = ref(false)
-
 // История согласования
 const approvalHistory = ref<any[]>([])
 const loadingApproval = ref(false)
+
+// История переходов статусов
+const statusHistory = ref<any[]>([])
+const loadingStatusHistory = ref(false)
 
 // Агенты для выбора
 const agentOptions = computed(() => {
   return agents.value.map((a: any) => ({
     title: `${a.firstName || ''} ${a.lastName || ''} (${a.login})`.trim(),
     value: a.id,
+  }))
+})
+
+// Вычисляемый список статусов для выбора
+const statusOptions = computed(() => {
+  // Если есть workflow и доступные статусы
+  if (availableStatuses.value.length > 0) {
+    // Находим текущий статус в общем списке
+    const currentStatus = states.value.find((s: any) => s.id === ticket.value.stateId)
+    
+    // Создаём список с текущим статусом (если он есть и не в availableStatuses)
+    const options = availableStatuses.value.map(s => ({
+      title: s.name,
+      value: s.id,
+      color: s.color,
+    }))
+    
+    // Добавляем текущий статус если его нет в списке
+    if (currentStatus && !options.find(o => o.value === currentStatus.id)) {
+      options.unshift({
+        title: currentStatus.name,
+        value: currentStatus.id,
+        color: currentStatus.color,
+      })
+    }
+    
+    return options
+  }
+  
+  // Если нет workflow - возвращаем все статусы
+  return states.value.map((s: any) => ({
+    title: s.name,
+    value: s.id,
+    color: s.color,
   }))
 })
 
@@ -171,6 +269,11 @@ const fetchTicket = async () => {
     // Загружаем вложения
     if (t.attachments) {
       existingAttachments.value = t.attachments
+    }
+    
+    // Загружаем workflow если есть тип
+    if (t.typeId) {
+      await fetchTypeWorkflow(t.typeId, t.stateId)
     }
   }
   catch (err) {
@@ -225,23 +328,6 @@ const fetchHistory = async () => {
   }
 }
 
-// Загрузка истории переходов статусов
-const fetchStateTransitions = async () => {
-  if (!ticketId.value) return
-
-  try {
-    loadingTransitions.value = true
-    const data = await $fetch(`${API_BASE}/ticketHistory/state-transitions/${ticketId.value}`)
-    stateTransitions.value = (data as any).transitions || []
-  }
-  catch (err) {
-    console.error('Error fetching state transitions:', err)
-  }
-  finally {
-    loadingTransitions.value = false
-  }
-}
-
 // Загрузка истории согласования
 const fetchApprovalHistory = async () => {
   if (!ticketId.value) return
@@ -257,6 +343,65 @@ const fetchApprovalHistory = async () => {
   finally {
     loadingApproval.value = false
   }
+}
+
+// Загрузка истории переходов статусов
+const fetchStatusHistory = async () => {
+  if (!ticketId.value) return
+
+  try {
+    loadingStatusHistory.value = true
+    const data = await $fetch(`${API_BASE}/ticketStatusHistory/${ticketId.value}`)
+    statusHistory.value = (data as any).history || []
+  }
+  catch (err) {
+    console.error('Error fetching status history:', err)
+  }
+  finally {
+    loadingStatusHistory.value = false
+  }
+}
+
+// Форматирование интервала времени
+const formatTimeInStatus = (interval: string | Record<string, number> | null) => {
+  if (!interval) return '-'
+  
+  let days = 0
+  let hours = 0
+  let minutes = 0
+  let seconds = 0
+  
+  // PostgreSQL pg driver возвращает interval как объект
+  if (typeof interval === 'object') {
+    days = interval.days || 0
+    hours = interval.hours || 0
+    minutes = interval.minutes || 0
+    seconds = interval.seconds || 0
+  }
+  else if (typeof interval === 'string') {
+    // Парсим PostgreSQL interval формат строки
+    const match = interval.match(/(?:(\d+)\s*days?\s*)?(?:(\d+):(\d+):(\d+))?/)
+    if (match) {
+      days = parseInt(match[1] || '0')
+      hours = parseInt(match[2] || '0')
+      minutes = parseInt(match[3] || '0')
+      seconds = parseInt(match[4] || '0')
+    }
+    else {
+      return interval
+    }
+  }
+  else {
+    return '-'
+  }
+  
+  const parts: string[] = []
+  if (days > 0) parts.push(`${days} дн.`)
+  if (hours > 0) parts.push(`${hours} ч.`)
+  if (minutes > 0) parts.push(`${minutes} мин.`)
+  if (seconds > 0 && parts.length === 0) parts.push(`${seconds} сек.`)
+  
+  return parts.length > 0 ? parts.join(' ') : 'менее 1 мин.'
 }
 
 // Сохранение
@@ -285,6 +430,8 @@ const save = async () => {
     showToast('Тикет успешно обновлён')
     await fetchTicket()
     await fetchAttachments()
+    await fetchHistory() // Обновляем историю изменений
+    await fetchStatusHistory() // Обновляем историю переходов
     newAttachments.value = []
   }
   catch (err) {
@@ -458,8 +605,8 @@ onMounted(async () => {
   await fetchComments()
   await fetchAttachments()
   await fetchHistory()
-  await fetchStateTransitions()
   await fetchApprovalHistory()
+  await fetchStatusHistory()
 })
 
 // Уведомления
@@ -695,17 +842,6 @@ const showToast = (message: string, color: string = 'success') => {
                 {{ historyChanges.length }}
               </VChip>
             </VTab>
-            <VTab value="transitions">
-              История переходов
-              <VChip
-                v-if="stateTransitions.length > 0"
-                size="x-small"
-                color="info"
-                class="ms-2"
-              >
-                {{ stateTransitions.length }}
-              </VChip>
-            </VTab>
             <VTab value="approval">
               История согласования
               <VChip
@@ -715,6 +851,17 @@ const showToast = (message: string, color: string = 'success') => {
                 class="ms-2"
               >
                 {{ approvalHistory.length }}
+              </VChip>
+            </VTab>
+            <VTab value="statusHistory">
+              История переходов
+              <VChip
+                v-if="statusHistory.length > 0"
+                size="x-small"
+                color="info"
+                class="ms-2"
+              >
+                {{ statusHistory.length }}
               </VChip>
             </VTab>
           </VTabs>
@@ -907,70 +1054,6 @@ const showToast = (message: string, color: string = 'success') => {
                 </div>
               </VWindowItem>
 
-              <!-- Вкладка История переходов -->
-              <VWindowItem value="transitions">
-                <div
-                  v-if="loadingTransitions"
-                  class="d-flex justify-center pa-6"
-                >
-                  <VProgressCircular
-                    indeterminate
-                    color="primary"
-                  />
-                </div>
-                <div
-                  v-else-if="stateTransitions.length === 0"
-                  class="text-center text-medium-emphasis pa-6"
-                >
-                  История переходов пуста
-                </div>
-                <div
-                  v-else
-                  class="transitions-list"
-                >
-                  <div
-                    v-for="item in stateTransitions"
-                    :key="item.id"
-                    class="transition-item pa-3 mb-2 rounded border"
-                  >
-                    <div class="d-flex justify-space-between align-start">
-                      <div>
-                        <div class="text-body-1 font-weight-medium">
-                          Изменение статуса
-                        </div>
-                        <div class="text-caption text-medium-emphasis">
-                          {{ item.changedByName }} • {{ formatDate(item.createdAt) }}
-                        </div>
-                      </div>
-                      <div class="text-body-2 d-flex align-center">
-                        <VChip
-                          v-if="item.oldStateName"
-                          size="small"
-                          color="error"
-                          variant="outlined"
-                          class="me-1"
-                        >
-                          {{ item.oldStateName }}
-                        </VChip>
-                        <VIcon
-                          icon="bx-arrow-right"
-                          size="16"
-                          class="mx-1"
-                        />
-                        <VChip
-                          v-if="item.newStateName"
-                          size="small"
-                          color="success"
-                          variant="outlined"
-                        >
-                          {{ item.newStateName }}
-                        </VChip>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </VWindowItem>
-
               <!-- Вкладка История согласования -->
               <VWindowItem value="approval">
                 <div
@@ -1022,6 +1105,91 @@ const showToast = (message: string, color: string = 'success') => {
                   </div>
                 </div>
               </VWindowItem>
+
+              <!-- Вкладка История переходов -->
+              <VWindowItem value="statusHistory">
+                <div
+                  v-if="loadingStatusHistory"
+                  class="d-flex justify-center pa-6"
+                >
+                  <VProgressCircular
+                    indeterminate
+                    color="primary"
+                  />
+                </div>
+                <div
+                  v-else-if="statusHistory.length === 0"
+                  class="text-center text-medium-emphasis pa-6"
+                >
+                  История переходов пуста
+                </div>
+                <div
+                  v-else
+                  class="status-history-list"
+                >
+                  <div
+                    v-for="item in statusHistory"
+                    :key="item.id"
+                    class="status-history-item pa-3 mb-2 rounded border"
+                  >
+                    <div class="d-flex justify-space-between align-start">
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-center gap-2 mb-1">
+                          <!-- Из статуса -->
+                          <VChip
+                            v-if="item.fromStatusName"
+                            :color="item.fromStatusColor || 'default'"
+                            size="small"
+                            density="compact"
+                          >
+                            {{ item.fromStatusName }}
+                          </VChip>
+                          <span v-else class="text-caption text-medium-emphasis">Новый</span>
+                          
+                          <!-- Стрелка -->
+                          <VIcon
+                            icon="bx-arrow-right"
+                            size="16"
+                            color="primary"
+                          />
+                          
+                          <!-- В статус -->
+                          <VChip
+                            :color="item.toStatusColor || 'primary'"
+                            size="small"
+                            density="compact"
+                          >
+                            {{ item.toStatusName }}
+                          </VChip>
+                        </div>
+                        
+                        <div class="text-caption text-medium-emphasis">
+                          {{ item.changedByName || 'Система' }} • {{ formatDate(item.transitionTime || item.createdAt) }}
+                        </div>
+                        
+                        <!-- Метка действия -->
+                        <div
+                          v-if="item.actionLabel"
+                          class="text-body-2 mt-1"
+                        >
+                          <VIcon icon="bx-label" size="14" class="me-1" />
+                          {{ item.actionLabel }}
+                        </div>
+                      </div>
+                      
+                      <!-- Время в статусе -->
+                      <div class="text-right">
+                        <div class="text-caption text-medium-emphasis">
+                          Время в статусе:
+                        </div>
+                        <div class="text-body-2 font-weight-medium">
+                          {{ formatTimeInStatus(item.timeInPreviousStatus) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </VWindowItem>
             </VWindow>
           </VCardText>
         </VCard>
@@ -1057,6 +1225,26 @@ const showToast = (message: string, color: string = 'success') => {
                 clearable
               />
 
+              <!-- Информация о workflow -->
+              <VAlert
+                v-if="currentWorkflow"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-2"
+              >
+                <div class="text-body-2">
+                  <strong>Workflow:</strong> {{ currentWorkflow.name }}
+                </div>
+              </VAlert>
+
+              <VProgressLinear
+                v-if="loadingWorkflow"
+                indeterminate
+                color="primary"
+                class="mb-2"
+              />
+
               <AppSelect
                 v-model="ticket.priorityId"
                 :items="priorities"
@@ -1077,15 +1265,47 @@ const showToast = (message: string, color: string = 'success') => {
                 clearable
               />
 
+              <!-- Статус - ограничен доступными из workflow или все если тип не выбран -->
               <AppSelect
                 v-model="ticket.stateId"
-                :items="states"
-                item-title="name"
-                item-value="id"
+                :items="statusOptions"
+                item-title="title"
+                item-value="value"
                 label="Статус"
-                placeholder="Выберите статус"
+                :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
+                :hint="availableStatuses.length > 0 ? 'Доступные статусы из workflow' : ''"
+                :persistent-hint="availableStatuses.length > 0"
                 clearable
-              />
+              >
+                <template #selection="{ item }">
+                  <VChip
+                    v-if="item.raw.color"
+                    :color="item.raw.color"
+                    density="compact"
+                    label
+                    size="small"
+                  >
+                    {{ item.title }}
+                  </VChip>
+                  <span v-else>{{ item.title }}</span>
+                </template>
+                <template #item="{ props, item }">
+                  <VListItem v-bind="props">
+                    <template #prepend>
+                      <VChip
+                        v-if="item.raw.color"
+                        :color="item.raw.color"
+                        density="compact"
+                        label
+                        size="small"
+                        class="mr-2"
+                      >
+                        &nbsp;
+                      </VChip>
+                    </template>
+                  </VListItem>
+                </template>
+              </AppSelect>
 
               <AppSelect
                 v-model="ticket.ownerId"
@@ -1206,15 +1426,15 @@ const showToast = (message: string, color: string = 'success') => {
 }
 
 .history-list,
-.transitions-list,
-.approval-list {
+.approval-list,
+.status-history-list {
   max-block-size: 400px;
   overflow-y: auto;
 }
 
 .history-item,
-.transition-item,
-.approval-item {
+.approval-item,
+.status-history-item {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   transition: background-color 0.2s;
 

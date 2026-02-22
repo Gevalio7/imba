@@ -7,9 +7,19 @@ interface Types {
   id: number
   name: string
   comment: string
+  workflowId: number | null
+  workflowName?: string
   isActive: boolean
   createdAt: string
   updatedAt: string
+}
+
+// Типы данных для Воркфлоу
+interface Workflow {
+  id: number
+  name: string
+  description: string
+  isActive: boolean
 }
 
 
@@ -28,6 +38,25 @@ const types = ref<Types[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Данные воркфлоу
+const workflows = ref<Workflow[]>([])
+
+// Загрузка списка воркфлоу
+const fetchWorkflows = async () => {
+  try {
+    const data = await $fetch<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
+    workflows.value = data.workflows || []
+  } catch (err) {
+    console.error('Error fetching workflows:', err)
+  }
+}
+
+// Опции для селекта воркфлоу
+const workflowOptions = computed(() => [
+  { title: 'Не выбрано', value: null },
+  ...workflows.value.filter(w => w.isActive).map(w => ({ title: w.name, value: w.id }))
+])
 
 // Загрузка данных из API
 const fetchTypes = async () => {
@@ -99,11 +128,13 @@ const deleteTypes = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchTypes()
+  fetchWorkflows()
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
+  { title: 'Воркфлоу', key: 'workflowName', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -244,6 +275,7 @@ const defaultItem = ref<Types>({
   id: -1,
   name: '',
   comment: '',
+  workflowId: null,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -611,6 +643,20 @@ const addNewTypes = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Воркфлоу -->
+        <template #item.workflowName="{ item }">
+          <VChip
+            v-if="item.workflowName"
+            size="small"
+            color="primary"
+            variant="tonal"
+          >
+            <VIcon icon="bx-network-chart" start size="14" />
+            {{ item.workflowName }}
+          </VChip>
+          <span v-else class="text-medium-emphasis">Не назначен</span>
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
@@ -669,6 +715,21 @@ const addNewTypes = () => {
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
+              />
+            </VCol>
+
+            <!-- Воркфлоу -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.workflowId"
+                :items="workflowOptions"
+                label="Воркфлоу"
+                placeholder="Выберите воркфлоу"
+                clearable
+                clear-icon="bx-x"
               />
             </VCol>
 
