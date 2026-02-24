@@ -195,7 +195,7 @@ const headers = [
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Тип', key: 'type', sortable: true },
   { title: 'Компании', key: 'customers', sortable: false },
-  { title: 'Документы', key: 'hasAttachments', sortable: false },
+  { title: '', key: 'hasAttachments', sortable: false },
   { title: 'SLA', key: 'sla', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -887,13 +887,25 @@ const addNewServices = () => {
           </div>
         </template>
 
-        <!-- Документы (иконка вложений) -->
+        <!-- Документы (иконка вложений - скрепка) -->
+        <template #header.hasAttachments>
+          <VTooltip location="top">
+            <template #activator="{ props }">
+              <VIcon
+                v-bind="props"
+                icon="bx-paperclip"
+                size="20"
+              />
+            </template>
+            <span>Документы</span>
+          </VTooltip>
+        </template>
         <template #item.hasAttachments="{ item }">
           <VTooltip v-if="item.hasAttachments" location="top">
             <template #activator="{ props }">
               <VIcon
                 v-bind="props"
-                icon="bx-file"
+                icon="bx-paperclip"
                 color="primary"
                 size="24"
               />
