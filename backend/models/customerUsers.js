@@ -7,28 +7,39 @@ function toSnakeCase(str) {
 
 class CustomerUsers {
   static tableName = 'customer_users';
-  static fields = 'name, message';
+  static fields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
 
+      // Поиск по тексту
       if (q) {
         const searchFields = this.fields.split(', ');
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+      
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
+      
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
       if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : toSnakeCase(sortBy);
+        orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
       const offset = (page - 1) * itemsPerPage;
@@ -39,7 +50,6 @@ class CustomerUsers {
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data
-      // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
@@ -79,6 +89,32 @@ class CustomerUsers {
 
   static async create(customeruser) {
     try {
+      // Проверяем уникальность login
+      if (customeruser.login) {
+        const loginCheck = await pool.query(
+          'SELECT id FROM customer_users WHERE login = $1',
+          [customeruser.login]
+        );
+        if (loginCheck.rows.length > 0) {
+          const error = new Error('Клиент с таким логином уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      // Проверяем уникальность email
+      if (customeruser.email) {
+        const emailCheck = await pool.query(
+          'SELECT id FROM customer_users WHERE email = $1',
+          [customeruser.email]
+        );
+        if (emailCheck.rows.length > 0) {
+          const error = new Error('Клиент с таким email уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => customeruser[field]);
@@ -105,6 +141,32 @@ class CustomerUsers {
 
   static async update(id, customeruser) {
     try {
+      // Проверяем уникальность login (исключая текущего клиента)
+      if (customeruser.login) {
+        const loginCheck = await pool.query(
+          'SELECT id FROM customer_users WHERE login = $1 AND id != $2',
+          [customeruser.login, id]
+        );
+        if (loginCheck.rows.length > 0) {
+          const error = new Error('Клиент с таким логином уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      // Проверяем уникальность email (исключая текущего клиента)
+      if (customeruser.email) {
+        const emailCheck = await pool.query(
+          'SELECT id FROM customer_users WHERE email = $1 AND id != $2',
+          [customeruser.email, id]
+        );
+        if (emailCheck.rows.length > 0) {
+          const error = new Error('Клиент с таким email уже существует');
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       const fieldList = this.fields.split(', ');
       const updates = [];
       const values = [];
