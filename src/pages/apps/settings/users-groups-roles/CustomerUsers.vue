@@ -2,11 +2,16 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
-// Типы данных для Пользователь клиента
+// Типы данных для Клиент
 interface CustomerUsers {
   id: number
-  name: string
-  message: string
+  firstName: string
+  lastName: string
+  login: string
+  password: string
+  email: string
+  mobilePhone: string
+  telegramAccount: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -16,7 +21,7 @@ interface CustomerUsers {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные пользователи клиентов
+// Данные клиенты
 const customerUsers = ref<CustomerUsers[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -33,14 +38,14 @@ const fetchCustomerUsers = async () => {
     customerUsers.value = data.customerUsers
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки пользователи клиентов'
+    error.value = 'Ошибка загрузки клиенты'
     console.error('Error fetching customerUsers:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Создание пользователь клиента
+// Создание клиент
 const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers`, {
@@ -55,16 +60,18 @@ const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' 
   }
 }
 
-// Обновление пользователь клиента
-const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
+// Обновление клиент
+const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>, updateLocal: boolean = true) => {
   try {
     const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers/${id}`, {
       method: 'PUT',
       body: item
     })
-    const index = customerUsers.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      customerUsers.value[index] = data
+    if (updateLocal) {
+      const index = customerUsers.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        Object.assign(customerUsers.value[index], data)
+      }
     }
     return data
   } catch (err) {
@@ -73,7 +80,7 @@ const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 
   }
 }
 
-// Удаление пользователь клиента
+// Удаление клиент
 const deleteCustomerUsers = async (id: number) => {
   try {
     await $fetch(`${API_BASE}/customerUsers/${id}`, {
@@ -96,10 +103,12 @@ onMounted(() => {
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Сообщение', key: 'message', sortable: true },
-  { title: 'Создано', key: 'createdAt', sortable: true },
-  { title: 'Изменено', key: 'updatedAt', sortable: true },
+  { title: 'Имя', key: 'firstName', sortable: true },
+  { title: 'Фамилия', key: 'lastName', sortable: true },
+  { title: 'Логин', key: 'login', sortable: true },
+  { title: 'Email', key: 'email', sortable: true },
+  { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
+  { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -143,7 +152,7 @@ const confirmBulkDelete = async () => {
       await deleteCustomerUsers(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} пользователи клиентов`)
+    showToast(`Удалено ${count} клиенты`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -155,12 +164,18 @@ const confirmBulkStatusChange = async () => {
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
       await updateCustomerUsers(item.id, {
-        ...item,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        login: item.login,
+        password: item.password,
+        email: item.email,
+        mobilePhone: item.mobilePhone,
+        telegramAccount: item.telegramAccount,
         isActive: bulkStatusValue.value === 1
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} пользователи клиентов`)
+    showToast(`Статус изменен для ${count} клиенты`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -183,7 +198,7 @@ const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<CustomerUsers[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
@@ -203,8 +218,13 @@ const deleteDialog = ref(false)
 
 const defaultItem = ref<CustomerUsers>({
   id: -1,
-  name: '',
-  message: '',
+  firstName: '',
+  lastName: '',
+  login: '',
+  password: '',
+  email: '',
+  mobilePhone: '',
+  telegramAccount: '',
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -245,8 +265,8 @@ const closeDelete = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
+  if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim()) {
+    showToast('Имя и Фамилия обязательны для заполнения', 'error')
     return
   }
 
@@ -254,46 +274,66 @@ const save = async () => {
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updateCustomerUsers(editedItem.value.id, {
-        ...editedItem.value,
+        firstName: editedItem.value.firstName,
+        lastName: editedItem.value.lastName,
+        login: editedItem.value.login,
+        password: editedItem.value.password,
+        email: editedItem.value.email,
+        mobilePhone: editedItem.value.mobilePhone,
+        telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
-      showToast('Пользователь клиента успешно сохранен')
+      showToast('Клиент успешно сохранен')
     } else {
       // Добавление нового
       const created = await createCustomerUsers({
-        ...editedItem.value,
+        firstName: editedItem.value.firstName,
+        lastName: editedItem.value.lastName,
+        login: editedItem.value.login,
+        password: editedItem.value.password,
+        email: editedItem.value.email,
+        mobilePhone: editedItem.value.mobilePhone,
+        telegramAccount: editedItem.value.telegramAccount,
         isActive: editedItem.value.isActive
       })
-      showToast('Пользователь клиента успешно добавлен')
+      showToast('Клиент успешно добавлен')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения пользователь клиента', 'error')
+    showToast('Ошибка сохранения клиент', 'error')
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
     await deleteCustomerUsers(editedItem.value.id)
-    showToast('Пользователь клиента успешно удален')
+    showToast('Клиент успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления пользователь клиента', 'error')
+    showToast('Ошибка удаления клиент', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: CustomerUsers, newValue: boolean) => {
+const toggleStatus = async (item: CustomerUsers, newValue: boolean | null) => {
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
+  if (newValue === null) return
+
   try {
     await updateCustomerUsers(item.id, {
-      ...item,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      login: item.login,
+      password: item.password,
+      email: item.email,
+      mobilePhone: item.mobilePhone,
+      telegramAccount: item.telegramAccount,
       isActive: newValue
     })
-    showToast('Статус пользователь клиента изменен')
+    showToast('Статус клиент изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -310,7 +350,10 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового пользователь клиента
+// Показ пароля
+const showPassword = ref(false)
+
+// Добавление нового клиент
 const addNewCustomerUsers = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -320,7 +363,7 @@ const addNewCustomerUsers = () => {
 
 <template>
   <div>
-    <VCard title="Пользователи клиентов">
+    <VCard title="Клиенты">
 
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
@@ -338,7 +381,7 @@ const addNewCustomerUsers = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск пользователи клиентов"
+            placeholder="Поиск клиенты"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -410,7 +453,7 @@ const addNewCustomerUsers = () => {
             prepend-icon="bx-plus"
             @click="addNewCustomerUsers"
           >
-            Добавить пользователь клиента
+            Добавить клиент
           </VBtn>
         </div>
       </div>
@@ -473,7 +516,7 @@ const addNewCustomerUsers = () => {
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные пользователи клиентов? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные клиенты? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -593,31 +636,85 @@ const addNewCustomerUsers = () => {
       v-model="editDialog"
       max-width="600px"
     >
-      <VCard :title="editedIndex > -1 ? 'Редактировать пользователь клиента' : 'Добавить пользователь клиента'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать клиент' : 'Добавить клиент'">
         <VCardText>
           <VRow>
 
-            <!-- Название -->
+            <!-- Имя -->
             <VCol
               cols="12"
               sm="6"
             >
               <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
+                v-model="editedItem.firstName"
+                label="Имя *"
               />
             </VCol>
 
-            <!-- Сообщение -->
+            <!-- Фамилия -->
             <VCol
               cols="12"
-              
+              sm="6"
             >
-              <AppTextarea
-                v-model="editedItem.message"
-                label="Сообщение"
-                rows="3"
-                placeholder="Введите сообщение..."
+              <AppTextField
+                v-model="editedItem.lastName"
+                label="Фамилия *"
+              />
+            </VCol>
+
+            <!-- Логин -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.login"
+                label="Логин"
+              />
+            </VCol>
+
+            <!-- Пароль -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.password"
+                label="Пароль"
+                type="password"
+              />
+            </VCol>
+
+            <!-- Email -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.email"
+                label="Email"
+              />
+            </VCol>
+
+            <!-- Мобильный телефон -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.mobilePhone"
+                label="Мобильный телефон"
+              />
+            </VCol>
+
+            <!-- Телеграмм акк -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.telegramAccount"
+                label="Телеграмм акк"
               />
             </VCol>
 
@@ -661,7 +758,7 @@ const addNewCustomerUsers = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот пользователь клиента?">
+      <VCard title="Вы уверены, что хотите удалить этот клиент?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
