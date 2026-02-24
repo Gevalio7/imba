@@ -35,6 +35,10 @@ const getCustomerById = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Customer not found' });
   }
 
+  // Получаем сервисы для компании
+  const services = await Customers.getServices(customerId);
+  customer.services = services;
+
   res.json(customer);
 });
 
@@ -57,6 +61,14 @@ const createCustomers = asyncHandler(async (req, res) => {
   }
 
   const newCustomer = await Customers.create(data);
+
+  // Если переданы сервисы, сохраняем их
+  if (req.body.serviceIds && Array.isArray(req.body.serviceIds)) {
+    await Customers.setServices(newCustomer.id, req.body.serviceIds);
+    newCustomer.services = await Customers.getServices(newCustomer.id);
+  } else {
+    newCustomer.services = [];
+  }
 
   res.status(201).json(newCustomer);
 });
@@ -87,6 +99,14 @@ const updateCustomers = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Customer not found' });
   }
 
+  // Если переданы сервисы, обновляем их
+  if (req.body.serviceIds !== undefined) {
+    await Customers.setServices(customerId, req.body.serviceIds);
+  }
+
+  // Получаем актуальные сервисы
+  updatedCustomer.services = await Customers.getServices(customerId);
+
   res.json(updatedCustomer);
 });
 
@@ -107,10 +127,62 @@ const deleteCustomers = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+// Получить сервисы компании
+const getCustomerServices = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const customerId = parseInt(id, 10);
+
+  if (isNaN(customerId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const services = await Customers.getServices(customerId);
+  res.json({ services });
+});
+
+// Добавить сервис к компании
+const addCustomerService = asyncHandler(async (req, res) => {
+  const { id, serviceId } = req.params;
+  const customerId = parseInt(id, 10);
+  const serviceIdInt = parseInt(serviceId, 10);
+
+  if (isNaN(customerId) || isNaN(serviceIdInt)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const result = await Customers.addService(customerId, serviceIdInt);
+  if (!result) {
+    return res.status(400).json({ message: 'Service already linked to customer' });
+  }
+
+  res.status(201).json(result);
+});
+
+// Удалить сервис от компании
+const removeCustomerService = asyncHandler(async (req, res) => {
+  const { id, serviceId } = req.params;
+  const customerId = parseInt(id, 10);
+  const serviceIdInt = parseInt(serviceId, 10);
+
+  if (isNaN(customerId) || isNaN(serviceIdInt)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const result = await Customers.removeService(customerId, serviceIdInt);
+  if (!result) {
+    return res.status(404).json({ message: 'Service link not found' });
+  }
+
+  res.status(204).send();
+});
+
 module.exports = {
   getCustomers,
   getCustomerById,
   createCustomers,
   updateCustomers,
   deleteCustomers,
+  getCustomerServices,
+  addCustomerService,
+  removeCustomerService,
 };

@@ -11,6 +11,45 @@ interface Services {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  customers?: Customers[]
+  attachments?: Attachment[]
+  sla?: SLA | null
+  hasAttachments?: boolean
+}
+
+// Типы данных для Компания
+interface Customers {
+  id: number
+  name: string
+  street: string
+  zip: string
+  city: string
+  comment: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Типы данных для Вложения
+interface Attachment {
+  id: number
+  serviceId: number
+  fileName: string
+  filePath: string
+  fileSize: number | null
+  mimeType: string | null
+  uploadedBy: number | null
+  createdAt: string
+}
+
+// Типы данных для SLA
+interface SLA {
+  id: number
+  name: string
+  comment: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 
@@ -29,6 +68,26 @@ const services = ref<Services[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Данные компаний для выбора
+const customers = ref<Customers[]>([])
+const customersLoading = ref(false)
+
+// Данные SLA для выбора
+const slas = ref<SLA[]>([])
+const slasLoading = ref(false)
+
+// Выбранные компании при редактировании
+const selectedCustomerIds = ref<number[]>([])
+
+// Загружаемые файлы
+const uploadedFiles = ref<File[]>([])
+
+// Существующие вложения сервиса
+const existingAttachments = ref<Attachment[]>([])
+
+// Выбранный SLA при редактировании (связь 1 к 1)
+const selectedSLAId = ref<number | null>(null)
 
 // Загрузка данных из API
 const fetchServices = async () => {
@@ -100,13 +159,44 @@ const deleteServices = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchServices()
+  fetchCustomers()
+  fetchSLAs()
 })
+
+// Загрузка списка компаний
+const fetchCustomers = async () => {
+  try {
+    customersLoading.value = true
+    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    customers.value = data.customers || []
+  } catch (err) {
+    console.error('Error fetching customers:', err)
+  } finally {
+    customersLoading.value = false
+  }
+}
+
+// Загрузка списка SLA
+const fetchSLAs = async () => {
+  try {
+    slasLoading.value = true
+    const data = await $fetch<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+    slas.value = data.sla || []
+  } catch (err) {
+    console.error('Error fetching SLAs:', err)
+  } finally {
+    slasLoading.value = false
+  }
+}
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Тип', key: 'type', sortable: true },
+  { title: 'Компании', key: 'customers', sortable: false },
+  { title: 'Документы', key: 'hasAttachments', sortable: false },
+  { title: 'SLA', key: 'sla', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -285,9 +375,31 @@ const typeOptions = [
 ]
 
 // Методы
-const editItem = (item: Services) => {
+const editItem = async (item: Services) => {
   editedIndex.value = services.value.indexOf(item)
-  editedItem.value = { ...item }
+  
+  // Загружаем полные данные сервиса с сервера
+  try {
+    const fullItem = await $fetch<Services>(`${API_BASE}/services/${item.id}`)
+    editedItem.value = { ...fullItem }
+    // Устанавливаем выбранные компании
+    selectedCustomerIds.value = fullItem.customers?.map(c => c.id) || []
+    // Устанавливаем существующие вложения
+    existingAttachments.value = fullItem.attachments || []
+    // Очищаем загружаемые файлы
+    uploadedFiles.value = []
+    // Устанавливаем выбранный SLA (связь 1 к 1)
+    selectedSLAId.value = fullItem.sla?.id || null
+  } catch (err) {
+    console.error('Error loading service details:', err)
+    // Fallback к локальным данным
+    editedItem.value = { ...item }
+    selectedCustomerIds.value = item.customers?.map(c => c.id) || []
+    existingAttachments.value = item.attachments || []
+    uploadedFiles.value = []
+    selectedSLAId.value = item.sla?.id || null
+  }
+  
   editDialog.value = true
 }
 
@@ -301,6 +413,10 @@ const close = () => {
   editDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
+  selectedCustomerIds.value = []
+  uploadedFiles.value = []
+  existingAttachments.value = []
+  selectedSLAId.value = null
 }
 
 const closeDelete = () => {
@@ -316,24 +432,107 @@ const save = async () => {
   }
 
   try {
+    // Извлекаем ID компаний из объектов (VCombobox может возвращать объекты вместо ID)
+    const customerIds = selectedCustomerIds.value.map((item: any) => 
+      typeof item === 'object' && item !== null ? item.id : item
+    )
+
+    // Извлекаем ID SLA из объекта (связь 1 к 1)
+    const slaId = selectedSLAId.value ? (typeof selectedSLAId.value === 'object' ? (selectedSLAId.value as any).id : selectedSLAId.value) : null
+
+    // Подготовка данных для отправки
+    const serviceData = {
+      name: editedItem.value.name,
+      comment: editedItem.value.comment || '',
+      type: editedItem.value.type || '',
+      isActive: editedItem.value.isActive,
+      customerIds: customerIds,
+      slaId: slaId
+    }
+
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateServices(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const updated = await updateServices(editedItem.value.id, serviceData)
+      
+      // Загрузка новых файлов если есть
+      if (uploadedFiles.value.length > 0) {
+        await uploadFiles(editedItem.value.id)
+      }
+      
       showToast('Сервис успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createServices({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
+      const created = await createServices(serviceData)
+      
+      // Загрузка файлов для нового сервиса
+      if (uploadedFiles.value.length > 0 && created.id) {
+        await uploadFiles(created.id)
+      }
+      
+      // Перезагружаем данные что бы получить актуальный список с сервера
+      await fetchServices()
       showToast('Сервис успешно добавлен')
     }
     close()
   } catch (err) {
     showToast('Ошибка сохранения сервис', 'error')
+  }
+}
+
+// Загрузка файлов на сервер
+const uploadFiles = async (serviceId: number) => {
+  try {
+    const formData = new FormData()
+    uploadedFiles.value.forEach((file) => {
+      formData.append('files', file)
+    })
+    
+    await $fetch(`${API_BASE}/services/${serviceId}/attachments`, {
+      method: 'POST',
+      body: formData
+    })
+    
+    // Перезагружаем данные после загрузки файлов
+    await fetchServices()
+  } catch (err) {
+    console.error('Error uploading files:', err)
+    showToast('Ошибка загрузки файлов', 'error')
+  }
+}
+
+// Удаление вложения
+const removeAttachment = async (attachmentId: number) => {
+  try {
+    await $fetch(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachmentId}`, {
+      method: 'DELETE'
+    })
+    // Удаляем из списка существующих вложений
+    existingAttachments.value = existingAttachments.value.filter(a => a.id !== attachmentId)
+    showToast('Файл удален')
+  } catch (err) {
+    console.error('Error removing attachment:', err)
+    showToast('Ошибка удаления файла', 'error')
+  }
+}
+
+// Скачивание вложения
+const downloadAttachment = async (attachment: Attachment) => {
+  try {
+    const response = await fetch(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachment.id}/download`)
+    if (!response.ok) throw new Error('Download failed')
+    
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = attachment.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Error downloading file:', err)
+    showToast('Ошибка скачивания файла', 'error')
   }
 }
 
@@ -381,6 +580,10 @@ const showToast = (message: string, color: string = 'success') => {
 const addNewServices = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
+  selectedCustomerIds.value = []
+  uploadedFiles.value = []
+  existingAttachments.value = []
+  selectedSLAId.value = null
   editDialog.value = true
 }
 </script>
@@ -666,6 +869,53 @@ const addNewServices = () => {
           </div>
         </template>
 
+        <!-- Компании -->
+        <template #item.customers="{ item }">
+          <div class="d-flex flex-wrap gap-1">
+            <VChip
+              v-for="customer in item.customers"
+              :key="customer.id"
+              size="small"
+              color="success"
+              variant="outlined"
+            >
+              {{ customer.name }}
+            </VChip>
+            <span v-if="!item.customers || item.customers.length === 0" class="text-disabled">
+              Нет компаний
+            </span>
+          </div>
+        </template>
+
+        <!-- Документы (иконка вложений) -->
+        <template #item.hasAttachments="{ item }">
+          <VTooltip v-if="item.hasAttachments" location="top">
+            <template #activator="{ props }">
+              <VIcon
+                v-bind="props"
+                icon="bx-file"
+                color="primary"
+                size="24"
+              />
+            </template>
+            <span>Есть прикрепленные документы</span>
+          </VTooltip>
+          <span v-else class="text-disabled">—</span>
+        </template>
+
+        <!-- SLA -->
+        <template #item.sla="{ item }">
+          <VChip
+            v-if="item.sla"
+            size="small"
+            color="info"
+            variant="outlined"
+          >
+            {{ item.sla.name }}
+          </VChip>
+          <span v-else class="text-disabled">Нет SLA</span>
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -733,6 +983,90 @@ const addNewServices = () => {
                 label="Комментарий"
                 rows="3"
                 placeholder="Введите комментарий..."
+              />
+            </VCol>
+
+            <!-- Компании -->
+            <VCol cols="12">
+              <AppCombobox
+                v-model="selectedCustomerIds"
+                :items="customers"
+                item-title="name"
+                item-value="id"
+                label="Компании"
+                placeholder="Выберите компании"
+                multiple
+                chips
+                closable-chips
+                :loading="customersLoading"
+                hint="Выберите одну или несколько компаний"
+                persistent-hint
+              />
+            </VCol>
+
+            <!-- Вложения (документы) -->
+            <VCol cols="12">
+              <VFileInput
+                v-model="uploadedFiles"
+                label="Документы"
+                placeholder="Выберите файлы для загрузки"
+                multiple
+                chips
+                prepend-icon="bx-paperclip"
+                hint="Выберите файлы для прикрепления к сервису"
+                persistent-hint
+              />
+              
+              <!-- Список существующих вложений -->
+              <div v-if="existingAttachments.length > 0" class="mt-4">
+                <p class="text-body-2 mb-2">Прикрепленные файлы:</p>
+                <VList density="compact">
+                  <VListItem
+                    v-for="attachment in existingAttachments"
+                    :key="attachment.id"
+                    :title="attachment.fileName"
+                    :subtitle="attachment.fileSize ? `${(attachment.fileSize / 1024).toFixed(1)} КБ` : ''"
+                    class="px-0"
+                  >
+                    <template #append>
+                      <div class="d-flex gap-1">
+                        <IconBtn
+                          color="primary"
+                          size="small"
+                          @click="downloadAttachment(attachment)"
+                        >
+                          <VIcon icon="bx-download" size="18" />
+                        </IconBtn>
+                        <IconBtn
+                          color="error"
+                          size="small"
+                          @click="removeAttachment(attachment.id)"
+                        >
+                          <VIcon icon="bx-trash" size="18" />
+                        </IconBtn>
+                      </div>
+                    </template>
+                    <template #prepend>
+                      <VIcon icon="bx-file" size="20" />
+                    </template>
+                  </VListItem>
+                </VList>
+              </div>
+            </VCol>
+
+            <!-- SLA -->
+            <VCol cols="12">
+              <AppSelect
+                v-model="selectedSLAId"
+                :items="slas"
+                item-title="name"
+                item-value="id"
+                label="SLA"
+                placeholder="Выберите SLA"
+                clearable
+                :loading="slasLoading"
+                hint="Выберите SLA для сервиса"
+                persistent-hint
               />
             </VCol>
 

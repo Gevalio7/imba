@@ -13,6 +13,7 @@ interface Customers {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  services?: Services[]
 }
 
 // Типы данных для Сервисы (из /services)
@@ -282,6 +283,7 @@ const headers = [
   { title: 'Индекс', key: 'zip', sortable: true },
   { title: 'Город', key: 'city', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
+  { title: 'Сервисы', key: 'services', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -600,10 +602,14 @@ const defaultItem = ref<Customers>({
   createdAt: '',
   updatedAt: '',
   isActive: true,
+  services: [],
 })
 
 const editedItem = ref<Customers>({ ...defaultItem.value })
 const editedIndex = ref(-1)
+
+// Выбранные сервисы для редактирования
+const selectedServiceIds = ref<number[]>([])
 
 // Данные для редактирования сервиса
 const defaultServiceItem = ref<Services>({
@@ -663,6 +669,8 @@ const statusOptions = [
 const editItem = (item: Customers) => {
   editedIndex.value = customers.value.indexOf(item)
   editedItem.value = { ...item }
+  // Устанавливаем выбранные сервисы
+  selectedServiceIds.value = item.services?.map(s => s.id) || []
   editDialog.value = true
 }
 
@@ -676,6 +684,7 @@ const close = () => {
   editDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
+  selectedServiceIds.value = []
 }
 
 const closeDelete = () => {
@@ -695,14 +704,16 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateCustomers(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
+        serviceIds: selectedServiceIds.value
       })
       showToast('Компания успешно сохранена')
     } else {
       // Добавление нового
       const created = await createCustomers({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
+        serviceIds: selectedServiceIds.value
       })
       showToast('Компания успешно добавлена')
     }
@@ -771,19 +782,23 @@ const saveService = async () => {
   }
 
   try {
+    // Подготовка данных для отправки (исключаем лишние поля)
+    const serviceData = {
+      name: editedServiceItem.value.name,
+      comment: editedServiceItem.value.comment || '',
+      type: editedServiceItem.value.type || '',
+      isActive: editedServiceItem.value.isActive
+    }
+
     if (editedServiceIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateServices(editedServiceItem.value.id, {
-        ...editedServiceItem.value,
-        isActive: editedServiceItem.value.isActive
-      })
+      const updated = await updateServices(editedServiceItem.value.id, serviceData)
       showToast('Сервис успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createServices({
-        ...editedServiceItem.value,
-        isActive: editedServiceItem.value.isActive
-      })
+      const created = await createServices(serviceData)
+      // Перезагружаем данные что бы получить актуальный список с сервера
+      await fetchServices()
       showToast('Сервис успешно добавлен')
     }
     closeService()
@@ -1197,6 +1212,24 @@ const addNewUser = () => {
           </div>
         </template>
 
+        <!-- Сервисы -->
+        <template #item.services="{ item }">
+          <div class="d-flex flex-wrap gap-1">
+            <VChip
+              v-for="service in item.services"
+              :key="service.id"
+              size="small"
+              color="primary"
+              variant="outlined"
+            >
+              {{ service.name }}
+            </VChip>
+            <span v-if="!item.services || item.services.length === 0" class="text-disabled">
+              Нет сервисов
+            </span>
+          </div>
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -1283,6 +1316,25 @@ const addNewUser = () => {
                 label="Комментарий"
                 rows="3"
                 placeholder="Введите комментарий..."
+              />
+            </VCol>
+
+            <!-- Сервисы -->
+            <VCol
+              cols="12"
+            >
+              <AppSelect
+                v-model="selectedServiceIds"
+                :items="services"
+                item-title="name"
+                item-value="id"
+                label="Сервисы"
+                placeholder="Выберите сервисы"
+                multiple
+                chips
+                clearable
+                hint="Выберите сервисы для компании"
+                persistent-hint
               />
             </VCol>
 
