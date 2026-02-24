@@ -25,8 +25,8 @@ class Services {
         paramIndex++;
       }
 
-      let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      let orderClause = 'ORDER BY id ASC'; // Сортировка по умолчанию
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at', 'id']);
       if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
@@ -48,12 +48,85 @@ class Services {
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
+      // Получаем все компании для всех сервисов одним запросом (решение N+1 проблемы)
+      const serviceIds = dataResult.rows.map(s => s.id);
+      let customersMap = {};
+      let slaMap = {};
+      
+      if (serviceIds.length > 0) {
+        // Загружаем компании
+        const customersQuery = `
+          SELECT c.id, c.name, c.street, c.zip, c.city, c.comment, c.is_active as "isActive",
+                 c.created_at as "createdAt", c.updated_at as "updatedAt",
+                 cs.service_id
+          FROM customers c
+          INNER JOIN customers_services cs ON c.id = cs.customer_id
+          WHERE cs.service_id = ANY($1)
+          ORDER BY c.name
+        `;
+        const customersResult = await pool.query(customersQuery, [serviceIds]);
+        
+        // Группируем компании по service_id
+        customersResult.rows.forEach(row => {
+          const serviceId = row.service_id;
+          delete row.service_id;
+          if (!customersMap[serviceId]) {
+            customersMap[serviceId] = [];
+          }
+          customersMap[serviceId].push(row);
+        });
+
+        // Загружаем SLA для каждого сервиса через колонку sla_id
+        const slaQuery = `
+          SELECT s.id, s.name, s.description, s.is_active as "isActive",
+                 s.created_at as "createdAt", s.updated_at as "updatedAt",
+                 sv.id as service_id
+          FROM sla s
+          INNER JOIN services sv ON s.id = sv.sla_id
+          WHERE sv.id = ANY($1)
+        `;
+        const slaResult = await pool.query(slaQuery, [serviceIds]);
+        
+        // Группируем SLA по service_id
+        slaResult.rows.forEach(row => {
+          const serviceId = row.service_id;
+          delete row.service_id;
+          slaMap[serviceId] = row;
+        });
+      }
+
+      // Добавляем компании и SLA к каждому сервису
+      const servicesWithCustomers = dataResult.rows.map(service => ({
+        ...service,
+        customers: customersMap[service.id] || [],
+        sla: slaMap[service.id] || null
+      }));
+
       return {
-        services: dataResult.rows,
+        services: servicesWithCustomers,
         total,
       };
     } catch (error) {
       console.error('Error in getAll:', error);
+      throw error;
+    }
+  }
+
+  // Получить компании для сервиса
+  static async getCustomers(serviceId) {
+    try {
+      const result = await pool.query(
+        `SELECT c.id, c.name, c.street, c.zip, c.city, c.comment, c.is_active as "isActive",
+                c.created_at as "createdAt", c.updated_at as "updatedAt"
+         FROM customers c
+         INNER JOIN customers_services cs ON c.id = cs.customer_id
+         WHERE cs.service_id = $1
+         ORDER BY c.name`,
+        [serviceId]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getCustomers:', error);
       throw error;
     }
   }
@@ -155,6 +228,111 @@ class Services {
       return result.rowCount > 0;
     } catch (error) {
       console.error('Error in delete:', error);
+      throw error;
+    }
+  }
+
+  // Установить компании для сервиса
+  static async setCustomers(serviceId, customerIds) {
+    try {
+      await pool.query('BEGIN');
+
+      // Сначала удаляем все существующие связи
+      await pool.query('DELETE FROM customers_services WHERE service_id = $1', [serviceId]);
+
+      // Если есть новые компании, добавляем связи
+      if (customerIds && customerIds.length > 0) {
+        const values = customerIds.map((customerId, index) => `($1, $${index + 2})`).join(', ');
+        const query = `INSERT INTO customers_services (service_id, customer_id) VALUES ${values}`;
+        await pool.query(query, [serviceId, ...customerIds]);
+      }
+
+      await pool.query('COMMIT');
+      return true;
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      console.error('Error in setCustomers:', error);
+      throw error;
+    }
+  }
+
+  // Получить ID компаний для сервиса
+  static async getCustomerIds(serviceId) {
+    try {
+      const result = await pool.query(
+        'SELECT customer_id FROM customers_services WHERE service_id = $1',
+        [serviceId]
+      );
+      return result.rows.map(row => row.customer_id);
+    } catch (error) {
+      console.error('Error in getCustomerIds:', error);
+      throw error;
+    }
+  }
+
+  // Добавить компанию к сервису
+  static async addCustomer(serviceId, customerId) {
+    try {
+      const result = await pool.query(
+        `INSERT INTO customers_services (service_id, customer_id) 
+         VALUES ($1, $2) 
+         ON CONFLICT (service_id, customer_id) DO NOTHING
+         RETURNING *`,
+        [serviceId, customerId]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in addCustomer:', error);
+      throw error;
+    }
+  }
+
+  // Удалить компанию от сервиса
+  static async removeCustomer(serviceId, customerId) {
+    try {
+      const result = await pool.query(
+        `DELETE FROM customers_services 
+         WHERE service_id = $1 AND customer_id = $2
+         RETURNING *`,
+        [serviceId, customerId]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in removeCustomer:', error);
+      throw error;
+    }
+  }
+
+  // ========== МЕТОДЫ ДЛЯ РАБОТЫ С SLA (связь через колонку sla_id) ==========
+
+  // Получить SLA для сервиса
+  static async getSLA(serviceId) {
+    try {
+      const result = await pool.query(
+        `SELECT s.id, s.name, s.description, s.is_active as "isActive",
+                s.created_at as "createdAt", s.updated_at as "updatedAt"
+         FROM sla s
+         INNER JOIN services sv ON s.id = sv.sla_id
+         WHERE sv.id = $1`,
+        [serviceId]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in getSLA:', error);
+      throw error;
+    }
+  }
+
+  // Установить SLA для сервиса
+  static async setSLA(serviceId, slaId) {
+    try {
+      await pool.query(
+        'UPDATE services SET sla_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [slaId || null, serviceId]
+      );
+      return true;
+    } catch (error) {
+      console.error('Error in setSLA:', error);
       throw error;
     }
   }

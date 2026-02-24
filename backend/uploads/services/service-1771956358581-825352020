@@ -1,0 +1,1217 @@
+#!/usr/bin/env python3
+"""
+Автоматизация обновления данных по должностям, возрасту и базовому аэропорту из САП.
+Подключение к БД осуществляется через переменные окружения.
+
+Требуемые переменные окружения:
+- DB_HOST - хост базы данных PostgreSQL
+- DB_PORT - порт базы данных PostgreSQL
+- DB_NAME - имя базы данных PostgreSQL
+- DB_USER - пользователь базы данных PostgreSQL
+- DB_PASSWORD - пароль базы данных PostgreSQL
+- TEST_DB_* - аналогично для тестовой БД
+- ADP_SAP_* - подключение к БД adp-sap (данные САП)
+- ACCORD_HOST - хост базы Аккорд (Firebird)
+- ACCORD_PORT - порт базы Аккорд (Firebird)
+- ACCORD_DB - полный путь к файлу БД Аккорд
+- ACCORD_USER - пользователь Аккорд
+- ACCORD_PASSWORD - пароль Аккорд
+"""
+
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime, timedelta
+import argparse
+import sys
+import json
+import copy
+
+# Загрузка переменных окружения из .env файла
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✓ Переменные окружения загружены из .env файла")
+except ImportError:
+    print("⚠ python-dotenv не установлен. Используются системные переменные окружения.")
+    print("  Установите: pip install python-dotenv")
+
+try:
+    import fdb
+    FIREBIRD_AVAILABLE = True
+except ImportError:
+    FIREBIRD_AVAILABLE = False
+    print("⚠ Внимание: fdb не установлен. Подключение к Аккорд будет недоступно.")
+    print("  Установите: pip install fdb")
+
+
+def get_env_or_default(key, default):
+    """Получить значение переменной окружения или значение по умолчанию."""
+    return os.environ.get(key, default)
+
+
+def get_db_connection(db_type='personnel'):
+    """
+    Создать подключение к базе данных.
+    
+    Args:
+        db_type: 'personnel' - основная БД ms-personnel (PostgreSQL)
+                'test' - тестовая БД ms-personnel (PostgreSQL)
+                'adp-sap' - БД adp-sap с данными САП (PostgreSQL)
+                'accord' - БД Аккорд (Firebird)
+    
+    Returns:
+        Объект подключения psycopg2 или fdb
+    """
+    if db_type == 'personnel':
+        conn = psycopg2.connect(
+            host=get_env_or_default('DB_HOST', '192.168.199.217'),
+            port=get_env_or_default('DB_PORT', '5432'),
+            database=get_env_or_default('DB_NAME', 'ms-personnel'),
+            user=get_env_or_default('DB_USER', 'postgres'),
+            password=get_env_or_default('DB_PASSWORD', 'password')
+        )
+    elif db_type == 'test':
+        conn = psycopg2.connect(
+            host=get_env_or_default('TEST_DB_HOST', '192.168.1.62'),
+            port=get_env_or_default('TEST_DB_PORT', '5432'),
+            database=get_env_or_default('TEST_DB_NAME', 'ms-personnel-test'),
+            user=get_env_or_default('TEST_DB_USER', 'postgres'),
+            password=get_env_or_default('TEST_DB_PASSWORD', 'password')
+        )
+    elif db_type == 'accord':
+        if not FIREBIRD_AVAILABLE:
+            raise ImportError("Для подключения к Аккорд необходимо установить fdb: pip install fdb")
+        
+        # Подключение к Firebird (формат: jdbc:firebirdsql://host:port/dbname)
+        conn = fdb.connect(
+            host=get_env_or_default('ACCORD_HOST', '192.168.1.62'),
+            port=int(get_env_or_default('ACCORD_PORT', '3050')),
+            database=get_env_or_default('ACCORD_DB', 'akkord'),
+            user=get_env_or_default('ACCORD_USER', 'SYSDBA'),
+            password=get_env_or_default('ACCORD_PASSWORD', 'masterkey')
+        )
+    elif db_type == 'adp-sap':
+        # Подключение к БД adp-sap с данными САП
+        conn = psycopg2.connect(
+            host=get_env_or_default('ADP_SAP_HOST', '192.168.1.62'),
+            port=get_env_or_default('ADP_SAP_PORT', '5432'),
+            database=get_env_or_default('ADP_SAP_DB', 'adp-sap'),
+            user=get_env_or_default('ADP_SAP_USER', 'postgres'),
+            password=get_env_or_default('ADP_SAP_PASSWORD', 'password')
+        )
+    else:
+        raise ValueError(f"Неизвестный тип БД: {db_type}")
+    
+    return conn
+
+
+def get_employee_data_snapshot(cursor, employee_numbers):
+    """
+    Получить снимок данных сотрудников перед обновлением.
+    
+    Args:
+        cursor: курсор БД
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Словарь с данными сотрудников
+    """
+    if not employee_numbers:
+        return {}
+    
+    query = """
+    SELECT 
+        e.employee_number,
+        e.surname || ' ' || e.name || ' ' || COALESCE(e.patronymic, '') AS fio,
+        e.birth_date,
+        e.citizenship,
+        tds.title_id AS tds_title_id,
+        tds.title AS tds_title,
+        fi.position AS fi_position,
+        fi.base_airport,
+        pol.obj_id1 AS pol_title_id,
+        pol.expired AS pol_expired
+    FROM UNNEST(ARRAY[%s]) ids(ids)
+    LEFT JOIN personnel_v2.employee e ON e.employee_number = ids.ids
+    LEFT JOIN personnel_v2.flight_info fi ON fi.employee_number = ids.ids AND fi.expired = FALSE
+    LEFT JOIN personnel_v2.title_dep_summary tds ON tds.employee_number = ids.ids
+    LEFT JOIN personnel_v2.personnel_object_link pol ON pol.type = 'A008' 
+        AND pol.expired = FALSE 
+        AND pol.obj_id2 = LPAD(ids.ids::text, 8, '0')
+    """ % ','.join(str(int(e)) for e in employee_numbers)
+    
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    
+    snapshot = {}
+    for row in rows:
+        en = row[0]
+        snapshot[en] = {
+            'fio': row[1],
+            'birth_date': str(row[2]) if row[2] else None,
+            'citizenship': row[3],
+            'tds_title_id': row[4],
+            'tds_title': row[5],
+            'fi_position': row[6],
+            'base_airport': row[7],
+            'pol_title_id': row[8],
+            'pol_expired': row[9]
+        }
+    
+    return snapshot
+
+
+def execute_sql_script(conn, sql_script):
+    """
+    Выполнить SQL-скрипт на базе данных.
+    
+    Args:
+        conn: подключение к БД
+        sql_script: текст SQL-скрипта
+    
+    Returns:
+        Словарь с результатами выполнения
+    """
+    results = {
+        'success': True,
+        'executed_statements': 0,
+        'errors': [],
+        'affected_rows': 0
+    }
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Разбиваем скрипт на отдельные statements
+        statements = [s.strip() for s in sql_script.split(';') if s.strip() and not s.strip().startswith('--')]
+        
+        for stmt in statements:
+            if stmt and not stmt.startswith('--'):
+                try:
+                    cursor.execute(stmt)
+                    results['executed_statements'] += 1
+                    results['affected_rows'] += cursor.rowcount
+                except Exception as e:
+                    results['errors'].append(f"Ошибка в stmt: {stmt[:50]}... - {e}")
+        
+        conn.commit()
+        
+    except Exception as e:
+        results['success'] = False
+        results['errors'].append(f"Критическая ошибка: {e}")
+        conn.rollback()
+    
+    cursor.close()
+    
+    return results
+
+
+def compare_snapshots(before_snapshot, after_snapshot):
+    """
+    Сравнить снимки данных до и после обновления.
+    
+    Args:
+        before_snapshot: снимок до обновления
+        after_snapshot: снимок после обновления
+    
+    Returns:
+        Словарь с результатами сравнения
+    """
+    comparison = {
+        'total_checked': len(before_snapshot),
+        'changed': 0,
+        'unchanged': 0,
+        'not_found': 0,
+        'changes': [],
+        'issues': []
+    }
+    
+    for en, before_data in before_snapshot.items():
+        after_data = after_snapshot.get(en)
+        
+        if not after_data:
+            comparison['not_found'] += 1
+            comparison['issues'].append(f"Сотрудник {en} не найден после обновления")
+            continue
+        
+        # Проверяем изменения
+        changes = {}
+        for key in before_data:
+            if before_data[key] != after_data.get(key):
+                changes[key] = {
+                    'before': before_data[key],
+                    'after': after_data.get(key)
+                }
+        
+        if changes:
+            comparison['changed'] += 1
+            comparison['changes'].append({
+                'employee_number': en,
+                'fio': before_data['fio'],
+                'changes': changes
+            })
+        else:
+            comparison['unchanged'] += 1
+    
+    return comparison
+
+
+def generate_test_report(before_snapshot, after_snapshot, comparison, execution_results):
+    """
+    Сгенерировать отчёт о тестировании.
+    
+    Args:
+        before_snapshot: снимок до обновления
+        after_snapshot: снимок после обновления
+        comparison: результаты сравнения
+        execution_results: результаты выполнения скрипта
+    
+    Returns:
+        Текстовый отчёт
+    """
+    report_lines = []
+    report_lines.append("=" * 70)
+    report_lines.append("ОТЧЁТ О ТЕСТИРОВАНИИ НА ТЕСТОВОЙ БАЗЕ")
+    report_lines.append(f"Дата тестирования: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("=" * 70)
+    
+    # Результаты выполнения скрипта
+    report_lines.append("\n📊 РЕЗУЛЬТАТЫ ВЫПОЛНЕНИЯ СКРИПТА:")
+    report_lines.append("-" * 70)
+    report_lines.append(f"  Статус: {'✓ УСПЕХ' if execution_results['success'] else '✗ ОШИБКА'}")
+    report_lines.append(f"  Выполнено statements: {execution_results['executed_statements']}")
+    report_lines.append(f"  Затронуто строк: {execution_results['affected_rows']}")
+    
+    if execution_results['errors']:
+        report_lines.append(f"  Ошибок: {len(execution_results['errors'])}")
+        for err in execution_results['errors'][:5]:  # Показываем первые 5 ошибок
+            report_lines.append(f"    - {err[:100]}...")
+    
+    # Сравнение данных
+    report_lines.append("\n📋 СРАВНЕНИЕ ДАННЫХ (ДО / ПОСЛЕ):")
+    report_lines.append("-" * 70)
+    report_lines.append(f"  Всего проверено сотрудников: {comparison['total_checked']}")
+    report_lines.append(f"  Изменено: {comparison['changed']}")
+    report_lines.append(f"  Без изменений: {comparison['unchanged']}")
+    report_lines.append(f"  Не найдено после обновления: {comparison['not_found']}")
+    
+    # Детализация изменений
+    if comparison['changes']:
+        report_lines.append("\n📝 ДЕТАЛИЗАЦИЯ ИЗМЕНЕНИЙ (первые 10):")
+        report_lines.append("-" * 70)
+        
+        for change in comparison['changes'][:10]:
+            en = change['employee_number']
+            fio = change['fio']
+            changes = change['changes']
+            
+            report_lines.append(f"  [{en}] {fio}")
+            for field, diff in changes.items():
+                report_lines.append(f"    {field}: {diff['before']} -> {diff['after']}")
+            
+            if len(comparison['changes']) > 10:
+                report_lines.append(f"  ... и ещё {len(comparison['changes']) - 10} изменений")
+                break
+    
+    # Проблемы
+    if comparison['issues']:
+        report_lines.append("\n⚠ ВЫЯВЛЕННЫЕ ПРОБЛЕМЫ:")
+        report_lines.append("-" * 70)
+        for issue in comparison['issues'][:10]:
+            report_lines.append(f"  - {issue}")
+    
+    # Итоги
+    report_lines.append("\n" + "=" * 70)
+    report_lines.append("ИТОГИ ТЕСТИРОВАНИЯ:")
+    report_lines.append("-" * 70)
+    
+    if execution_results['success'] and comparison['changed'] > 0 and not comparison['issues']:
+        report_lines.append("  ✓ ТЕСТИРОВАНИЕ ПРОЙДЕНО УСПЕШНО")
+        report_lines.append("  ✓ Скрипт выполнен без ошибок")
+        report_lines.append("  ✓ Данные обновлены корректно")
+    elif not execution_results['success']:
+        report_lines.append("  ✗ ТЕСТИРОВАНИЕ НЕ ПРОЙДЕНО")
+        report_lines.append("  ✗ Ошибки при выполнении скрипта")
+    elif comparison['not_found'] > 0:
+        report_lines.append("  ⚠ ТЕСТИРОВАНИЕ С ЗАМЕЧАНИЯМИ")
+        report_lines.append("  ⚠ Некоторые сотрудники не найдены после обновления")
+    else:
+        report_lines.append("  ⚠ ТЕСТИРОВАНИЕ С ЗАМЕЧАНИЯМИ")
+        report_lines.append("  ⚠ Изменения не обнаружены")
+    
+    report_lines.append("=" * 70)
+    
+    return '\n'.join(report_lines)
+
+
+def run_test_cycle(employee_numbers, sql_script, test_conn):
+    """
+    Запустить полный цикл тестирования на тестовой базе.
+    
+    Args:
+        employee_numbers: список табельных номеров
+        sql_script: текст SQL-скрипта
+        test_conn: подключение к тестовой БД
+    
+    Returns:
+        Словарь с результатами тестирования
+    """
+    print("\n" + "=" * 60)
+    print("ЗАПУСК ТЕСТИРОВАНИЯ НА ТЕСТОВОЙ БАЗЕ")
+    print("=" * 60)
+    
+    test_cursor = test_conn.cursor()
+    
+    # 1. Сохраняем снимок данных до обновления
+    print("\n[1/4] Сохранение снимка данных ДО обновления...")
+    before_snapshot = get_employee_data_snapshot(test_cursor, employee_numbers)
+    print(f"✓ Сохранено данных о {len(before_snapshot)} сотрудниках")
+    
+    # 2. Выполняем скрипт
+    print("\n[2/4] Выполнение SQL-скрипта...")
+    execution_results = execute_sql_script(test_conn, sql_script)
+    
+    if execution_results['success']:
+        print(f"✓ Выполнено {execution_results['executed_statements']} statements")
+        print(f"✓ Затронуто {execution_results['affected_rows']} строк")
+    else:
+        print(f"✗ Ошибки при выполнении: {len(execution_results['errors'])}")
+        for err in execution_results['errors'][:3]:
+            print(f"  - {err[:80]}...")
+    
+    # 3. Сохраняем снимок данных после обновления
+    print("\n[3/4] Сохранение снимка данных ПОСЛЕ обновления...")
+    after_snapshot = get_employee_data_snapshot(test_cursor, employee_numbers)
+    print(f"✓ Сохранено данных о {len(after_snapshot)} сотрудниках")
+    
+    test_cursor.close()
+    
+    # 4. Сравниваем данные
+    print("\n[4/4] Сравнение данных...")
+    comparison = compare_snapshots(before_snapshot, after_snapshot)
+    print(f"✓ Изменено: {comparison['changed']}")
+    print(f"✓ Без изменений: {comparison['unchanged']}")
+    
+    # Генерируем отчёт
+    report = generate_test_report(before_snapshot, after_snapshot, comparison, execution_results)
+    
+    return {
+        'before_snapshot': before_snapshot,
+        'after_snapshot': after_snapshot,
+        'comparison': comparison,
+        'execution_results': execution_results,
+        'report': report
+    }
+
+
+def collect_employee_numbers_for_update(conn):
+    """
+    Собрать список табельников для обновления из различных источников.
+    
+    Returns:
+        Список уникальных табельных номеров
+    """
+    cursor = conn.cursor()
+    
+    accord_employees = []
+    
+    # 1. Запрос к Аккорду - сотрудники с изменениями за последние 50 дней
+    if FIREBIRD_AVAILABLE:
+        try:
+            accord_conn = get_db_connection('accord')
+            accord_cursor = accord_conn.cursor()
+            
+            # Firebird синтаксис
+            accord_query = """
+            SELECT DISTINCT pm.SAP_TAB
+            FROM PERS_MAIN_HIST pmh 
+            JOIN PERS_MAIN pm ON pmh.ID_PERS = pm.ID_PERS 
+            JOIN PERS_MAIN_HIST pmh2 ON pmh2.ID_PERS = pmh.ID_PERS
+            WHERE pmh.DAT_E IS NULL
+            AND (pmh.DAT_E > CAST((CURRENT_TIMESTAMP - 50) AS DATE) 
+                 OR pmh.DAT_B > CAST((CURRENT_TIMESTAMP - 50) AS DATE))
+            AND pm.SAP_TAB < 300000
+            ORDER BY pm.SAP_TAB
+            """
+            
+            accord_cursor.execute(accord_query)
+            accord_employees = [row[0] for row in accord_cursor.fetchall()]
+            accord_cursor.close()
+            accord_conn.close()
+            
+            print(f"✓ Получено {len(accord_employees)} табельников из Аккорда")
+            
+        except Exception as e:
+            print(f"⚠ Предупреждение: Не удалось получить данные из Аккорда: {e}")
+            accord_employees = []
+    else:
+        print("⚠ Подключение к Аккорд недоступно (fdb не установлен)")
+    
+    # 2. Запрос к персоналу - сотрудники без актуальных должностей
+    personnel_query = """
+    SELECT DISTINCT e.employee_number
+    FROM personnel_v2.employee e 
+    LEFT JOIN personnel_v2.title_dep_summary tds ON tds.employee_number = e.employee_number
+    LEFT JOIN personnel_v2.flight_info fi ON fi.employee_number = e.employee_number 
+    LEFT JOIN personnel_v2.personnel_object_link pol ON pol.type = 'A008' 
+        AND pol.expired = FALSE 
+        AND pol.obj_id2 = LPAD(e.employee_number::text, 8, '0')
+    WHERE e.type IN (1, 2)
+        AND e.status = 1
+        AND e.employee_number < 300000
+        AND (tds.id IS NULL OR (tds.title_id != fi.position AND fi.position != '99999999') 
+             OR tds.title_id != pol.obj_id1)
+    ORDER BY e.employee_number
+    """
+    
+    cursor.execute(personnel_query)
+    personnel_employees = [row[0] for row in cursor.fetchall()]
+    
+    print(f"✓ Получено {len(personnel_employees)} табельников из персонала")
+    
+    # Объединяем все источники
+    all_employees = set(accord_employees) | set(personnel_employees)
+    
+    cursor.close()
+    
+    print(f"✓ Всего уникальных табельников для обновления: {len(all_employees)}")
+    
+    return sorted(list(all_employees))
+
+
+def validate_sql_script(cursor, sql_scripts):
+    """
+    Валидировать сгенерированные SQL-скрипты.
+    
+    Args:
+        cursor: курсор БД
+        sql_scripts: список SQL-скриптов
+    
+    Returns:
+        Словарь с результатами валидации
+    """
+    validation_results = {
+        'total_scripts': len(sql_scripts),
+        'valid_scripts': 0,
+        'invalid_scripts': 0,
+        'errors': [],
+        'warnings': []
+    }
+    
+    for i, sql in enumerate(sql_scripts):
+        if not sql or not sql.strip():
+            validation_results['warnings'].append(f"Пустой скрипт #{i}")
+            continue
+            
+        # Проверяем базовый синтаксис
+        sql = sql.strip()
+        if not sql.endswith(';'):
+            validation_results['warnings'].append(f"Скрипт #{i} не заканчивается на ';'")
+        
+        # Проверяем наличие обязательных таблиц
+        required_tables = ['personnel_v2.employee', 'personnel_v2.flight_info', 
+                         'personnel_v2.title_dep_summary', 'personnel_v2.personnel_object_link']
+        
+        valid_table = False
+        for table in required_tables:
+            if table in sql:
+                valid_table = True
+                break
+        
+        if not valid_table:
+            validation_results['errors'].append(f"Скрипт #{i}: не найдена целевая таблица")
+            continue
+        
+        validation_results['valid_scripts'] += 1
+    
+    validation_results['invalid_scripts'] = (
+        validation_results['total_scripts'] - validation_results['valid_scripts']
+    )
+    
+    return validation_results
+
+
+def check_data_consistency(cursor, employee_numbers):
+    """
+    Проверить консистентность данных перед обновлением.
+    
+    Args:
+        cursor: курсор БД
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Словарь с результатами проверки
+    """
+    if not employee_numbers:
+        return {'status': 'empty', 'message': 'Нет данных для проверки'}
+    
+    results = {
+        'checked_count': len(employee_numbers),
+        'issues': [],
+        'summary': {}
+    }
+    
+    try:
+        # 1. Проверка наличия сотрудников в основных таблицах
+        check_query = """
+        SELECT 
+            COUNT(DISTINCT e.employee_number) as total_employees,
+            COUNT(DISTINCT tds.employee_number) as with_title_dep,
+            COUNT(DISTINCT fi.employee_number) as with_flight_info,
+            COUNT(DISTINCT pol.employee_number) as with_position_link
+        FROM UNNEST(ARRAY[%s]) ids(ids)
+        LEFT JOIN personnel_v2.employee e ON e.employee_number = ids.ids
+        LEFT JOIN personnel_v2.title_dep_summary tds ON tds.employee_number = e.employee_number
+        LEFT JOIN personnel_v2.flight_info fi ON fi.employee_number = e.employee_number AND fi.expired = FALSE
+        LEFT JOIN personnel_v2.personnel_object_link pol ON pol.type = 'A008' 
+            AND pol.expired = FALSE 
+            AND pol.obj_id2 = LPAD(e.employee_number::text, 8, '0')
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(check_query)
+        row = cursor.fetchone()
+        
+        results['summary'] = {
+            'total_in_list': row[0],
+            'in_employee_table': row[0],
+            'with_title_dep_summary': row[1],
+            'with_flight_info': row[2],
+            'with_position_link': row[3],
+            'missing_in_employee': row[0] - row[0],
+            'missing_title_dep': row[0] - row[1],
+            'missing_flight_info': row[0] - row[2],
+            'missing_position_link': row[0] - row[3]
+        }
+        
+        # 2. Проверка расхождений в должностях
+        diff_query = """
+        SELECT 
+            COUNT(*) as discrepancies
+        FROM UNNEST(ARRAY[%s]) ids(ids)
+        JOIN personnel_v2.employee e ON e.employee_number = ids.ids
+        JOIN personnel_v2.title_dep_summary tds ON tds.employee_number = e.employee_number
+        JOIN personnel_v2.flight_info fi ON fi.employee_number = e.employee_number AND fi.expired = FALSE
+        WHERE tds.title_id != fi.position AND fi.position != '99999999'
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(diff_query)
+        results['summary']['position_discrepancies'] = cursor.fetchone()[0]
+        
+        # 3. Проверка неактуальных записей в personnel_object_link
+        pol_query = """
+        SELECT 
+            COUNT(*) as expired_count
+        FROM personnel_v2.personnel_object_link pol
+        JOIN UNNEST(ARRAY[%s]) ids(ids) ON pol.employee_number = ids.ids::int
+        WHERE pol.type = 'A008' AND pol.expired = TRUE
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(pol_query)
+        results['summary']['expired_position_links'] = cursor.fetchone()[0]
+        
+        # Формируем рекомендации
+        if results['summary']['missing_in_employee'] > 0:
+            results['issues'].append(
+                f"⚠ {results['summary']['missing_in_employee']} сотрудников отсутствуют в таблице employee - "
+                "необходимо добавить из Аккорда"
+            )
+        
+        if results['summary']['position_discrepancies'] > 0:
+            results['issues'].append(
+                f"⚠ {results['summary']['position_discrepancies']} расхождений в должностях между "
+                "title_dep_summary и flight_info"
+            )
+        
+        if results['summary']['expired_position_link'] > 0:
+            results['issues'].append(
+                f"⚠ {results['summary']['expired_position_links']} неактуальных записей в "
+                "personnel_object_link"
+            )
+        
+        if not results['issues']:
+            results['issues'].append("✓ Все проверки пройдены успешно")
+        
+        results['status'] = 'completed'
+        
+    except Exception as e:
+        results['status'] = 'error'
+        results['error'] = str(e)
+    
+    return results
+
+
+def check_update_result(cursor, employee_numbers):
+    """
+    Проверить результаты обновления данных.
+    
+    Args:
+        cursor: курсор БД
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Словарь с результатами проверки
+    """
+    if not employee_numbers:
+        return {'status': 'empty', 'message': 'Нет данных для проверки'}
+    
+    results = {
+        'employee_number': 0,
+        'title_updated': 0,
+        'flight_info_updated': 0,
+        'position_link_updated': 0,
+        'title_dep_summary_updated': 0
+    }
+    
+    try:
+        # Проверка обновления employee
+        emp_query = """
+        SELECT COUNT(*) 
+        FROM personnel_v2.employee e
+        JOIN UNNEST(ARRAY[%s]) ids(ids) ON e.employee_number = ids.ids
+        WHERE e.update_date >= NOW() - INTERVAL '1 hour'
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(emp_query)
+        results['employee_updated'] = cursor.fetchone()[0]
+        
+        # Проверка обновления title_dep_summary
+        tds_query = """
+        SELECT COUNT(*) 
+        FROM personnel_v2.title_dep_summary tds
+        JOIN UNNEST(ARRAY[%s]) ids(ids) ON tds.employee_number = ids.ids
+        WHERE tds.update_date >= NOW() - INTERVAL '1 hour'
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(tds_query)
+        results['title_dep_summary_updated'] = cursor.fetchone()[0]
+        
+        # Проверка обновления flight_info
+        fi_query = """
+        SELECT COUNT(*) 
+        FROM personnel_v2.flight_info fi
+        JOIN UNNEST(ARRAY[%s]) ids(ids) ON fi.employee_number = ids.ids
+        WHERE fi.update_date >= NOW() - INTERVAL '1 hour'
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(fi_query)
+        results['flight_info_updated'] = cursor.fetchone()[0]
+        
+        # Проверка обновления personnel_object_link
+        pol_query = """
+        SELECT COUNT(*) 
+        FROM personnel_v2.personnel_object_link pol
+        JOIN UNNEST(ARRAY[%s]) ids(ids) ON pol.employee_number = ids.ids::int
+        WHERE pol.type = 'A008' AND pol.update_date >= NOW() - INTERVAL '1 hour'
+        """ % ','.join(str(int(e)) for e in employee_numbers)
+        
+        cursor.execute(pol_query)
+        results['position_link_updated'] = cursor.fetchone()[0]
+        
+        results['status'] = 'completed'
+        
+    except Exception as e:
+        results['status'] = 'error'
+        results['error'] = str(e)
+    
+    return results
+
+
+def generate_validation_report(cursor, employee_numbers):
+    """
+    Сгенерировать отчёт о валидации данных.
+    
+    Args:
+        cursor: курсор БД
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Текстовый отчёт
+    """
+    report_lines = []
+    report_lines.append("=" * 70)
+    report_lines.append("ОТЧЁТ О ВАЛИДАЦИИ ДАННЫХ")
+    report_lines.append(f"Дата проверки: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append(f"Количество сотрудников: {len(employee_numbers)}")
+    report_lines.append("=" * 70)
+    
+    # Проверка консистентности
+    consistency = check_data_consistency(cursor, employee_numbers)
+    
+    report_lines.append("\n📋 РЕЗУЛЬТАТЫ ПРОВЕРКИ КОНСИСТЕНТНОСТИ:")
+    report_lines.append("-" * 70)
+    
+    if consistency.get('summary'):
+        summary = consistency['summary']
+        report_lines.append(f"  Всего сотрудников в списке:        {summary['total_in_list']}")
+        report_lines.append(f"  В таблице employee:                {summary['in_employee_table']}")
+        report_lines.append(f"  С title_dep_summary:              {summary['with_title_dep_summary']}")
+        report_lines.append(f"  С flight_info:                    {summary['with_flight_info']}")
+        report_lines.append(f"  С personnel_object_link:          {summary['with_position_link']}")
+        report_lines.append("")
+        report_lines.append(f"  ⚠ Расхождений в должностях:       {summary.get('position_discrepancies', 0)}")
+        report_lines.append(f"  ⚠ Неактуальных ссылок:            {summary.get('expired_position_link', 0)}")
+    
+    if consistency.get('issues'):
+        report_lines.append("\n⚠ ВЫЯВЛЕННЫЕ ПРОБЛЕМЫ:")
+        for issue in consistency['issues']:
+            report_lines.append(f"  {issue}")
+    
+    # Основной запрос проверки (аналог запроса из app.txt)
+    report_lines.append("\n📊 ДЕТАЛЬНЫЙ АНАЛИЗ ДАННЫХ:")
+    report_lines.append("-" * 70)
+    
+    try:
+        detail_query = """
+        SELECT 
+            en,
+            e.surname || ' ' || e.name || ' ' || COALESCE(e.patronymic, '') AS fio,
+            e.type AS emp_type,
+            e.status AS emp_status,
+            tds.title,
+            tds.title_id,
+            fi.position AS fi_position,
+            pol.obj_id1 AS pol_position,
+            pol.expired AS pol_expired,
+            fi.base_airport
+        FROM UNNEST(ARRAY[%s]) AS en
+        LEFT JOIN personnel_v2.employee e ON e.employee_number = en
+        LEFT JOIN personnel_v2.flight_info fi ON fi.employee_number = en AND fi.expired = FALSE
+        LEFT JOIN personnel_v2.title_dep_summary tds ON tds.employee_number = e.employee_number
+        LEFT JOIN personnel_v2.personnel_object_link pol ON pol.type = 'A008' 
+            AND pol.expired = FALSE 
+            AND pol.obj_id2 = LPAD(e.employee_number::text, 8, '0')
+        ORDER BY en
+        """ % ','.join(str(int(e)) for e in employee_numbers[:100])  # Ограничиваем first 100 для отчёта
+        
+        cursor.execute(detail_query)
+        rows = cursor.fetchall()
+        
+        report_lines.append(f"\n  Показано первых {len(rows)} сотрудников из {len(employee_numbers)}:")
+        
+        for row in rows[:10]:  # Показываем first 10
+            en, fio, emp_type, emp_status, title, title_id, fi_position, pol_position, pol_expired, base_airport = row
+            
+            # Проверяем актуальность
+            is_actual = (title_id == pol_position) if (pol_position and title_id) else False
+            
+            status_icon = "✓" if is_actual else "✗"
+            report_lines.append(f"  {status_icon} [{en}] {fio}")
+            report_lines.append(f"      Должность: {title or 'НЕТ'} (ID: {title_id})")
+            report_lines.append(f"      POL: {pol_position or 'НЕТ'} | FI: {fi_position or 'НЕТ'}")
+            report_lines.append(f"      База: {base_airport or 'НЕТ'}")
+        
+        if len(rows) > 10:
+            report_lines.append(f"  ... и ещё {len(rows) - 10} сотрудников")
+        
+    except Exception as e:
+        report_lines.append(f"  ⚠ Не удалось получить детальную информацию: {e}")
+    
+    report_lines.append("\n" + "=" * 70)
+    report_lines.append("РЕКОМЕНДАЦИИ:")
+    report_lines.append("-" * 70)
+    
+    if consistency.get('summary', {}).get('missing_in_employee', 0) > 0:
+        report_lines.append("  1. Добавить недостающих сотрудников из Аккорда в таблицу employee")
+    
+    if consistency.get('summary', {}).get('position_discrepancies', 0) > 0:
+        report_lines.append("  2. Обновить должности в title_dep_summary согласно flight_info")
+    
+    if consistency.get('summary', {}).get('expired_position_link', 0) > 0:
+        report_lines.append("  3. Восстановить неактуальные записи в personnel_object_link")
+    
+    if not consistency.get('issues') or all("✓" in i for i in consistency.get('issues', [])):
+        report_lines.append("  ✓ Данные готовы к обновлению")
+    
+    report_lines.append("=" * 70)
+    
+    return '\n'.join(report_lines)
+
+
+def generate_employee_updates(cursor, employee_numbers):
+    """
+    Сгенерировать UPDATE-скрипты для таблицы employee.
+    
+    Args:
+        cursor: курсор БД ms-personnel
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Список SQL-скриптов обновления
+    """
+    if not employee_numbers:
+        return []
+    
+    # Параметры подключения к adp-sap для dblink
+    adp_sap_host = get_env_or_default('ADP_SAP_HOST', '192.168.1.62')
+    adp_sap_port = get_env_or_default('ADP_SAP_PORT', '5432')
+    adp_sap_db = get_env_or_default('ADP_SAP_DB', 'adp-sap')
+    adp_sap_user = get_env_or_default('ADP_SAP_USER', 'postgres')
+    adp_sap_password = get_env_or_default('ADP_SAP_PASSWORD', 'password')
+    
+    dblink_conn = f'dbname={adp_sap_db} host={adp_sap_host} port={adp_sap_port} user={adp_sap_user} password={adp_sap_password}'
+    
+    # Формируем запрос с использованием dblink
+    # Используем $ для PostgreSQL dollar-quoting внутри строки Python
+    dblink_inner_query = """
+SELECT pernr, vorna, nach2, nachn, inits, gesch, gbdat, natio, FAMST, famdt, creationtime
+FROM parced_hrmd_lines_2
+WHERE p_code = 'P0002'
+AND endda = '99991231'
+"""
+    
+    query = f"""
+    SELECT * FROM (
+    SELECT ids,
+        ROW_NUMBER() OVER (PARTITION BY ids ORDER BY phl.creationtime DESC) id_rn,
+        'UPDATE personnel_v2.employee SET ' ||
+            '"name"=' || COALESCE('''' || phl.vorna || '''', 'NULL') || ', ' ||
+            'patronymic=' || COALESCE('''' || phl.nach2 || '''', 'NULL') || ', ' ||
+            '"surname"=' || COALESCE('''' || phl.nachn || '''', 'NULL') || ', ' ||
+            'initials=' || COALESCE('''' || phl.inits || '''', 'NULL') || ', ' ||
+            'sex=' || CASE WHEN phl.gesch = '2' THEN '''F''' ELSE '''M''' END || ', ' ||
+            'birth_date=' || COALESCE('''' || TO_CHAR(TO_DATE(phl.gbdat, 'YYYYMMDD'), 'YYYY-MM-DD') || '''', 'NULL') || ', ' ||
+            'citizenship=' || COALESCE('''' || phl.natio || '''', 'NULL') || ', ' ||
+            'marital_status=' || COALESCE(phl.FAMST::text, '1') || ', ' ||
+            'marital_status_date=' || COALESCE('''' || TO_CHAR(TO_DATE(phl.famdt, 'YYYYMMDD'), 'YYYY-MM-DD') || '''', 'NULL') || ', ' ||
+            'update_user=''SYSTEM'', update_date=NOW(), status=1, expired=FALSE ' ||
+            'WHERE employee_number=' || phl.pernr || ';' AS sql_update,
+        phl.pernr
+    FROM UNNEST(ARRAY[{','.join(str(int(e)) for e in employee_numbers)}]) ids
+    LEFT JOIN personnel_v2.dblink(
+        '{dblink_conn}'::text,
+        $dblink_inner_query$
+    ) AS phl(pernr TEXT, vorna TEXT, nach2 TEXT, nachn TEXT, inits TEXT, gesch TEXT, gbdat TEXT, natio TEXT, FAMST TEXT, famdt TEXT, creationtime TIMESTAMP)
+        ON phl.pernr = LPAD(ids::text, 8, '0')
+    ) sorted
+    WHERE sorted.id_rn = 1
+    AND sorted.pernr IS NOT NULL
+    ORDER BY sorted.pernr::int
+    """
+    # Заменяем placeholder на реальный запрос с $ для PostgreSQL
+    query = query.replace('$dblink_inner_query$', dblink_inner_query.strip())
+    
+    try:
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        scripts = []
+        for row in results:
+            if row[1]:  # sql_update
+                scripts.append(row[1])
+        
+        return scripts
+    except Exception as e:
+        print(f"❌ Ошибка при генерации обновлений employee: {e}")
+        return []
+
+
+def generate_flight_info_updates(cursor, employee_numbers):
+    """
+    Сгенерировать UPDATE-скрипты для таблицы flight_info.
+    
+    Args:
+        cursor: курсор БД ms-personnel
+        employee_numbers: список табельных номеров
+    
+    Returns:
+        Список SQL-скриптов обновления
+    """
+    if not employee_numbers:
+        return []
+    
+    # Параметры подключения к adp-sap для dblink
+    adp_sap_host = get_env_or_default('ADP_SAP_HOST', '192.168.1.62')
+    adp_sap_port = get_env_or_default('ADP_SAP_PORT', '5432')
+    adp_sap_db = get_env_or_default('ADP_SAP_DB', 'adp-sap')
+    adp_sap_user = get_env_or_default('ADP_SAP_USER', 'postgres')
+    adp_sap_password = get_env_or_default('ADP_SAP_PASSWORD', 'password')
+    
+    dblink_conn = f'dbname={adp_sap_db} host={adp_sap_host} port={adp_sap_port} user={adp_sap_user} password={adp_sap_password}'
+    
+    # Параметры подключения к ms-personnel для dblink (справочники)
+    ms_personnel_host = get_env_or_default('DB_HOST', '192.168.1.62')
+    ms_personnel_port = get_env_or_default('DB_PORT', '5432')
+    ms_personnel_user = get_env_or_default('DB_USER', 'postgres')
+    ms_personnel_password = get_env_or_default('DB_PASSWORD', 'password')
+    
+    ms_personnel_dblink = f'dbname=ms-personnel host={ms_personnel_host} port={ms_personnel_port} user={ms_personnel_user} password={ms_personnel_password}'
+    
+    # Формируем запросы с использованием dblink
+    # Используем $ для PostgreSQL dollar-quoting внутри строки Python
+    dblink_sap_inner_query = """
+SELECT pernr, persk, plans, werks, creationtime
+FROM parced_hrmd_lines_2
+WHERE p_code = 'P0001'
+AND endda = '99991231'
+AND raw_message_id NOT LIKE 'P%%'
+"""
+    
+    dblink_section_inner_query = """
+SELECT id AS st_id, code FROM personnel_v2.section_type
+"""
+    
+    dblink_airport_inner_query = """
+SELECT id AS sa_id FROM personnel_v2.section_airport
+"""
+    
+    query = f"""
+    SELECT * FROM (
+    SELECT ids,
+        phl.pernr,
+        ROW_NUMBER() OVER (PARTITION BY ids ORDER BY phl.creationtime DESC) id_rn,
+        'UPDATE personnel_v2.flight_info SET ' ||
+            'category=' || COALESCE(phl.persk::text, 'NULL') || ', ' ||
+            '"section"=' || COALESCE(st.st_id::text, 'NULL') || ', ' ||
+            'base_airport=' || COALESCE(sa.sa_id::text, 'NULL') || ', ' ||
+            '"position"=' || COALESCE('''' || phl.plans || '''', 'NULL') || ', ' ||
+            'expired=FALSE, update_user=''SYSTEM'', update_date=NOW() ' ||
+            'WHERE employee_number=' || ids::text || ';' AS sql_update
+    FROM UNNEST(ARRAY[{','.join(str(int(e)) for e in employee_numbers)}]) ids
+    LEFT JOIN personnel_v2.dblink(
+        '{dblink_conn}'::text,
+        $dblink_sap_inner_query$
+    ) AS phl(pernr TEXT, persk TEXT, plans TEXT, werks TEXT, creationtime TIMESTAMP)
+        ON phl.pernr = LPAD(ids::text, 8, '0')
+    LEFT JOIN personnel_v2.dblink(
+        '{ms_personnel_dblink}'::text,
+        $dblink_section_inner_query$
+    ) AS st(st_id INT, code TEXT) ON st.code = phl.werks
+    LEFT JOIN personnel_v2.dblink(
+        '{ms_personnel_dblink}'::text,
+        $dblink_airport_inner_query$
+    ) AS sa(sa_id INT) ON LPAD(sa.sa_id::text, 4, '0') = phl.werks
+    ) sorted
+    WHERE sorted.id_rn = 1
+    AND sorted.pernr IS NOT NULL
+    ORDER BY ids
+    """
+    # Заменяем placeholders на реальные запросы с $ для PostgreSQL
+    query = query.replace('$dblink_sap_inner_query$', dblink_sap_inner_query.strip())
+    query = query.replace('$dblink_section_inner_query$', dblink_section_inner_query.strip())
+    query = query.replace('$dblink_airport_inner_query$', dblink_airport_inner_query.strip())
+    
+    try:
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        scripts = []
+        for row in results:
+            if row[1]:  # sql_update
+                scripts.append(row[1])
+        
+        return scripts
+    except Exception as e:
+        print(f"❌ Ошибка при генерации обновлений flight_info: {e}")
+        return []
+
+
+def generate_full_script(employee_numbers, conn, validation_report=None):
+    """
+    Сгенерировать полный скрипт обновления для всех таблиц.
+    
+    Args:
+        employee_numbers: список табельных номеров
+        conn: подключение к БД
+        validation_report: отчёт о валидации (опционально)
+    
+    Returns:
+        Полный текст SQL-скрипта
+    """
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    script_parts = []
+    script_parts.append("-- ========================================")
+    script_parts.append(f"-- Автоматически сгенерированный скрипт обновления данных из САП")
+    script_parts.append(f"-- Дата генерации: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    script_parts.append(f"-- Количество сотрудников для обновления: {len(employee_numbers)}")
+    script_parts.append("-- ========================================")
+    script_parts.append("")
+    
+    # Добавляем отчёт о валидации, если есть
+    if validation_report:
+        script_parts.append("-- " + "=" * 66)
+        script_parts.append("-- ОТЧЁТ О ВАЛИДАЦИИ (ПРЕДВАРИТЕЛЬНЫЙ АНАЛИЗ)")
+        script_parts.append("-- " + "=" * 66)
+        for line in validation_report.split('\n'):
+            script_parts.append(f"-- {line}")
+        script_parts.append("")
+    
+    # Обновление employee
+    script_parts.append("-- ========================================")
+    script_parts.append("-- ОБНОВЛЕНИЕ ТАБЛИЦЫ employee (ФИО, возраст, гражданство)")
+    script_parts.append("-- ========================================")
+    script_parts.append("")
+    
+    employee_scripts = generate_employee_updates(cursor, employee_numbers)
+    for sql in employee_scripts:
+        script_parts.append(sql)
+    
+    script_parts.append("")
+    
+    # Обновление flight_info
+    script_parts.append("-- ========================================")
+    script_parts.append("-- ОБНОВЛЕНИЕ ТАБЛИЦЫ flight_info (базовый аэропорт, должность)")
+    script_parts.append("-- ========================================")
+    script_parts.append("")
+    
+    flight_scripts = generate_flight_info_updates(cursor, employee_numbers)
+    for sql in flight_scripts:
+        script_parts.append(sql)
+    
+    script_parts.append("")
+    script_parts.append("-- ========================================")
+    script_parts.append("-- КОНЕЦ СКРИПТА")
+    script_parts.append("-- ========================================")
+    
+    cursor.close()
+    
+    return '\n'.join(script_parts)
+
+
+def main():
+    """Основная функция."""
+    parser = argparse.ArgumentParser(
+        description='Автоматизация обновления данных по должностям из САП'
+    )
+    parser.add_argument(
+        '--output', '-o',
+        default='update_script.sql',
+        help='Путь к выходному файлу (по умолчанию: update_script.sql)'
+    )
+    parser.add_argument(
+        '--days', '-d',
+        type=int,
+        default=50,
+        help='Количество дней для выборки изменений из Аккорда (по умолчанию: 50)'
+    )
+    parser.add_argument(
+        '--validate-only', '-v',
+        action='store_true',
+        help='Только валидация данных без генерации скрипта'
+    )
+    parser.add_argument(
+        '--preview', '-p',
+        action='store_true',
+        help='Только предпросмотр (без записи в файл)'
+    )
+    parser.add_argument(
+        '--test', '-t',
+        action='store_true',
+        help='Выполнить тестирование на тестовой базе данных'
+    )
+    parser.add_argument(
+        '--test-output',
+        default='test_report.txt',
+        help='Путь к файлу отчёта о тестировании (по умолчанию: test_report.txt)'
+    )
+    
+    args = parser.parse_args()
+    
+    print("=" * 60)
+    print("Автоматизация обновления данных по должностям из САП")
+    print("=" * 60)
+    
+    try:
+        # Подключение к БД
+        conn = get_db_connection('personnel')
+        conn.autocommit = True  # Отдельные транзакции для каждой операции
+        print("✓ Подключение к БД успешно")
+        
+        # Сбор табельников для обновления
+        print("\n[1/5] Сбор табельников для обновления...")
+        employee_numbers = collect_employee_numbers_for_update(conn)
+        print(f"✓ Найдено {len(employee_numbers)} табельников для обновления")
+        
+        if not employee_numbers:
+            print("⚠ Нет данных для обновления")
+            conn.close()
+            return
+        
+        # Валидация данных
+        print("\n[2/5] Проверка консистентности данных...")
+        try:
+            val_cursor = conn.cursor()
+            validation_report = generate_validation_report(val_cursor, employee_numbers)
+            val_cursor.close()
+        except Exception as e:
+            print(f"⚠ Ошибка валидации: {e}")
+            conn.rollback()
+            validation_report = None
+        print(validation_report or "Валидация пропущена из-за ошибки")
+        
+        # Только валидация
+        if args.validate_only:
+            print("\n[3/5] Валидация завершена.")
+            conn.close()
+            return
+        
+        # Генерация скрипта
+        print("\n[4/5] Генерация скрипта обновления...")
+        full_script = generate_full_script(employee_numbers, conn, validation_report)
+        print(f"✓ Сгенерировано {len(full_script)} символов")
+        
+        # Режим тестирования
+        if args.test:
+            print(f"\n[5/5] Режим тестирования на тестовой базе...")
+            
+            try:
+                # Подключение к тестовой БД
+                test_conn = get_db_connection('test')
+                print("✓ Подключение к тестовой БД успешно")
+                
+                # Запуск тестового цикла
+                test_results = run_test_cycle(employee_numbers, full_script, test_conn)
+                
+                # Вывод отчёта
+                print("\n" + test_results['report'])
+                
+                # Сохранение отчёта
+                with open(args.test_output, 'w', encoding='utf-8') as f:
+                    f.write(test_results['report'])
+                print(f"\n✓ Отчёт о тестировании сохранён в файл {args.test_output}")
+                
+                test_conn.close()
+                
+            except psycopg2.Error as e:
+                print(f"⚠ Ошибка подключения к тестовой БД: {e}")
+                print("⚠ Тестирование пропущено. Убедитесь, что переменные TEST_DB_* настроены в .env")
+        
+        # Вывод или запись
+        if args.preview:
+            print("\n[5/5] Предпросмотр скрипта (первые 100 строк):")
+            print("-" * 60)
+            lines = full_script.split('\n')
+            for line in lines[:100]:
+                print(line)
+            if len(lines) > 100:
+                print(f"... и ещё {len(lines) - 100} строк")
+        else:
+            print(f"\n[5/5] Запись скрипта в файл {args.output}...")
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(full_script)
+            print(f"✓ Скрипт записан в файл {args.output}")
+        
+        print("\n" + "=" * 60)
+        print("ГОТОВО! Следующие шаги:")
+        print("=" * 60)
+        print("1. Проверьте сгенерированный скрипт")
+        if not args.test:
+            print("2. Протестируйте на тестовой базе данных: python sap_position_updater.py --test")
+        print("3. Сделайте резервную копию продуктивной БД")
+        print("4. Выполните скрипт на продуктивной БД")
+        print("=" * 60)
+        
+        conn.close()
+        
+    except psycopg2.Error as e:
+        print(f"❌ Ошибка подключения к БД: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
+

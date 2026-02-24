@@ -1,0 +1,1585 @@
+<body class="Visible-ScreenXL" style="cursor: auto;">
+    <a name="Top"></a>
+    <div id="AppWrapper">
+        <div id="Header" class="ARIARoleBanner" role="banner"><div id="NavigationContainer" data-original-width="99%" style="height: 35px; width: 99%;" class="IsResized"><a id="Logo" href="/znuny/index.pl?"></a>
+    <ul id="Navigation" class="Draggable ARIARoleNavigation ui-sortable" style="visibility: visible; left: 0px; width: 445px; right: auto;" role="navigation">
+            <li id="nav-Dashboard" class="CanDrag ui-sortable-handle">
+                <a href="/znuny/index.pl?Action=AgentDashboard" title="Дайджест (d)" accesskey="d">
+                    <span>Дайджест</span>
+                    <i class="fa fa-caret-down"></i>
+                </a>
+            </li>
+            <li id="nav-Tickets" class="CanDrag ui-sortable-handle" aria-controls="nav-Tickets-container" aria-expanded="false" aria-haspopup="true">
+                <a href="/znuny/index.pl?Action=AgentTicketQueue" title="Заявки (t)" accesskey="t">
+                    <span>Заявки</span>
+                    <i class="fa fa-caret-down"></i>
+                </a>
+                    <ul id="nav-Tickets-container">
+                        <li id="nav-Tickets-Queueview">
+                            <a href="/znuny/index.pl?Action=AgentTicketQueue" title="Обзор всех заявок с разделением по очередям. (o)" accesskey="o">Просмотр очередей</a>
+                        </li>
+                        <li id="nav-Tickets-Serviceview">
+                            <a href="/znuny/index.pl?Action=AgentTicketService" title="Обзор всех заявок (i)" accesskey="i">Обзор сервисов</a>
+                        </li>
+                        <li id="nav-Tickets-Statusview">
+                            <a href="/znuny/index.pl?Action=AgentTicketStatusView" title="Обзор всех заявок (v)" accesskey="v">Просмотр статусов</a>
+                        </li>
+                        <li id="nav-Tickets-Escalationview">
+                            <a href="/znuny/index.pl?Action=AgentTicketEscalationView" title="Обзор эскалированных заявок. (e)" accesskey="e">Просмотр эскалированных заявок</a>
+                        </li>
+                        <li id="nav-Tickets-Newemailticket">
+                            <a href="/znuny/index.pl?Action=AgentTicketEmail" title="Создать новую e-mail заявку и отправить ее (исходящая) (m)" accesskey="m">Новая заявка по email</a>
+                        </li>
+                        <li id="nav-Tickets-Search">
+                            <a href="/znuny/index.pl?Action=AgentTicketSearch" title="Поиск заявок. (s)" accesskey="s" onclick="window.setTimeout(function(){Core.Agent.Search.OpenSearchDialog('AgentTicketSearch');}, 0); return false;">Поиск</a>
+                        </li>
+                    </ul>
+            </li>
+            <li id="nav-FAQ" class="CanDrag ui-sortable-handle" aria-controls="nav-FAQ-container" aria-expanded="false" aria-haspopup="true">
+                <a href="/znuny/index.pl?Action=AgentFAQExplorer" title="FAQ (f)" accesskey="f">
+                    <span>FAQ</span>
+                    <i class="fa fa-caret-down"></i>
+                </a>
+                    <ul id="nav-FAQ-container">
+                        <li id="nav-FAQ-Explorer">
+                            <a href="/znuny/index.pl?Action=AgentFAQExplorer" title="FAQ Обзор (x)" accesskey="x">Обзор</a>
+                        </li>
+                        <li id="nav-FAQ-New">
+                            <a href="/znuny/index.pl?Action=AgentFAQAdd" title="Новая статья в FAQ. (b)" accesskey="b">Новое</a>
+                        </li>
+                        <li id="nav-FAQ-Journal">
+                            <a href="/znuny/index.pl?Action=AgentFAQJournal" title="Журнал FAQ (j)" accesskey="j">Журнал</a>
+                        </li>
+                        <li id="nav-FAQ-LanguageManagement">
+                            <a href="/znuny/index.pl?Action=AgentFAQLanguage" title="Управление языками. (l)" accesskey="l">Управление языками</a>
+                        </li>
+                        <li id="nav-FAQ-CategoryManagement">
+                            <a href="/znuny/index.pl?Action=AgentFAQCategory" title="Управление категориями. (g)" accesskey="g">Управление категориями</a>
+                        </li>
+                        <li id="nav-FAQ-Search">
+                            <a href="/znuny/index.pl?Action=AgentFAQSearch" title="Поиск в FAQ. (z)" accesskey="z" onclick="Core.Agent.Search.OpenSearchDialog('AgentFAQSearch'); if (event.stopPropagation) { event.stopPropagation(); } else { window.event.cancelBubble = true; } return false;">Поиск</a>
+                        </li>
+                    </ul>
+            </li>
+            <li id="nav-Admin" class="Selected CanDrag ui-sortable-handle">
+                <a href="/znuny/index.pl?Action=Admin" title="Администрирование (a)" accesskey="a">
+                    <span>Администрирование</span>
+                    <i class="fa fa-caret-down"></i>
+                </a>
+            </li>
+            <li id="nav-search" class="CanDrag ui-sortable-handle">
+                <a class="Search ScreenXL ARIARoleSearch ARIAHasPopup" id="GlobalSearchNav" href="/znuny/index.pl?Action=AgentTicketSearch" title="Поиск" role="search" aria-haspopup="true">
+                    <i class="fa fa-search"></i>
+                </a>
+                <a class="Search SmallerOrEqualScreenL ARIARoleSearch ARIAHasPopup" id="GlobalSearchNavResponsive" href="/znuny/index.pl?Action=AgentTicketSearch" title="Поиск" role="search" aria-haspopup="true">
+                    Поиск
+                </a>
+            </li>
+    </ul>
+</div>
+            
+            <ul id="HeaderToolBar">
+                <li id="UserAvatar" class="UserAvatar dropdown-divider">
+                    <a class="icon-hover-md" href="#">
+                        
+                            <span class="Initials">ДП</span>
+                        
+                    </a>
+
+                    <div class="UserAvatar_submenu btn-divider">
+                        <div class="column-wrapper">
+                            <span class="UserAvatar_name">Даниил Перлин</span>
+                        </div>
+                        <label>Учетная запись</label>
+                        <span>
+                                <a href="/znuny/index.pl?Action=AgentPreferences" title="Редактировать персональные настройки">
+                                <i class="fa fa-gear"></i>
+                                    <strong>Персональные настройки</strong>
+                                </a>
+                                <a class="LogoutButton" id="LogoutButton" href="/znuny/index.pl?Action=Logout;ChallengeToken=icpumw5izF2cRUxa49WUAHoyubELsSk8;" title="Выход (Вы вошли как Даниил Перлин)">
+                                <i class="fa fa-sign-out"></i>
+                                    <strong>Выход</strong>
+                                </a>
+                        </span>
+                    </div>
+                </li>
+                <li id="UserActivity" class="UserActivity icon-container ">
+                    <a class="ActivityIcon icon-hover-md">
+                        <span class="btn-wrapper">
+                            <i class="fa fa-bell"></i>
+                            <span id="ActivityBellState" class=""></span>
+                        </span>
+                    </a>
+                    <div class="dropdown-menu activity-dropdown right">
+                        <div class="activity-dropdown-inner">
+                            <span class="ActivityHeader">
+                                <label class="title uppercase">Активности
+                                    <span id="ActivityCounter" class="ActivityCounter">(0)</span>
+                                </label>
+                                <div class="btns-wrapper">
+                                    <a href="#" id="ActivityDeleteAll" title="Удалить все активности">Удалить все</a>
+                                    <a href="#" id="ActivityMarkAsSeenAll" title="Пометить все активности как прочитанные">Просмотреть все</a>
+                                </div>
+                            </span>
+                            <ul class="ActivityList scroll-bar-styled bar-no-left-border">
+                            </ul>
+                        <div>
+                    </div>
+                </div></div></li>
+
+                <li class="logo-navigation-wrapper">
+                    <div class="logo-navigation"></div>
+                </li>
+            </ul>
+        </div>
+        <div id="ToolBar" class="toolbar-row-wrapper ">
+            
+<div class="toolbar-row">
+    <div class="component-wrapper component-overviews">
+        <label>Обзоры</label>
+        <ul>
+            <li class="QueueView">
+                <a class="dropdown-item" href="/znuny/index.pl?Action=AgentTicketQueue" target="" accesskey="q" title="Просмотр очередей:  (q)">
+                    <span class="iconWrapper">
+                        <i class="icon-small fa fa-clock-o icon-show-reached"></i>
+                        <i class="icon-small fa fa-star icon-show-new"></i>
+                        <i class="fa fa-folder"></i>
+                        
+                    </span>
+                </a>
+            </li>
+            <li class="StatusView">
+                <a class="dropdown-item" href="/znuny/index.pl?Action=AgentTicketStatusView" target="" accesskey="" title="Просмотр статусов: ">
+                    <span class="iconWrapper">
+                        <i class="icon-small fa fa-clock-o icon-show-reached"></i>
+                        <i class="icon-small fa fa-star icon-show-new"></i>
+                        <i class="fa fa-list-ol"></i>
+                        
+                    </span>
+                </a>
+            </li>
+            <li class="EscalationView">
+                <a class="dropdown-item" href="/znuny/index.pl?Action=AgentTicketEscalationView" target="" accesskey="w" title="Просмотр эскалированных заявок:  (w)">
+                    <span class="iconWrapper">
+                        <i class="icon-small fa fa-clock-o icon-show-reached"></i>
+                        <i class="icon-small fa fa-star icon-show-new"></i>
+                        <i class="fa fa-exclamation"></i>
+                        
+                    </span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="component-wrapper component-actions">
+        <label>Действия</label>
+        <ul>
+            <li class="EmailTicket">
+                <a class="dropdown-item" href="/znuny/index.pl?Action=AgentTicketEmail" target="" accesskey="" title="Новая заявка по email: ">
+                    <span class="iconWrapper">
+                        <i class="icon-small fa fa-clock-o icon-show-reached"></i>
+                        <i class="icon-small fa fa-star icon-show-new"></i>
+                        <i class="fa fa-envelope"></i>
+                        
+                    </span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+
+
+    <div class="component-wrapper component-search align-right-auto">
+        <div class="search-bar-container">
+            <label>Поисковые инструменты</label>
+            <form action="/znuny/index.pl" method="post" name="ToolBarSearch"><input type="hidden" name="ChallengeToken" value="icpumw5izF2cRUxa49WUAHoyubELsSk8">
+                <i class="fa fa-search"></i>
+                <input type="hidden" name="Action" value="AgentTicketSearch">
+                <input type="hidden" name="Subaction" value="Search">
+                <input type="hidden" name="SearchTemplate" value="Поиск">
+                <input type="hidden" name="CheckTicketNumberAndRedirect" value="1">
+                
+                <input type="text" id="ToolBarSearchTerm" name="ToolBarSearchTerm" class="search-bar">
+
+                <div class="component-wrapper">
+                    <div class="search-dropdown-top">
+                        <label class="dropdown-item">
+                            <input type="radio" id="ToolBarSearchBackendFulltext" name="ToolBarSearchBackend" value="ToolBarSearchBackendFulltext" title="Полнотекстовый поиск" checked="&quot;checked&quot;/">
+                            Полнотекстовый поиск
+                        </label>
+                        <label class="dropdown-item">
+                            <input type="radio" id="ToolBarSearchBackendCustomerID" name="ToolBarSearchBackend" value="ToolBarSearchBackendCustomerID" title="Поиск по компании">
+                            Поиск по компании
+                        </label>
+                        <label class="dropdown-item">
+                            <input type="radio" id="ToolBarSearchBackendCustomerUser" name="ToolBarSearchBackend" value="ToolBarSearchBackendCustomerUser" title="Поиск клиента">
+                            Поиск клиента
+                        </label>
+                    </div>
+                    <div class="search-dropdown-bottom">
+                        <div class="title">
+                            <label>Шаблон поиска</label>
+                        </div>
+                        <div class="search-profiles-list">
+                            <ul></ul>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+            <a id="ToolBar-toggle" class="btn-toggle icon-hover">
+                <i class="fa fa-caret-up"></i>
+            </a>
+        </div>
+
+
+
+<div class="MainBox ARIARoleMain LayoutFixedSidebar SidebarFirst ActionsSideBar" role="main">
+    <div class="SidebarColumn ActionsSideBarComp">
+        <div class="WidgetSimple">
+            <div class="Header">
+                <h2>Действия</h2>
+            </div>
+            <div class="Content">
+                <ul class="ActionList">
+                    <li>
+                        <a href="/znuny/index.pl?Action=AdminNotificationEvent" class="CallForAction btn-main btn-primary-ghost"><span><i class="fa fa-caret-left"></i>Перейти к обзору</span></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="ContentColumn">
+        <h1 class="InvisibleText">Управление уведомлениями</h1>
+
+        
+
+        
+                
+                
+        
+
+        
+<ul class="BreadCrumb">
+
+    <li>
+        <a href="/znuny/index.pl?Action=Admin" title="Назад">
+            Обзор
+        </a>
+    </li>
+
+    
+        <li>
+            <i class="fa fa-angle-right"></i>
+        </li>
+
+        <li>
+            
+                <a href="/znuny/index.pl?Action=AdminNotificationEvent" title="Управление уведомлениями">Управление уведомлениями</a>
+            
+        </li>
+    
+        <li>
+            <i class="fa fa-angle-right"></i>
+        </li>
+
+        <li>
+            
+                <span title="Изменить уведомление: Ticket new note notification">Изменить уведомление: Ticket new note notification</span>
+            
+        </li>
+    
+</ul>
+
+        <form action="/znuny/index.pl" method="post" class="Validate PreventMultipleSubmits" name="compose" id="NotificationEvent" novalidate="novalidate"><input type="hidden" name="ChallengeToken" value="icpumw5izF2cRUxa49WUAHoyubELsSk8">
+            <div class="WidgetSimple">
+                <div class="Header">
+                
+                    <h2>Изменить уведомление</h2>
+                
+                </div>
+                <div class="Content">
+
+                    <input type="hidden" name="Action" value="AdminNotificationEvent">
+                    <input type="hidden" name="Subaction" value="ChangeAction">
+                    <input type="hidden" name="ID" value="7">
+                    
+                        <input type="hidden" name="ContinueAfterSave" id="ContinueAfterSave" value="">
+                    
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="Name" class="Mandatory">
+                                <span class="Marker">*</span>
+                                Название
+                            </label>
+                            <div class="Field">
+                                <input type="text" name="Name" id="Name" value="Ticket new note notification" class="W50pc Validate_Required " maxlength="200" aria-required="true">
+                                <div id="NameError" class="TooltipErrorMessage">
+                                    <p>Это поле обязательно.</p>
+                                </div>
+                                <div id="NameServerError" class="TooltipErrorMessage">
+                                    <p>Это поле обязательно.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="Comment">Комментарий </label>
+                            <div class="Field">
+                                <input type="text" name="Comment" id="Comment" value="" class="W50pc" maxlength="250">
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="VisibleForAgent">Показать в настройках агента </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="VisibleForAgent_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Показать в настройках агента "><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">Да</div></div></div></div><select class="Modernize W50pc" id="VisibleForAgent" name="VisibleForAgent" size="1" style="display: none;">
+  <option value="0">Нет</option>
+  <option value="1" selected="selected">Да</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="VisibleForAgentTooltip">Подсказка в настройках агента </label>
+                            <div class="Field">
+                                <input type="text" name="VisibleForAgentTooltip" id="VisibleForAgentTooltip" class="W50pc" value="">
+                                <p class="FieldExplanation">Это сообщение будет показано на экране настроек агента, как подсказка к этому уведомлению.</p>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="ValidID">Действительность </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="ValidID_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Действительность "><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">действительный</div></div></div></div><select class="Modernize W50pc" id="ValidID" name="ValidID" style="display: none;">
+  <option value="3">временно недействительный</option>
+  <option value="1" selected="selected">действительный</option>
+  <option value="2">недействительный</option>
+</select>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            <div class="WidgetSimple Expanded">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_0" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>События</h2>
+                </div>
+
+                <div class="Content" id="Core_UI_AutogeneratedID_0">
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="Events" class="Mandatory">
+                                <span class="Marker">*</span>
+                                Событие
+                            </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="Events_Search" class="InputField_Search ExpandToTop" type="text" role="search" autocomplete="off" aria-label="
+                                *
+                                Событие
+                            "><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">NotificationAddNote</div><div class="Remove"><a href="#" title="Удалить выбор" role="button" tabindex="-1" aria-label="Удалить выбор: NotificationAddNote"><i class="fa fa-close"></i></a></div></div></div></div><select class="Validate_Required Modernize W75pc" id="Events" multiple="multiple" name="Events" size="10" style="display: none;" aria-required="true">
+  <option value="ArticleCreate">ArticleCreate</option>
+  <option value="ArticleUpdate">ArticleUpdate</option>
+  <option value="ArticleSend">ArticleSend</option>
+  <option value="ArticleBounce">ArticleBounce</option>
+  <option value="ArticleAutoResponse">ArticleAutoResponse</option>
+  <option value="ArticleFlagSet">ArticleFlagSet</option>
+  <option value="ArticleFlagDelete">ArticleFlagDelete</option>
+  <option value="ArticleEmailSendingQueued">ArticleEmailSendingQueued</option>
+  <option value="ArticleEmailSendingSent">ArticleEmailSendingSent</option>
+  <option value="ArticleEmailSendingError">ArticleEmailSendingError</option>
+  <option value="ArticleCreateTransmissionError">ArticleCreateTransmissionError</option>
+  <option value="ArticleUpdateTransmissionError">ArticleUpdateTransmissionError</option>
+  <option value="UserMention">UserMention</option>
+  <option value="ArticleDynamicFieldUpdate">ArticleDynamicFieldUpdate</option>
+  <option value="TicketCreate">TicketCreate</option>
+  <option value="TicketDelete">TicketDelete</option>
+  <option value="TicketTitleUpdate">TicketTitleUpdate</option>
+  <option value="TicketUnlockTimeoutUpdate">TicketUnlockTimeoutUpdate</option>
+  <option value="TicketQueueUpdate">TicketQueueUpdate</option>
+  <option value="TicketTypeUpdate">TicketTypeUpdate</option>
+  <option value="TicketServiceUpdate">TicketServiceUpdate</option>
+  <option value="TicketSLAUpdate">TicketSLAUpdate</option>
+  <option value="TicketCustomerUpdate">TicketCustomerUpdate</option>
+  <option value="TicketPendingTimeUpdate">TicketPendingTimeUpdate</option>
+  <option value="TicketLockUpdate">TicketLockUpdate</option>
+  <option value="TicketArchiveFlagUpdate">TicketArchiveFlagUpdate</option>
+  <option value="TicketStateUpdate">TicketStateUpdate</option>
+  <option value="TicketOwnerUpdate">TicketOwnerUpdate</option>
+  <option value="TicketResponsibleUpdate">TicketResponsibleUpdate</option>
+  <option value="TicketPriorityUpdate">TicketPriorityUpdate</option>
+  <option value="HistoryAdd">HistoryAdd</option>
+  <option value="HistoryDelete">HistoryDelete</option>
+  <option value="TicketAccountTime">TicketAccountTime</option>
+  <option value="TicketMerge">TicketMerge</option>
+  <option value="TicketSubscribe">TicketSubscribe</option>
+  <option value="TicketUnsubscribe">TicketUnsubscribe</option>
+  <option value="TicketFlagSet">TicketFlagSet</option>
+  <option value="TicketFlagDelete">TicketFlagDelete</option>
+  <option value="EscalationResponseTimeNotifyBefore">EscalationResponseTimeNotifyBefore</option>
+  <option value="EscalationUpdateTimeNotifyBefore">EscalationUpdateTimeNotifyBefore</option>
+  <option value="EscalationSolutionTimeNotifyBefore">EscalationSolutionTimeNotifyBefore</option>
+  <option value="EscalationResponseTimeStart">EscalationResponseTimeStart</option>
+  <option value="EscalationUpdateTimeStart">EscalationUpdateTimeStart</option>
+  <option value="EscalationSolutionTimeStart">EscalationSolutionTimeStart</option>
+  <option value="EscalationResponseTimeStop">EscalationResponseTimeStop</option>
+  <option value="EscalationUpdateTimeStop">EscalationUpdateTimeStop</option>
+  <option value="EscalationSolutionTimeStop">EscalationSolutionTimeStop</option>
+  <option value="NotificationNewTicket">NotificationNewTicket</option>
+  <option value="NotificationFollowUp">NotificationFollowUp</option>
+  <option value="NotificationLockTimeout">NotificationLockTimeout</option>
+  <option value="NotificationOwnerUpdate">NotificationOwnerUpdate</option>
+  <option value="NotificationResponsibleUpdate">NotificationResponsibleUpdate</option>
+  <option value="NotificationAddNote" selected="selected">NotificationAddNote</option>
+  <option value="NotificationMove">NotificationMove</option>
+  <option value="NotificationPendingReminder">NotificationPendingReminder</option>
+  <option value="NotificationEscalation">NotificationEscalation</option>
+  <option value="NotificationEscalationNotifyBefore">NotificationEscalationNotifyBefore</option>
+  <option value="NotificationServiceUpdate">NotificationServiceUpdate</option>
+  <option value="TicketAllChildrenClosed">TicketAllChildrenClosed</option>
+  <option value="TicketDynamicFieldUpdate_ITSMCriticality">TicketDynamicFieldUpdate_ITSMCriticality</option>
+  <option value="TicketDynamicFieldUpdate_ITSMImpact">TicketDynamicFieldUpdate_ITSMImpact</option>
+  <option value="TicketDynamicFieldUpdate_ProcessManagementActivityID">TicketDynamicFieldUpdate_ProcessManagementActivityID</option>
+  <option value="TicketDynamicFieldUpdate_ProcessManagementAttachment">TicketDynamicFieldUpdate_ProcessManagementAttachment</option>
+  <option value="TicketDynamicFieldUpdate_ProcessManagementProcessID">TicketDynamicFieldUpdate_ProcessManagementProcessID</option>
+  <option value="TicketDynamicFieldUpdate_TicketCalendarEndTime">TicketDynamicFieldUpdate_TicketCalendarEndTime</option>
+  <option value="TicketDynamicFieldUpdate_TicketCalendarStartTime">TicketDynamicFieldUpdate_TicketCalendarStartTime</option>
+</select>
+                                <div id="EventsError" class="TooltipErrorMessage">
+                                    <p>Это поле обязательно.</p>
+                                </div>
+                                <div id="EventsServerError" class="TooltipErrorMessage">
+                                    <p>Это поле обязательно.</p>
+                                </div>
+                                <p class="FieldExplanation">Здесь вы можете выбрать какие события будут включать это уведомление. Дополнительный фильтр может быть применён ниже для их отправки для заявок, удовлетворяющих заданному условию.</p>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="WidgetSimple Collapsed">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_1" aria-expanded="false"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Фильтр заявок</h2>
+                </div>
+
+                <div class="Content" id="Core_UI_AutogeneratedID_1">
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="TypeID">Тип </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="TypeID" multiple="multiple" name="TypeID" size="3">
+  <option value="8">IPG</option>
+  <option value="1">Unclassified</option>
+  <option value="28">Авария</option>
+  <option value="6">Аккорд</option>
+  <option value="17">АСУГП</option>
+  <option value="3">Больничные</option>
+  <option value="26">Бронирование (Агент)</option>
+  <option value="25">Бронирование (Админ)</option>
+  <option value="24">Документы</option>
+  <option value="14">Доработка</option>
+  <option value="2">Доступ</option>
+  <option value="10">Другое</option>
+  <option value="7">Дубли</option>
+  <option value="23">Задачи от заказчика</option>
+  <option value="22">Личный кабинет</option>
+  <option value="20">Накладные</option>
+  <option value="12">Оптимизатор</option>
+  <option value="9">Отпуска</option>
+  <option value="27">План-график</option>
+  <option value="5">Плечи / Связки</option>
+  <option value="4">Расписание</option>
+  <option value="18">Расписание рейсов</option>
+  <option value="13">РПС</option>
+  <option value="19">Сборы и доплаты</option>
+  <option value="16">Стоки</option>
+  <option value="21">Тарифы</option>
+  <option value="15">Телеграммы</option>
+  <option value="11">ЧКЭ</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="StateID">Состояние </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="StateID" multiple="multiple" name="StateID" size="5">
+  <option value="2">Закрыто</option>
+  <option value="1">новая</option>
+  <option value="9">объединенные</option>
+  <option value="7">ожидает автозакрытия(+)</option>
+  <option value="6">ожидает напоминания</option>
+  <option value="13">Ожидает согласования</option>
+  <option value="4">Открыто</option>
+  <option value="12">Принято в работу</option>
+  <option value="11">Стабилизация</option>
+  <option value="5">удаленная</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="PriorityID">Приоритет </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="PriorityID" multiple="multiple" name="PriorityID" size="5">
+  <option value="5">Авария</option>
+  <option value="4">Высокий</option>
+  <option value="2">Низкий</option>
+  <option value="3">Средний</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="QueueID">Очередь </label>
+                            <div class="Field">
+                                <select name="QueueID" id="QueueID" class="Modernize W75pc" data-tree="true" size="5" multiple="multiple">
+<option value="10">Cargo</option>
+<option value="6">&nbsp;&nbsp;Запрос Информации</option>
+<option value="11">&nbsp;&nbsp;Ожидаем ответ от 3L</option>
+<option value="12">&nbsp;&nbsp;Ожидает релиз</option>
+<option value="3">Junk</option>
+<option value="22">Platform</option>
+<option value="23">&nbsp;&nbsp;Запрос информации</option>
+<option value="24">&nbsp;&nbsp;Ожидает ответ от 3L</option>
+<option value="25">&nbsp;&nbsp;Ожидает релиз</option>
+<option value="26">АКР</option>
+<option value="28">&nbsp;&nbsp;Запрос информации</option>
+<option value="29">&nbsp;&nbsp;Ожидаем релиз</option>
+<option value="27">&nbsp;&nbsp;Ожидает ответ от 3L</option>
+<option value="17">Егейт</option>
+<option value="20">&nbsp;&nbsp;Запрос информации</option>
+<option value="18">&nbsp;&nbsp;Ожидаем ответ 3L</option>
+<option value="19">&nbsp;&nbsp;Ожидаем релиз</option>
+<option value="1">Жалобы и Предложения</option>
+<option value="5">&nbsp;&nbsp;Ожидает ответ от 3L</option>
+<option value="14">ЛКБП</option>
+<option value="16">&nbsp;&nbsp;Запрос Иинформации</option>
+<option value="15">&nbsp;&nbsp;Ожидаем ответ 3L</option>
+<option value="2">Общая очередь</option>
+<option value="21">Поддержка офиса</option>
+<option value="7">Экипаж</option>
+<option value="13">&nbsp;&nbsp;Запрос информации</option>
+<option value="8">&nbsp;&nbsp;Ожидаем ответа 3L</option>
+<option value="9">&nbsp;&nbsp;Ожидаем релиз</option>
+</select>
+ <a href="#" title="Показать в виде дерева" class="ShowTreeSelection"><span>Показать в виде дерева</span><i class="fa fa-sitemap"></i></a>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="LockID">Блокировать </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="LockID" multiple="multiple" name="LockID" size="3">
+  <option value="3">временно заблокировано</option>
+  <option value="2">заблокировано</option>
+  <option value="1">разблокировано</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="ServiceID">Сервис </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="ServiceID" multiple="multiple" name="ServiceID" size="5" data-tree="true">
+  <option value="2">CARGO</option>
+  <option value="4">ЕПП</option>
+  <option value="3">ЛКБП</option>
+  <option value="1">Экипаж</option>
+</select> <a href="#" title="Показать в виде дерева" class="ShowTreeSelection"><span>Показать в виде дерева</span><i class="fa fa-sitemap"></i></a>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="SLAID">SLA </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="SLAID" multiple="multiple" name="SLAID" size="5">
+  <option value="1">Общий</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="CustomerID">Компания </label>
+                            <div class="Field">
+                                <input type="text" name="CustomerID" id="CustomerID" class="W75pc" value="">
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="CustomerUserID">Логин клиента </label>
+                            <div class="Field">
+                                <input type="text" name="CustomerUserID" id="CustomerUserID" class="W75pc" value="">
+                            </div>
+                        </div>
+
+                    <div class="field-wrapper">
+                        <label class="card-title title">Динамические поля</label>
+                    </div>
+                            <div class="field-wrapper">
+                                <label>Добавить динамическое поле</label>
+                                <div class="Field" data-widget="Select">
+                                    <select class="Modernize" id="AddDynamicFields" name="AddDynamicFields">
+  <option value="">-</option>
+  <option value="Search_DynamicField_ProcessManagementActivityID">Активность (ProcessManagementActivityID)</option>
+  <option value="Search_DynamicField_ProcessManagementAttachment">Вложение (ProcessManagementAttachment)</option>
+  <option value="Search_DynamicField_ITSMCriticality">Критичность (ITSMCriticality)</option>
+  <option value="Search_DynamicField_ProcessManagementProcessID">Процесс (ProcessManagementProcessID)</option>
+  <option value="Search_DynamicField_ITSMImpact">Степень влияния (ITSMImpact)</option>
+</select>
+                                </div>
+                            </div>
+
+                        <fieldset id="SelectedDynamicFields" class="TableLike">
+                        </fieldset>
+                    </fieldset>
+                </div>
+            </div>
+            <div class="WidgetSimple Collapsed">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_2" aria-expanded="false"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Фильтр сообщений <span class="FieldExplanation">(Только для событий ArticleCreate и ArticleSend)</span></h2>
+                </div>
+
+                <div class="Content" id="Core_UI_AutogeneratedID_2">
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="ArticleSenderTypeID">Тип отправителя сообщения </label>
+                            <div class="Field">
+                                <select class=" Modernize W75pc" id="ArticleSenderTypeID" multiple="multiple" name="ArticleSenderTypeID" size="5">
+  <option value="1">агент</option>
+  <option value="3">клиент</option>
+  <option value="2">система</option>
+</select>
+                                <div id="ArticleSenderTypeIDServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="ArticleIsVisibleForCustomer">Показывать клиенту </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="ArticleIsVisibleForCustomer" name="ArticleIsVisibleForCustomer">
+  <option value="">-</option>
+  <option value="1">Visible to customer</option>
+  <option value="0">Невидимо для клиента</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="ArticleCommunicationChannelID">Канал связи </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="ArticleCommunicationChannelID" multiple="multiple" name="ArticleCommunicationChannelID" size="5">
+  <option value="1">Email</option>
+  <option value="3">Internal</option>
+  <option value="5">Web</option>
+  <option value="2">Телефон</option>
+  <option value="4">Чат</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="ArticleAttachmentInclude">Включить вложения в уведомление </label>
+                            <div class="Field">
+                                <select class="Modernize W75pc" id="ArticleAttachmentInclude" name="ArticleAttachmentInclude">
+  <option value="1">Да</option>
+  <option value="0" selected="selected">Нет</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_AttachmentName">Имя вложения</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_AttachmentName" id="MIMEBase_AttachmentName" class="W75pc MIMEBase_AttachmentNameServerError" value="">
+                                <div id="MIMEBase_AttachmentNameServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_Bcc">Скрытая копия</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_Bcc" id="MIMEBase_Bcc" class="W75pc MIMEBase_BccServerError" value="">
+                                <div id="MIMEBase_BccServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_Body">Тело сообщения</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_Body" id="MIMEBase_Body" class="W75pc MIMEBase_BodyServerError" value="">
+                                <div id="MIMEBase_BodyServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_Cc">Копия</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_Cc" id="MIMEBase_Cc" class="W75pc MIMEBase_CcServerError" value="">
+                                <div id="MIMEBase_CcServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_From">Отправитель</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_From" id="MIMEBase_From" class="W75pc MIMEBase_FromServerError" value="">
+                                <div id="MIMEBase_FromServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_Subject">Тема сообщения</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_Subject" id="MIMEBase_Subject" class="W75pc MIMEBase_SubjectServerError" value="">
+                                <div id="MIMEBase_SubjectServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="MIMEBase_To">Получатель</label>
+                            <div class="Field">
+                                <input type="text" name="MIMEBase_To" id="MIMEBase_To" class="W75pc MIMEBase_ToServerError" value="">
+                                <div id="MIMEBase_ToServerError" class="TooltipErrorMessage">
+                                    <p>Если ArticleCreate или ArticleSend используется как переключатель события, вы должны задать фильтр для сообщений. Выберите, хотя бы одно из полей фильтра.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="WidgetSimple Expanded">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_3" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Получатели</h2>
+                </div>
+
+                <div class="Content" id="Core_UI_AutogeneratedID_3">
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="Recipients">Кому отправить </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="Recipients_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Кому отправить "><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">Агент, который владеет заявкой</div><div class="Remove"><a href="#" title="Удалить выбор" role="button" tabindex="-1" aria-label="Удалить выбор: Агент, который владеет заявкой"><i class="fa fa-close"></i></a></div></div><div class="InputField_Selection" style="left: 226.289px; display: block;"><div class="Text">Агент, ответственный за заявку</div><div class="Remove"><a href="#" title="Удалить выбор" role="button" tabindex="-1" aria-label="Удалить выбор: Агент, ответственный за заявку"><i class="fa fa-close"></i></a></div></div><div class="InputField_Selection" style="left: 444.101px; display: block;"><div class="Text">Все агенты подписанные на этот сервис и эту очередь</div><div class="Remove"><a href="#" title="Удалить выбор" role="button" tabindex="-1" aria-label="Удалить выбор: Все агенты подписанные на этот сервис и эту очередь"><i class="fa fa-close"></i></a></div></div><div class="InputField_Selection" style="left: 792.226px; display: block;"><div class="Text">Клиент заявки</div><div class="Remove"><a href="#" title="Удалить выбор" role="button" tabindex="-1" aria-label="Удалить выбор: Клиент заявки"><i class="fa fa-close"></i></a></div></div></div></div><select class="Modernize W75pc" id="Recipients" multiple="multiple" name="Recipients" size="8" style="display: none;">
+  <option value="AgentCreateBy">Агент который создал заявку</option>
+  <option value="AgentOwner" selected="selected">Агент, который владеет заявкой</option>
+  <option value="AgentResponsible" selected="selected">Агент, ответственный за заявку</option>
+  <option value="AgentWatcher">Все агенты наблюдающие за заявкой</option>
+  <option value="AgentMyServices">Все агенты подписанные на этот сервис</option>
+  <option value="AgentMyQueuesMyServices" selected="selected">Все агенты подписанные на этот сервис и эту очередь</option>
+  <option value="AgentMyQueues">Все агенты подписанные на эту очередь</option>
+  <option value="AgentWritePermissions">Все агенты с правами -w/записи на заявку</option>
+  <option value="AllMentionedUsers">Все агенты, которые были упомянуты в заявке</option>
+  <option value="AllRecipientsFirstArticle">Все получатели первой заметки</option>
+  <option value="AllRecipientsLastArticle">Все получатели последней заметки</option>
+  <option value="Customer" selected="selected">Клиент заявки</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="RecipientAgents">Отправить этим агентам </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="RecipientAgents_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Отправить этим агентам "><i class="fa fa-caret-down"></i></div></div><select class="Modernize W75pc" id="RecipientAgents" multiple="multiple" name="RecipientAgents" size="4" style="display: none;">
+  <option value="1">Admin OTRS</option>
+  <option value="7">Александр Журкин</option>
+  <option value="4">Андрей Клюев</option>
+  <option value="5">Артем Росляков</option>
+  <option value="3">Байков Серг</option>
+  <option value="10">Владимир Занин</option>
+  <option value="12">Георгий Туловский</option>
+  <option value="6">Даниил Перлин</option>
+  <option value="8">Диана Калюжная</option>
+  <option value="9">Дмитрий Гончаров</option>
+  <option value="11">Николай Курчатов</option>
+  <option value="2">Сергей Байков</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="RecipientGroups">Отправить всем членам группы (только агенты) </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="RecipientGroups_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Отправить всем членам группы (только агенты) "><i class="fa fa-caret-down"></i></div></div><select class="Modernize W75pc" id="RecipientGroups" multiple="multiple" name="RecipientGroups" size="6" style="display: none;">
+  <option value="2">admin</option>
+  <option value="8">DBA</option>
+  <option value="7">Dev'ops</option>
+  <option value="10">itsm-configitem</option>
+  <option value="9">itsm-service</option>
+  <option value="6">Вторая линия техподдержки</option>
+  <option value="3">Отчеты</option>
+  <option value="1">Первая линия техподдержки</option>
+  <option value="5">Просмотр</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="RecipientRoles">Отправить всем членам роли </label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="RecipientRoles_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Отправить всем членам роли "><i class="fa fa-caret-down"></i></div></div><select class="Modernize W75pc" id="RecipientRoles" multiple="multiple" name="RecipientRoles" size="6" style="display: none;">
+  <option value="5">DBA</option>
+  <option value="4">Dev'ops</option>
+  <option value="3">Поддержка вторая линия</option>
+  <option value="2">Поддержка первая линия</option>
+  <option value="1">Руководитель</option>
+  <option value="6">Согласующий</option>
+</select>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="SendOnOutOfOffice">Отправить для отсутствующих на месте </label>
+                            <div class="Field">
+                                <input type="checkbox" name="SendOnOutOfOffice" id="SendOnOutOfOffice" value="1" checked="checked">
+                                Также отправить, если пользователь в настоящее время отсутствует на месте.
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="OncePerDay">Один раз в день </label>
+                            <div class="Field">
+                                <input type="checkbox" name="OncePerDay" id="OncePerDay" value="1" checked="checked">
+                                Уведомить пользователя только раз в день для каждой отдельной заявки, используя указанный способ доставки.
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="WidgetSimple Expanded">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_4" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Способы уведомлений</h2>
+                </div>
+
+                <div class="Content TransportsContent" id="Core_UI_AutogeneratedID_4">
+                    <fieldset class="TableLike">
+                        <p class="FieldExplanation">
+                            Существует несколько способов для отправки этого уведомления каждому из получателей. Выберите хотя бы один из приведенных ниже.
+                        </p>
+                    </fieldset>
+                    <fieldset class="TableLike FixedLabel">
+                        <legend class="field-wrapper"><span class="title">Email</span></legend>
+                        <div class="field-wrapper">
+                            <label for="TransportEmail">
+                                Активировать этот способ уведомлений
+                            </label>
+                            <div class="Field">
+                                <input type="checkbox" name="Transports" id="TransportEmail" value="Email" class="Validate_OneChecked " title="Передача Email" checked="checked">
+                                <div id="TransportEmailError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                                <div id="TransportEmailServerError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="AgentEnabledByDefaultEmail" class="AgentEnabledByDefault">
+                                Включен по умолчанию в настройках агента
+                            </label>
+                            <div class="Field AgentEnabledByDefault">
+                                <input type="checkbox" name="AgentEnabledByDefault" id="AgentEnabledByDefaultEmail" value="Email" title="">
+                                <p class="FieldExplanation">Это значение по умолчанию назначаемое агентам получателям, которые не имеют возможности сделать выбор для этого уведомления в своих настройках. Если включено, уведомление будет отправляться таким агентам.</p>
+                            </div>
+                        </div>
+
+                        
+<div class="field-wrapper">
+    <label for="RecipientEmail">Дополнительный адрес получателя</label>
+    <div class="Field">
+        <input type="text" name="RecipientEmail" id="RecipientEmail" class="W50pc Validate_MaxLength " value="" data-maxlength="200">
+        <div id="RecipientEmailError" class="TooltipErrorMessage"><p>Это поле должно содержать менее 200 символов</p></div>
+        <div id="RecipientEmailServerError" class="TooltipErrorMessage"><p>Это поле должно содержать менее 200 символов</p></div>
+        <p class="FieldExplanation">Use comma or semicolon to separate email addresses.</p>
+        <p class="FieldExplanation">Вы можете использовать Znuny-тэги типа &lt;OTRS_TICKET_DynamicField_...&gt; для вставки значений из текущей заявки.</p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="IsVisibleForCustomer">Сообщение видно клиенту</label>
+    <div class="Field">
+        <input type="checkbox" name="IsVisibleForCustomer" id="IsVisibleForCustomer" value="1" checked="checked">
+        <p class="FieldExplanation">Сообщение/Заметка будет создана, если уведомление отправляется клиенту или на дополнительный адрес почты.</p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="TransportEmailTemplate">Шаблон письма</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="TransportEmailTemplate_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Шаблон письма"><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">Default</div></div></div></div><select class="Modernize W50pc" id="TransportEmailTemplate" name="TransportEmailTemplate" style="display: none;">
+  <option value="Alert">Alert</option>
+  <option value="Default" selected="selected">Default</option>
+  <option value="Unformatted">Unformatted</option>
+</select>
+        <p class="FieldExplanation">Используйте этот шаблон для создания полного почтового сообщения (только для сообщений в HTML формате).</p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="EmailSecuritySettings">Включить защиту почты</label>
+    <div class="Field">
+        <input type="checkbox" name="EmailSecuritySettings" id="EmailSecuritySettings" value="1" disabled="disabled">
+        <p class="FieldExplanation">PGP and SMIME not enabled.</p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="EmailSigningCrypting">Уровень защиты почты</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer AlreadyDisabled"><input id="EmailSigningCrypting_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Уровень защиты почты" disabled="disabled" readonly="readonly"><i class="fa fa-caret-down"></i></div></div><select class="Security Modernize W50pc" disabled="disabled" id="EmailSigningCrypting" name="EmailSigningCrypting" style="display: none;">
+  <option value="">-</option>
+</select>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="EmailMissingSigningKeys">Если ключ/сертификат подписи отсутствует</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer AlreadyDisabled"><input id="EmailMissingSigningKeys_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Если ключ/сертификат подписи отсутствует" disabled="disabled" readonly="readonly"><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">Пропустить уведомление о доставке</div></div></div></div><select class="Security Modernize W50pc" disabled="disabled" id="EmailMissingSigningKeys" name="EmailMissingSigningKeys" style="display: none;">
+  <option value="Skip">Пропустить уведомление о доставке</option>
+  <option value="Send">Отправить не подписанное уведомление</option>
+</select>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="EmailMissingCryptingKeys">Если ключ/сертификат шифрования отсутствует</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer AlreadyDisabled"><input id="EmailMissingCryptingKeys_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Если ключ/сертификат шифрования отсутствует" disabled="disabled" readonly="readonly"><i class="fa fa-caret-down"></i><div class="InputField_Selection" style="left: 5px; display: block;"><div class="Text">Пропустить уведомление о доставке</div></div></div></div><select class="Security Modernize W50pc" disabled="disabled" id="EmailMissingCryptingKeys" name="EmailMissingCryptingKeys" style="display: none;">
+  <option value="Skip">Пропустить уведомление о доставке</option>
+  <option value="Send">Отправить не зашифрованное уведомление</option>
+</select>
+    </div>
+</div>
+
+
+                    </fieldset>
+                    <fieldset class="TableLike FixedLabel">
+                        <legend class="field-wrapper"><span class="title">Webservice</span></legend>
+                        <div class="field-wrapper">
+                            <label for="TransportWebservice">
+                                Активировать этот способ уведомлений
+                            </label>
+                            <div class="Field">
+                                <input type="checkbox" name="Transports" id="TransportWebservice" value="Webservice" class="Validate_OneChecked " title="Передача Webservice">
+                                <div id="TransportWebserviceError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                                <div id="TransportWebserviceServerError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="AgentEnabledByDefaultWebservice" class="AgentEnabledByDefault">
+                                Включен по умолчанию в настройках агента
+                            </label>
+                            <div class="Field AgentEnabledByDefault">
+                                <input type="checkbox" name="AgentEnabledByDefault" id="AgentEnabledByDefaultWebservice" value="Webservice" title="">
+                                <p class="FieldExplanation">Это значение по умолчанию назначаемое агентам получателям, которые не имеют возможности сделать выбор для этого уведомления в своих настройках. Если включено, уведомление будет отправляться таким агентам.</p>
+                            </div>
+                        </div>
+
+                        
+<div class="field-wrapper">
+    <label for="TransportWebserviceID">Web service name</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="TransportWebserviceID_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Web service name"><i class="fa fa-caret-down"></i></div></div><select class="Modernize W50pc" id="TransportWebserviceID" name="TransportWebserviceID" onchange="Core.Agent.Admin.WebserviceNotification.UpdateInvokers();" style="display: none;">
+  <option value="">-</option>
+  <option value="1">OutOfOffice</option>
+</select>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="TransportWebserviceInvokerName">Инициатор вызова</label>
+    <div class="Field">
+        <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="TransportWebserviceInvokerName_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Инициатор вызова" readonly="readonly" title="Не доступно"><i class="fa fa-caret-down"></i></div></div><select class="Modernize W50pc" id="TransportWebserviceInvokerName" name="TransportWebserviceInvokerName" style="display: none;">
+  <option value="">-</option>
+</select>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="TransportWebserviceAsynchronous">Асинхронный</label>
+    <div class="Field">
+        <input type="checkbox" name="TransportWebserviceAsynchronous" id="TransportWebserviceAsynchronous" value="1">
+        <p class="FieldExplanation">
+            Asynchronous event triggers will be handled as separate process by the scheduler daemon (recommended).
+            <br>
+            Synchronous event triggers will be processed directly during the web request.
+        </p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="TransportWebserviceAdditionalRecipients">Дополнительный адрес получателя</label>
+    <div class="Field">
+        <input type="text" name="TransportWebserviceAdditionalRecipients" id="TransportWebserviceAdditionalRecipients" class="W50pc Validate_MaxLength " value="" data-maxlength="200">
+        <div id="TransportWebserviceAdditionalRecipientsError" class="TooltipErrorMessage"><p>Это поле должно содержать менее 200 символов</p></div>
+        <div id="TransportWebserviceAdditionalRecipientsServerError" class="TooltipErrorMessage"><p>Это поле должно содержать менее 200 символов</p></div>
+        <p class="FieldExplanation">Use comma or semicolon to separate email addresses.</p>
+        <p class="FieldExplanation">Вы можете использовать Znuny-тэги типа &lt;OTRS_TICKET_DynamicField_...&gt; для вставки значений из текущей заявки.</p>
+    </div>
+</div>
+
+<div class="field-wrapper">
+    <label for="TransportWebserviceArticleIsVisibleForCustomer">Сообщение видно клиенту</label>
+    <div class="Field">
+        <input type="checkbox" name="TransportWebserviceArticleIsVisibleForCustomer" id="TransportWebserviceArticleIsVisibleForCustomer" value="1">
+        <p class="FieldExplanation">Сообщение/Заметка будет создана, если уведомление отправляется клиенту или на дополнительный адрес почты.</p>
+    </div>
+</div>
+
+
+                    </fieldset>
+                    <fieldset class="TableLike FixedLabel">
+                        <legend class="field-wrapper"><span class="title">Активность</span></legend>
+                        <div class="field-wrapper">
+                            <label for="TransportActivity">
+                                Активировать этот способ уведомлений
+                            </label>
+                            <div class="Field">
+                                <input type="checkbox" name="Transports" id="TransportActivity" value="Activity" class="Validate_OneChecked " title="Передача Активность">
+                                <div id="TransportActivityError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                                <div id="TransportActivityServerError" class="TooltipErrorMessage">
+                                    <p>Должен быть выбран хотя бы один способ для каждого уведомления</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-wrapper">
+                            <label for="AgentEnabledByDefaultActivity" class="AgentEnabledByDefault">
+                                Включен по умолчанию в настройках агента
+                            </label>
+                            <div class="Field AgentEnabledByDefault">
+                                <input type="checkbox" name="AgentEnabledByDefault" id="AgentEnabledByDefaultActivity" value="Activity" title="">
+                                <p class="FieldExplanation">Это значение по умолчанию назначаемое агентам получателям, которые не имеют возможности сделать выбор для этого уведомления в своих настройках. Если включено, уведомление будет отправляться таким агентам.</p>
+                            </div>
+                        </div>
+
+                        
+
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="WidgetSimple Expanded">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_5" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Текст уведомления</h2>
+                </div>
+
+                <div class="Content" id="Core_UI_AutogeneratedID_5">
+                    <fieldset>
+                        <div class="NotificationLanguageContainer">
+                            <div class="NotificationLanguage">
+                                <div class="WidgetSimple SpacingTop Expanded">
+                                    <div class="Header">
+                                        <div class="WidgetAction Toggle">
+                                            <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_6" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                                        </div>
+                                        <h2 class="Title">
+                                            
+                                            English (United States) - Английский (США)
+                                            
+                                        </h2>
+                                        <div class="AdditionalInformation">
+                                            <a value="Remove Language" class="RemoveButton LanguageRemove" id="en_Language_Remove" href="" name="Data.LanguageID_Language_Remove"><i class="fa fa-minus-square-o"></i><span class="InvisibleText">Удалить язык уведомлений</span></a>
+                                        </div>
+                                    </div>
+
+                                    <div class="Content" id="Core_UI_AutogeneratedID_6">
+
+                                        <fieldset class="TableLike">
+
+                                            <input type="hidden" name="LanguageID" class="LanguageID" value="en">
+
+                                            <div class="field-wrapper">
+                                                <label for="en_Subject" id="en_Label_Subject" class="Mandatory">
+                                                    <span class="Marker">*</span>
+                                                    Тема сообщения
+                                                </label>
+                                                <div class="Field">
+                                                    <input type="text" name="en_Subject" id="en_Subject" value="&lt;OTRS_CUSTOMER_SUBJECT[20]&gt;" class="W75pc Validate_Required " maxlength="200" aria-required="true">
+                                                    <div id="en_SubjectError" class="TooltipErrorMessage">
+                                                        <p>Это поле обязательно.</p>
+                                                    </div>
+                                                    <div id="en_SubjectServerError" class="TooltipErrorMessage">
+                                                        <p>Это поле обязательно.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="field-wrapper">
+                                                <label for="en_Body" id="en_Label_Body" class="Mandatory">
+                                                    <span class="Marker">*</span>
+                                                    Текст
+                                                </label>
+                                                <div class="RichTextField">
+                                                    <textarea name="en_Body" id="en_Body" class="RichText Validate_RequiredRichText HasCKEInstance" title="Содержание уведомления" rows="15" cols="78" style="display: none;">&lt;p&gt;Добрый день, &amp;lt;OTRS_NOTIFICATION_RECIPIENT_UserFirstname&amp;gt;,&lt;/p&gt;&lt;p&gt;&amp;lt;OTRS_AGENT_BODY[30]&amp;gt;&lt;/p&gt;</textarea><div class="ck ck-reset ck-editor ck-rounded-corners ck-has-resizer" role="application" dir="ltr" lang="ru" aria-labelledby="ck-editor__label_e75e24129fa534a2e1a4b62e505ffc50a"><label class="ck ck-label ck-voice-label" id="ck-editor__label_e75e24129fa534a2e1a4b62e505ffc50a">Редактор</label><div class="ck ck-editor__top ck-reset_all" role="presentation"><div class="ck ck-sticky-panel"><div class="ck ck-sticky-panel__placeholder" style="display: none;"></div><div class="ck ck-sticky-panel__content"><div class="ck ck-toolbar" role="toolbar" aria-label="Панель инструментов редактора" tabindex="-1"><div class="ck ck-toolbar__items"><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_ea81914cab7a4fdb600613c4583bdf800" data-cke-tooltip-text="Жирный (Ctrl+B)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10.187 17H5.773q-.956 0-1.364-.415-.41-.416-.409-1.323V4.738q0-.926.419-1.332.418-.405 1.354-.406h4.68q1.035 0 1.793.124.76.124 1.36.478.512.296.906.75a3.26 3.26 0 0 1 .808 2.162q0 2.102-2.167 3.075 2.846.879 2.847 3.421a3.76 3.76 0 0 1-2.296 3.504 6 6 0 0 1-1.517.377q-.857.11-2 .11zm-.217-6.217H7v4.087h3.069q2.965 0 2.965-2.072 0-1.061-.768-1.537-.768-.478-2.296-.478M7 5.13v3.619h2.606q1.093 0 1.69-.2a1.6 1.6 0 0 0 .91-.765q.247-.4.247-.897 0-1.06-.778-1.409-.778-.348-2.375-.348z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ea81914cab7a4fdb600613c4583bdf800">Жирный</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e9de4954745352c0ea0f357f4a67278a8" data-cke-tooltip-text="Курсив (Ctrl+I)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m9.586 14.633.021.004q-.054.502.393.962.123.125.274.201h1.474a.6.6 0 1 1 0 1.2H5.304a.6.6 0 0 1 0-1.2h1.15q.711-.106 1.005-.334.235-.182.404-.597l2.416-9.55a1.05 1.05 0 0 0-.281-.823 1.1 1.1 0 0 0-.442-.296H8.15a.6.6 0 0 1 0-1.2h6.443a.6.6 0 1 1 0 1.2h-1.195q-.564.084-.823.296-.323.263-.623.79z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e9de4954745352c0ea0f357f4a67278a8">Курсив</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e3ac6eaf103699345e527127e1f06d33a" data-cke-tooltip-text="Подчеркнутый (Ctrl+U)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 18v-1.5h14V18zm2.2-8V3.6c0-.4.4-.6.8-.6.3 0 .7.2.7.6v6.2c0 2 1.3 2.8 3.2 2.8s3.4-.9 3.4-2.9V3.6c0-.3.4-.5.8-.5.3 0 .7.2.7.5V10c0 2.7-2.2 4-4.9 4-2.6 0-4.7-1.2-4.7-4"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e3ac6eaf103699345e527127e1f06d33a">Подчеркнутый</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e9ee9977a106db17677b2fa9baae622d7" data-cke-tooltip-text="Зачеркнутый (Ctrl+Shift+X)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 16.4c-.8-.4-1.5-.9-2.2-1.5a.6.6 0 0 1-.2-.5l.3-.6h1c1 1.2 2.1 1.7 3.7 1.7 1 0 1.8-.3 2.3-.6.6-.4.6-1.2.6-1.3.2-1.2-.9-2.1-.9-2.1h2.1c.3.7.4 1.2.4 1.7v.8l-.6 1.2c-.6.8-1.1 1-1.6 1.2a6 6 0 0 1-2.4.6c-1 0-1.8-.3-2.5-.6M6.8 9 6 8.3c-.4-.5-.5-.8-.5-1.6 0-.7.1-1.3.5-1.8.4-.6 1-1 1.6-1.3a6.3 6.3 0 0 1 4.7 0 4 4 0 0 1 1.7 1l.3.7c0 .1.2.4-.2.7-.4.2-.9.1-1 0a3 3 0 0 0-1.2-1c-.4-.2-1-.3-2-.4-.7 0-1.4.2-2 .6-.8.6-1 .8-1 1.5 0 .8.5 1 1.2 1.5.6.4 1.1.7 1.9 1H6.8z"></path><path d="M3 10.5V9h14v1.5z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e9ee9977a106db17677b2fa9baae622d7">Зачеркнутый</span></button><span class="ck ck-toolbar__separator"></span><div class="ck ck-dropdown ck-list-styles-dropdown"><div class="ck ck-splitbutton ck-dropdown__button"><button class="ck ck-button ck-off ck-splitbutton__action" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e03f353d17bd58941d4f43045a638358b" data-cke-tooltip-text="Нумерованный список" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5.75c0 .414.336.75.75.75h9.5a.75.75 0 1 0 0-1.5h-9.5a.75.75 0 0 0-.75.75M3.5 3v5H2V3.7H1v-1h2.5zM.343 17.857l2.59-3.257H2.92a.6.6 0 1 0-1.04 0H.302a2 2 0 1 1 3.995 0h-.001q-.073.607-.333.988-.263.381-1.244 1.312H4.3v1h-4zM7 14.75a.75.75 0 0 1 .75-.75h9.5a.75.75 0 1 1 0 1.5h-9.5a.75.75 0 0 1-.75-.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e03f353d17bd58941d4f43045a638358b">Нумерованный список</span></button><button class="ck ck-button ck-off ck-splitbutton__arrow" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e6dc9afbddb8f2e02d5e0baaf360f5127" data-cke-tooltip-text="Нумерованный список" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e6dc9afbddb8f2e02d5e0baaf360f5127">Нумерованный список</span></button></div><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"></div></div><div class="ck ck-dropdown ck-list-styles-dropdown"><div class="ck ck-splitbutton ck-dropdown__button"><button class="ck ck-button ck-off ck-splitbutton__action" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e432372a4bd343bf7e1bd61623e80ad3d" data-cke-tooltip-text="Маркированный список" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5.75c0 .414.336.75.75.75h9.5a.75.75 0 1 0 0-1.5h-9.5a.75.75 0 0 0-.75.75m-6 0C1 4.784 1.777 4 2.75 4c.966 0 1.75.777 1.75 1.75 0 .966-.777 1.75-1.75 1.75C1.784 7.5 1 6.723 1 5.75m6 9c0 .414.336.75.75.75h9.5a.75.75 0 1 0 0-1.5h-9.5a.75.75 0 0 0-.75.75m-6 0c0-.966.777-1.75 1.75-1.75.966 0 1.75.777 1.75 1.75 0 .966-.777 1.75-1.75 1.75-.966 0-1.75-.777-1.75-1.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e432372a4bd343bf7e1bd61623e80ad3d">Маркированный список</span></button><button class="ck ck-button ck-off ck-splitbutton__arrow" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_ecb58290c1a61fa120196f70705981056" data-cke-tooltip-text="Маркированный список" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ecb58290c1a61fa120196f70705981056">Маркированный список</span></button></div><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"></div></div><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-disabled ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e5c893e580d2ca20a7eb50a6c0088bd81" aria-disabled="true" data-cke-tooltip-text="Уменьшить отступ" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3.75c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m5 6c0 .414.336.75.75.75h9.5a.75.75 0 1 0 0-1.5h-9.5a.75.75 0 0 0-.75.75M2.75 16.5h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 1 0 0 1.5m1.618-9.55L.98 9.358a.4.4 0 0 0 .013.661l3.39 2.207A.4.4 0 0 0 5 11.892V7.275a.4.4 0 0 0-.632-.326z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e5c893e580d2ca20a7eb50a6c0088bd81">Уменьшить отступ</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_eb4e8144cebd46442030420450228584f" data-cke-tooltip-text="Увеличить отступ" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3.75c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m5 6c0 .414.336.75.75.75h9.5a.75.75 0 1 0 0-1.5h-9.5a.75.75 0 0 0-.75.75M2.75 16.5h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 1 0 0 1.5M1.632 6.95 5.02 9.358a.4.4 0 0 1-.013.661l-3.39 2.207A.4.4 0 0 1 1 11.892V7.275a.4.4 0 0 1 .632-.326z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_eb4e8144cebd46442030420450228584f">Увеличить отступ</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-on" type="button" tabindex="-1" aria-pressed="true" aria-labelledby="ck-editor__aria-label_ea0514ace5f6e79aac6baabe82c3c084e" data-cke-tooltip-text="Выравнивание по левому краю" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3.75c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0 8c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0 4c0 .414.336.75.75.75h9.929a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0-8c0 .414.336.75.75.75h9.929a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ea0514ace5f6e79aac6baabe82c3c084e">Выравнивание по левому краю</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e7bca437aa49e7fd646d9e871f2348283" data-cke-tooltip-text="Выравнивание по правому краю" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M18 3.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 1 1 0-1.5h14.5a.75.75 0 0 1 .75.75m0 8a.75.75 0 0 1-.75.75H2.75a.75.75 0 1 1 0-1.5h14.5a.75.75 0 0 1 .75.75m0 4a.75.75 0 0 1-.75.75H7.321a.75.75 0 1 1 0-1.5h9.929a.75.75 0 0 1 .75.75m0-8a.75.75 0 0 1-.75.75H7.321a.75.75 0 1 1 0-1.5h9.929a.75.75 0 0 1 .75.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e7bca437aa49e7fd646d9e871f2348283">Выравнивание по правому краю</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e1019fd4f2629870bba3805a5c9d15cd6" data-cke-tooltip-text="Выравнивание по центру" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3.75c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0 8c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m2.286 4c0 .414.336.75.75.75h9.928a.75.75 0 1 0 0-1.5H5.036a.75.75 0 0 0-.75.75m0-8c0 .414.336.75.75.75h9.928a.75.75 0 1 0 0-1.5H5.036a.75.75 0 0 0-.75.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e1019fd4f2629870bba3805a5c9d15cd6">Выравнивание по центру</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_ecc452cc1d45de4554b541c9306702b09" data-cke-tooltip-text="Выравнивание по ширине" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3.75c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0 8c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0 4c0 .414.336.75.75.75h9.929a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75m0-8c0 .414.336.75.75.75h14.5a.75.75 0 1 0 0-1.5H2.75a.75.75 0 0 0-.75.75"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ecc452cc1d45de4554b541c9306702b09">Выравнивание по ширине</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_ec62e6997bc34b586d1efcd6170342ef0" data-cke-tooltip-text="Ссылка (Ctrl+K)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m11.077 15 .991-1.416a.75.75 0 1 1 1.229.86l-1.148 1.64a.8.8 0 0 1-.217.206 5.251 5.251 0 0 1-8.503-5.955.7.7 0 0 1 .12-.274l1.147-1.639a.75.75 0 1 1 1.228.86L4.933 10.7l.006.003a3.75 3.75 0 0 0 6.132 4.294zm5.494-5.335a.8.8 0 0 1-.12.274l-1.147 1.639a.75.75 0 1 1-1.228-.86l.86-1.23a3.75 3.75 0 0 0-6.144-4.301l-.86 1.229a.75.75 0 0 1-1.229-.86l1.148-1.64a.8.8 0 0 1 .217-.206 5.251 5.251 0 0 1 8.503 5.955m-4.563-2.532a.75.75 0 0 1 .184 1.045l-3.155 4.505a.75.75 0 1 1-1.229-.86l3.155-4.506a.75.75 0 0 1 1.045-.184"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ec62e6997bc34b586d1efcd6170342ef0">Ссылка</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_eb5cee76869b63ccf54f3c5750da6a61f" data-cke-tooltip-text="Горизонтальная линия" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 9h16v2H2z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_eb5cee76869b63ccf54f3c5750da6a61f">Горизонтальная линия</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-disabled ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e27c957877e18b7e6ca0714ed5da73238" aria-disabled="true" data-cke-tooltip-text="Отменить (Ctrl+Z)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.042 9.367 2.189 1.837a.75.75 0 0 1-.965 1.149l-3.788-3.18a.75.75 0 0 1-.21-.284.75.75 0 0 1 .17-.945L6.23 4.762a.75.75 0 1 1 .964 1.15L4.863 7.866h8.917A.8.8 0 0 1 14 7.9a4 4 0 1 1-1.477 7.718l.344-1.489a2.5 2.5 0 1 0 1.094-4.73l.008-.032z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e27c957877e18b7e6ca0714ed5da73238">Отменить</span></button><button class="ck ck-button ck-disabled ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_ed268bee3af53bac306ec946cbaaec14e" aria-disabled="true" data-cke-tooltip-text="Повторить (Ctrl+Y)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m14.958 9.367-2.189 1.837a.75.75 0 0 0 .965 1.149l3.788-3.18a.75.75 0 0 0 .21-.284.75.75 0 0 0-.17-.945L13.77 4.762a.75.75 0 1 0-.964 1.15l2.331 1.955H6.22A.8.8 0 0 0 6 7.9a4 4 0 1 0 1.477 7.718l-.344-1.489A2.5 2.5 0 1 1 6.039 9.4l-.008-.032z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ed268bee3af53bac306ec946cbaaec14e">Повторить</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e0a65203fd1c85cd44209a6adeefc67c3" data-cke-tooltip-text="Выбрать все (Ctrl+A)" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M.75 15.5a.75.75 0 0 1 .75.75V18l.008.09A.5.5 0 0 0 2 18.5h1.75a.75.75 0 1 1 0 1.5H1.5l-.144-.007a1.5 1.5 0 0 1-1.35-1.349L0 18.5v-2.25a.75.75 0 0 1 .75-.75m18.5 0a.75.75 0 0 1 .75.75v2.25l-.007.144a1.5 1.5 0 0 1-1.349 1.35L18.5 20h-2.25a.75.75 0 1 1 0-1.5H18a.5.5 0 0 0 .492-.41L18.5 18v-1.75a.75.75 0 0 1 .75-.75m-10.45 3c.11 0 .2.09.2.2v1.1a.2.2 0 0 1-.2.2H7.2a.2.2 0 0 1-.2-.2v-1.1c0-.11.09-.2.2-.2zm4 0c.11 0 .2.09.2.2v1.1a.2.2 0 0 1-.2.2h-1.6a.2.2 0 0 1-.2-.2v-1.1c0-.11.09-.2.2-.2zm.45-5.5a.75.75 0 1 1 0 1.5h-8.5a.75.75 0 1 1 0-1.5zM1.3 11c.11 0 .2.09.2.2v1.6a.2.2 0 0 1-.2.2H.2a.2.2 0 0 1-.2-.2v-1.6c0-.11.09-.2.2-.2zm18.5 0c.11 0 .2.09.2.2v1.6a.2.2 0 0 1-.2.2h-1.1a.2.2 0 0 1-.2-.2v-1.6c0-.11.09-.2.2-.2zm-4.55-2a.75.75 0 1 1 0 1.5H4.75a.75.75 0 1 1 0-1.5zM1.3 7c.11 0 .2.09.2.2v1.6a.2.2 0 0 1-.2.2H.2a.2.2 0 0 1-.2-.2V7.2c0-.11.09-.2.2-.2zm18.5 0c.11 0 .2.09.2.2v1.6a.2.2 0 0 1-.2.2h-1.1a.2.2 0 0 1-.2-.2V7.2c0-.11.09-.2.2-.2zm-4.55-2a.75.75 0 1 1 0 1.5h-2.5a.75.75 0 1 1 0-1.5zm-5 0a.75.75 0 1 1 0 1.5h-5.5a.75.75 0 0 1 0-1.5zm-6.5-5a.75.75 0 0 1 0 1.5H2a.5.5 0 0 0-.492.41L1.5 2v1.75a.75.75 0 0 1-1.5 0V1.5l.007-.144A1.5 1.5 0 0 1 1.356.006L1.5 0zM18.5 0l.144.007a1.5 1.5 0 0 1 1.35 1.349L20 1.5v2.25a.75.75 0 1 1-1.5 0V2l-.008-.09A.5.5 0 0 0 18 1.5h-1.75a.75.75 0 1 1 0-1.5zM8.8 0c.11 0 .2.09.2.2v1.1a.2.2 0 0 1-.2.2H7.2a.2.2 0 0 1-.2-.2V.2c0-.11.09-.2.2-.2zm4 0c.11 0 .2.09.2.2v1.1a.2.2 0 0 1-.2.2h-1.6a.2.2 0 0 1-.2-.2V.2c0-.11.09-.2.2-.2z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e0a65203fd1c85cd44209a6adeefc67c3">Выбрать все</span></button><span class="ck ck-toolbar__line-break"></span><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e11d77236d4aee5720afbcf902a021f24" data-cke-tooltip-text="Цитата" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10.423a6.5 6.5 0 0 1 6.056-6.408l.038.67C6.448 5.423 5.354 7.663 5.22 10H9c.552 0 .5.432.5.986v4.511c0 .554-.448.503-1 .503h-5c-.552 0-.5-.449-.5-1.003zm8 0a6.5 6.5 0 0 1 6.056-6.408l.038.67c-2.646.739-3.74 2.979-3.873 5.315H17c.552 0 .5.432.5.986v4.511c0 .554-.448.503-1 .503h-5c-.552 0-.5-.449-.5-1.003z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e11d77236d4aee5720afbcf902a021f24">Цитата</span></button><span class="ck ck-toolbar__separator"></span><div class="ck ck-dropdown ck-heading-dropdown"><button class="ck ck-button ck-off ck-button_with-text ck-dropdown__button" type="button" tabindex="-1" aria-label="Параграф, Стиль" data-cke-tooltip-text="Стиль" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><span class="ck ck-button__label">Параграф</span><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-dropdown__arrow" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg></button><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"></div></div><div class="ck ck-dropdown ck-font-family-dropdown"><button class="ck ck-button ck-off ck-dropdown__button" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_eca7fbe8d20dd394530f1d79beceebe31" data-cke-tooltip-text="Семейство шрифтов" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M11.03 3h6.149a.75.75 0 1 1 0 1.5h-5.514zm1.27 3h4.879a.75.75 0 1 1 0 1.5h-4.244zm1.27 3h3.609a.75.75 0 1 1 0 1.5h-2.973zm-2.754 2.5L8.038 4.785 5.261 11.5zm.62 1.5H4.641l-1.666 4.028H1.312l5.789-14h1.875l5.789 14h-1.663z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_eca7fbe8d20dd394530f1d79beceebe31">Семейство шрифтов</span><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-dropdown__arrow" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg></button><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"></div></div><div class="ck ck-dropdown ck-font-size-dropdown"><button class="ck ck-button ck-off ck-dropdown__button" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_ec244d5d47fa36337639c3278d2416e6c" data-cke-tooltip-text="Размер шрифта" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M9.816 11.5 7.038 4.785 4.261 11.5zm.62 1.5H3.641l-1.666 4.028H.312l5.789-14h1.875l5.789 14h-1.663zm7.55 2.279.779-.779.707.707-2.265 2.265-2.193-2.265.707-.707.765.765V4.825q0-.063.002-.123l-.77.77-.707-.707L17.207 2.5l2.265 2.265-.707.707-.782-.782q.003.065.003.135z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ec244d5d47fa36337639c3278d2416e6c">Размер шрифта</span><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-dropdown__arrow" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg></button><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"></div></div><span class="ck ck-toolbar__separator"></span><div class="ck ck-dropdown ck-color-ui-dropdown"><button class="ck ck-button ck-off ck-dropdown__button" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e8947b084eb81f6daa50453f6a3ff9324" data-cke-tooltip-text="Цвет шрифта" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.4 10.3 10 4.5l-2.4 5.8zm.5 1.2H7.1L5.7 15H4.2l5-12h1.6l5 12h-1.5L13 11.5zm3.1 7H4a1 1 0 0 1 0-2h12a1 1 0 0 1 0 2"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e8947b084eb81f6daa50453f6a3ff9324">Цвет шрифта</span><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-dropdown__arrow" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg></button><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"><div class="ck ck-color-selector"></div></div></div><div class="ck ck-dropdown ck-color-ui-dropdown"><button class="ck ck-button ck-off ck-dropdown__button" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_ec410cafb9bd04778a5a860833b297e12" data-cke-tooltip-text="Цвет фона" data-cke-tooltip-position="s" aria-haspopup="true" aria-expanded="false"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8.38 9.262H7.62L10 5.506zm.532 1.285L14.34 16h1.426L10.804 4H9.196L4.234 16H5.66l1.428-3.453z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ec410cafb9bd04778a5a860833b297e12">Цвет фона</span><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-dropdown__arrow" viewBox="0 0 10 10" aria-hidden="true"><path d="M.941 4.523a.75.75 0 1 1 1.06-1.06l3.006 3.005 3.005-3.005a.75.75 0 1 1 1.06 1.06l-3.549 3.55a.75.75 0 0 1-1.168-.136z"></path></svg></button><div class="ck ck-reset ck-dropdown__panel ck-dropdown__panel_se" tabindex="-1"><div class="ck ck-color-selector"></div></div></div><button class="ck ck-button ck-disabled ck-off" type="button" tabindex="-1" aria-labelledby="ck-editor__aria-label_e9ca9832ff12fc405b5a88935cb4bbaba" aria-disabled="true" data-cke-tooltip-text="Убрать форматирование" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M8.69 14.915q.08.078.36.093a.366.366 0 0 1 .345.485l-.003.01a.74.74 0 0 1-.697.497h-2.67a.374.374 0 0 1-.353-.496l.013-.038a.68.68 0 0 1 .644-.458q.295-.018.386-.093a.3.3 0 0 0 .072-.11L9.592 4.5H6.269q-.538-.026-.75.09-.213.117-.442.563c-.192.29-.516.464-.864.464H4.17a.43.43 0 0 1-.407-.569L4.46 3h13.08l-.62 2.043a.81.81 0 0 1-.775.574h-.114a.486.486 0 0 1-.486-.486q.002-.426-.167-.54-.168-.114-.766-.091h-3.28l-2.68 10.257q-.009.111.038.158M3 17h8a.5.5 0 1 1 0 1H3a.5.5 0 1 1 0-1m11.299 1.17a.75.75 0 1 1-1.06-1.06l1.414-1.415-1.415-1.414a.75.75 0 0 1 1.06-1.06l1.415 1.414 1.414-1.415a.75.75 0 1 1 1.06 1.06l-1.413 1.415 1.414 1.415a.75.75 0 0 1-1.06 1.06l-1.415-1.414z"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e9ca9832ff12fc405b5a88935cb4bbaba">Убрать форматирование</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-source-editing-button ck-off ck-button_with-text" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_eb730d508731576619c06ec5d23e97dfa" data-cke-tooltip-text="Источник" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 0 5 4.5v15.003h-16V0zM3 1.5v3.25l-1.497 1-.003 8 1.5 1v3.254L7.685 18l-.001 1.504H17.5V8.002L16 9.428l-.004-4.22-4.222-3.692z"></path><path d="M4.06 6.64a.75.75 0 0 1 .958 1.15l-.085.07L2.29 9.75l2.646 1.89c.302.216.4.62.232.951l-.058.095a.75.75 0 0 1-.951.232l-.095-.058-3.5-2.5V9.14zm4.194 6.22a.75.75 0 0 1-.958-1.149l.085-.07 2.643-1.89-2.646-1.89a.75.75 0 0 1-.232-.952l.058-.095a.75.75 0 0 1 .95-.232l.096.058 3.5 2.5v1.22zm7.644-.836 2.122 2.122-5.825 5.809-2.125-.005.003-2.116zm2.539-1.847 1.414 1.414a.5.5 0 0 1 0 .707l-1.06 1.06-2.122-2.12 1.061-1.061a.5.5 0 0 1 .707 0"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_eb730d508731576619c06ec5d23e97dfa">Источник</span></button><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_e07b606c43ea264fc868168a5ddc83d83" data-cke-tooltip-text="Спецсимволы" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5a7.47 7.47 0 0 1 4.231 1.31 7.27 7.27 0 0 1 2.703 3.454 7.13 7.13 0 0 1 .199 4.353c-.39 1.436-1.475 2.72-2.633 3.677h2.013c0-.226.092-.443.254-.603a.876.876 0 0 1 1.229 0c.163.16.254.377.254.603v.853c0 .209-.078.41-.22.567a.87.87 0 0 1-.547.28l-.101.006h-4.695a.517.517 0 0 1-.516-.518v-1.265c0-.21.128-.398.317-.489a5.6 5.6 0 0 0 2.492-2.371 5.46 5.46 0 0 0 .552-3.693 5.53 5.53 0 0 0-1.955-3.2A5.7 5.7 0 0 0 10 4.206 5.7 5.7 0 0 0 6.419 5.46 5.53 5.53 0 0 0 4.46 8.663a5.46 5.46 0 0 0 .554 3.695 5.6 5.6 0 0 0 2.497 2.37.55.55 0 0 1 .317.49v1.264c0 .286-.23.518-.516.518H2.618a.88.88 0 0 1-.614-.25.85.85 0 0 1-.254-.603v-.853c0-.226.091-.443.254-.603a.876.876 0 0 1 1.228 0c.163.16.255.377.255.603h1.925c-1.158-.958-2.155-2.241-2.545-3.678a7.13 7.13 0 0 1 .199-4.352 7.27 7.27 0 0 1 2.703-3.455A7.5 7.5 0 0 1 10 2.5"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_e07b606c43ea264fc868168a5ddc83d83">Спецсимволы</span></button><span class="ck ck-toolbar__separator"></span><button class="ck ck-button ck-off" type="button" tabindex="-1" aria-pressed="false" aria-labelledby="ck-editor__aria-label_ec126cca0ae4b7e51068c12423da1e652" data-cke-tooltip-text="Войти в полноэкранный режим" data-cke-tooltip-position="s"><svg class="ck ck-icon ck-reset_all-excluded ck-icon_inherit-color ck-button__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 5.75a.75.75 0 0 1 0-1.5H15a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V6.81l-2.72 2.72a.75.75 0 0 1-1.06-1.06l2.72-2.72zm-1.97 4.72a.75.75 0 0 1 0 1.06l-2.72 2.72H8.5a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75v-3.5a.75.75 0 0 1 1.5 0v1.69l2.72-2.72a.75.75 0 0 1 1.06 0"></path><path d="M2 0h16a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2m16 1.5H2a.5.5 0 0 0-.5.5v16a.5.5 0 0 0 .5.5h16a.5.5 0 0 0 .5-.5V2a.5.5 0 0 0-.5-.5"></path></svg><span class="ck ck-button__label" id="ck-editor__aria-label_ec126cca0ae4b7e51068c12423da1e652">Войти в полноэкранный режим</span></button></div></div></div></div></div><div class="ck ck-editor__main" role="presentation"><div class="ck-blurred ck ck-content ck-editor__editable ck-rounded-corners ck-editor__editable_inline" lang="ru" dir="ltr" role="textbox" aria-label="Редактор форматированного текста. Область редактирования: main. Нажмите Alt+0 для получения помощи." contenteditable="true" style="height:325.5px;min-height:320px;width:100%;"><p>Добрый день, &lt;OTRS_NOTIFICATION_RECIPIENT_UserFirstname&gt;,</p><p>&lt;OTRS_AGENT_BODY[30]&gt;</p></div></div><div class="ck ck-resizer">◢</div></div>
+
+                                                    <div id="en_BodyError" class="TooltipErrorMessage">
+                                                        <p>Это поле обязательно.</p>
+                                                    </div>
+                                                    <div id="en_BodyServerError" class="TooltipErrorMessage">
+                                                        <p>Данное поле обязательно и должно быть менее 4000 символов.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="Hidden Template NotificationLanguage">
+                                <div class="WidgetSimple Expanded">
+                                    <div class="Header">
+                                        <div class="WidgetAction Toggle">
+                                            <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_7" aria-expanded="true"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                                        </div>
+                                        <h2 class="Title"></h2>
+                                        <div class="AdditionalInformation">
+                                            <a value="Remove Language" class="RemoveButton LanguageRemove" id="Template_Language_Remove" href="" name="Template_Language_Remove"><i class="fa fa-minus-square-o"></i><span class="InvisibleText">Удалить язык уведомлений</span></a>
+                                        </div>
+                                    </div>
+                                    <div class="Content" id="Core_UI_AutogeneratedID_7">
+                                        <fieldset class="TableLike">
+                                            <input type="hidden" name="" class="LanguageID" value="">
+
+                                            <div class="field-wrapper">
+                                                <label for="Template_Subject" id="Template_Label_Subject" class="Mandatory">
+                                                    <span class="Marker">*</span>
+                                                    Тема сообщения
+                                                </label>
+                                                <div class="Field">
+                                                    <input type="text" name="Template_Subject" id="Template_Subject" value="" class="W75pc" maxlength="200">
+                                                    <div id="Template_SubjectError" class="TooltipErrorMessage">
+                                                        <p>Это поле обязательно.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="field-wrapper">
+                                                <label for="Template_Body" id="Template_Label_Body" class="Mandatory">
+                                                    <span class="Marker">*</span>
+                                                    Текст
+                                                </label>
+                                                <div class="RichTextField">
+                                                    <textarea id="Template_Body" class="" name="Template_Body" title="Содержание уведомления" rows="15" cols="78"></textarea>
+                                                    <div id="Template_BodyError" class="TooltipErrorMessage">
+                                                        <p>Это поле обязательно.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper">
+                            <label for="Language">Добавить дополнительный язык для уведомлений</label>
+                            <div class="Field">
+                                <div class="InputField_Container" tabindex="-1"><div class="InputField_InputContainer"><input id="Language_Search" class="InputField_Search" type="text" role="search" autocomplete="off" aria-label="Добавить дополнительный язык для уведомлений"><i class="fa fa-caret-down"></i></div></div><select class="Modernize W50pc LanguageAdd" id="Language" name="Language" style="display: none;">
+  <option value="">-</option>
+  <option value="id">Bahasa Indonesia - Индонезийский</option>
+  <option value="ca">Català - Каталонский</option>
+  <option value="da">Dansk - Датский</option>
+  <option value="de">Deutsch - Немецкий</option>
+  <option value="et">Eesti - Эстонский</option>
+  <option value="en_CA">English (Canada) - Английский (Канада)</option>
+  <option value="en_GB">English (United Kingdom) - Английский (Великобритания)</option>
+  <option value="es_CO">Español (Colombia) - Испанский (Колумбия)</option>
+  <option value="es_MX">Español (México) - Испанский (Мексика)</option>
+  <option value="es">Español - Испанский</option>
+  <option value="fr_CA">Français (Canada) - Французский (Канада)</option>
+  <option value="fr">Français - Французский</option>
+  <option value="gl">Galego - Галисийский</option>
+  <option value="hr">Hrvatski - Хорватский</option>
+  <option value="it">Italiano - Итальянский</option>
+  <option value="sw">Kiswahili - Суахили</option>
+  <option value="lv">Latvijas - Латышский</option>
+  <option value="lt">Lietuvių kalba - Литовский</option>
+  <option value="hu">Magyar - Венгерский</option>
+  <option value="ms">Melayu - Малайский</option>
+  <option value="mk">Mакедонски - Macedonian</option>
+  <option value="nl">Nederlandse - Dutch</option>
+  <option value="nb_NO">Norsk bokmål - Норвежский</option>
+  <option value="pl">Polski - Польский</option>
+  <option value="pt">Português - Португальский</option>
+  <option value="pt_BR">Português Brasileiro - Португальский (Бразилия)</option>
+  <option value="ro">Română - Romanian</option>
+  <option value="sk_SK">Slovenčina - Словацкий</option>
+  <option value="sl">Slovenščina - Словенский</option>
+  <option value="sr_Latn">Srpski - Сербский Латиница</option>
+  <option value="fi">Suomi - Финский</option>
+  <option value="sv">Svenska - Шведский</option>
+  <option value="tr">Türkçe - Турецкий</option>
+  <option value="vi_VN">ViɆt Nam - Вьетнамский</option>
+  <option value="cs">Česky - Чешский</option>
+  <option value="el">Ελληνικά - Греческий</option>
+  <option value="bg">Български - Болгарский</option>
+  <option value="ru">Русский</option>
+  <option value="sr_Cyrl">Српски - Сербский Кириллица</option>
+  <option value="uk">Українська - Украинский</option>
+  <option value="he">עברית - Иврит</option>
+  <option value="ar_SA">العَرَبِية&lrm; - Арабский (Саудовская Аравия)</option>
+  <option value="fa">فارسى - Фарси</option>
+  <option value="hi">हिन्दी - Хинди</option>
+  <option value="th_TH">ภาษาไทย - Тайский</option>
+  <option value="ja">日本語 - Японский</option>
+  <option value="zh_TW">正體中文 - Китайский (традиционный)</option>
+  <option value="zh_CN">简体中文 - Китайский (упрощённый)</option>
+  <option value="ko">한국어 - Корейский</option>
+</select>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="Hidden">
+                        <select id="LanguageOrig" name="LanguageOrig">
+  <option value="">-</option>
+  <option value="id">Bahasa Indonesia - Индонезийский</option>
+  <option value="ca">Català - Каталонский</option>
+  <option value="da">Dansk - Датский</option>
+  <option value="de">Deutsch - Немецкий</option>
+  <option value="et">Eesti - Эстонский</option>
+  <option value="en_CA">English (Canada) - Английский (Канада)</option>
+  <option value="en_GB">English (United Kingdom) - Английский (Великобритания)</option>
+  <option value="en">English (United States) - Английский (США)</option>
+  <option value="es_CO">Español (Colombia) - Испанский (Колумбия)</option>
+  <option value="es_MX">Español (México) - Испанский (Мексика)</option>
+  <option value="es">Español - Испанский</option>
+  <option value="fr_CA">Français (Canada) - Французский (Канада)</option>
+  <option value="fr">Français - Французский</option>
+  <option value="gl">Galego - Галисийский</option>
+  <option value="hr">Hrvatski - Хорватский</option>
+  <option value="it">Italiano - Итальянский</option>
+  <option value="sw">Kiswahili - Суахили</option>
+  <option value="lv">Latvijas - Латышский</option>
+  <option value="lt">Lietuvių kalba - Литовский</option>
+  <option value="hu">Magyar - Венгерский</option>
+  <option value="ms">Melayu - Малайский</option>
+  <option value="mk">Mакедонски - Macedonian</option>
+  <option value="nl">Nederlandse - Dutch</option>
+  <option value="nb_NO">Norsk bokmål - Норвежский</option>
+  <option value="pl">Polski - Польский</option>
+  <option value="pt">Português - Португальский</option>
+  <option value="pt_BR">Português Brasileiro - Португальский (Бразилия)</option>
+  <option value="ro">Română - Romanian</option>
+  <option value="sk_SK">Slovenčina - Словацкий</option>
+  <option value="sl">Slovenščina - Словенский</option>
+  <option value="sr_Latn">Srpski - Сербский Латиница</option>
+  <option value="fi">Suomi - Финский</option>
+  <option value="sv">Svenska - Шведский</option>
+  <option value="tr">Türkçe - Турецкий</option>
+  <option value="vi_VN">ViɆt Nam - Вьетнамский</option>
+  <option value="cs">Česky - Чешский</option>
+  <option value="el">Ελληνικά - Греческий</option>
+  <option value="bg">Български - Болгарский</option>
+  <option value="ru">Русский</option>
+  <option value="sr_Cyrl">Српски - Сербский Кириллица</option>
+  <option value="uk">Українська - Украинский</option>
+  <option value="he">עברית - Иврит</option>
+  <option value="ar_SA">العَرَبِية&lrm; - Арабский (Саудовская Аравия)</option>
+  <option value="fa">فارسى - Фарси</option>
+  <option value="hi">हिन्दी - Хинди</option>
+  <option value="th_TH">ภาษาไทย - Тайский</option>
+  <option value="ja">日本語 - Японский</option>
+  <option value="zh_TW">正體中文 - Китайский (традиционный)</option>
+  <option value="zh_CN">简体中文 - Китайский (упрощённый)</option>
+  <option value="ko">한국어 - Корейский</option>
+</select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="WidgetSimple">
+                <div class="Header">
+                    <h2>Сохранить изменения</h2>
+                </div>
+
+                <div class="Content">
+                    <fieldset class="TableLike">
+                        <div class="field-wrapper form-button-actions">
+                            <div class="Field buttons-field">
+                                <a href="/znuny/index.pl?Action=AdminNotificationEvent" class="btn-cancel-ghost btn-main btn-width-md">Отменить</a>
+
+                                
+                                    <button class="CallForAction Primary btn-primary-ghost btn-main  btn-width-md" id="Submit" type="submit" value="Сохранить"><span>Сохранить и закончить</span></button>
+                                    <button class="CallForAction Primary btn-primary btn-main  btn-width-md" id="SubmitAndContinue" type="button" value="Сохранить"><span>Сохранить</span></button>
+                                
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </form>
+        
+<div class="WidgetSimple SpacingTop Collapsed">
+    <div class="Header">
+        <div class="WidgetAction Toggle">
+            <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_8" aria-expanded="false"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+        </div>
+        <h2>Справка по тэгам</h2>
+    </div>
+    <div class="Content" id="Core_UI_AutogeneratedID_8">
+        <div class="code-container">
+            <p>Вы можете использовать следующие теги:</p>
+            <dl>
+                
+                
+<dt><code class="bold">&lt;OTRS_AGENT_SUBJECT[20]&gt;</code></dt>
+<dd class="flex-row">
+    Первые 20 символов темы из последнего сообщения агента
+</dd>
+
+<dt><code class="bold">&lt;OTRS_AGENT_BODY[5]&gt;</code></dt>
+<dd class="flex-row">
+    Первые 5 строк последнего сообщения агента
+</dd>
+
+<dt><code class="bold">&lt;OTRS_AGENT_*&gt;</code></dt>
+<dd class="flex-row">
+    Чтобы получить атрибут сообщения
+    (например, <code>&lt;OTRS_AGENT_From&gt;, &lt;OTRS_AGENT_To&gt;, &lt;OTRS_AGENT_Cc&gt;</code>).
+</dd>
+
+<dt><code class="bold">&lt;OTRS_CUSTOMER_SUBJECT[20]&gt;</code></dt>
+<dd class="flex-row">
+    Первые 20 символов темы из последнего сообщения клиента
+</dd>
+
+<dt><code class="bold">&lt;OTRS_CUSTOMER_BODY[5]&gt;</code></dt>
+<dd class="flex-row">
+    Первые 5 строк последнего сообщения клиента
+</dd>
+
+<dt><code class="bold">&lt;OTRS_CUSTOMER_REALNAME&gt;</code></dt>
+<dd class="flex-row">
+    Получить имя клиента заявки (если указано).
+</dd>
+
+<dt><code class="bold">&lt;OTRS_CUSTOMER_*&gt;</code></dt>
+<dd class="flex-row">
+    Чтобы получить атрибут сообщения
+    например, <code>&lt;OTRS_CUSTOMER_From&gt;, &lt;OTRS_CUSTOMER_To&gt;,
+    &lt;OTRS_CUSTOMER_Cc&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_CUSTOMER_DATA_*&gt;</code></dt>
+<dd class="flex-row">
+    Атрибуты данных текущего клиента
+    например, <code>&lt;OTRS_CUSTOMER_DATA_UserFirstname&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_OWNER_*&gt;</code> или <code>&lt;OTRS_TICKET_OWNER_*&gt;</code></dt>
+<dd class="flex-row">
+    Атрибуты текущего владельца заявки
+    например, <code>&lt;OTRS_OWNER_UserFirstname&gt;</code> или <code>&lt;OTRS_TICKET_OWNER_UserFirstname&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_*&gt;</code> или <code>&lt;OTRS_NOTIFICATION_RECIPIENT_*&gt;</code></dt>
+<dd class="flex-row">
+    Атрибуты пользователя - получателя уведомления
+    например, <code>&lt;OTRS_UserFullname&gt;</code> или <code>&lt;OTRS_NOTIFICATION_RECIPIENT_UserFullname&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_TICKET_*&gt;</code></dt>
+<dd class="flex-row">
+    Атрибуты данных заявки
+    например, <code>&lt;OTRS_TICKET_TicketNumber&gt;, &lt;OTRS_TICKET_TicketID&gt;,
+    &lt;OTRS_TICKET_Queue&gt;, &lt;OTRS_TICKET_State&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_TICKET_DynamicField_*&gt;</code></dt>
+<dd class="flex-row">
+    Значения внутренних ключей динамических полей заявки
+    например, <code>&lt;OTRS_TICKET_DynamicField_TestField&gt;,
+    &lt;OTRS_TICKET_DynamicField_TicketFreeText1&gt;</code>
+</dd>
+
+<dt><code class="bold">&lt;OTRS_TICKET_DynamicField_*_Value&gt;</code></dt>
+<dd class="flex-row">
+    Отображаемые значения динамических полей заявки, полезно при использовании полей типа Dropdown и Multiselect
+    например, <code>&lt;OTRS_TICKET_DynamicField_TestField_Value&gt;,
+    &lt;OTRS_TICKET_DynamicField_TicketFreeText1_Value&gt;</code>
+</dd>
+
+                <dt><code class="bold">&lt;OTRS_RESPONSIBLE_*&gt;</code></dt>
+                <dd class="flex-row">
+                    Атрибуты ответственного за заявку например,
+                    <code>&lt;OTRS_RESPONSIBLE_UserFirstname&gt;</code>
+                </dd>
+
+                <dt><code class="bold">&lt;OTRS_CURRENT_*&gt;</code></dt>
+                <dd class="flex-row">
+                    Атрибуты текущего пользователя, запросившего это действие например,
+                    <code>&lt;OTRS_CURRENT_UserFirstname&gt;</code>
+                </dd>
+
+                <dt><code class="bold">&lt;OTRS_CONFIG_*&gt;</code></dt>
+                <dd class="flex-row">
+                    Опции конфигурации например, <code>&lt;OTRS_CONFIG_HttpType&gt;</code>
+                </dd>
+            </dl>
+            <div class="WidgetSimple SpacingTop Collapsed">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="Переключить показ этого блока" aria-controls="Core_UI_AutogeneratedID_9" aria-expanded="false"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>Пример</h2>
+                </div>
+                <div class="Content" id="Core_UI_AutogeneratedID_9">
+                    <div class="code-container">
+                        <p><textarea rows="10" cols="80" name="TemplateExample">Dear &lt;OTRS_CUSTOMER_DATA_UserFirstname&gt; &lt;OTRS_CUSTOMER_DATA_UserLastname&gt;,
+
+your ticket "&lt;OTRS_TICKET_Title&gt;" was created on &lt;OTRS_TICKET_Created&gt; in queue &lt;OTRS_TICKET_Queue&gt; and has the number &lt;OTRS_CONFIG_TicketHook&gt;&lt;OTRS_TICKET_TicketNumber&gt;.
+
+If you have questions, ask for your assigned Agent &lt;OTRS_OWNER_UserFirstname&gt; &lt;OTRS_OWNER_UserLastname&gt; ...
+                        </textarea></p>
+                        <p><textarea rows="10" cols="80" name="TemplateExample">Dear &lt;OTRS_NOTIFICATION_RECIPIENT_UserFirstname&gt;,
+
+appointment "&lt;OTRS_APPOINTMENT_TITLE&gt;" has reached the notification time.
+See more details online: &lt;OTRS_CONFIG_HttpType&gt;://&lt;OTRS_CONFIG_FQDN&gt;/&lt;OTRS_CONFIG_ScriptAlias&gt;index.pl?Action=AgentAppointmentCalendarOverview;AppointmentID=&lt;OTRS_APPOINTMENT_APPOINTMENTID&gt; ...
+                        </textarea></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    </div>
+</div>
+
+<div id="Footer" class="ARIARoleContentinfo" role="contentinfo">
+
+
+    <a href="https://www.znuny.org" title="Znuny 7.2.3" target="_blank">
+        <span></span>
+        Powered by Znuny
+    </a>
+
+</div>
+
+
+
+    <script src="/znuny-web/js/thirdparty/ckeditor5-classic-46.0.0/ckeditor-znuny.js"></script>
+
+    <script src="/znuny-web/js/thirdparty/ckeditor5-classic-46.0.0/translations/ru.js"></script>
+
+
+
+<script type="text/javascript" src="/znuny-web/js/js-cache/CommonJS_fc54d9a2a9cb2514d82a1d2eedc2aebb.js"></script>
+<script type="text/javascript" src="/znuny-web/js/js-cache/TranslationJS_ru_3eed59d90802a139102fb4f251637c0c.js"></script>
+<script type="text/javascript" src="/znuny-web/js/js-cache/TemplateJS_28891defb06c3cc0b09e57ff4b366a36.js"></script>
+<script type="text/javascript" src="/znuny-web/js/js-cache/ModuleJS_518c75c576d42cbbdbf009aab3d5f6c7.js"></script>
+
+<script type="text/javascript">//<![CDATA[
+"use strict";
+
+Core.Init.ExecuteInit('JS_LOADED');
+
+Core.App.Ready(function () {
+
+    Core.Init.ExecuteInit('DOCUMENT_READY');
+
+    Core.Config.AddConfig({"Action":"AdminNotificationEvent","AutoAttributFieldIDMapping":"1","Autocomplete":{"CustomerSearch":{"AutoCompleteActive":"1","ButtonText":"Искать клиента","MaxResultsDisplayed":"20","MinQueryLength":"2","QueryDelay":"100"},"Default":{"AutoCompleteActive":"1","ButtonText":"Поиск","MaxResultsDisplayed":"20","MinQueryLength":"2","QueryDelay":"100"},"UserSearch":{"AutoCompleteActive":"1","ButtonText":"Искать агента","MaxResultsDisplayed":"20","MinQueryLength":"2","QueryDelay":"100"}},"Baselink":"/znuny/index.pl?","CGIHandle":"/znuny/index.pl","CKEUserLanguage":"ru","ChallengeToken":"icpumw5izF2cRUxa49WUAHoyubELsSk8","CheckEmailAddresses":"1","CheckSearchStringsForStopWords":0,"Core::Znuny::ZoomArticleDetailsExpand::AllArticles":0,"CustomerInfoSet":"1","CustomerPanelSessionName":"OTRSCustomerInterface","DatepickerShowWeek":0,"DynamicFieldsJS":{"Search_DynamicField_ITSMCriticality":{"ID":8,"Text":"Критичность (ITSMCriticality)"},"Search_DynamicField_ITSMImpact":{"ID":9,"Text":"Степень влияния (ITSMImpact)"},"Search_DynamicField_ProcessManagementActivityID":{"ID":2,"Text":"Активность (ProcessManagementActivityID)"},"Search_DynamicField_ProcessManagementAttachment":{"ID":3,"Text":"Вложение (ProcessManagementAttachment)"},"Search_DynamicField_ProcessManagementProcessID":{"ID":1,"Text":"Процесс (ProcessManagementProcessID)"}},"IncludeRichTextTranslation":1,"IncludeUnknownTicketCustomers":"0","InputFields::ModernizedSelection::MaxNumberOfOptions":"1000","InputFieldsActivated":"1","Mentions::RichTextEditor":{"Templates":{"Groups":{"ItemTemplate":"{name} ({mentionLabel})","OutputTemplate":"{trigger}{name}"},"Users":{"ItemTemplate":"{fullname}","OutputTemplate":"{trigger}{fullname}"}},"Triggers":{"Group":"@@","User":"@"}},"MenuDragDropEnabled":"1","NavbarOrderItems":"","OpenMainMenuOnHover":"0","PendingStateIDs":[7,6,11,13],"Refresh":null,"RichText":{"BuildPlugins":["Alignment","Autocomplete","Autoformat","AutoImage","BlockQuote","Bold","Base64UploadAdapter","Italic","Underline","Strikethrough","Code","Subscript","Superscript","CloudServices","CodeBlock","Essentials","FindAndReplace","FontBackgroundColor","FontColor","FontFamily","FontSize","Fullscreen","GeneralHtmlSupport","Heading","HorizontalLine","HtmlEmbed","Image","ImageBlock","ImageCaption","ImageResize","ImageStyle","ImageToolbar","ImageInline","ImageInsert","Indent","IndentBlock","Link","List","ListProperties","MediaEmbed","PageBreak","PasteFromOffice","PictureEditing","RemoveFormat","SelectAll","ShowBlocks","SimpleUploadAdapter","SourceEditing","SpecialCharacters","SpecialCharactersMathematical","Style","Table","TableCaption","TableCellProperties","TableColumnResize","TableProperties","TableToolbar","TextPartLanguage"],"ContentAllowed":[{"attributes":{"type":1},"name":"div","styles":1},{"attributes":1,"name":"img"},{"attributes":{"width":1},"name":"col"},{"attributes":1,"name":"style","styles":1},{"attributes":{"id":1},"classes":1,"name":".*"}],"ContentCssDefault":"font-family:Geneva,Helvetica,Arial,sans-serif; font-size: 12px; line-height: 1.5;","ContentCssInternal":"/znuny-web/common/css/Core.RichTextEditor.InternalArticleStyles.css","ContentDisallowed":[],"ExcludedPlugins":[],"ExtraPlugins":[],"FontNames":["Arial/Arial, Helvetica, sans-serif","Calibri/Calibri, sans-serif","Comic Sans MS/Comic Sans MS, cursive","Courier New/Courier New, Courier, monospace","Georgia/Georgia, serif","Lucida Sans Unicode/Lucida Sans Unicode, Lucida Grande, sans-serif","Tahoma/Tahoma, Geneva, sans-serif","Times New Roman/Times New Roman, Times, serif","Trebuchet MS/Trebuchet MS, Helvetica, sans-serif","Verdana/Verdana, Geneva, sans-serif"],"FontSizes":["8px","10px","12px","14px","16px","18px","20px","22px","24px","26px","28px","30px"],"FormatTags":["\"model\": \"paragraph\", \"title\": \"Paragraph\", \"class\": \"ck-heading_paragraph\"","\"model\": \"heading1\", \"view\": \"h1\", \"title\": \"Heading 1\", \"class\": \"ck-heading_heading1\"","\"model\": \"heading2\", \"view\": \"h2\", \"title\": \"Heading 2\", \"class\": \"ck-heading_heading2\"","\"model\": \"heading3\", \"view\": \"h3\", \"title\": \"Heading 3\", \"class\": \"ck-heading_heading3\"","\"model\": \"heading4\", \"view\": \"h4\", \"title\": \"Heading 4\", \"class\": \"ck-heading_heading4\"","\"model\": \"heading5\", \"view\": \"h5\", \"title\": \"Heading 5\", \"class\": \"ck-heading_heading5\"","\"model\": \"heading6\", \"view\": \"h6\", \"title\": \"Heading 6\", \"class\": \"ck-heading_heading6\"","\"model\": \"pre\", \"view\": \"pre\", \"title\": \"Preformatted\", \"class\": \"ck-heading_preformatted\""],"Height":"320px","MinHeight":"320px","PictureUploadAction":"","TextDir":"","TicketID":"","Toolbar":["bold","italic","underline","strikethrough","|","numberedList","bulletedList","|","outdent","indent","|","alignment:left","alignment:right","alignment:center","alignment:justify","|","link","|","insertImage","horizontalLine","|","undo","redo","|","selectAll","-","blockQuote","|","heading","fontFamily","fontSize","|","fontColor","fontBackgroundColor","removeFormat","|","sourceEditing","specialCharacters","|","fullscreen"],"ToolbarWithoutImage":["bold","italic","underline","strikethrough","|","numberedList","bulletedList","|","outdent","indent","|","alignment:left","alignment:right","alignment:center","alignment:justify","|","link","|","horizontalLine","|","undo","redo","|","selectAll","-","blockQuote","|","heading","fontFamily","fontSize","|","fontColor","fontBackgroundColor","removeFormat","|","sourceEditing","specialCharacters","|","fullscreen"],"Type":"","Width":"100%"},"RichTextSet":"1","SearchFrontend":"","SessionID":"ygwfVoYozvYKp4RndvFWdErMBd3JpgIb","SessionIDCookie":"ygwfVoYozvYKp4RndvFWdErMBd3JpgIb","SessionName":"OTRSAgentInterface","SessionUseCookie":"1","Skin":"default","Subaction":"Change","UserActivityLinkTarget":"_self","UserLanguage":"ru","WebMaxFileUpload":"24000000","WebPath":"/znuny-web/"});
+
+
+    Core.Init.ExecuteInit('CONFIG_LOADED');
+    Core.Init.ExecuteInit('APP_GLOBAL_EARLY');
+    Core.Init.ExecuteInit('APP_GLOBAL');
+    Core.Init.ExecuteInit('APP_GLOBAL_LATE');
+
+});
+//]]></script>
+
+<script type="text/javascript">//<![CDATA[
+"use strict";
+Core.App.Ready(function () {
+    Core.Init.ExecuteInit('APP_MODULE_EARLY');
+
+// Key: PopupProfiles
+
+    Core.UI.Popup.ProfileAdd(
+        'Default', {"Height":"75%","Left":"100px","Top":"100px","Width":"75%","WindowURLParams":"dependent=yes,location=no,menubar=no,resizable=yes,scrollbars=yes,status=no,toolbar=no"}
+    );
+
+    Core.Init.ExecuteInit('APP_MODULE');
+    Core.Init.ExecuteInit('APP_MODULE_LATE');
+});
+//]]></script>
+
+<script type="text/javascript">//<![CDATA[
+"use strict";
+Core.App.Ready(function () {
+    Core.Init.ExecuteInit('FINISH');
+    Core.App.UnblockEvents();
+});
+//]]></script>
+
+<div id="AjaxErrorDialog">
+    <div id="AjaxErrorDialogInner">
+        <div class="NoConnection" style="display:none;">
+            <span class="Icon">
+                <i class="fa fa-plug"></i>
+            </span>
+            <p>
+                Znuny detected possible network issues. You could either try reloading this page manually or wait until your browser has re-established the connection on its own.
+            </p>
+        </div>
+        <div class="ConnectionReEstablished" style="display:none;">
+            <span class="Icon">
+                <i class="fa fa-check"></i>
+            </span>
+            <p>
+                Соединение было восстановлено после потери связи. По этой причине ряд элементов на странице может работать неверно. Чтобы исключить это, настоятельно рекомендуем обновить страницу.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div id="ResponsiveFooter">
+    <div class="Visible-ScreenXL"></div>
+    <div class="Visible-ScreenL"></div>
+    <div class="Visible-ScreenM"></div>
+    <div class="Visible-ScreenS"></div>
+    <div class="Visible-ScreenXS"></div>
+</div>
+
+</div><!-- end AppWrapper -->
+
+
+
+<div class="ck-body-wrapper"><div class="ck ck-reset_all ck-body ck-rounded-corners" dir="ltr" role="application"><div class="ck ck-clipboard-drop-target-line ck-hidden"></div><div class="ck ck-aria-live-announcer"><div aria-live="polite" aria-relevant="additions"><ul class="ck ck-aria-live-region-list"></ul></div><div aria-live="assertive" aria-relevant="additions"><ul class="ck ck-aria-live-region-list"></ul></div></div></div></div></body>
