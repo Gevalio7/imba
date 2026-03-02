@@ -1,7 +1,7 @@
-import { breakpointsVuetifyV3 } from '@vueuse/core'
-import { VIcon } from 'vuetify/components/VIcon'
 import { defineThemeConfig } from '@core'
 import { Skins } from '@core/enums'
+import { breakpointsVuetifyV3 } from '@vueuse/core'
+import { VIcon } from 'vuetify/components/VIcon'
 
 // ❗ Logo SVG must be imported with ?raw suffix
 import logo from '@images/logo.svg?raw'
@@ -17,11 +17,16 @@ export const { themeConfig, layoutConfig } = defineThemeConfig({
     overlayNavFromBreakpoint: breakpointsVuetifyV3.lg - 1, // 1 for matching with vuetify breakpoint. Docs: https://next.vuetifyjs.com/en/features/display-and-platform/
     i18n: {
       enable: true,
-      defaultLocale: 'en',
+      defaultLocale: 'ru',
       langConfig: [
         {
           label: 'English',
           i18nLang: 'en',
+          isRTL: false,
+        },
+        {
+          label: 'Русский',
+          i18nLang: 'ru',
           isRTL: false,
         },
         {
