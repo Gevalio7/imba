@@ -1,0 +1,769 @@
+diff --git a/src/navigation/vertical/apps-and-pages.ts b/src/navigation/vertical/apps-and-pages.ts
+index 71aabec..892b08e 100644
+--- a/src/navigation/vertical/apps-and-pages.ts
++++ b/src/navigation/vertical/apps-and-pages.ts
+@@ -1,67 +1,9 @@
+ 
+ export default [
+   { heading: 'Apps & Pages' },
+-  {
+-    title: 'Ecommerce',
+-    icon: { icon: 'bx-cart-alt' },
+-    children: [
+-      {
+-        title: 'Dashboard',
+-        to: 'apps-ecommerce-dashboard',
+-      },
+-      {
+-        title: 'Product',
+-        children: [
+-          { title: 'List', to: 'apps-ecommerce-product-list' },
+-          { title: 'Add', to: 'apps-ecommerce-product-add' },
+-          { title: 'Category', to: 'apps-ecommerce-product-category-list' },
+-        ],
+-      },
+-      {
+-        title: 'Order',
+-        children: [
+-          { title: 'List', to: 'apps-ecommerce-order-list' },
+-          { title: 'Details', to: { name: 'apps-ecommerce-order-details-id', params: { id: '9042' } } },
+-        ],
+-      },
+-      {
+-        title: 'Customer',
+-        children: [
+-          { title: 'List', to: 'apps-ecommerce-customer-list' },
+-          { title: 'Details', to: { name: 'apps-ecommerce-customer-details-id', params: { id: 478426 } } },
+-        ],
+-      },
+-      {
+-        title: 'Manage Review',
+-        to: 'apps-ecommerce-manage-review',
+-      },
+-      {
+-        title: 'Referrals',
+-        to: 'apps-ecommerce-referrals',
+-      },
+-      {
+-        title: 'Settings',
+-        to: 'apps-ecommerce-settings',
+-      },
+-    ],
+-  },
+-  {
+-    title: 'Academy',
+-    icon: { icon: 'bx-book-open' },
+-    children: [
+-      { title: 'Dashboard', to: 'apps-academy-dashboard' },
+-      { title: 'My Course', to: 'apps-academy-my-course' },
+-      { title: 'Course Details', to: 'apps-academy-course-details' },
+-    ],
+-  },
+-  {
+-    title: 'Logistics',
+-    icon: { icon: 'bx-car' },
+-    children: [
+-      { title: 'Dashboard', to: 'apps-logistics-dashboard' },
+-      { title: 'Fleet', to: 'apps-logistics-fleet' },
+-    ],
+-  },
++  
++
++
+   {
+     title: 'Email',
+     icon: { icon: 'bx-envelope' },
+@@ -82,17 +24,7 @@ export default [
+     icon: { icon: 'bx-grid' },
+     to: 'apps-kanban',
+   },
+-  {
+-    title: 'Invoice',
+-    icon: { icon: 'bx-food-menu' },
+-
+-    children: [
+-      { title: 'List', to: 'apps-invoice-list' },
+-      { title: 'Preview', to: { name: 'apps-invoice-preview-id', params: { id: '5036' } } },
+-      { title: 'Edit', to: { name: 'apps-invoice-edit-id', params: { id: '5036' } } },
+-      { title: 'Add', to: 'apps-invoice-add' },
+-    ],
+-  },
++  
+   {
+     title: 'User',
+     icon: { icon: 'bx-user' },
+@@ -101,11 +33,7 @@ export default [
+       { title: 'View', to: { name: 'apps-user-view-id', params: { id: 21 } } },
+     ],
+   },
+-  {
+-    title: 'Test Entities',
+-    icon: { icon: 'bx-test-tube' },
+-    to: 'apps-test-entities',
+-  },
++  
+   {
+     title: 'Tickets',
+     icon: { icon: 'bx-ticket' },
+@@ -214,86 +142,7 @@ export default [
+     ],
+   },
+ 
+-  {
+-    title: 'Pages',
+-    icon: { icon: 'bx-file' },
+-    children: [
+-      { title: 'User Profile', to: { name: 'pages-user-profile-tab', params: { tab: 'profile' } } },
+-      { title: 'Account Settings', to: { name: 'pages-account-settings-tab', params: { tab: 'account' } } },
+-      { title: 'Pricing', to: 'pages-pricing' },
+-      { title: 'FAQ', to: 'pages-faq' },
+-      {
+-        title: 'Miscellaneous',
+-        children: [
+-          { title: 'Coming Soon', to: 'pages-misc-coming-soon', target: '_blank' },
+-          { title: 'Under Maintenance', to: 'pages-misc-under-maintenance', target: '_blank' },
+-          { title: 'Page Not Found - 404', to: { path: '/pages/misc/not-found' }, target: '_blank' },
+-          { title: 'Not Authorized - 401', to: { path: '/pages/misc/not-authorized' }, target: '_blank' },
+-        ],
+-      },
+-    ],
+-  },
+-  {
+-    title: 'Authentication',
+-    icon: { icon: 'bx-shield' },
+-    children: [
+-      {
+-        title: 'Login',
+-        children: [
+-          { title: 'Login v1', to: 'pages-authentication-login-v1', target: '_blank' },
+-          { title: 'Login v2', to: 'pages-authentication-login-v2', target: '_blank' },
+-        ],
+-      },
+-      {
+-        title: 'Register',
+-        children: [
+-          { title: 'Register v1', to: 'pages-authentication-register-v1', target: '_blank' },
+-          { title: 'Register v2', to: 'pages-authentication-register-v2', target: '_blank' },
+-          { title: 'Register Multi-Steps', to: 'pages-authentication-register-multi-steps', target: '_blank' },
+-        ],
+-      },
+-      {
+-        title: 'Verify Email',
+-        children: [
+-          { title: 'Verify Email v1', to: 'pages-authentication-verify-email-v1', target: '_blank' },
+-          { title: 'Verify Email v2', to: 'pages-authentication-verify-email-v2', target: '_blank' },
+-        ],
+-      },
+-      {
+-        title: 'Forgot Password',
+-        children: [
+-          { title: 'Forgot Password v1', to: 'pages-authentication-forgot-password-v1', target: '_blank' },
+-          { title: 'Forgot Password v2', to: 'pages-authentication-forgot-password-v2', target: '_blank' },
+-        ],
+-      },
+-      {
+-        title: 'Reset Password',
+-        children: [
+-          { title: 'Reset Password v1', to: 'pages-authentication-reset-password-v1', target: '_blank' },
+-          { title: 'Reset Password v2', to: 'pages-authentication-reset-password-v2', target: '_blank' },
+-        ],
+-      },
+-      {
+-        title: 'Two Steps',
+-        children: [
+-          { title: 'Two Steps v1', to: 'pages-authentication-two-steps-v1', target: '_blank' },
+-          { title: 'Two Steps v2', to: 'pages-authentication-two-steps-v2', target: '_blank' },
+-        ],
+-      },
+-    ],
+-  },
+-  {
+-    title: 'Wizard Examples',
+-    icon: { icon: 'bx-dots-horizontal' },
+-    children: [
+-      { title: 'Checkout', to: { name: 'wizard-examples-checkout' } },
+-      { title: 'Property Listing', to: { name: 'wizard-examples-property-listing' } },
+-      { title: 'Create Deal', to: { name: 'wizard-examples-create-deal' } },
+-    ],
+-  },
+-  {
+-    title: 'Dialog Examples',
+-    icon: { icon: 'bx-square' },
+-    to: 'pages-dialog-examples',
+-  },
++  
++  
++  
+ ]
+diff --git a/src/navigation/vertical/charts.ts b/src/navigation/vertical/charts.ts
+index bffe2a3..556c82e 100644
+--- a/src/navigation/vertical/charts.ts
++++ b/src/navigation/vertical/charts.ts
+@@ -1,11 +1,3 @@
+ export default [
+-  { heading: 'Charts' },
+-  {
+-    title: 'Charts',
+-    icon: { icon: 'bx-chart' },
+-    children: [
+-      { title: 'Apex Chart', to: 'charts-apex-chart' },
+-      { title: 'Chartjs', to: 'charts-chartjs' },
+-    ],
+-  },
++
+ ]
+diff --git a/src/navigation/vertical/dashboard.ts b/src/navigation/vertical/dashboard.ts
+index 2e6b0f5..25b7bee 100644
+--- a/src/navigation/vertical/dashboard.ts
++++ b/src/navigation/vertical/dashboard.ts
+@@ -7,55 +7,10 @@ export default [
+         title: 'Analytics',
+         to: 'dashboards-analytics',
+       },
+-      {
+-        title: 'CRM',
+-        to: 'dashboards-crm',
+-      },
+-      {
+-        title: 'Ecommerce',
+-        to: 'dashboards-ecommerce',
+-      },
+-      {
+-        title: 'Academy',
+-        to: 'dashboards-academy',
+-      },
+-      {
+-        title: 'Logistics',
+-        to: 'dashboards-logistics',
+-      },
++      
+     ],
+     badgeContent: '5',
+     badgeClass: 'bg-error',
+   },
+-  {
+-    title: 'Front Pages',
+-    icon: { icon: 'bx-file' },
+-    children: [
+-      {
+-        title: 'Landing',
+-        to: 'front-pages-landing-page',
+-        target: '_blank',
+-      },
+-      {
+-        title: 'Pricing',
+-        to: 'front-pages-pricing',
+-        target: '_blank',
+-      },
+-      {
+-        title: 'Payment',
+-        to: 'front-pages-payment',
+-        target: '_blank',
+-      },
+-      {
+-        title: 'Checkout',
+-        to: 'front-pages-checkout',
+-        target: '_blank',
+-      },
+-      {
+-        title: 'Help Center',
+-        to: 'front-pages-help-center',
+-        target: '_blank',
+-      },
+-    ],
+-  },
++ 
+ ]
+diff --git a/src/navigation/vertical/forms.ts b/src/navigation/vertical/forms.ts
+index cad6892..344b6da 100644
+--- a/src/navigation/vertical/forms.ts
++++ b/src/navigation/vertical/forms.ts
+@@ -1,50 +1,2 @@
+ export default [
+-  { heading: 'Forms & Tables' },
+-  {
+-    title: 'Form Elements',
+-    icon: { icon: 'bx-checkbox-checked' },
+-    children: [
+-      { title: 'Autocomplete', to: 'forms-autocomplete' },
+-      { title: 'Checkbox', to: 'forms-checkbox' },
+-      { title: 'Combobox', to: 'forms-combobox' },
+-      { title: 'Date Time Picker', to: 'forms-date-time-picker' },
+-      { title: 'Editors', to: 'forms-editors' },
+-      { title: 'File Input', to: 'forms-file-input' },
+-      { title: 'Radio', to: 'forms-radio' },
+-      { title: 'Custom Input', to: 'forms-custom-input' },
+-      { title: 'Range Slider', to: 'forms-range-slider' },
+-      { title: 'Rating', to: 'forms-rating' },
+-      { title: 'Select', to: 'forms-select' },
+-      { title: 'Slider', to: 'forms-slider' },
+-      { title: 'Switch', to: 'forms-switch' },
+-      { title: 'Textarea', to: 'forms-textarea' },
+-      { title: 'Textfield', to: 'forms-textfield' },
+-    ],
+-  },
+-  {
+-    title: 'Form Layouts',
+-    icon: { icon: 'bx-layout' },
+-    to: 'forms-form-layouts',
+-  },
+-  {
+-    title: 'Form Wizard',
+-    icon: { icon: 'bx-git-merge' },
+-    children: [
+-      { title: 'Numbered', to: 'forms-form-wizard-numbered' },
+-      { title: 'Icons', to: 'forms-form-wizard-icons' },
+-    ],
+-  },
+-  {
+-    title: 'Form Validation',
+-    icon: { icon: 'bx-check' },
+-    to: 'forms-form-validation',
+-  },
+-  {
+-    title: 'Tables',
+-    icon: { icon: 'bx-table' },
+-    children: [
+-      { title: 'Simple Table', to: 'tables-simple-table' },
+-      { title: 'Data Table', to: 'tables-data-table' },
+-    ],
+-  },
+ ]
+diff --git a/src/navigation/vertical/others.ts b/src/navigation/vertical/others.ts
+index 7c7cd32..344b6da 100644
+--- a/src/navigation/vertical/others.ts
++++ b/src/navigation/vertical/others.ts
+@@ -1,51 +1,2 @@
+ export default [
+-  { heading: 'Others' },
+-  {
+-    title: 'Access Control',
+-    icon: { icon: 'bx-command' },
+-    to: 'access-control',
+-    action: 'read',
+-    subject: 'AclDemo',
+-  },
+-  {
+-    title: 'Nav Levels',
+-    icon: { icon: 'bx-menu' },
+-    children: [
+-      {
+-        title: 'Level 2.1',
+-        to: null,
+-      },
+-      {
+-        title: 'Level 2.2',
+-        children: [
+-          {
+-            title: 'Level 3.1',
+-            to: null,
+-          },
+-          {
+-            title: 'Level 3.2',
+-            to: null,
+-          },
+-        ],
+-      },
+-    ],
+-  },
+-  {
+-    title: 'Disabled Menu',
+-    to: null,
+-    icon: { icon: 'bx-hide' },
+-    disable: true,
+-  },
+-  {
+-    title: 'Raise Support',
+-    href: 'https://themeselection.com/support/',
+-    icon: { icon: 'bx-phone' },
+-    target: '_blank',
+-  },
+-  {
+-    title: 'Documentation',
+-    href: 'https://demos.themeselection.com/sneat-vuetify-vuejs-admin-template/documentation/',
+-    icon: { icon: 'bx-file' },
+-    target: '_blank',
+-  },
+ ]
+diff --git a/src/navigation/vertical/ui-elements.ts b/src/navigation/vertical/ui-elements.ts
+index df9c817..344b6da 100644
+--- a/src/navigation/vertical/ui-elements.ts
++++ b/src/navigation/vertical/ui-elements.ts
+@@ -1,55 +1,2 @@
+ export default [
+-  { heading: 'UI Elements' },
+-  {
+-    title: 'Typography',
+-    icon: { icon: 'bx-text' },
+-    to: 'pages-typography',
+-  },
+-  {
+-    title: 'Icons',
+-    icon: { icon: 'bx-package' },
+-    to: 'pages-icons',
+-  },
+-  {
+-    title: 'Cards',
+-    icon: { icon: 'bx-card' },
+-    children: [
+-      { title: 'Basic', to: 'pages-cards-card-basic' },
+-      { title: 'Advance', to: 'pages-cards-card-advance' },
+-      { title: 'Statistics', to: 'pages-cards-card-statistics' },
+-      { title: 'Widgets', to: 'pages-cards-card-widgets' },
+-      { title: 'Gamifications', to: 'pages-cards-card-gamifications' },
+-      { title: 'Actions', to: 'pages-cards-card-actions' },
+-    ],
+-  },
+-  {
+-    title: 'Components',
+-    icon: { icon: 'bx-atom' },
+-    children: [
+-      { title: 'Alert', to: 'components-alert' },
+-      { title: 'Avatar', to: 'components-avatar' },
+-      { title: 'Badge', to: 'components-badge' },
+-      { title: 'Button', to: 'components-button' },
+-      { title: 'Chip', to: 'components-chip' },
+-      { title: 'Dialog', to: 'components-dialog' },
+-      { title: 'Expansion Panel', to: 'components-expansion-panel' },
+-      { title: 'List', to: 'components-list' },
+-      { title: 'Menu', to: 'components-menu' },
+-      { title: 'Pagination', to: 'components-pagination' },
+-      { title: 'Progress Circular', to: 'components-progress-circular' },
+-      { title: 'Progress Linear', to: 'components-progress-linear' },
+-      { title: 'Snackbar', to: 'components-snackbar' },
+-      { title: 'Tabs', to: 'components-tabs' },
+-      { title: 'Timeline', to: 'components-timeline' },
+-      { title: 'Tooltip', to: 'components-tooltip' },
+-    ],
+-  },
+-  {
+-    title: 'Extensions',
+-    icon: { icon: 'bx-cube' },
+-    children: [
+-      { title: 'Tour', to: 'extensions-tour' },
+-      { title: 'Swiper', to: 'extensions-swiper' },
+-    ],
+-  },
+ ]
+diff --git a/src/pages/apps/settings/users-groups-roles/Customers.vue b/src/pages/apps/settings/users-groups-roles/Customers.vue
+index 3b32a30..4a20060 100644
+--- a/src/pages/apps/settings/users-groups-roles/Customers.vue
++++ b/src/pages/apps/settings/users-groups-roles/Customers.vue
+@@ -33,7 +33,6 @@ interface CustomerUsers {
+   firstName: string
+   lastName: string
+   login: string
+-  password: string
+   email: string
+   mobilePhone: string
+   telegramAccount: string
+@@ -57,9 +56,7 @@ const fetchCustomers = async () => {
+   try {
+     loading.value = true
+     error.value = null
+-    console.log('Fetching customers from:', `${API_BASE}/customers`)
+     const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+-    console.log('Fetched customers data:', data)
+     customers.value = data.customers
+     total.value = data.total
+   } catch (err) {
+@@ -131,9 +128,7 @@ const fetchServices = async () => {
+   try {
+     servicesLoading.value = true
+     servicesError.value = null
+-    console.log('Fetching services from:', `${API_BASE}/services`)
+     const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
+-    console.log('Fetched services data:', data)
+     services.value = data.services
+     servicesTotal.value = data.total
+   } catch (err) {
+@@ -205,9 +200,7 @@ const fetchCustomerUsers = async () => {
+   try {
+     usersLoading.value = true
+     usersError.value = null
+-    console.log('Fetching customerUsers from:', `${API_BASE}/customerUsers`)
+     const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
+-    console.log('Fetched customerUsers data:', data)
+     customerUsers.value = data.customerUsers
+     usersTotal.value = data.total
+   } catch (err) {
+@@ -316,6 +309,11 @@ const usersHeaders = [
+ ]
+ 
+ // ========== ФИЛЬТРАЦИЯ ==========
++// Поиск
++const searchQuery = ref('')
++const servicesSearchQuery = ref('')
++const usersSearchQuery = ref('')
++
+ // Фильтрация компаний
+ const filteredCustomers = computed(() => {
+   let filtered = customers.value
+@@ -325,6 +323,15 @@ const filteredCustomers = computed(() => {
+     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+   }
+ 
++  if (searchQuery.value.trim()) {
++    const query = searchQuery.value.toLowerCase()
++    filtered = filtered.filter(p => 
++      p.name.toLowerCase().includes(query) ||
++      p.city?.toLowerCase().includes(query) ||
++      p.street?.toLowerCase().includes(query)
++    )
++  }
++
+   return filtered
+ })
+ 
+@@ -336,6 +343,15 @@ const filteredServices = computed(() => {
+     filtered = filtered.filter(p => p.isActive === (servicesStatusFilter.value === 1))
+   }
+ 
++  if (servicesSearchQuery.value.trim()) {
++    const query = servicesSearchQuery.value.toLowerCase()
++    filtered = filtered.filter(p => 
++      p.name.toLowerCase().includes(query) ||
++      p.comment?.toLowerCase().includes(query) ||
++      p.type?.toLowerCase().includes(query)
++    )
++  }
++
+   return filtered
+ })
+ 
+@@ -357,6 +373,16 @@ const filteredCustomerUsers = computed(() => {
+     filtered = filtered.filter(p => p.isActive === (usersStatusFilter.value === 1))
+   }
+ 
++  if (usersSearchQuery.value.trim()) {
++    const query = usersSearchQuery.value.toLowerCase()
++    filtered = filtered.filter(p => 
++      p.firstName?.toLowerCase().includes(query) ||
++      p.lastName?.toLowerCase().includes(query) ||
++      p.email?.toLowerCase().includes(query) ||
++      p.login?.toLowerCase().includes(query)
++    )
++  }
++
+   return filtered
+ })
+ 
+@@ -367,16 +393,10 @@ const clearUsersFilters = () => {
+ 
+ // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КОМПАНИЙ ==========
+ const bulkDelete = () => {
+-  console.log('🗑️ Массовое удаление - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedItems.value)
+-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
+   isBulkDeleteDialogOpen.value = true
+ }
+ 
+ const bulkChangeStatus = () => {
+-  console.log('🔄 Массовое изменение статуса - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedItems.value)
+-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
+   isBulkStatusDialogOpen.value = true
+ }
+ 
+@@ -413,16 +433,10 @@ const confirmBulkStatusChange = async () => {
+ 
+ // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ СЕРВИСОВ ==========
+ const bulkDeleteServices = () => {
+-  console.log('🗑️ Массовое удаление сервисов - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedServices.value)
+-  console.log('📊 Количество выбранных элементов:', selectedServices.value.length)
+   isBulkDeleteServicesDialogOpen.value = true
+ }
+ 
+ const bulkChangeStatusServices = () => {
+-  console.log('🔄 Массовое изменение статуса сервисов - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedServices.value)
+-  console.log('📊 Количество выбранных элементов:', selectedServices.value.length)
+   isBulkStatusServicesDialogOpen.value = true
+ }
+ 
+@@ -459,16 +473,10 @@ const confirmBulkStatusChangeServices = async () => {
+ 
+ // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КЛИЕНТОВ ==========
+ const bulkDeleteUsers = () => {
+-  console.log('🗑️ Массовое удаление клиентов - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedUsers.value)
+-  console.log('📊 Количество выбранных элементов:', selectedUsers.value.length)
+   isBulkDeleteUsersDialogOpen.value = true
+ }
+ 
+ const bulkChangeStatusUsers = () => {
+-  console.log('🔄 Массовое изменение статуса клиентов - вызвано')
+-  console.log('📋 Выбранные элементы:', selectedUsers.value)
+-  console.log('📊 Количество выбранных элементов:', selectedUsers.value.length)
+   isBulkStatusUsersDialogOpen.value = true
+ }
+ 
+@@ -494,7 +502,6 @@ const confirmBulkStatusChangeUsers = async () => {
+         firstName: item.firstName,
+         lastName: item.lastName,
+         login: item.login,
+-        password: item.password,
+         email: item.email,
+         mobilePhone: item.mobilePhone,
+         telegramAccount: item.telegramAccount,
+@@ -565,18 +572,13 @@ const isBulkStatusUsersDialogOpen = ref(false)
+ const bulkStatusUsersValue = ref<number>(1)
+ 
+ // Отслеживание изменений выбранных элементов компаний
+-watch(selectedItems, (newValue) => {
+-  console.log('✅ Изменение выбранных элементов')
+-  console.log('📋 Новое значение selectedItems:', newValue)
+-  console.log('📊 Количество выбранных:', newValue.length)
+-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
++watch(selectedItems, () => {
++  // Можно добавить логику при изменении выбранных элементов
+ }, { deep: true })
+ 
+ // Отслеживание изменений выбранных сервисов
+-watch(selectedServices, (newValue) => {
+-  console.log('✅ Изменение выбранных сервисов')
+-  console.log('📋 Новое значение selectedServices:', newValue)
+-  console.log('📊 Количество выбранных:', newValue.length)
++watch(selectedServices, () => {
++  // Можно добавить логику при изменении выбранных сервисов
+ }, { deep: true })
+ 
+ // ========== ДИАЛОГИ ==========
+@@ -647,7 +649,6 @@ const defaultUserItem = ref<CustomerUsers>({
+   firstName: '',
+   lastName: '',
+   login: '',
+-  password: '',
+   email: '',
+   mobilePhone: '',
+   telegramAccount: '',
+@@ -702,7 +703,7 @@ const save = async () => {
+   try {
+     if (editedIndex.value > -1) {
+       // Обновление существующего
+-      const updated = await updateCustomers(editedItem.value.id, {
++      await updateCustomers(editedItem.value.id, {
+         ...editedItem.value,
+         isActive: editedItem.value.isActive,
+         serviceIds: selectedServiceIds.value
+@@ -710,7 +711,7 @@ const save = async () => {
+       showToast('Компания успешно сохранена')
+     } else {
+       // Добавление нового
+-      const created = await createCustomers({
++      await createCustomers({
+         ...editedItem.value,
+         isActive: editedItem.value.isActive,
+         serviceIds: selectedServiceIds.value
+@@ -735,10 +736,6 @@ const deleteItemConfirm = async () => {
+ 
+ // Переключение статуса компании
+ const toggleStatus = async (item: Customers, newValue: boolean) => {
+-  console.log('🔄 toggleStatus вызван')
+-  console.log('📝 Элемент:', item)
+-  console.log('🔢 Новое значение isActive:', newValue)
+-
+   try {
+     await updateCustomers(item.id, {
+       ...item,
+@@ -792,11 +789,11 @@ const saveService = async () => {
+ 
+     if (editedServiceIndex.value > -1) {
+       // Обновление существующего
+-      const updated = await updateServices(editedServiceItem.value.id, serviceData)
++      await updateServices(editedServiceItem.value.id, serviceData)
+       showToast('Сервис успешно сохранен')
+     } else {
+       // Добавление нового
+-      const created = await createServices(serviceData)
++      await createServices(serviceData)
+       // Перезагружаем данные что бы получить актуальный список с сервера
+       await fetchServices()
+       showToast('Сервис успешно добавлен')
+@@ -819,10 +816,6 @@ const deleteServiceItemConfirm = async () => {
+ 
+ // Переключение статуса сервиса
+ const toggleServiceStatus = async (item: Services, newValue: boolean) => {
+-  console.log('🔄 toggleServiceStatus вызван')
+-  console.log('📝 Элемент:', item)
+-  console.log('🔢 Новое значение isActive:', newValue)
+-
+   try {
+     await updateServices(item.id, {
+       ...item,
+@@ -868,11 +861,10 @@ const saveUser = async () => {
+   try {
+     if (editedUserIndex.value > -1) {
+       // Обновление существующего
+-      const updated = await updateCustomerUsers(editedUserItem.value.id, {
++      await updateCustomerUsers(editedUserItem.value.id, {
+         firstName: editedUserItem.value.firstName,
+         lastName: editedUserItem.value.lastName,
+         login: editedUserItem.value.login,
+-        password: editedUserItem.value.password,
+         email: editedUserItem.value.email,
+         mobilePhone: editedUserItem.value.mobilePhone,
+         telegramAccount: editedUserItem.value.telegramAccount,
+@@ -881,11 +873,10 @@ const saveUser = async () => {
+       showToast('Клиент успешно сохранен')
+     } else {
+       // Добавление нового
+-      const created = await createCustomerUsers({
++      await createCustomerUsers({
+         firstName: editedUserItem.value.firstName,
+         lastName: editedUserItem.value.lastName,
+         login: editedUserItem.value.login,
+-        password: editedUserItem.value.password,
+         email: editedUserItem.value.email,
+         mobilePhone: editedUserItem.value.mobilePhone,
+         telegramAccount: editedUserItem.value.telegramAccount,
+@@ -911,16 +902,11 @@ const deleteUserItemConfirm = async () => {
+ 
+ // Переключение статуса клиента
+ const toggleUserStatus = async (item: CustomerUsers, newValue: boolean) => {
+-  console.log('🔄 toggleUserStatus вызван')
+-  console.log('📝 Элемент:', item)
+-  console.log('🔢 Новое значение isActive:', newValue)
+-
+   try {
+     await updateCustomerUsers(item.id, {
+       firstName: item.firstName,
+       lastName: item.lastName,
+       login: item.login,
+-      password: item.password,
+       email: item.email,
+       mobilePhone: item.mobilePhone,
+       telegramAccount: item.telegramAccount,
+@@ -985,9 +971,12 @@ const addNewUser = () => {
+         <div class="d-flex align-center">
+           <!-- Поиск -->
+           <AppTextField
++            v-model="searchQuery"
+             placeholder="Поиск компании"
+             style="inline-size: 250px;"
+             class="me-3"
++            clearable
++            clear-icon="bx-x"
+           />
+         </div>
+ 
+@@ -2090,18 +2079,6 @@ const addNewUser = () => {
+               />
+             </VCol>
+ 
+-            <!-- Пароль -->
+-            <VCol
+-              cols="12"
+-              sm="6"
+-            >
+-              <AppTextField
+-                v-model="editedUserItem.password"
+-                label="Пароль"
+-                type="password"
+-              />
+-            </VCol>
+-
+             <!-- Email -->
+             <VCol
+               cols="12"

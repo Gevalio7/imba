@@ -33,7 +33,6 @@ interface CustomerUsers {
   firstName: string
   lastName: string
   login: string
-  password: string
   email: string
   mobilePhone: string
   telegramAccount: string
@@ -57,9 +56,7 @@ const fetchCustomers = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching customers from:', `${API_BASE}/customers`)
     const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
-    console.log('Fetched customers data:', data)
     customers.value = data.customers
     total.value = data.total
   } catch (err) {
@@ -131,9 +128,7 @@ const fetchServices = async () => {
   try {
     servicesLoading.value = true
     servicesError.value = null
-    console.log('Fetching services from:', `${API_BASE}/services`)
     const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
-    console.log('Fetched services data:', data)
     services.value = data.services
     servicesTotal.value = data.total
   } catch (err) {
@@ -205,9 +200,7 @@ const fetchCustomerUsers = async () => {
   try {
     usersLoading.value = true
     usersError.value = null
-    console.log('Fetching customerUsers from:', `${API_BASE}/customerUsers`)
     const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
-    console.log('Fetched customerUsers data:', data)
     customerUsers.value = data.customerUsers
     usersTotal.value = data.total
   } catch (err) {
@@ -316,6 +309,11 @@ const usersHeaders = [
 ]
 
 // ========== ФИЛЬТРАЦИЯ ==========
+// Поиск
+const searchQuery = ref('')
+const servicesSearchQuery = ref('')
+const usersSearchQuery = ref('')
+
 // Фильтрация компаний
 const filteredCustomers = computed(() => {
   let filtered = customers.value
@@ -323,6 +321,15 @@ const filteredCustomers = computed(() => {
   if (statusFilter.value !== null) {
     // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+  }
+
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.city?.toLowerCase().includes(query) ||
+      p.street?.toLowerCase().includes(query)
+    )
   }
 
   return filtered
@@ -334,6 +341,15 @@ const filteredServices = computed(() => {
 
   if (servicesStatusFilter.value !== null) {
     filtered = filtered.filter(p => p.isActive === (servicesStatusFilter.value === 1))
+  }
+
+  if (servicesSearchQuery.value.trim()) {
+    const query = servicesSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.comment?.toLowerCase().includes(query) ||
+      p.type?.toLowerCase().includes(query)
+    )
   }
 
   return filtered
@@ -357,6 +373,16 @@ const filteredCustomerUsers = computed(() => {
     filtered = filtered.filter(p => p.isActive === (usersStatusFilter.value === 1))
   }
 
+  if (usersSearchQuery.value.trim()) {
+    const query = usersSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => 
+      p.firstName?.toLowerCase().includes(query) ||
+      p.lastName?.toLowerCase().includes(query) ||
+      p.email?.toLowerCase().includes(query) ||
+      p.login?.toLowerCase().includes(query)
+    )
+  }
+
   return filtered
 })
 
@@ -367,16 +393,10 @@ const clearUsersFilters = () => {
 
 // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КОМПАНИЙ ==========
 const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkDeleteDialogOpen.value = true
 }
 
 const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkStatusDialogOpen.value = true
 }
 
@@ -413,16 +433,10 @@ const confirmBulkStatusChange = async () => {
 
 // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ СЕРВИСОВ ==========
 const bulkDeleteServices = () => {
-  console.log('🗑️ Массовое удаление сервисов - вызвано')
-  console.log('📋 Выбранные элементы:', selectedServices.value)
-  console.log('📊 Количество выбранных элементов:', selectedServices.value.length)
   isBulkDeleteServicesDialogOpen.value = true
 }
 
 const bulkChangeStatusServices = () => {
-  console.log('🔄 Массовое изменение статуса сервисов - вызвано')
-  console.log('📋 Выбранные элементы:', selectedServices.value)
-  console.log('📊 Количество выбранных элементов:', selectedServices.value.length)
   isBulkStatusServicesDialogOpen.value = true
 }
 
@@ -459,16 +473,10 @@ const confirmBulkStatusChangeServices = async () => {
 
 // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КЛИЕНТОВ ==========
 const bulkDeleteUsers = () => {
-  console.log('🗑️ Массовое удаление клиентов - вызвано')
-  console.log('📋 Выбранные элементы:', selectedUsers.value)
-  console.log('📊 Количество выбранных элементов:', selectedUsers.value.length)
   isBulkDeleteUsersDialogOpen.value = true
 }
 
 const bulkChangeStatusUsers = () => {
-  console.log('🔄 Массовое изменение статуса клиентов - вызвано')
-  console.log('📋 Выбранные элементы:', selectedUsers.value)
-  console.log('📊 Количество выбранных элементов:', selectedUsers.value.length)
   isBulkStatusUsersDialogOpen.value = true
 }
 
@@ -494,7 +502,6 @@ const confirmBulkStatusChangeUsers = async () => {
         firstName: item.firstName,
         lastName: item.lastName,
         login: item.login,
-        password: item.password,
         email: item.email,
         mobilePhone: item.mobilePhone,
         telegramAccount: item.telegramAccount,
@@ -565,18 +572,13 @@ const isBulkStatusUsersDialogOpen = ref(false)
 const bulkStatusUsersValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов компаний
-watch(selectedItems, (newValue) => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
+watch(selectedItems, () => {
+  // Можно добавить логику при изменении выбранных элементов
 }, { deep: true })
 
 // Отслеживание изменений выбранных сервисов
-watch(selectedServices, (newValue) => {
-  console.log('✅ Изменение выбранных сервисов')
-  console.log('📋 Новое значение selectedServices:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
+watch(selectedServices, () => {
+  // Можно добавить логику при изменении выбранных сервисов
 }, { deep: true })
 
 // ========== ДИАЛОГИ ==========
@@ -647,7 +649,6 @@ const defaultUserItem = ref<CustomerUsers>({
   firstName: '',
   lastName: '',
   login: '',
-  password: '',
   email: '',
   mobilePhone: '',
   telegramAccount: '',
@@ -702,7 +703,7 @@ const save = async () => {
   try {
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateCustomers(editedItem.value.id, {
+      await updateCustomers(editedItem.value.id, {
         ...editedItem.value,
         isActive: editedItem.value.isActive,
         serviceIds: selectedServiceIds.value
@@ -710,7 +711,7 @@ const save = async () => {
       showToast('Компания успешно сохранена')
     } else {
       // Добавление нового
-      const created = await createCustomers({
+      await createCustomers({
         ...editedItem.value,
         isActive: editedItem.value.isActive,
         serviceIds: selectedServiceIds.value
@@ -735,10 +736,6 @@ const deleteItemConfirm = async () => {
 
 // Переключение статуса компании
 const toggleStatus = async (item: Customers, newValue: boolean) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
   try {
     await updateCustomers(item.id, {
       ...item,
@@ -792,11 +789,11 @@ const saveService = async () => {
 
     if (editedServiceIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateServices(editedServiceItem.value.id, serviceData)
+      await updateServices(editedServiceItem.value.id, serviceData)
       showToast('Сервис успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createServices(serviceData)
+      await createServices(serviceData)
       // Перезагружаем данные что бы получить актуальный список с сервера
       await fetchServices()
       showToast('Сервис успешно добавлен')
@@ -819,10 +816,6 @@ const deleteServiceItemConfirm = async () => {
 
 // Переключение статуса сервиса
 const toggleServiceStatus = async (item: Services, newValue: boolean) => {
-  console.log('🔄 toggleServiceStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
   try {
     await updateServices(item.id, {
       ...item,
@@ -868,11 +861,10 @@ const saveUser = async () => {
   try {
     if (editedUserIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateCustomerUsers(editedUserItem.value.id, {
+      await updateCustomerUsers(editedUserItem.value.id, {
         firstName: editedUserItem.value.firstName,
         lastName: editedUserItem.value.lastName,
         login: editedUserItem.value.login,
-        password: editedUserItem.value.password,
         email: editedUserItem.value.email,
         mobilePhone: editedUserItem.value.mobilePhone,
         telegramAccount: editedUserItem.value.telegramAccount,
@@ -881,11 +873,10 @@ const saveUser = async () => {
       showToast('Клиент успешно сохранен')
     } else {
       // Добавление нового
-      const created = await createCustomerUsers({
+      await createCustomerUsers({
         firstName: editedUserItem.value.firstName,
         lastName: editedUserItem.value.lastName,
         login: editedUserItem.value.login,
-        password: editedUserItem.value.password,
         email: editedUserItem.value.email,
         mobilePhone: editedUserItem.value.mobilePhone,
         telegramAccount: editedUserItem.value.telegramAccount,
@@ -911,16 +902,11 @@ const deleteUserItemConfirm = async () => {
 
 // Переключение статуса клиента
 const toggleUserStatus = async (item: CustomerUsers, newValue: boolean) => {
-  console.log('🔄 toggleUserStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
   try {
     await updateCustomerUsers(item.id, {
       firstName: item.firstName,
       lastName: item.lastName,
       login: item.login,
-      password: item.password,
       email: item.email,
       mobilePhone: item.mobilePhone,
       telegramAccount: item.telegramAccount,
@@ -985,9 +971,12 @@ const addNewUser = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
+            v-model="searchQuery"
             placeholder="Поиск компании"
             style="inline-size: 250px;"
             class="me-3"
+            clearable
+            clear-icon="bx-x"
           />
         </div>
 
@@ -2087,18 +2076,6 @@ const addNewUser = () => {
               <AppTextField
                 v-model="editedUserItem.login"
                 label="Логин"
-              />
-            </VCol>
-
-            <!-- Пароль -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedUserItem.password"
-                label="Пароль"
-                type="password"
               />
             </VCol>
 
