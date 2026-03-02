@@ -206,6 +206,61 @@ const statusOptions = computed(() => {
   }))
 })
 
+// Вычисляемый выбранный SLA для отображения дедлайнов
+const selectedSla = computed(() => {
+  if (!ticket.value.slaId) return null
+  return slaList.value.find(s => s.id === ticket.value.slaId)
+})
+
+// Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
+const formatSlaTime = (value: number | null | undefined, isHours: boolean = false) => {
+  if (!value) return '-'
+  if (isHours) {
+    // Для responseTime - это часы
+    if (value < 1) return `${Math.round(value * 60)} мин`
+    if (value < 24) return `${value}ч`
+    const days = Math.floor(value / 24)
+    const hours = Math.round(value % 24)
+    return hours > 0 ? `${days}д ${hours}ч` : `${days}д`
+  } else {
+    // Для solutionTime - это минуты
+    if (value < 60) return `${value} мин`
+    const hours = Math.floor(value / 60)
+    const mins = value % 60
+    if (hours < 24) return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`
+    const days = Math.floor(hours / 24)
+    const remainingHours = hours % 24
+    return remainingHours > 0 ? `${days}д ${remainingHours}ч` : `${days}д`
+  }
+}
+
+// Расчёт дедлайнов (responseTime - часы, solutionTime - минуты)
+const responseDeadline = computed(() => {
+  if (!selectedSla.value?.responseTime) return null
+  const date = new Date()
+  // responseTime в часах, поэтому умножаем на 60*60*1000
+  date.setTime(date.getTime() + selectedSla.value.responseTime * 60 * 60 * 1000)
+  return date
+})
+
+const resolutionDeadline = computed(() => {
+  if (!selectedSla.value?.solutionTime) return null
+  const date = new Date()
+  // solutionTime в минутах
+  date.setMinutes(date.getMinutes() + selectedSla.value.solutionTime)
+  return date
+})
+
+const formatDeadline = (date: Date | null) => {
+  if (!date) return '-'
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 // Сохранение
 const save = async () => {
   if (!ticket.value.title?.trim()) {
@@ -572,6 +627,26 @@ onMounted(async () => {
                 placeholder="Выберите SLA"
                 clearable
               />
+
+              <!-- Информация о SLA дедлайнах -->
+              <VAlert
+                v-if="selectedSla"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2"
+              >
+                <div class="text-body-2">
+                  <div v-if="selectedSla.responseTime">
+                    <strong>Время первого ответа:</strong> {{ formatSlaTime(selectedSla.responseTime, true) }}
+                    (до {{ formatDeadline(responseDeadline) }})
+                  </div>
+                  <div v-if="selectedSla.solutionTime">
+                    <strong>Время решения:</strong> {{ formatSlaTime(selectedSla.solutionTime, false) }}
+                    (до {{ formatDeadline(resolutionDeadline) }})
+                  </div>
+                </div>
+              </VAlert>
 
               <VDivider class="my-2" />
 

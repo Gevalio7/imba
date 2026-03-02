@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Tickets {
   static tableName = 'tickets';
-  static fields = 'ticketNumber, title, description, typeId, priorityId, queueId, stateId, ownerId, companyId, slaId';
+  static fields = 'ticketNumber, title, description, typeId, priorityId, queueId, stateId, ownerId, companyId, slaId, responseDeadline, resolutionDeadline, firstResponseAt, slaViolated, pendingStartAt';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
@@ -65,6 +65,11 @@ class Tickets {
           c.name as "companyName",
           t.sla_id as "slaId",
           sla.name as "slaName",
+          t.response_deadline as "responseDeadline",
+          t.resolution_deadline as "resolutionDeadline",
+          t.first_response_at as "firstResponseAt",
+          t.sla_violated as "slaViolated",
+          t.pending_start_at as "pendingStartAt",
           t.created_at as "createdAt",
           t.updated_at as "updatedAt",
           t.is_active as "isActive"
@@ -78,7 +83,7 @@ class Tickets {
         LEFT JOIN sla ON t.sla_id = sla.id
         ${whereClause}
         ${orderClause}
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        LIMIT ${paramIndex} OFFSET ${paramIndex + 1}
       `;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
@@ -125,6 +130,11 @@ class Tickets {
           c.name as "companyName",
           t.sla_id as "slaId",
           sla.name as "slaName",
+          t.response_deadline as "responseDeadline",
+          t.resolution_deadline as "resolutionDeadline",
+          t.first_response_at as "firstResponseAt",
+          t.sla_violated as "slaViolated",
+          t.pending_start_at as "pendingStartAt",
           t.created_at as "createdAt",
           t.updated_at as "updatedAt",
           t.is_active as "isActive"
@@ -157,11 +167,15 @@ class Tickets {
       const query = `
         INSERT INTO ${Tickets.tableName} (
           ticket_number, title, description, type_id, priority_id, queue_id, state_id, 
-          owner_id, company_id, sla_id, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          owner_id, company_id, sla_id, response_deadline, resolution_deadline, 
+          first_response_at, sla_violated, pending_start_at, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
           owner_id as "ownerId", company_id as "companyId", sla_id as "slaId",
+          response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
+          first_response_at as "firstResponseAt", sla_violated as "slaViolated", 
+          pending_start_at as "pendingStartAt",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
       `;
       
@@ -176,6 +190,11 @@ class Tickets {
         ticket.ownerId || null,
         ticket.companyId || null,
         ticket.slaId || null,
+        ticket.responseDeadline || null,
+        ticket.resolutionDeadline || null,
+        ticket.firstResponseAt || null,
+        ticket.slaViolated !== undefined ? ticket.slaViolated : false,
+        ticket.pendingStartAt || null,
         ticket.isActive !== undefined ? ticket.isActive : true,
       ];
       
@@ -204,18 +223,23 @@ class Tickets {
         ownerId: 'owner_id',
         companyId: 'company_id',
         slaId: 'sla_id',
+        responseDeadline: 'response_deadline',
+        resolutionDeadline: 'resolution_deadline',
+        firstResponseAt: 'first_response_at',
+        slaViolated: 'sla_violated',
+        pendingStartAt: 'pending_start_at',
       };
 
       Object.entries(fieldMap).forEach(([field, column]) => {
         if (ticket[field] !== undefined) {
-          updates.push(`${column} = $${paramIndex}`);
+          updates.push(`${column} = ${paramIndex}`);
           values.push(ticket[field]);
           paramIndex++;
         }
       });
 
       if (ticket.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
+        updates.push(`is_active = ${paramIndex}`);
         values.push(ticket.isActive);
         paramIndex++;
       }
@@ -226,10 +250,13 @@ class Tickets {
       const query = `
         UPDATE ${Tickets.tableName} 
         SET ${updates.join(', ')} 
-        WHERE id = $${paramIndex}
+        WHERE id = ${paramIndex}
         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
           owner_id as "ownerId", company_id as "companyId", sla_id as "slaId",
+          response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
+          first_response_at as "firstResponseAt", sla_violated as "slaViolated",
+          pending_start_at as "pendingStartAt",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
       `;
       

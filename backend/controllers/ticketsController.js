@@ -24,6 +24,11 @@ const fieldDisplayNames = {
   slaId: 'SLA',
   isActive: 'Активен',
   attachment: 'Вложение',
+  responseDeadline: 'Срок первого ответа',
+  resolutionDeadline: 'Срок решения',
+  firstResponseAt: 'Первый ответ',
+  slaViolated: 'SLA нарушен',
+  pendingStartAt: 'Начало ожидания',
 };
 
 const getTickets = asyncHandler(async (req, res) => {
@@ -132,6 +137,13 @@ const createTicket = asyncHandler(async (req, res) => {
   data.companyId = req.body.companyId || null;
   data.slaId = req.body.slaId || null;
   
+  // SLA поля
+  if (req.body.responseDeadline) data.responseDeadline = req.body.responseDeadline;
+  if (req.body.resolutionDeadline) data.resolutionDeadline = req.body.resolutionDeadline;
+  if (req.body.firstResponseAt) data.firstResponseAt = req.body.firstResponseAt;
+  if (req.body.slaViolated !== undefined) data.slaViolated = req.body.slaViolated;
+  if (req.body.pendingStartAt) data.pendingStartAt = req.body.pendingStartAt;
+  
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
@@ -162,6 +174,32 @@ const createTicket = asyncHandler(async (req, res) => {
   }
 
   const newTicket = await Tickets.create(data);
+
+  // =====================================================
+  // НОВАЯ ЛОГИКА: Автоматический расчет SLA дедлайнов при создании
+  // =====================================================
+  if (newTicket.slaId && !data.responseDeadline && !data.resolutionDeadline) {
+    try {
+      const sla = await Sla.getById(newTicket.slaId);
+      if (sla) {
+        const now = new Date();
+        // responseTime - в часах (умножаем на 60*60*1000), solutionTime - в минутах (умножаем на 60*1000)
+        const responseDeadline = sla.responseTime ? new Date(now.getTime() + sla.responseTime * 60 * 60 * 1000) : null;
+        const resolutionDeadline = sla.solutionTime ? new Date(now.getTime() + sla.solutionTime * 60 * 1000) : null;
+
+        // Обновляем тикет с дедлайнами
+        const updatedWithDeadlines = await Tickets.update(newTicket.id, {
+          responseDeadline,
+          resolutionDeadline,
+        });
+
+        console.log(`📊 SLA дедлайны установлены: response=${responseDeadline}, resolution=${resolutionDeadline}`);
+        Object.assign(newTicket, updatedWithDeadlines);
+      }
+    } catch (slaError) {
+      console.error('Ошибка расчета SLA дедлайнов:', slaError);
+    }
+  }
 
   // =====================================================
   // Записываем историю создания с отображаемыми именами
@@ -217,6 +255,13 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (req.body.companyId !== undefined) data.companyId = req.body.companyId;
   if (req.body.slaId !== undefined) data.slaId = req.body.slaId;
   
+  // SLA поля
+  if (req.body.responseDeadline !== undefined) data.responseDeadline = req.body.responseDeadline;
+  if (req.body.resolutionDeadline !== undefined) data.resolutionDeadline = req.body.resolutionDeadline;
+  if (req.body.firstResponseAt !== undefined) data.firstResponseAt = req.body.firstResponseAt;
+  if (req.body.slaViolated !== undefined) data.slaViolated = req.body.slaViolated;
+  if (req.body.pendingStartAt !== undefined) data.pendingStartAt = req.body.pendingStartAt;
+  
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
@@ -267,9 +312,43 @@ const updateTicket = asyncHandler(async (req, res) => {
   }
 
   // =====================================================
+  // НОВАЯ ЛОГИКА: Пересчет SLA дедлайнов при изменении SLA
+  // =====================================================
+  if (req.body.slaId !== undefined && req.body.slaId !== currentTicket.slaId) {
+    // Если SLA изменился - пересчитываем дедлайны
+    if (req.body.slaId) {
+      try {
+        const sla = await Sla.getById(req.body.slaId);
+        if (sla) {
+          const now = new Date();
+          // responseTime - в часах (умножаем на 60*60*1000), solutionTime - в минутах (умножаем на 60*1000)
+          const responseDeadline = sla.responseTime ? new Date(now.getTime() + sla.responseTime * 60 * 60 * 1000) : null;
+          const resolutionDeadline = sla.solutionTime ? new Date(now.getTime() + sla.solutionTime * 60 * 1000) : null;
+
+          // Обновляем дедлайны
+          await Tickets.update(ticketId, {
+            responseDeadline,
+            resolutionDeadline,
+          });
+
+          console.log(`📊 SLA дедлайны пересчитаны: response=${responseDeadline}, resolution=${resolutionDeadline}`);
+        }
+      } catch (slaError) {
+        console.error('Ошибка пересчета SLA дедлайнов:', slaError);
+      }
+    } else {
+      // Если SLA убран - очищаем дедлайны
+      await Tickets.update(ticketId, {
+        responseDeadline: null,
+        resolutionDeadline: null,
+      });
+    }
+  }
+
+  // =====================================================
   // Записываем историю изменений всех полей
   // =====================================================
-  const fieldsToTrack = ['title', 'description', 'typeId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'slaId', 'isActive'];
+  const fieldsToTrack = ['title', 'description', 'typeId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt'];
   
   // Определяем какие справочники нужны на основе изменяемых полей
   const neededLookups = new Set();

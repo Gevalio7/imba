@@ -20,6 +20,48 @@ interface Queues {
   updatedAt: string
   newTicketAutoResponseId?: number
   closedTicketAutoResponseId?: number
+  // Новые поля
+  companyId?: number | null
+  serviceId?: number | null
+  slaId?: number | null
+  workflowId?: number | null
+  priorityId?: number | null
+  emailConfig: {
+    host: string
+    port: number
+    username: string
+    password: string
+    useSSL: boolean
+  }
+  keywordsInput?: string
+  autoResponseTemplate?: string
+}
+
+// Типы для справочников
+interface Companies {
+  id: number
+  name: string
+}
+
+interface Services {
+  id: number
+  name: string
+}
+
+interface Sla {
+  id: number
+  name: string
+}
+
+interface Workflows {
+  id: number
+  name: string
+}
+
+interface Priorities {
+  id: number
+  name: string
+  value: number
 }
 
 // Типы для справочников
@@ -66,12 +108,24 @@ const numberedSteps = [
     subtitle: 'Настройка основных параметров очереди',
   },
   {
+    title: 'Связи',
+    subtitle: 'Компания, сервис, SLA, Workflow',
+  },
+  {
     title: 'Автоответы',
     subtitle: 'Выбор автоответа',
   },
   {
     title: 'Шаблоны',
     subtitle: 'Выбор шаблона',
+  },
+  {
+    title: 'Email',
+    subtitle: 'Настройки email',
+  },
+  {
+    title: 'Ключевые слова',
+    subtitle: 'Настройка ключевых слов',
   },
   {
     title: 'Вложения',
@@ -94,6 +148,13 @@ const agentsGroups = ref<AgentsGroups[]>([])
 const signatures = ref<Signatures[]>([])
 const templates = ref<Templates[]>([])
 const attachments = ref<Attachments[]>([])
+
+// Новые справочники
+const companies = ref<Companies[]>([])
+const services = ref<Services[]>([])
+const slaList = ref<Sla[]>([])
+const workflows = ref<Workflows[]>([])
+const prioritiesList = ref<Priorities[]>([])
 
 // Загрузка справочников
 const fetchAgentsGroups = async () => {
@@ -132,6 +193,52 @@ const fetchAttachments = async () => {
   }
 }
 
+// Загрузка новых справочников
+const fetchCompanies = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/customers`)
+    companies.value = data.customers || []
+  } catch (err) {
+    console.log('Error fetching companies:', err)
+  }
+}
+
+const fetchServices = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/services`)
+    services.value = data.services || []
+  } catch (err) {
+    console.log('Error fetching services:', err)
+  }
+}
+
+const fetchSla = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/sla`)
+    slaList.value = data.sla || []
+  } catch (err) {
+    console.log('Error fetching SLA:', err)
+  }
+}
+
+const fetchWorkflows = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/workflows`)
+    workflows.value = data.workflows || []
+  } catch (err) {
+    console.log('Error fetching workflows:', err)
+  }
+}
+
+const fetchPriorities = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/priorities`)
+    prioritiesList.value = data.priorities || []
+  } catch (err) {
+    console.log('Error fetching priorities:', err)
+  }
+}
+
 // Форма
 const queue = ref<Queues>({
   id: -1,
@@ -150,6 +257,21 @@ const queue = ref<Queues>({
   // Новые поля для автоответов
   newTicketAutoResponseId: undefined,
   closedTicketAutoResponseId: undefined,
+  // Новые поля
+  companyId: undefined,
+  serviceId: undefined,
+  slaId: undefined,
+  workflowId: undefined,
+  priorityId: undefined,
+  emailConfig: {
+    host: '',
+    port: 587,
+    username: '',
+    password: '',
+    useSSL: false,
+  },
+  keywordsInput: '',
+  autoResponseTemplate: '',
 })
 
 // Сохранение
@@ -161,6 +283,12 @@ const save = async () => {
 
   try {
     saving.value = true
+    
+    // Преобразование keywordsInput в массив
+    const keywords = queue.value.keywordsInput 
+      ? queue.value.keywordsInput.split(',').map(k => k.trim()).filter(k => k)
+      : []
+
     const dataToSend = {
       name: queue.value.name,
       description: queue.value.description,
@@ -174,6 +302,15 @@ const save = async () => {
       attachmentIds: queue.value.attachmentIds,
       newTicketAutoResponseId: queue.value.newTicketAutoResponseId,
       closedTicketAutoResponseId: queue.value.closedTicketAutoResponseId,
+      // Новые поля
+      companyId: queue.value.companyId,
+      serviceId: queue.value.serviceId,
+      slaId: queue.value.slaId,
+      workflowId: queue.value.workflowId,
+      priorityId: queue.value.priorityId,
+      emailConfig: queue.value.emailConfig?.host ? queue.value.emailConfig : null,
+      keywords: keywords,
+      autoResponseTemplate: queue.value.autoResponseTemplate,
     }
 
     await $fetch(`${API_BASE}/queues`, {
@@ -200,7 +337,12 @@ onMounted(async () => {
     fetchAgentsGroups(),
     fetchSignatures(),
     fetchTemplates(),
-    fetchAttachments()
+    fetchAttachments(),
+    fetchCompanies(),
+    fetchServices(),
+    fetchSla(),
+    fetchWorkflows(),
+    fetchPriorities()
   ])
 })
 
@@ -311,7 +453,81 @@ const showToast = (message: string, color: string = 'success') => {
               </VRow>
             </VWindowItem>
 
-            <!-- Шаг 2: Автоответы -->
+            <!-- Шаг 2: Связи -->
+            <VWindowItem>
+              <VRow>
+                <VCol cols="12">
+                  <h6 class="text-h6 font-weight-medium">
+                    Связи
+                  </h6>
+                  <p class="mb-0">
+                    Привязка к компании, сервису, SLA, Workflow и приоритету
+                  </p>
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppSelect
+                    v-model="queue.companyId"
+                    :items="companies"
+                    item-title="name"
+                    item-value="id"
+                    label="Компания"
+                    placeholder="Выберите компанию"
+                    clearable
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppSelect
+                    v-model="queue.serviceId"
+                    :items="services"
+                    item-title="name"
+                    item-value="id"
+                    label="Сервис"
+                    placeholder="Выберите сервис"
+                    clearable
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppSelect
+                    v-model="queue.slaId"
+                    :items="slaList"
+                    item-title="name"
+                    item-value="id"
+                    label="SLA"
+                    placeholder="Выберите SLA"
+                    clearable
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppSelect
+                    v-model="queue.workflowId"
+                    :items="workflows"
+                    item-title="name"
+                    item-value="id"
+                    label="Workflow"
+                    placeholder="Выберите Workflow"
+                    clearable
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppSelect
+                    v-model="queue.priorityId"
+                    :items="prioritiesList"
+                    item-title="name"
+                    item-value="id"
+                    label="Приоритет"
+                    placeholder="Выберите приоритет"
+                    clearable
+                  />
+                </VCol>
+              </VRow>
+            </VWindowItem>
+
+            <!-- Шаг 3: Автоответы -->
             <VWindowItem>
               <VRow>
                 <VCol cols="12">
@@ -367,7 +583,7 @@ const showToast = (message: string, color: string = 'success') => {
               </VRow>
             </VWindowItem>
 
-            <!-- Шаг 3: Шаблоны -->
+            <!-- Шаг 4: Шаблоны -->
             <VWindowItem>
               <VRow>
                 <VCol cols="12">
@@ -402,7 +618,93 @@ const showToast = (message: string, color: string = 'success') => {
               </VRow>
             </VWindowItem>
 
-            <!-- Шаг 4: Вложения -->
+            <!-- Шаг 5: Email настройки -->
+            <VWindowItem>
+              <VRow>
+                <VCol cols="12">
+                  <h6 class="text-h6 font-weight-medium">
+                    Email настройки
+                  </h6>
+                  <p class="mb-0">
+                    Настройки почты для очереди
+                  </p>
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="queue.emailConfig.host"
+                    label="SMTP хост"
+                    placeholder="smtp.example.com"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="queue.emailConfig.port"
+                    label="SMTP порт"
+                    type="number"
+                    placeholder="587"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="queue.emailConfig.username"
+                    label="SMTP пользователь"
+                    placeholder="user@example.com"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="queue.emailConfig.password"
+                    label="SMTP пароль"
+                    type="password"
+                    placeholder="******"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <VSwitch
+                    v-model="queue.emailConfig.useSSL"
+                    label="Использовать SSL/TLS"
+                    color="primary"
+                  />
+                </VCol>
+              </VRow>
+            </VWindowItem>
+
+            <!-- Шаг 6: Ключевые слова -->
+            <VWindowItem>
+              <VRow>
+                <VCol cols="12">
+                  <h6 class="text-h6 font-weight-medium">
+                    Ключевые слова
+                  </h6>
+                  <p class="mb-0">
+                    Ключевые слова для авто-маршрутизации
+                  </p>
+                </VCol>
+
+                <VCol cols="12">
+                  <AppTextarea
+                    v-model="queue.keywordsInput"
+                    label="Ключевые слова (через запятую)"
+                    placeholder=" keyword1, keyword2, keyword3"
+                    rows="3"
+                    hint="Введите ключевые слова через запятую"
+                    persistent-hint
+                  />
+                </VCol>
+
+                <VCol cols="12">
+                  <AppTextarea
+                    v-model="queue.autoResponseTemplate"
+                    label="Шаблон автоответа"
+                    rows="4"
+                    placeholder="Введите шаблон автоответа..."
+                  />
+                </VCol>
+              </VRow>
+            </VWindowItem>
+
+            <!-- Шаг 7: Вложения -->
             <VWindowItem>
               <VRow>
                 <VCol cols="12">
