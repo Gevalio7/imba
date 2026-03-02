@@ -28,6 +28,12 @@ interface Ticket {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  // Новые SLA поля
+  responseDeadline: string | null
+  resolutionDeadline: string | null
+  firstResponseAt: string | null
+  slaViolated: boolean | null
+  pendingStartAt: string | null
 }
 
 // API base URL
@@ -82,6 +88,9 @@ const headers = [
   { title: 'Приоритет', key: 'priorityName', sortable: false },
   { title: 'Очередь', key: 'queueName', sortable: false },
   { title: 'Статус', key: 'stateName', sortable: false },
+  { title: 'SLA', key: 'slaStatus', sortable: false },
+  { title: 'Срок ответа', key: 'responseDeadline', sortable: true },
+  { title: 'Срок решения', key: 'resolutionDeadline', sortable: true },
   { title: 'Владелец', key: 'ownerLogin', sortable: false },
   { title: 'Компания', key: 'companyName', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -158,6 +167,58 @@ const resolvePriorityColor = (color?: string | null) => {
 
 const resolveStateColor = (color?: string | null) => {
   return color || 'secondary'
+}
+
+// Функция для определения статуса SLA
+const getSlaStatus = (ticket: Ticket) => {
+  if (!ticket.responseDeadline && !ticket.resolutionDeadline) {
+    return { color: 'grey', text: 'Нет SLA', variant: 'text' }
+  }
+  
+  const now = new Date()
+  
+  // Проверяем нарушен ли SLA
+  if (ticket.slaViolated) {
+    return { color: 'error', text: 'SLA нарушен', variant: 'flat' }
+  }
+  
+  // Проверяем срок ответа
+  if (ticket.responseDeadline) {
+    const deadline = new Date(ticket.responseDeadline)
+    const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
+    
+    if (hoursLeft < 0) {
+      return { color: 'error', text: 'Просрочен', variant: 'flat' }
+    } else if (hoursLeft < 4) {
+      return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
+    }
+  }
+  
+  // Проверяем срок решения
+  if (ticket.resolutionDeadline) {
+    const deadline = new Date(ticket.resolutionDeadline)
+    const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
+    
+    if (hoursLeft < 0) {
+      return { color: 'error', text: 'Просрочен', variant: 'flat' }
+    } else if (hoursLeft < 4) {
+      return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
+    }
+  }
+  
+  return { color: 'success', text: 'В норме', variant: 'flat' }
+}
+
+// Форматтер даты
+const formatDate = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const getOwnerName = (ticket: Ticket) => {
@@ -393,6 +454,33 @@ const editTicket = (id: number) => {
             {{ item.stateName }}
           </VChip>
           <span v-else class="text-body-2">-</span>
+        </template>
+
+        <!-- SLA Статус -->
+        <template #item.slaStatus="{ item }">
+          <VChip
+            :color="getSlaStatus(item).color"
+            :variant="getSlaStatus(item).variant as any"
+            density="compact"
+            label
+            size="small"
+          >
+            {{ getSlaStatus(item).text }}
+          </VChip>
+        </template>
+
+        <!-- Срок ответа -->
+        <template #item.responseDeadline="{ item }">
+          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
+            {{ formatDate(item.responseDeadline) }}
+          </span>
+        </template>
+
+        <!-- Срок решения -->
+        <template #item.resolutionDeadline="{ item }">
+          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
+            {{ formatDate(item.resolutionDeadline) }}
+          </span>
         </template>
 
         <!-- Владелец -->

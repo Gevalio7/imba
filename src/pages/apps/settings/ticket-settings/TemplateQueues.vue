@@ -2,7 +2,7 @@
 import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Шаблон
 interface Templates {
@@ -25,6 +25,49 @@ interface Queues {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  // Новые поля
+  companyId: number | null
+  serviceId: number | null
+  slaId: number | null
+  workflowId: number | null
+  agentGroupId: number | null
+  priorityId: number | null
+  emailConfig: {
+    host: string
+    port: number
+    username: string
+    password: string
+    useSSL: boolean
+  } | null
+  keywords: string[]
+  autoResponseTemplate: string
+}
+
+// Типы для справочников
+interface Companies {
+  id: number
+  name: string
+}
+
+interface Services {
+  id: number
+  name: string
+}
+
+interface Sla {
+  id: number
+  name: string
+}
+
+interface Workflows {
+  id: number
+  name: string
+}
+
+interface Priorities {
+  id: number
+  name: string
+  value: number
 }
 
 // API base URL
@@ -77,6 +120,69 @@ const fetchQueues = async () => {
     console.error('Error fetching queues:', err)
   } finally {
     queuesLoading.value = false
+  }
+}
+
+// Справочники для новых полей
+const companies = ref<Companies[]>([])
+const services = ref<Services[]>([])
+const slaList = ref<Sla[]>([])
+const workflows = ref<Workflows[]>([])
+const prioritiesList = ref<Priorities[]>([])
+const agentsGroups = ref<any[]>([])
+
+// Загрузка справочников
+const fetchCompanies = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/customers`)
+    companies.value = data.customers || []
+  } catch (err) {
+    console.log('Error fetching companies:', err)
+  }
+}
+
+const fetchServices = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/services`)
+    services.value = data.services || []
+  } catch (err) {
+    console.log('Error fetching services:', err)
+  }
+}
+
+const fetchSla = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/sla`)
+    slaList.value = data.sla || []
+  } catch (err) {
+    console.log('Error fetching SLA:', err)
+  }
+}
+
+const fetchWorkflows = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/workflows`)
+    workflows.value = data.workflows || []
+  } catch (err) {
+    console.log('Error fetching workflows:', err)
+  }
+}
+
+const fetchPriorities = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/priorities`)
+    prioritiesList.value = data.priorities || []
+  } catch (err) {
+    console.log('Error fetching priorities:', err)
+  }
+}
+
+const fetchAgentsGroups = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/agentsGroups`)
+    agentsGroups.value = data.agentsGroups || []
+  } catch (err) {
+    console.log('Error fetching agentsGroups:', err)
   }
 }
 
@@ -182,6 +288,12 @@ const deleteQueues = async (id: number) => {
 onMounted(() => {
   fetchTemplates()
   fetchQueues()
+  fetchCompanies()
+  fetchServices()
+  fetchSla()
+  fetchWorkflows()
+  fetchPriorities()
+  fetchAgentsGroups()
 })
 
 // Headers для шаблонов
@@ -395,6 +507,16 @@ const defaultQueuesItem = ref<Queues>({
   createdAt: '',
   updatedAt: '',
   isActive: true,
+  // Новые поля
+  companyId: null,
+  serviceId: null,
+  slaId: null,
+  workflowId: null,
+  agentGroupId: null,
+  priorityId: null,
+  emailConfig: null,
+  keywords: [],
+  autoResponseTemplate: '',
 })
 
 const editedTemplatesItem = ref<Templates>({ ...defaultTemplatesItem.value })
@@ -411,6 +533,31 @@ const statusOptions = [
 // Опции шаблонов для выбора
 const templateOptions = computed(() => {
   return templates.value.map(t => ({ title: t.name, value: t.id }))
+})
+
+// Опции для новых полей
+const companyOptions = computed(() => {
+  return companies.value.map(c => ({ title: c.name, value: c.id }))
+})
+
+const serviceOptions = computed(() => {
+  return services.value.map(s => ({ title: s.name, value: s.id }))
+})
+
+const slaOptions = computed(() => {
+  return slaList.value.map(s => ({ title: s.name, value: s.id }))
+})
+
+const workflowOptions = computed(() => {
+  return workflows.value.map(w => ({ title: w.name, value: w.id }))
+})
+
+const priorityIdOptions = computed(() => {
+  return prioritiesList.value.map(p => ({ title: p.name, value: p.id }))
+})
+
+const agentsGroupsOptions = computed(() => {
+  return agentsGroups.value.map(ag => ({ title: ag.name, value: ag.id }))
 })
 
 // Методы для шаблонов
@@ -595,6 +742,45 @@ const queuesViewMode = ref<'cards' | 'table'>('table')
 const stripHtmlTags = (html: string) => {
   return html.replace(/<[^>]*>/g, '')
 }
+
+// Для ключевых слов
+const newKeyword = ref('')
+
+const addKeyword = () => {
+  if (newKeyword.value.trim() && !editedQueuesItem.value.keywords?.includes(newKeyword.value.trim())) {
+    if (!editedQueuesItem.value.keywords) {
+      editedQueuesItem.value.keywords = []
+    }
+    editedQueuesItem.value.keywords.push(newKeyword.value.trim())
+    newKeyword.value = ''
+  }
+}
+
+const removeKeyword = (index: number) => {
+  if (editedQueuesItem.value.keywords) {
+    editedQueuesItem.value.keywords.splice(index, 1)
+  }
+}
+
+// Для email конфига
+const emailConfig = ref({
+  host: '',
+  port: 587,
+  username: '',
+  password: '',
+  useSSL: false,
+})
+
+// Синхронизация emailConfig с editedQueuesItem
+watch(() => editedQueuesItem.value.emailConfig, (newVal) => {
+  if (newVal) {
+    emailConfig.value = { ...newVal }
+  }
+}, { deep: true })
+
+watch(emailConfig, (newVal) => {
+  editedQueuesItem.value.emailConfig = { ...newVal }
+}, { deep: true })
 </script>
 
 <template>
@@ -1312,7 +1498,7 @@ const stripHtmlTags = (html: string) => {
     <!-- Диалог редактирования очереди -->
     <VDialog
       v-model="queuesEditDialog"
-      max-width="600px"
+      max-width="800px"
     >
       <VCard :title="editedQueuesIndex > -1 ? 'Редактировать очередь' : 'Добавить очередь'">
         <VCardText>
@@ -1336,6 +1522,72 @@ const stripHtmlTags = (html: string) => {
               />
             </VCol>
 
+            <!-- Компания -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.companyId"
+                :items="companyOptions"
+                label="Компания"
+                clearable
+                placeholder="Выберите компанию"
+              />
+            </VCol>
+
+            <!-- Сервис -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.serviceId"
+                :items="serviceOptions"
+                label="Сервис"
+                clearable
+                placeholder="Выберите сервис"
+              />
+            </VCol>
+
+            <!-- SLA -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.slaId"
+                :items="slaOptions"
+                label="SLA"
+                clearable
+                placeholder="Выберите SLA"
+              />
+            </VCol>
+
+            <!-- Workflow -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.workflowId"
+                :items="workflowOptions"
+                label="Workflow"
+                clearable
+                placeholder="Выберите Workflow"
+              />
+            </VCol>
+
+            <!-- Группа агентов -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.agentGroupId"
+                :items="agentsGroupsOptions"
+                label="Группа агентов"
+                clearable
+                placeholder="Выберите группу агентов"
+              />
+            </VCol>
+
+            <!-- Приоритет (связь) -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedQueuesItem.priorityId"
+                :items="priorityIdOptions"
+                label="Приоритет"
+                clearable
+                placeholder="Выберите приоритет"
+              />
+            </VCol>
+
             <!-- Описание -->
             <VCol cols="12">
               <AppTextarea
@@ -1356,14 +1608,113 @@ const stripHtmlTags = (html: string) => {
               />
             </VCol>
 
-            <!-- Приоритет -->
+            <!-- Приоритет (число) -->
             <VCol cols="12" sm="6">
               <AppTextField
                 v-model="editedQueuesItem.priority"
-                label="Приоритет"
+                label="Приоритет (число)"
                 type="number"
                 min="0"
               />
+            </VCol>
+
+            <!-- Ключевые слова -->
+            <VCol cols="12">
+              <AppSelect
+                v-model="editedQueuesItem.keywords"
+                :items="[]"
+                label="Ключевые слова"
+                placeholder="Введите ключевые слова"
+                multiple
+                chips
+                clearable
+                :manual-filter="true"
+                @update:model-value="(val) => editedQueuesItem.keywords = val"
+              />
+              <VTextField
+                v-model="newKeyword"
+                label="Добавить ключевое слово"
+                placeholder="Нажмите Enter для добавления"
+                class="mt-2"
+                @keydown.enter.prevent="addKeyword"
+              >
+                <template #append-inner>
+                  <VBtn
+                    variant="text"
+                    size="small"
+                    @click="addKeyword"
+                  >
+                    Добавить
+                  </VBtn>
+                </template>
+              </VTextField>
+              <div v-if="editedQueuesItem.keywords?.length" class="mt-2">
+                <VChip
+                  v-for="(keyword, index) in editedQueuesItem.keywords"
+                  :key="index"
+                  closable
+                  class="ma-1"
+                  @click:close="removeKeyword(index)"
+                >
+                  {{ keyword }}
+                </VChip>
+              </div>
+            </VCol>
+
+            <!-- Шаблон автоответа -->
+            <VCol cols="12">
+              <AppTextarea
+                v-model="editedQueuesItem.autoResponseTemplate"
+                label="Шаблон автоответа"
+                rows="4"
+                placeholder="Введите шаблон автоответа..."
+              />
+            </VCol>
+
+            <!-- Email настройки -->
+            <VCol cols="12">
+              <VCard variant="outlined" class="pa-4">
+                <h4 class="mb-4">Настройки email</h4>
+                <VRow>
+                  <VCol cols="12" sm="6">
+                    <AppTextField
+                      v-model="emailConfig.host"
+                      label="SMTP хост"
+                      placeholder="smtp.example.com"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="6">
+                    <AppTextField
+                      v-model="emailConfig.port"
+                      label="SMTP порт"
+                      type="number"
+                      placeholder="587"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="6">
+                    <AppTextField
+                      v-model="emailConfig.username"
+                      label="SMTP пользователь"
+                      placeholder="user@example.com"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="6">
+                    <AppTextField
+                      v-model="emailConfig.password"
+                      label="SMTP пароль"
+                      type="password"
+                      placeholder="******"
+                    />
+                  </VCol>
+                  <VCol cols="12">
+                    <VSwitch
+                      v-model="emailConfig.useSSL"
+                      label="Использовать SSL/TLS"
+                      color="primary"
+                    />
+                  </VCol>
+                </VRow>
+              </VCard>
             </VCol>
 
             <!-- Активен -->

@@ -7,22 +7,59 @@ function toSnakeCase(str) {
 
 class Queues {
   static tableName = 'queues';
-  static fields = 'name, description, maxTickets, priority';
+  static fields = 'name, description, maxTickets, priority, companyId, serviceId, slaId, workflowId, agentGroupId, priorityId, emailConfig, keywords, autoResponseTemplate';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, filters = {} } = options;
 
     try {
       let whereClause = '';
       let params = [];
       let paramIndex = 1;
 
+      // Обработка фильтров
+      const filterConditions = [];
+      if (filters.companyId) {
+        filterConditions.push(`company_id = ${paramIndex}`);
+        params.push(filters.companyId);
+        paramIndex++;
+      }
+      if (filters.serviceId) {
+        filterConditions.push(`service_id = ${paramIndex}`);
+        params.push(filters.serviceId);
+        paramIndex++;
+      }
+      if (filters.slaId) {
+        filterConditions.push(`sla_id = ${paramIndex}`);
+        params.push(filters.slaId);
+        paramIndex++;
+      }
+      if (filters.workflowId) {
+        filterConditions.push(`workflow_id = ${paramIndex}`);
+        params.push(filters.workflowId);
+        paramIndex++;
+      }
+      if (filters.agentGroupId) {
+        filterConditions.push(`agent_group_id = ${paramIndex}`);
+        params.push(filters.agentGroupId);
+        paramIndex++;
+      }
+      if (filters.priorityId) {
+        filterConditions.push(`priority_id = ${paramIndex}`);
+        params.push(filters.priorityId);
+        paramIndex++;
+      }
+
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
+        filterConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
+      }
+
+      if (filterConditions.length > 0) {
+        whereClause = `WHERE ${filterConditions.join(' AND ')}`;
       }
 
       let orderClause = '';

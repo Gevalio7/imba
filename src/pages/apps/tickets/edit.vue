@@ -96,6 +96,61 @@ const fetchSla = async () => {
   catch (err) { console.log('Error fetching sla:', err) }
 }
 
+// Вычисляемый выбранный SLA для отображения дедлайнов
+const selectedSla = computed(() => {
+  if (!ticket.value.slaId) return null
+  return slaList.value.find((s: any) => s.id === ticket.value.slaId) || null
+})
+
+// Дедлайны SLA
+const responseDeadline = computed(() => {
+  if (!selectedSla.value?.responseTime) return null
+  const date = new Date()
+  date.setMinutes(date.getMinutes() + selectedSla.value.responseTime)
+  return date
+})
+
+const resolutionDeadline = computed(() => {
+  if (!selectedSla.value?.solutionTime) return null
+  const date = new Date()
+  date.setMinutes(date.getMinutes() + selectedSla.value.solutionTime)
+  return date
+})
+
+// Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
+const formatSlaTime = (value: number | null | undefined, isHours: boolean = false) => {
+  if (!value) return '-'
+  if (isHours) {
+    // Для responseTime - это часы
+    if (value < 1) return `${Math.round(value * 60)} мин`
+    if (value < 24) return `${value}ч`
+    const days = Math.floor(value / 24)
+    const hours = Math.round(value % 24)
+    return hours > 0 ? `${days}д ${hours}ч` : `${days}д`
+  } else {
+    // Для solutionTime - это минуты
+    if (value < 60) return `${value} мин`
+    const hours = Math.floor(value / 60)
+    const mins = value % 60
+    if (hours < 24) return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`
+    const days = Math.floor(hours / 24)
+    const remainingHours = hours % 24
+    return remainingHours > 0 ? `${days}д ${remainingHours}ч` : `${days}д`
+  }
+}
+
+// Форматирование дедлайна
+const formatDeadline = (date: Date | null) => {
+  if (!date) return ''
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 // Загрузка workflow и доступных статусов по типу
 const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null) => {
   try {
@@ -144,6 +199,8 @@ const ticket = ref({
   ownerId: undefined as number | undefined,
   companyId: undefined as number | undefined,
   slaId: undefined as number | undefined,
+  responseDeadline: undefined as string | undefined,
+  resolutionDeadline: undefined as string | undefined,
   isActive: true,
 })
 
@@ -262,6 +319,8 @@ const fetchTicket = async () => {
       ownerId: t.ownerId || undefined,
       companyId: t.companyId || undefined,
       slaId: t.slaId || undefined,
+      responseDeadline: t.responseDeadline || undefined,
+      resolutionDeadline: t.resolutionDeadline || undefined,
       isActive: t.isActive !== undefined ? t.isActive : true,
     }
     description.value = t.description || ''
@@ -275,6 +334,7 @@ const fetchTicket = async () => {
     if (t.typeId) {
       await fetchTypeWorkflow(t.typeId, t.stateId)
     }
+    
   }
   catch (err) {
     console.error('Error fetching ticket:', err)
@@ -428,7 +488,7 @@ const save = async () => {
     }
     
     showToast('Тикет успешно обновлён')
-    await fetchTicket()
+    await fetchTicket() // Обновляем данные включая SLA дедлайны
     await fetchAttachments()
     await fetchHistory() // Обновляем историю изменений
     await fetchStatusHistory() // Обновляем историю переходов
@@ -1334,6 +1394,33 @@ const showToast = (message: string, color: string = 'success') => {
                 placeholder="Выберите SLA"
                 clearable
               />
+
+              <!-- Отображение SLA дедлайнов -->
+              <VAlert
+                v-if="selectedSla || ticket.value.responseDeadline || ticket.value.resolutionDeadline"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2"
+              >
+                <div class="text-body-2">
+                  <div v-if="selectedSla?.responseTime">
+                    <strong>Время первого ответа:</strong> {{ formatSlaTime(selectedSla.responseTime, true) }}
+                  </div>
+                  <div v-if="ticket.value.responseDeadline">
+                    <strong>Срок ответа:</strong> {{ formatDate(ticket.value.responseDeadline) }}
+                  </div>
+                  <div v-if="selectedSla?.solutionTime">
+                    <strong>Время решения:</strong> {{ formatSlaTime(selectedSla.solutionTime, false) }}
+                  </div>
+                  <div v-if="ticket.value.resolutionDeadline">
+                    <strong>Срок решения:</strong> {{ formatDate(ticket.value.resolutionDeadline) }}
+                  </div>
+                  <div v-if="!selectedSla && !ticket.value.responseDeadline && !ticket.value.resolutionDeadline" class="text-body-2 text-medium-emphasis">
+                    SLA не установлен
+                  </div>
+                </div>
+              </VAlert>
 
               <VDivider class="my-2" />
 
