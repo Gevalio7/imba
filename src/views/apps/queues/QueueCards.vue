@@ -13,6 +13,22 @@ interface Queues {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  // Новые поля
+  companyId: number | null
+  serviceId: number | null
+  slaId: number | null
+  workflowId: number | null
+  agentGroupId: number | null
+  priorityId: number | null
+  emailConfig: {
+    host: string
+    port: number
+    username: string
+    password: string
+    useSSL: boolean
+  } | null
+  keywords: string[]
+  autoResponseTemplate: string
 }
 
 // Функция для определения варианта статуса

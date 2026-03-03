@@ -1062,7 +1062,7 @@ watch(emailConfig, (newVal) => {
             <div class="d-flex align-center gap-2">
               <VSwitch
                 :model-value="item.isActive"
-                @update:model-value="(val) => toggleTemplatesStatus(item, val)"
+                @update:model-value="(val: boolean | null) => toggleTemplatesStatus(item, val)"
                 color="primary"
                 hide-details
               />
@@ -1373,7 +1373,7 @@ watch(emailConfig, (newVal) => {
             <div class="d-flex align-center gap-2">
               <VSwitch
                 :model-value="item.isActive"
-                @update:model-value="(val) => toggleQueuesStatus(item, val)"
+                @update:model-value="(val: boolean | null) => toggleQueuesStatus(item, val)"
                 color="primary"
                 hide-details
               />
@@ -1629,7 +1629,7 @@ watch(emailConfig, (newVal) => {
                 chips
                 clearable
                 :manual-filter="true"
-                @update:model-value="(val) => editedQueuesItem.keywords = val"
+                @update:model-value="(val: string[]) => editedQueuesItem.keywords = val"
               />
               <VTextField
                 v-model="newKeyword"

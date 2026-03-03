@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 definePage({
@@ -32,6 +32,7 @@ const states = ref<any[]>([])
 const types = ref<any[]>([])
 const agents = ref<any[]>([])
 const customers = ref<any[]>([])
+const services = ref<any[]>([])
 const slaList = ref<any[]>([])
 
 // Workflow данные
@@ -96,10 +97,35 @@ const fetchSla = async () => {
   catch (err) { console.log('Error fetching sla:', err) }
 }
 
+const fetchServices = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/services`)
+    services.value = (data as any).services || []
+  }
+  catch (err) { console.log('Error fetching services:', err) }
+}
+
 // Вычисляемый выбранный SLA для отображения дедлайнов
 const selectedSla = computed(() => {
-  if (!ticket.value.slaId) return null
-  return slaList.value.find((s: any) => s.id === ticket.value.slaId) || null
+  if (!ticket.slaId) return null
+  return slaList.value.find((s: any) => s.id === ticket.slaId) || null
+})
+
+// Вычисляемые сервисы - фильтруются по компании если она выбрана
+const filteredServices = computed(() => {
+  // Если компания не выбрана - показываем все сервисы
+  if (!ticket.companyId) {
+    return services.value
+  }
+  // Фильтруем сервисы по компании
+  return services.value.filter((s: any) => {
+    // Сервис без компаний - показываем (глобальный)
+    if (!s.customers || s.customers.length === 0) {
+      return true
+    }
+    // Проверяем есть ли компания в списке компаний сервиса
+    return s.customers.some((c: any) => c.id === ticket.companyId)
+  })
 })
 
 // Дедлайны SLA
@@ -188,7 +214,7 @@ const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null
 // Форма
 const description = ref('')
 
-const ticket = ref({
+const ticket = reactive({
   id: -1,
   ticketNumber: '',
   title: '',
@@ -198,6 +224,7 @@ const ticket = ref({
   stateId: undefined as number | undefined,
   ownerId: undefined as number | undefined,
   companyId: undefined as number | undefined,
+  serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
   responseDeadline: undefined as string | undefined,
   resolutionDeadline: undefined as string | undefined,
@@ -205,12 +232,12 @@ const ticket = ref({
 })
 
 // Watcher для изменения типа
-watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
+watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
   // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
-  if (oldTypeId === undefined && ticket.value.stateId) return
+  if (oldTypeId === undefined && ticket.stateId) return
   
   if (newTypeId) {
-    await fetchTypeWorkflow(newTypeId, ticket.value.stateId)
+    await fetchTypeWorkflow(newTypeId, ticket.stateId)
   }
   else {
     currentWorkflow.value = null
@@ -219,13 +246,48 @@ watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
 })
 
 // Watcher для изменения статуса - обновляем доступные переходы
-watch(() => ticket.value.stateId, async (newStateId, oldStateId) => {
+watch(() => ticket.stateId, async (newStateId, oldStateId) => {
   // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
   if (oldStateId === undefined) return
   
   // Если есть тип и workflow, обновляем доступные переходы
-  if (ticket.value.typeId && currentWorkflow.value) {
-    await fetchTypeWorkflow(ticket.value.typeId, newStateId)
+  if (ticket.typeId && currentWorkflow.value) {
+    await fetchTypeWorkflow(ticket.typeId, newStateId)
+  }
+})
+
+// Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
+watch(() => ticket.companyId, (newCompanyId, oldCompanyId) => {
+  // Пропускаем начальную загрузку
+  if (oldCompanyId === undefined) return
+  
+  // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
+  if (newCompanyId && ticket.serviceId) {
+    const currentService = services.value.find((s: any) => s.id === ticket.serviceId)
+    if (currentService) {
+      // Если у сервиса есть компании и новая компания не в списке - очищаем сервис
+      if (currentService.customers && currentService.customers.length > 0) {
+        const belongsToCompany = currentService.customers.some((c: any) => c.id === newCompanyId)
+        if (!belongsToCompany) {
+          // Сервис не принадлежит компании - очищаем выбор
+          ticket.serviceId = undefined
+        }
+      }
+    }
+  }
+})
+
+// Watcher для изменения сервиса - автозаполнение SLA
+watch(() => ticket.serviceId, (newServiceId, oldServiceId) => {
+  // Пропускаем начальную загрузку
+  if (oldServiceId === undefined) return
+  
+  // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
+  if (newServiceId && !ticket.slaId) {
+    const service = services.value.find((s: any) => s.id === newServiceId)
+    if (service && service.sla && service.sla.id) {
+      ticket.slaId = service.sla.id
+    }
   }
 })
 
@@ -271,7 +333,7 @@ const statusOptions = computed(() => {
   // Если есть workflow и доступные статусы
   if (availableStatuses.value.length > 0) {
     // Находим текущий статус в общем списке
-    const currentStatus = states.value.find((s: any) => s.id === ticket.value.stateId)
+    const currentStatus = states.value.find((s: any) => s.id === ticket.stateId)
     
     // Создаём список с текущим статусом (если он есть и не в availableStatuses)
     const options = availableStatuses.value.map(s => ({
@@ -308,21 +370,20 @@ const fetchTicket = async () => {
     loading.value = true
     const data = await $fetch(`${API_BASE}/tickets/${ticketId.value}`)
     const t = data as any
-    ticket.value = {
-      id: t.id,
-      ticketNumber: t.ticketNumber || '',
-      title: t.title || '',
-      typeId: t.typeId || undefined,
-      priorityId: t.priorityId || undefined,
-      queueId: t.queueId || undefined,
-      stateId: t.stateId || undefined,
-      ownerId: t.ownerId || undefined,
-      companyId: t.companyId || undefined,
-      slaId: t.slaId || undefined,
-      responseDeadline: t.responseDeadline || undefined,
-      resolutionDeadline: t.resolutionDeadline || undefined,
-      isActive: t.isActive !== undefined ? t.isActive : true,
-    }
+    ticket.id = t.id
+    ticket.ticketNumber = t.ticketNumber || ''
+    ticket.title = t.title || ''
+    ticket.typeId = t.typeId || undefined
+    ticket.priorityId = t.priorityId || undefined
+    ticket.queueId = t.queueId || undefined
+    ticket.stateId = t.stateId || undefined
+    ticket.ownerId = t.ownerId || undefined
+    ticket.companyId = t.companyId || undefined
+    ticket.slaId = t.slaId || undefined
+    ticket.serviceId = t.serviceId || undefined
+    ticket.responseDeadline = t.responseDeadline || undefined
+    ticket.resolutionDeadline = t.resolutionDeadline || undefined
+    ticket.isActive = t.isActive !== undefined ? t.isActive : true
     description.value = t.description || ''
     
     // Загружаем вложения
@@ -466,7 +527,7 @@ const formatTimeInStatus = (interval: string | Record<string, number> | null) =>
 
 // Сохранение
 const save = async () => {
-  if (!ticket.value.title?.trim()) {
+  if (!ticket.title?.trim()) {
     showToast('Заголовок обязателен для заполнения', 'error')
     
     return
@@ -474,10 +535,29 @@ const save = async () => {
 
   try {
     saving.value = true
+    
+    // Подготавливаем данные для отправки
+    const ticketData = {
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      title: ticket.title,
+      typeId: ticket.typeId ?? null,
+      priorityId: ticket.priorityId ?? null,
+      queueId: ticket.queueId ?? null,
+      stateId: ticket.stateId ?? null,
+      ownerId: ticket.ownerId ?? null,
+      companyId: ticket.companyId ?? null,
+      serviceId: ticket.serviceId ?? null,
+      slaId: ticket.slaId ?? null,
+      responseDeadline: ticket.responseDeadline ?? null,
+      resolutionDeadline: ticket.resolutionDeadline ?? null,
+      isActive: ticket.isActive,
+    }
+    
     await $fetch(`${API_BASE}/tickets/${ticketId.value}`, {
       method: 'PUT',
       body: {
-        ...ticket.value,
+        ...ticketData,
         description: description.value,
       },
     })
@@ -659,6 +739,7 @@ onMounted(async () => {
     fetchTypes(),
     fetchAgents(),
     fetchCustomers(),
+    fetchServices(),
     fetchSla(),
   ])
   await fetchTicket()
@@ -1386,6 +1467,16 @@ const showToast = (message: string, color: string = 'success') => {
               />
 
               <AppSelect
+                v-model="ticket.serviceId"
+                :items="filteredServices"
+                item-title="name"
+                item-value="id"
+                label="Сервис"
+                placeholder="Выберите сервис"
+                clearable
+              />
+
+              <AppSelect
                 v-model="ticket.slaId"
                 :items="slaList"
                 item-title="name"
@@ -1397,7 +1488,7 @@ const showToast = (message: string, color: string = 'success') => {
 
               <!-- Отображение SLA дедлайнов -->
               <VAlert
-                v-if="selectedSla || ticket.value.responseDeadline || ticket.value.resolutionDeadline"
+                v-if="selectedSla || ticket.responseDeadline || ticket.resolutionDeadline"
                 type="info"
                 variant="tonal"
                 density="compact"
@@ -1407,16 +1498,16 @@ const showToast = (message: string, color: string = 'success') => {
                   <div v-if="selectedSla?.responseTime">
                     <strong>Время первого ответа:</strong> {{ formatSlaTime(selectedSla.responseTime, true) }}
                   </div>
-                  <div v-if="ticket.value.responseDeadline">
-                    <strong>Срок ответа:</strong> {{ formatDate(ticket.value.responseDeadline) }}
+                  <div v-if="ticket.responseDeadline">
+                    <strong>Срок ответа:</strong> {{ formatDate(ticket.responseDeadline) }}
                   </div>
                   <div v-if="selectedSla?.solutionTime">
                     <strong>Время решения:</strong> {{ formatSlaTime(selectedSla.solutionTime, false) }}
                   </div>
-                  <div v-if="ticket.value.resolutionDeadline">
-                    <strong>Срок решения:</strong> {{ formatDate(ticket.value.resolutionDeadline) }}
+                  <div v-if="ticket.resolutionDeadline">
+                    <strong>Срок решения:</strong> {{ formatDate(ticket.resolutionDeadline) }}
                   </div>
-                  <div v-if="!selectedSla && !ticket.value.responseDeadline && !ticket.value.resolutionDeadline" class="text-body-2 text-medium-emphasis">
+                  <div v-if="!selectedSla && !ticket.responseDeadline && !ticket.resolutionDeadline" class="text-body-2 text-medium-emphasis">
                     SLA не установлен
                   </div>
                 </div>

@@ -8,6 +8,7 @@ const Queues = require('../models/queues');
 const States = require('../models/states');
 const Agents = require('../models/agents');
 const Customers = require('../models/customers');
+const Services = require('../models/services');
 const Sla = require('../models/sla');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -21,6 +22,7 @@ const fieldDisplayNames = {
   stateId: 'Статус',
   ownerId: 'Владелец',
   companyId: 'Компания',
+  serviceId: 'Сервис',
   slaId: 'SLA',
   isActive: 'Активен',
   attachment: 'Вложение',
@@ -135,6 +137,7 @@ const createTicket = asyncHandler(async (req, res) => {
   data.queueId = req.body.queueId || null;
   data.ownerId = req.body.ownerId || null;
   data.companyId = req.body.companyId || null;
+  data.serviceId = req.body.serviceId || null;
   data.slaId = req.body.slaId || null;
   
   // SLA поля
@@ -253,6 +256,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (req.body.queueId !== undefined) data.queueId = req.body.queueId;
   if (req.body.ownerId !== undefined) data.ownerId = req.body.ownerId;
   if (req.body.companyId !== undefined) data.companyId = req.body.companyId;
+  if (req.body.serviceId !== undefined) data.serviceId = req.body.serviceId;
   if (req.body.slaId !== undefined) data.slaId = req.body.slaId;
   
   // SLA поля
@@ -348,7 +352,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   // =====================================================
   // Записываем историю изменений всех полей
   // =====================================================
-  const fieldsToTrack = ['title', 'description', 'typeId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt'];
+  const fieldsToTrack = ['title', 'description', 'typeId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'serviceId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt'];
   
   // Определяем какие справочники нужны на основе изменяемых полей
   const neededLookups = new Set();
@@ -360,6 +364,7 @@ const updateTicket = asyncHandler(async (req, res) => {
       else if (field === 'stateId') neededLookups.add('states');
       else if (field === 'ownerId') neededLookups.add('agents');
       else if (field === 'companyId') neededLookups.add('customers');
+      else if (field === 'serviceId') neededLookups.add('services');
       else if (field === 'slaId') neededLookups.add('sla');
     }
   }
@@ -373,6 +378,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (neededLookups.has('states')) { lookupPromises.push(States.getAll({ itemsPerPage: 1000 })); lookupOrder.push('states'); }
   if (neededLookups.has('agents')) { lookupPromises.push(Agents.getAll({ itemsPerPage: 1000 })); lookupOrder.push('agents'); }
   if (neededLookups.has('customers')) { lookupPromises.push(Customers.getAll({ itemsPerPage: 1000 })); lookupOrder.push('customers'); }
+  if (neededLookups.has('services')) { lookupPromises.push(Services.getAll({ itemsPerPage: 1000 })); lookupOrder.push('services'); }
   if (neededLookups.has('sla')) { lookupPromises.push(Sla.getAll({ itemsPerPage: 1000 })); lookupOrder.push('sla'); }
   
   const lookupResults = await Promise.all(lookupPromises);
@@ -387,10 +393,11 @@ const updateTicket = asyncHandler(async (req, res) => {
     else if (key === 'states') lookupData.statesList = result.states || [];
     else if (key === 'agents') lookupData.agentsList = result.agents || [];
     else if (key === 'customers') lookupData.customersList = result.customers || [];
+    else if (key === 'services') lookupData.servicesList = result.services || [];
     else if (key === 'sla') lookupData.slaList = result.sla || [];
   });
   
-  const { typesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], slaList = [] } = lookupData;
+  const { typesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], servicesList = [], slaList = [] } = lookupData;
   
   for (const field of fieldsToTrack) {
     const oldValue = currentTicket[field];
@@ -444,6 +451,12 @@ const updateTicket = asyncHandler(async (req, res) => {
       const newSla = slaList.find(s => s.id === newValue);
       oldDisplayValue = oldSla ? oldSla.name : String(oldValue ?? '');
       newDisplayValue = newSla ? newSla.name : String(newValue ?? '');
+    }
+    else if (field === 'serviceId') {
+      const oldService = servicesList.find(s => s.id === oldValue);
+      const newService = servicesList.find(s => s.id === newValue);
+      oldDisplayValue = oldService ? oldService.name : String(oldValue ?? '');
+      newDisplayValue = newService ? newService.name : String(newValue ?? '');
     }
     else if (field === 'isActive') {
       oldDisplayValue = oldValue ? 'Да' : 'Нет';
