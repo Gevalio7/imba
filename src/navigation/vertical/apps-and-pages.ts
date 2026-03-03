@@ -51,47 +51,6 @@ export default [
   { heading: 'Настройки' },
   
   {
-    title: 'Администрирование',
-    icon: { icon: 'bx-cog' },
-    children: [
-      { title: 'Обзор', to: 'apps-settings-administration-administration-settings' },
-      { title: 'Календари', to: 'apps-settings-administration-calendars' },
-      { title: 'Общий каталог', to: 'apps-settings-administration-general-catalog' },
-      { title: 'Журнал производительности', to: 'apps-settings-administration-performance-log' },
-      { title: 'Управление сессиями', to: 'apps-settings-administration-session-management' },
-      { title: 'Сбор данных поддержки', to: 'apps-settings-administration-support-data-collector' },
-      { title: 'Системная конфигурация', to: 'apps-settings-administration-system-configuration' },
-      { title: 'Поддержка системных файлов', to: 'apps-settings-administration-system-file-support' },
-      { title: 'Системный журнал', to: 'apps-settings-administration-system-log' },
-      { title: 'Перевод', to: 'apps-settings-administration-translation' },
-    ],
-  },
-  {
-    title: 'Коммуникация',
-    icon: { icon: 'bx-message' },
-    children: [
-      { title: 'Уведомления администратора', to: 'apps-settings-communication-notifications-admin-notification' },
-      { title: 'Уведомления о встречах', to: 'apps-settings-communication-notifications-appointment-notifications' },
-      { title: 'Журнал коммуникаций', to: 'apps-settings-communication-notifications-communication-log' },
-      { title: 'Настройки уведомлений', to: 'apps-settings-communication-notifications-communication-notifications-settings' },
-      { title: 'Адреса email', to: 'apps-settings-communication-notifications-email-addresses' },
-      { title: 'Post Master фильтры', to: 'apps-settings-communication-notifications-post-master-filters' },
-      { title: 'Почтовые аккаунты', to: 'apps-settings-communication-notifications-post-master-mail-accounts' },
-      { title: 'Уведомления заявок', to: 'apps-settings-communication-notifications-ticket-notifications' },
-    ],
-  },
-  {
-    title: 'Автоматизация',
-    icon: { icon: 'bx-sync' },
-    children: [
-      { title: 'Generic Agent', to: 'apps-settings-processes-automation-generic-agent' },
-      { title: 'Настройки автоматизации', to: 'apps-settings-processes-automation-processes-automation-settings' },
-      { title: 'Управление процессами', to: 'apps-settings-processes-automation-process-management' },
-      { title: 'Связи атрибутов заявок', to: 'apps-settings-processes-automation-ticket-attribute-relations' },
-      { title: 'Веб-сервисы', to: 'apps-settings-processes-automation-web-services' },
-    ],
-  },
-  {
     title: 'Заявки (настройки)',
     icon: { icon: 'bx-detail' },
     children: [
@@ -118,17 +77,30 @@ export default [
     children: [
       { title: 'Агенты', to: 'apps-settings-users-groups-roles-agents' },
       { title: 'Группы агентов', to: 'apps-settings-users-groups-roles-agents-groups' },
-      { title: 'Роли агентов', to: 'apps-settings-users-groups-roles-agents-roles' },
+      { title: 'Роли агентов', to: 'apps-settings-users-groups-roles-roles' },
       { title: 'Компании', to: 'apps-settings-users-groups-roles-customers' },
       { title: 'Группы клиентов', to: 'apps-settings-users-groups-roles-customers-groups' },
       { title: 'Клиенты', to: 'apps-settings-users-groups-roles-customer-users' },
       { title: 'Клиенты компаний', to: 'apps-settings-users-groups-roles-customer-users-customers' },
-      { title: 'Группы клиентов', to: 'apps-settings-users-groups-roles-customer-users-groups' },
-      { title: 'Услуги клиентов', to: 'apps-settings-users-groups-roles-customer-users-services' },
       { title: 'Группы', to: 'apps-settings-users-groups-roles-groups' },
       { title: 'Роли', to: 'apps-settings-users-groups-roles-roles' },
-      { title: 'Группы ролей', to: 'apps-settings-users-groups-roles-roles-groups' },
-      { title: 'Настройки ролей', to: 'apps-settings-users-groups-roles-users-groups-roles-settings' },
+    ],
+  },
+  {
+    title: 'Коммуникации и уведомления',
+    icon: { icon: 'bx-notification' },
+    children: [
+      { title: 'Email адреса', to: 'apps-settings-communication-notifications-email-addresses' },
+      { title: 'Почтовые аккаунты', to: 'apps-settings-communication-notifications-post-master-mail-accounts' },
+    ],
+  },
+  {
+    title: 'Администрирование',
+    icon: { icon: 'bx-cog' },
+    children: [
+      { title: 'Календари', to: 'apps-settings-administration-calendars' },
+      { title: 'Управление сессиями', to: 'apps-settings-administration-session-management' },
+      { title: 'Системный лог', to: 'apps-settings-administration-system-log' },
     ],
   },
 ]

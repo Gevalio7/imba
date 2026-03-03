@@ -16,6 +16,23 @@ interface Agents {
    createdAt: string
    updatedAt: string
    groups?: string
+   queues?: string
+   roleId?: number | null
+}
+
+// Типы данных для Роль
+interface Role {
+  id: number
+  name: string
+  message: string
+  isActive: boolean
+}
+
+// Типы данных для Очередь
+interface Queue {
+  id: number
+  name: string
+  isActive: boolean
 }
 
 
@@ -27,6 +44,65 @@ const agents = ref<Agents[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Данные ролей
+const roles = ref<Role[]>([])
+const rolesLoading = ref(false)
+
+// Данные очередей
+const queues = ref<Queue[]>([])
+const queuesLoading = ref(false)
+const selectedQueueIds = ref<number[]>([])
+
+// Загрузка ролей
+const fetchRoles = async () => {
+  try {
+    rolesLoading.value = true
+    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    roles.value = data.roles
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  } finally {
+    rolesLoading.value = false
+  }
+}
+
+// Загрузка очередей
+const fetchQueues = async () => {
+  try {
+    queuesLoading.value = true
+    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    queues.value = data.queues
+  } catch (err) {
+    console.error('Error fetching queues:', err)
+  } finally {
+    queuesLoading.value = false
+  }
+}
+
+// Загрузка очередей агента
+const fetchAgentQueues = async (agentId: number) => {
+  try {
+    const data = await $fetch<{ agentQueues: Queue[] }>(`${API_BASE}/agents/${agentId}/queues`)
+    return data.agentQueues.map(q => q.id)
+  } catch (err) {
+    console.error('Error fetching agent queues:', err)
+    return []
+  }
+}
+
+// Обновление очередей агента
+const updateAgentQueues = async (agentId: number, queueIds: number[]) => {
+  try {
+    await $fetch(`${API_BASE}/agents/${agentId}/queues`, {
+      method: 'PUT',
+      body: { queueIds }
+    })
+  } catch (err) {
+    console.error('Error updating agent queues:', err)
+    throw err
+  }
+}
 
 // Загрузка данных из API
 const fetchAgents = async () => {
@@ -100,6 +176,8 @@ const deleteAgents = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchAgents()
+  fetchRoles()
+  fetchQueues()
 })
 
 const headers = [
@@ -112,6 +190,7 @@ const headers = [
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Группы', key: 'groups', sortable: true },
+  { title: 'Очереди', key: 'queues', sortable: true },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
@@ -173,7 +252,8 @@ const confirmBulkStatusChange = async () => {
         email: item.email,
         mobilePhone: item.mobilePhone,
         telegramAccount: item.telegramAccount,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
+        roleId: item.roleId ?? undefined
       })
     }
     selectedItems.value = []
@@ -230,6 +310,7 @@ const defaultItem = ref<Agents>({
   createdAt: '',
   updatedAt: '',
   isActive: true,
+  roleId: null,
 })
 
 const editedItem = ref<Agents>({ ...defaultItem.value })
@@ -242,9 +323,17 @@ const statusOptions = [
 ]
 
 // Методы
-const editItem = (item: Agents) => {
+const editItem = async (item: Agents) => {
   editedIndex.value = agents.value.indexOf(item)
   editedItem.value = { ...item }
+  
+  // Загружаем очереди агента
+  if (item.id > 0) {
+    selectedQueueIds.value = await fetchAgentQueues(item.id)
+  } else {
+    selectedQueueIds.value = []
+  }
+  
   editDialog.value = true
 }
 
@@ -283,8 +372,15 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
+        roleId: editedItem.value.roleId
       })
+      
+      // Обновляем очереди агента
+      if (editedItem.value.id > 0) {
+        await updateAgentQueues(editedItem.value.id, selectedQueueIds.value)
+      }
+      
       showToast('Агент успешно сохранен')
     } else {
       // Добавление нового
@@ -296,8 +392,14 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
+        roleId: editedItem.value.roleId
       })
+      
+      // Обновляем очереди для нового агента
+      if (created.id && selectedQueueIds.value.length > 0) {
+        await updateAgentQueues(created.id, selectedQueueIds.value)
+      }
       showToast('Агент успешно добавлен')
     }
     close()
@@ -333,7 +435,8 @@ const toggleStatus = async (item: Agents, newValue: boolean | null) => {
       email: item.email,
       mobilePhone: item.mobilePhone,
       telegramAccount: item.telegramAccount,
-      isActive: newValue
+      isActive: newValue,
+      roleId: item.roleId ?? undefined
     })
     showToast('Статус агент изменен')
   } catch (err) {
@@ -610,6 +713,19 @@ const addNewAgents = () => {
           </div>
         </template>
 
+        <!-- Очереди -->
+        <template #item.queues="{ item }">
+          <VChip
+            v-if="item.queues"
+            size="small"
+            color="primary"
+            variant="tonal"
+          >
+            {{ item.queues }}
+          </VChip>
+          <span v-else class="text-grey">-</span>
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -717,6 +833,34 @@ const addNewAgents = () => {
               <AppTextField
                 v-model="editedItem.telegramAccount"
                 label="Телеграмм акк"
+              />
+            </VCol>
+
+            <!-- Роль -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.roleId"
+                :items="roles.map(r => ({ title: r.name, value: r.id }))"
+                label="Роль"
+                clearable
+              />
+            </VCol>
+
+            <!-- Очереди -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="selectedQueueIds"
+                :items="queues.map(q => ({ title: q.name, value: q.id }))"
+                label="Очереди"
+                multiple
+                chips
+                closable-chips
               />
             </VCol>
 
