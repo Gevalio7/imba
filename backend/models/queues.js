@@ -124,7 +124,8 @@ class Queues {
       values.push(queue.templateId || null);
 
       // Добавляем isActive
-      values.push(queue.isActive !== undefined ? queue.isActive : true);
+      const isActiveValue = queue.isActive !== undefined ? (queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1') : true;
+      values.push(isActiveValue);
 
       // Преобразуем имена полей в snake_case для SQL
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
@@ -168,8 +169,9 @@ class Queues {
 
       // Добавляем isActive если передан
       if (queue.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(queue.isActive);
+        updates.push(`is_active = ${paramIndex}`);
+        const isActiveValue = queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1';
+        values.push(isActiveValue);
         paramIndex++;
       }
 

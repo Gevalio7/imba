@@ -21,6 +21,7 @@ const states = ref<any[]>([])
 const types = ref<any[]>([])
 const agents = ref<any[]>([])
 const customers = ref<any[]>([])
+const services = ref<any[]>([])
 const slaList = ref<any[]>([])
 
 // Workflow данные
@@ -90,6 +91,16 @@ const fetchCustomers = async () => {
   }
 }
 
+const fetchServices = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/services`)
+    services.value = (data as any).services || []
+  }
+  catch (err) {
+    console.error('Error fetching services:', err)
+  }
+}
+
 const fetchSla = async () => {
   try {
     const data = await $fetch(`${API_BASE}/sla`)
@@ -98,6 +109,11 @@ const fetchSla = async () => {
   catch (err) {
     console.error('Error fetching SLA:', err)
   }
+}
+
+// Получение очереди по ID
+const getQueueById = (queueId: number) => {
+  return queues.value.find(q => q.id === queueId)
 }
 
 // Загрузка workflow и доступных статусов по типу
@@ -138,6 +154,7 @@ const ticket = ref({
   stateId: undefined as number | undefined,
   ownerId: undefined as number | undefined,
   companyId: undefined as number | undefined,
+  serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
   isActive: true,
 })
@@ -152,6 +169,83 @@ watch(() => ticket.value.typeId, async (newTypeId) => {
     initialStatus.value = null
     availableStatuses.value = []
     ticket.value.stateId = undefined
+  }
+})
+
+// Watcher для изменения очереди - автозаполнение полей
+watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
+  // Пропускаем начальную загрузку
+  if (oldQueueId === undefined) return
+  
+  if (newQueueId) {
+    const queue = getQueueById(newQueueId)
+    if (queue) {
+      // Автозаполняем компанию если не выбрана
+      if (!ticket.value.companyId && queue.companyId) {
+        ticket.value.companyId = queue.companyId
+      }
+      // Автозаполняем сервис если не выбран
+      if (!ticket.value.serviceId && queue.serviceId) {
+        ticket.value.serviceId = queue.serviceId
+      }
+      // Автозаполняем SLA если не выбран
+      if (!ticket.value.slaId && queue.slaId) {
+        ticket.value.slaId = queue.slaId
+      }
+      // Автозаполняем приоритет если не выбран
+      if (!ticket.value.priorityId && queue.priorityId) {
+        ticket.value.priorityId = queue.priorityId
+      }
+      
+      // Если у очереди есть workflow - ищем тип с этим workflow
+      if (queue.workflowId && !ticket.value.typeId) {
+        try {
+          const typesData = await $fetch(`${API_BASE}/types`)
+          const typesList = (typesData as any).types || []
+          const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
+          if (typeWithWorkflow) {
+            ticket.value.typeId = typeWithWorkflow.id
+          }
+        } catch (err) {
+          console.error('Error finding type for workflow:', err)
+        }
+      }
+    }
+  }
+})
+
+// Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
+watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
+  // Пропускаем начальную загрузку
+  if (oldCompanyId === undefined) return
+  
+  // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
+  if (newCompanyId && ticket.value.serviceId) {
+    const currentService = services.value.find((s: any) => s.id === ticket.value.serviceId)
+    if (currentService) {
+      // Если у сервиса есть компании и новая компания не в списке - очищаем сервис
+      if (currentService.customers && currentService.customers.length > 0) {
+        const belongsToCompany = currentService.customers.some((c: any) => c.id === newCompanyId)
+        if (!belongsToCompany) {
+          // Сервис не принадлежит компании - очищаем выбор
+          ticket.value.serviceId = undefined
+        }
+      }
+    }
+  }
+})
+
+// Watcher для изменения сервиса - автозаполнение SLA
+watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
+  // Пропускаем начальную загрузку
+  if (oldServiceId === undefined) return
+  
+  // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
+  if (newServiceId && !ticket.value.slaId) {
+    const service = services.value.find((s: any) => s.id === newServiceId)
+    if (service && service.sla && service.sla.id) {
+      ticket.value.slaId = service.sla.id
+    }
   }
 })
 
@@ -210,6 +304,23 @@ const statusOptions = computed(() => {
 const selectedSla = computed(() => {
   if (!ticket.value.slaId) return null
   return slaList.value.find(s => s.id === ticket.value.slaId)
+})
+
+// Вычисляемые сервисы - фильтруются по компании если она выбрана
+const filteredServices = computed(() => {
+  // Если компания не выбрана - показываем все сервисы
+  if (!ticket.value.companyId) {
+    return services.value
+  }
+  // Фильтруем сервисы по компании
+  return services.value.filter((s: any) => {
+    // Сервис без компаний - показываем (глобальный)
+    if (!s.customers || s.customers.length === 0) {
+      return true
+    }
+    // Проверяем есть ли компания в списке компаний сервиса
+    return s.customers.some((c: any) => c.id === ticket.value.companyId)
+  })
 })
 
 // Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
@@ -352,6 +463,7 @@ onMounted(async () => {
     fetchTypes(),
     fetchAgents(),
     fetchCustomers(),
+    fetchServices(),
     fetchSla(),
   ])
 })
@@ -615,6 +727,16 @@ onMounted(async () => {
                 item-value="id"
                 label="Компания"
                 placeholder="Выберите компанию"
+                clearable
+              />
+
+              <AppSelect
+                v-model="ticket.serviceId"
+                :items="filteredServices"
+                item-title="name"
+                item-value="id"
+                label="Сервис"
+                placeholder="Выберите сервис"
                 clearable
               />
 

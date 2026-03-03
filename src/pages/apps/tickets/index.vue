@@ -23,6 +23,8 @@ interface Ticket {
   ownerLastname: string | null
   companyId: number | null
   companyName: string | null
+  serviceId: number | null
+  serviceName: string | null
   slaId: number | null
   slaName: string | null
   isActive: boolean
@@ -93,6 +95,7 @@ const headers = [
   { title: 'Срок решения', key: 'resolutionDeadline', sortable: true },
   { title: 'Владелец', key: 'ownerLogin', sortable: false },
   { title: 'Компания', key: 'companyName', sortable: false },
+  { title: 'Сервис', key: 'serviceName', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false },
 ]
@@ -486,6 +489,11 @@ const editTicket = (id: number) => {
         <!-- Владелец -->
         <template #item.ownerLogin="{ item }">
           <span class="text-body-2">{{ getOwnerName(item) }}</span>
+        </template>
+
+        <!-- Сервис -->
+        <template #item.serviceName="{ item }">
+          <span class="text-body-2">{{ item.serviceName || '-' }}</span>
         </template>
 
         <!-- Активен -->
