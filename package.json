@@ -14,7 +14,7 @@
     "postinstall": "npm run build:icons && npm run msw:init"
   },
   "dependencies": {
-    "@casl/ability": "6.7.3",
+    "@casl/ability": "^6.8.0",
     "@casl/vue": "2.2.2",
     "@floating-ui/dom": "1.6.8",
     "@formkit/drag-and-drop": "0.1.6",
@@ -40,7 +40,7 @@
     "prismjs": "1.30.0",
     "roboto-fontface": "0.10.0",
     "shepherd.js": "13.0.3",
-    "swiper": "11.2.10",
+    "swiper": "^12.1.2",
     "ufo": "1.6.1",
     "unplugin-vue-define-options": "1.5.5",
     "vue": "3.5.23",
@@ -55,6 +55,7 @@
     "webfontloader": "1.6.28"
   },
   "devDependencies": {
+    "@antfu/eslint-config-ts": "^0.43.1",
     "@antfu/eslint-config-vue": "0.43.1",
     "@antfu/utils": "0.7.10",
     "@fullcalendar/core": "6.1.19",
@@ -81,8 +82,10 @@
     "@types/mapbox-gl": "3.4.1",
     "@types/node": "24.10.0",
     "@types/webfontloader": "1.6.38",
-    "@typescript-eslint/eslint-plugin": "7.18.0",
-    "@typescript-eslint/parser": "7.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "@typescript-eslint/type-utils": "^8.56.1",
+    "@typescript-eslint/utils": "^8.56.1",
     "@vitejs/plugin-vue": "6.0.1",
     "@vitejs/plugin-vue-jsx": "5.1.1",
     "eslint": "8.57.1",
@@ -95,6 +98,7 @@
     "eslint-plugin-sonarjs": "0.24.0",
     "eslint-plugin-unicorn": "51.0.1",
     "eslint-plugin-vue": "9.33.0",
+    "minimatch": "^10.2.4",
     "msw": "^2.12.7",
     "postcss-html": "1.8.0",
     "postcss-scss": "4.0.9",
@@ -124,7 +128,8 @@
   },
   "overrides": {
     "postcss": "^8",
-    "@tiptap/core": "^2"
+    "@tiptap/core": "^2",
+    "minimatch": "^10.2.4"
   },
   "msw": {
     "workerDirectory": "public"
