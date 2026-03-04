@@ -7,6 +7,20 @@ interface CustomersGroups {
   id: number
   name: string
   message: string
+  customerId?: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Типы данных для Компания
+interface Customer {
+  id: number
+  name: string
+  street: string
+  zip: string
+  city: string
+  comment: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -15,6 +29,30 @@ interface CustomersGroups {
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные компании
+const customers = ref<Customer[]>([])
+
+// Загрузка компаний
+const fetchCustomers = async () => {
+  try {
+    const data = await $fetch<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
+    console.log('📥 Загружены компании:', data.customers)
+    customers.value = data.customers
+  } catch (err) {
+    console.error('Error fetching customers:', err)
+  }
+}
+
+// Получить название компании по ID
+const getCustomerName = (customerId: number | undefined) => {
+  console.log('🔍 getCustomerName вызвана с customerId:', customerId, 'тип:', typeof customerId)
+  console.log('🔍 customers.value:', JSON.stringify(customers.value))
+  if (!customerId) return 'Не назначена'
+  const customer = customers.value.find(c => c.id === customerId || c.id === Number(customerId))
+  console.log('🔍 Найденный customer:', customer)
+  return customer?.name || 'Не назначена'
+}
 
 // Данные группы клиентов
 const customersGroups = ref<CustomersGroups[]>([])
@@ -31,6 +69,7 @@ const fetchCustomersGroups = async () => {
     const data = await $fetch<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups`)
     console.log('Fetched customersGroups data:', data)
     customersGroups.value = data.customersGroups
+    console.log('📊 customersGroups.value после загрузки:', JSON.stringify(customersGroups.value))
     total.value = data.total
   } catch (err) {
     error.value = 'Ошибка загрузки группы клиентов'
@@ -92,12 +131,14 @@ const deleteCustomersGroups = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchCustomersGroups()
+  fetchCustomers()
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Компания', key: 'customer', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -107,6 +148,12 @@ const headers = [
 // Фильтрация
 const filteredCustomersGroups = computed(() => {
   let filtered = customersGroups.value
+  
+  // Логируем для отладки
+  console.log('🔄 filteredCustomersGroups вычислен, количество:', filtered.length)
+  filtered.forEach((cg, i) => {
+    console.log(`🔄 Элемент ${i}: customerId=${cg.customerId}, company=${getCustomerName(cg.customerId)}`)
+  })
 
   if (statusFilter.value !== null) {
     // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
@@ -205,6 +252,7 @@ const defaultItem = ref<CustomersGroups>({
   id: -1,
   name: '',
   message: '',
+  customerId: undefined,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -254,21 +302,25 @@ const save = async () => {
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updateCustomersGroups(editedItem.value.id, {
-        ...editedItem.value,
+        name: editedItem.value.name,
+        message: editedItem.value.message,
+        customerId: editedItem.value.customerId,
         isActive: editedItem.value.isActive
       })
-      showToast('Группа клиентов успешно сохранен')
+      showToast('Группа клиентов успешно сохранена')
     } else {
       // Добавление нового
       const created = await createCustomersGroups({
-        ...editedItem.value,
+        name: editedItem.value.name,
+        message: editedItem.value.message,
+        customerId: editedItem.value.customerId,
         isActive: editedItem.value.isActive
       })
-      showToast('Группа клиентов успешно добавлен')
+      showToast('Группа клиентов успешно добавлена')
     }
     close()
   } catch (err) {
-    showToast('Ошибка сохранения группа клиентов', 'error')
+    showToast('Ошибка сохранения группы клиентов', 'error')
   }
 }
 
@@ -290,10 +342,12 @@ const toggleStatus = async (item: CustomersGroups, newValue: boolean) => {
 
   try {
     await updateCustomersGroups(item.id, {
-      ...item,
+      name: item.name,
+      message: item.message,
+      customerId: item.customerId,
       isActive: newValue
     })
-    showToast('Статус группа клиентов изменен')
+    showToast('Статус группы клиентов изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -565,6 +619,11 @@ const addNewCustomersGroups = () => {
           </div>
         </template>
 
+        <!-- Компания -->
+        <template #item.customer="{ item }">
+          {{ getCustomerName(item.customerId) }}
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -618,6 +677,22 @@ const addNewCustomersGroups = () => {
                 label="Сообщение"
                 rows="3"
                 placeholder="Введите сообщение..."
+              />
+            </VCol>
+
+            <!-- Компания -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.customerId"
+                :items="customers"
+                item-title="name"
+                item-value="id"
+                label="Компания"
+                placeholder="Выберите компанию"
+                clearable
               />
             </VCol>
 

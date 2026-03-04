@@ -112,6 +112,15 @@ kill_port 5175
 kill_port 5176
 kill_port 3000
 
+# Очистка кэша Vite
+print_color $CYAN "\n🗑️  Очистка кэша Vite..."
+if [ -d "node_modules/.vite" ]; then
+    rm -rf node_modules/.vite
+    print_color $GREEN "✅ Кэш Vite очищен"
+else
+    print_color $GREEN "✅ Кэш Vite уже пуст"
+fi
+
 # Проверка зависимостей
 print_color $CYAN "\n📦 Проверка зависимостей..."
 

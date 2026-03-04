@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class CustomersGroups {
   static tableName = 'customers_groups';
-  static fields = 'name, message';
+  static fields = 'name, message, customerId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;

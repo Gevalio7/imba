@@ -2,6 +2,17 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 
+// Типы данных для Группа клиентов
+interface CustomersGroups {
+  id: number
+  name: string
+  message: string
+  customerId?: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // Типы данных для Компания
 interface Customers {
   id: number
@@ -14,6 +25,8 @@ interface Customers {
   createdAt: string
   updatedAt: string
   services?: Services[]
+  customersGroups?: CustomersGroups[]
+  serviceIds?: number[]
 }
 
 // Типы данных для Сервисы (из /services)
@@ -36,6 +49,8 @@ interface CustomerUsers {
   email: string
   mobilePhone: string
   telegramAccount: string
+  customerId?: number
+  customersGroupId?: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -43,6 +58,78 @@ interface CustomerUsers {
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// ========== ГРУППЫ КЛИЕНТОВ ==========
+// Данные группы клиентов
+const customersGroups = ref<CustomersGroups[]>([])
+const customersGroupsTotal = ref(0)
+const customersGroupsLoading = ref(false)
+const customersGroupsError = ref<string | null>(null)
+
+// Загрузка данных из API
+const fetchCustomersGroups = async () => {
+  try {
+    customersGroupsLoading.value = true
+    customersGroupsError.value = null
+    const data = await $fetch<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups`)
+    customersGroups.value = data.customersGroups
+    customersGroupsTotal.value = data.total
+  } catch (err) {
+    customersGroupsError.value = 'Ошибка загрузки групп клиентов'
+    console.error('Error fetching customersGroups:', err)
+  } finally {
+    customersGroupsLoading.value = false
+  }
+}
+
+// Создание группы клиентов
+const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<CustomersGroups>(`${API_BASE}/customersGroups`, {
+      method: 'POST',
+      body: item
+    })
+    customersGroups.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating customersGroups:', err)
+    throw err
+  }
+}
+
+// Обновление группы клиентов
+const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<CustomersGroups>(`${API_BASE}/customersGroups/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = customersGroups.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customersGroups.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating customersGroups:', err)
+    throw err
+  }
+}
+
+// Удаление группы клиентов
+const deleteCustomersGroups = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/customersGroups/${id}`, {
+      method: 'DELETE'
+    })
+    const index = customersGroups.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      customersGroups.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting customersGroups:', err)
+    throw err
+  }
+}
 
 // ========== КОМПАНИИ ==========
 // Данные компании
@@ -112,78 +199,6 @@ const deleteCustomers = async (id: number) => {
     }
   } catch (err) {
     console.error('Error deleting customers:', err)
-    throw err
-  }
-}
-
-// ========== СЕРВИСЫ (из /services) ==========
-// Данные сервисов
-const services = ref<Services[]>([])
-const servicesTotal = ref(0)
-const servicesLoading = ref(false)
-const servicesError = ref<string | null>(null)
-
-// Загрузка сервисов из API
-const fetchServices = async () => {
-  try {
-    servicesLoading.value = true
-    servicesError.value = null
-    const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
-    services.value = data.services
-    servicesTotal.value = data.total
-  } catch (err) {
-    servicesError.value = 'Ошибка загрузки сервисов'
-    console.error('Error fetching services:', err)
-  } finally {
-    servicesLoading.value = false
-  }
-}
-
-// Создание сервиса
-const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $fetch<Services>(`${API_BASE}/services`, {
-      method: 'POST',
-      body: item
-    })
-    services.value.unshift(data) // Добавляем в начало массива
-    return data
-  } catch (err) {
-    console.error('Error creating services:', err)
-    throw err
-  }
-}
-
-// Обновление сервиса
-const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $fetch<Services>(`${API_BASE}/services/${id}`, {
-      method: 'PUT',
-      body: item
-    })
-    const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      services.value[index] = data
-    }
-    return data
-  } catch (err) {
-    console.error('Error updating services:', err)
-    throw err
-  }
-}
-
-// Удаление сервиса
-const deleteServices = async (id: number) => {
-  try {
-    await $fetch(`${API_BASE}/services/${id}`, {
-      method: 'DELETE'
-    })
-    const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      services.value.splice(index, 1)
-    }
-  } catch (err) {
-    console.error('Error deleting services:', err)
     throw err
   }
 }
@@ -262,12 +277,25 @@ const deleteCustomerUsers = async (id: number) => {
 
 // Инициализация
 onMounted(() => {
+  fetchCustomersGroups()
   fetchCustomers()
-  fetchServices()
   fetchCustomerUsers()
 })
 
 // ========== ЗАГОЛОВКИ ТАБЛИЦ ==========
+// ========== ЗАГОЛОВКИ ТАБЛИЦ ==========
+// Заголовки таблицы групп клиентов
+const customersGroupsHeaders = [
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
+  { title: 'Сообщение', key: 'message', sortable: true },
+  { title: 'Компания', key: 'customer', sortable: false },
+  { title: 'Создано', key: 'createdAt', sortable: true },
+  { title: 'Изменено', key: 'updatedAt', sortable: true },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
+]
+
 // Заголовки таблицы компаний
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
@@ -283,18 +311,6 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
-// Заголовки таблицы сервисов
-const servicesHeaders = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Комментарий', key: 'comment', sortable: true },
-  { title: 'Тип', key: 'type', sortable: true },
-  { title: 'Создано', key: 'createdAt', sortable: true },
-  { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
-]
-
 // Заголовки таблицы клиентов компании
 const usersHeaders = [
   { title: 'ID', key: 'id', sortable: true },
@@ -304,15 +320,42 @@ const usersHeaders = [
   { title: 'Email', key: 'email', sortable: true },
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
+  { title: 'Компания', key: 'customer', sortable: false },
+  { title: 'Группа', key: 'customersGroup', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // ========== ФИЛЬТРАЦИЯ ==========
 // Поиск
+const customersGroupsSearchQuery = ref('')
 const searchQuery = ref('')
 const servicesSearchQuery = ref('')
 const usersSearchQuery = ref('')
+
+// Фильтрация групп клиентов
+const filteredCustomersGroups = computed(() => {
+  let filtered = customersGroups.value
+
+  if (customersGroupsStatusFilter.value !== null) {
+    filtered = filtered.filter(p => p.isActive === (customersGroupsStatusFilter.value === 1))
+  }
+
+  if (customersGroupsSearchQuery.value.trim()) {
+    const query = customersGroupsSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.message?.toLowerCase().includes(query)
+    )
+  }
+
+  return filtered
+})
+
+// Сброс фильтров групп клиентов
+const clearCustomersGroupsFilters = () => {
+  customersGroupsStatusFilter.value = null
+}
 
 // Фильтрация компаний
 const filteredCustomers = computed(() => {
@@ -386,9 +429,65 @@ const filteredCustomerUsers = computed(() => {
   return filtered
 })
 
+// Получить название компании по ID
+const getCustomerName = (customerId: number | undefined) => {
+  if (!customerId) return 'Не назначена'
+  const customer = customers.value.find(c => c.id === customerId || c.id === Number(customerId))
+  return customer?.name || 'Не назначена'
+}
+
+// Получить название группы по ID
+const getCustomersGroupName = (customersGroupId: number | undefined) => {
+  if (!customersGroupId) return 'Не назначена'
+  const group = customersGroups.value.find(g => g.id === customersGroupId || g.id === Number(customersGroupId))
+  return group?.name || 'Не назначена'
+}
+
 // Сброс фильтров клиентов
 const clearUsersFilters = () => {
   usersStatusFilter.value = null
+}
+
+// ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ ГРУПП КЛИЕНТОВ ==========
+const bulkDeleteCustomersGroups = () => {
+  isBulkDeleteCustomersGroupsDialogOpen.value = true
+}
+
+const bulkChangeStatusCustomersGroups = () => {
+  isBulkStatusCustomersGroupsDialogOpen.value = true
+}
+
+const confirmBulkDeleteCustomersGroups = async () => {
+  try {
+    const count = selectedCustomersGroups.value.length
+    for (const item of selectedCustomersGroups.value) {
+      await deleteCustomersGroups(item.id)
+    }
+    selectedCustomersGroups.value = []
+    showToast(`Удалено ${count} групп клиентов`)
+    isBulkDeleteCustomersGroupsDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
+}
+
+const confirmBulkStatusChangeCustomersGroups = async () => {
+  try {
+    const count = selectedCustomersGroups.value.length
+    for (const item of selectedCustomersGroups.value) {
+      await updateCustomersGroups(item.id, {
+        name: item.name,
+        message: item.message,
+        customerId: item.customerId,
+        isActive: bulkStatusCustomersGroupsValue.value === 1
+      })
+    }
+    selectedCustomersGroups.value = []
+    showToast(`Статус изменен для ${count} групп клиентов`)
+    isBulkStatusCustomersGroupsDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
 }
 
 // ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КОМПАНИЙ ==========
@@ -524,6 +623,10 @@ const resolveStatusVariant = (isActive: boolean) => {
 }
 
 // ========== ПАГИНАЦИЯ ==========
+// Пагинация групп клиентов
+const customersGroupsCurrentPage = ref(1)
+const customersGroupsItemsPerPage = ref(10)
+
 // Пагинация компаний
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
@@ -537,6 +640,10 @@ const usersCurrentPage = ref(1)
 const usersItemsPerPage = ref(10)
 
 // ========== ФИЛЬТРЫ ==========
+// Фильтры групп клиентов
+const customersGroupsStatusFilter = ref<number | null>(null)
+const isCustomersGroupsFilterDialogOpen = ref(false)
+
 // Фильтры компаний
 const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
@@ -550,6 +657,13 @@ const usersStatusFilter = ref<number | null>(null)
 const isUsersFilterDialogOpen = ref(false)
 
 // ========== МАССОВЫЕ ДЕЙСТВИЯ ==========
+// Массовые действия для групп клиентов
+const selectedCustomersGroups = ref<CustomersGroups[]>([])
+const isBulkCustomersGroupsActionsMenuOpen = ref(false)
+const isBulkDeleteCustomersGroupsDialogOpen = ref(false)
+const isBulkStatusCustomersGroupsDialogOpen = ref(false)
+const bulkStatusCustomersGroupsValue = ref<number>(1)
+
 // Массовые действия для компаний
 const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
@@ -582,6 +696,23 @@ watch(selectedServices, () => {
 }, { deep: true })
 
 // ========== ДИАЛОГИ ==========
+// Диалоги групп клиентов
+const editCustomersGroupsDialog = ref(false)
+const deleteCustomersGroupsDialog = ref(false)
+
+const defaultCustomersGroupsItem = ref<CustomersGroups>({
+  id: -1,
+  name: '',
+  message: '',
+  customerId: undefined,
+  createdAt: '',
+  updatedAt: '',
+  isActive: true,
+})
+
+const editedCustomersGroupsItem = ref<CustomersGroups>({ ...defaultCustomersGroupsItem.value })
+const editedCustomersGroupsIndex = ref(-1)
+
 // Диалоги компаний
 const editDialog = ref(false)
 const deleteDialog = ref(false)
@@ -643,6 +774,9 @@ const typeOptions = [
   'Ит'
 ]
 
+// Выбранные сотрудники для редактирования
+const selectedCustomerUserIds = ref<number[]>([])
+
 // Данные для редактирования клиента
 const defaultUserItem = ref<CustomerUsers>({
   id: -1,
@@ -652,6 +786,8 @@ const defaultUserItem = ref<CustomerUsers>({
   email: '',
   mobilePhone: '',
   telegramAccount: '',
+  customerId: undefined,
+  customersGroupId: undefined,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -665,6 +801,93 @@ const statusOptions = [
   { text: 'Активен', value: 1 },
   { text: 'Не активен', value: 2 },
 ]
+
+// ========== МЕТОДЫ ГРУПП КЛИЕНТОВ ==========
+const editCustomersGroupsItem = (item: CustomersGroups) => {
+  editedCustomersGroupsIndex.value = customersGroups.value.indexOf(item)
+  editedCustomersGroupsItem.value = { ...item }
+  editCustomersGroupsDialog.value = true
+}
+
+const deleteCustomersGroupsItem = (item: CustomersGroups) => {
+  editedCustomersGroupsIndex.value = customersGroups.value.indexOf(item)
+  editedCustomersGroupsItem.value = { ...item }
+  deleteCustomersGroupsDialog.value = true
+}
+
+const closeCustomersGroups = () => {
+  editCustomersGroupsDialog.value = false
+  editedCustomersGroupsIndex.value = -1
+  editedCustomersGroupsItem.value = { ...defaultCustomersGroupsItem.value }
+}
+
+const closeCustomersGroupsDelete = () => {
+  deleteCustomersGroupsDialog.value = false
+  editedCustomersGroupsIndex.value = -1
+  editedCustomersGroupsItem.value = { ...defaultCustomersGroupsItem.value }
+}
+
+const saveCustomersGroups = async () => {
+  if (!editedCustomersGroupsItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+
+  try {
+    if (editedCustomersGroupsIndex.value > -1) {
+      await updateCustomersGroups(editedCustomersGroupsItem.value.id, {
+        name: editedCustomersGroupsItem.value.name,
+        message: editedCustomersGroupsItem.value.message,
+        customerId: editedCustomersGroupsItem.value.customerId,
+        isActive: editedCustomersGroupsItem.value.isActive
+      })
+      showToast('Группа клиентов успешно сохранена')
+    } else {
+      await createCustomersGroups({
+        name: editedCustomersGroupsItem.value.name,
+        message: editedCustomersGroupsItem.value.message,
+        customerId: editedCustomersGroupsItem.value.customerId,
+        isActive: editedCustomersGroupsItem.value.isActive
+      })
+      showToast('Группа клиентов успешно добавлена')
+    }
+    closeCustomersGroups()
+  } catch (err) {
+    showToast('Ошибка сохранения группы клиентов', 'error')
+  }
+}
+
+const deleteCustomersGroupsConfirm = async () => {
+  try {
+    await deleteCustomersGroups(editedCustomersGroupsItem.value.id)
+    showToast('Группа клиентов успешно удалена')
+    closeCustomersGroupsDelete()
+  } catch (err) {
+    showToast('Ошибка удаления группы клиентов', 'error')
+  }
+}
+
+// Переключение статуса группы клиентов
+const toggleCustomersGroupsStatus = async (item: CustomersGroups, newValue: boolean) => {
+  try {
+    await updateCustomersGroups(item.id, {
+      name: item.name,
+      message: item.message,
+      customerId: item.customerId,
+      isActive: newValue
+    })
+    showToast('Статус группы клиентов изменен')
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
+  }
+}
+
+// Добавление новой группы клиентов
+const addNewCustomersGroups = () => {
+  editedCustomersGroupsItem.value = { ...defaultCustomersGroupsItem.value }
+  editedCustomersGroupsIndex.value = -1
+  editCustomersGroupsDialog.value = true
+}
 
 // ========== МЕТОДЫ КОМПАНИЙ ==========
 const editItem = (item: Customers) => {
@@ -868,6 +1091,8 @@ const saveUser = async () => {
         email: editedUserItem.value.email,
         mobilePhone: editedUserItem.value.mobilePhone,
         telegramAccount: editedUserItem.value.telegramAccount,
+        customerId: editedUserItem.value.customerId,
+        customersGroupId: editedUserItem.value.customersGroupId,
         isActive: editedUserItem.value.isActive
       })
       showToast('Клиент успешно сохранен')
@@ -880,6 +1105,8 @@ const saveUser = async () => {
         email: editedUserItem.value.email,
         mobilePhone: editedUserItem.value.mobilePhone,
         telegramAccount: editedUserItem.value.telegramAccount,
+        customerId: editedUserItem.value.customerId,
+        customersGroupId: editedUserItem.value.customersGroupId,
         isActive: editedUserItem.value.isActive
       })
       showToast('Клиент успешно добавлен')
@@ -1188,7 +1415,7 @@ const addNewUser = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
+              @update:model-value="(val) => toggleStatus(item, val ?? false)"
               color="primary"
               hide-details
             />
@@ -1390,19 +1617,19 @@ const addNewUser = () => {
     </VDialog>
   </div>
 
-  <!-- ========== ТАБЛИЦА СЕРВИСОВ КОМПАНИИ ========== -->
+  <!-- ========== ТАБЛИЦА ГРУПП КЛИЕНТОВ ========== -->
   <div>
-    <VCard title="Сервисы Компании">
+    <VCard title="Группы клиентов">
 
       <!-- Индикатор загрузки -->
-      <div v-if="servicesLoading" class="d-flex justify-center pa-6">
+      <div v-if="customersGroupsLoading" class="d-flex justify-center pa-6">
         <VProgressCircular indeterminate color="primary" />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="servicesError" class="d-flex justify-center pa-6">
+      <div v-else-if="customersGroupsError" class="d-flex justify-center pa-6">
         <VAlert type="error" class="ma-4">
-          {{ servicesError }}
+          {{ customersGroupsError }}
         </VAlert>
       </div>
 
@@ -1410,9 +1637,12 @@ const addNewUser = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
-            placeholder="Поиск сервисов"
+            v-model="customersGroupsSearchQuery"
+            placeholder="Поиск групп клиентов"
             style="inline-size: 250px;"
             class="me-3"
+            clearable
+            clear-icon="bx-x"
           />
         </div>
 
@@ -1421,14 +1651,14 @@ const addNewUser = () => {
           variant="tonal"
           color="secondary"
           prepend-icon="bx-filter"
-          @click="isServicesFilterDialogOpen = true"
+          @click="isCustomersGroupsFilterDialogOpen = true"
         >
           Фильтр
         </VBtn>
 
         <!-- Кнопка массовых действий -->
         <VMenu
-          v-model="isBulkServicesActionsMenuOpen"
+          v-model="isBulkCustomersGroupsActionsMenuOpen"
           :close-on-content-click="false"
         >
           <template #activator="{ props }">
@@ -1436,25 +1666,25 @@ const addNewUser = () => {
               variant="tonal"
               color="secondary"
               prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedServices.length === 0"
+              :disabled="selectedCustomersGroups.length === 0"
               v-bind="props"
             >
-              Действия ({{ selectedServices.length }})
+              Действия ({{ selectedCustomersGroups.length }})
             </VBtn>
           </template>
           <VList>
             <VListItem
               @click="() => {
-                bulkDeleteServices()
-                isBulkServicesActionsMenuOpen = false
+                bulkDeleteCustomersGroups()
+                isBulkCustomersGroupsActionsMenuOpen = false
               }"
             >
               <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
             <VListItem
               @click="() => {
-                bulkChangeStatusServices()
-                isBulkServicesActionsMenuOpen = false
+                bulkChangeStatusCustomersGroups()
+                isBulkCustomersGroupsActionsMenuOpen = false
               }"
             >
               <VListItemTitle>Изменить статус</VListItemTitle>
@@ -1465,7 +1695,7 @@ const addNewUser = () => {
         <VSpacer />
         <div class="d-flex gap-4 flex-wrap align-center">
           <AppSelect
-            v-model="servicesItemsPerPage"
+            v-model="customersGroupsItemsPerPage"
             :items="[5, 10, 20, 25, 50]"
           />
           <!-- Экспорт -->
@@ -1480,16 +1710,16 @@ const addNewUser = () => {
           <VBtn
             color="primary"
             prepend-icon="bx-plus"
-            @click="addNewService"
+            @click="addNewCustomersGroups"
           >
-            Добавить сервис
+            Добавить группу
           </VBtn>
         </div>
       </div>
 
-      <!-- Диалог фильтров сервисов -->
+      <!-- Диалог фильтров групп клиентов -->
       <VDialog
-        v-model="isServicesFilterDialogOpen"
+        v-model="isCustomersGroupsFilterDialogOpen"
         max-width="500px"
       >
         <VCard title="Фильтры">
@@ -1497,7 +1727,7 @@ const addNewUser = () => {
             <VRow>
               <VCol cols="12">
                 <AppSelect
-                  v-model="servicesStatusFilter"
+                  v-model="customersGroupsStatusFilter"
                   placeholder="Статус"
                   :items="[
                     { title: 'Активен', value: 1 },
@@ -1514,21 +1744,21 @@ const addNewUser = () => {
             <div class="d-flex justify-end gap-4">
               <VBtn
                 variant="text"
-                @click="clearServicesFilters"
+                @click="clearCustomersGroupsFilters"
               >
                 Сбросить
               </VBtn>
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isServicesFilterDialogOpen = false"
+                @click="isCustomersGroupsFilterDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="isServicesFilterDialogOpen = false"
+                @click="isCustomersGroupsFilterDialogOpen = false"
               >
                 Применить
               </VBtn>
@@ -1537,28 +1767,28 @@ const addNewUser = () => {
         </VCard>
       </VDialog>
 
-      <!-- Диалог массового удаления сервисов -->
+      <!-- Диалог массового удаления групп клиентов -->
       <VDialog
-        v-model="isBulkDeleteServicesDialogOpen"
+        v-model="isBulkDeleteCustomersGroupsDialogOpen"
         max-width="500px"
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные сервисы? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные группы клиентов? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isBulkDeleteServicesDialogOpen = false"
+                @click="isBulkDeleteCustomersGroupsDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="confirmBulkDeleteServices"
+                @click="confirmBulkDeleteCustomersGroups"
               >
                 Удалить
               </VBtn>
@@ -1567,15 +1797,15 @@ const addNewUser = () => {
         </VCard>
       </VDialog>
 
-      <!-- Диалог массового изменения статуса сервисов -->
+      <!-- Диалог массового изменения статуса групп клиентов -->
       <VDialog
-        v-model="isBulkStatusServicesDialogOpen"
+        v-model="isBulkStatusCustomersGroupsDialogOpen"
         max-width="500px"
       >
         <VCard title="Изменить статус">
           <VCardText>
             <AppSelect
-              v-model="bulkStatusServicesValue"
+              v-model="bulkStatusCustomersGroupsValue"
               :items="statusOptions"
               item-title="text"
               item-value="value"
@@ -1587,14 +1817,14 @@ const addNewUser = () => {
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isBulkStatusServicesDialogOpen = false"
+                @click="isBulkStatusCustomersGroupsDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="confirmBulkStatusChangeServices"
+                @click="confirmBulkStatusChangeCustomersGroups"
               >
                 Применить
               </VBtn>
@@ -1605,13 +1835,13 @@ const addNewUser = () => {
 
       <VDivider />
 
-      <!-- Таблица сервисов -->
+      <!-- Таблица групп клиентов -->
       <VDataTable
-        v-model="selectedServices"
-        v-model:items-per-page="servicesItemsPerPage"
-        v-model:page="servicesCurrentPage"
-        :headers="servicesHeaders"
-        :items="filteredServices"
+        v-model="selectedCustomersGroups"
+        v-model:items-per-page="customersGroupsItemsPerPage"
+        v-model:page="customersGroupsCurrentPage"
+        :headers="customersGroupsHeaders"
+        :items="filteredCustomersGroups"
         show-select
         :hide-default-footer="true"
         item-value="id"
@@ -1623,7 +1853,7 @@ const addNewUser = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleServiceStatus(item, val)"
+              @update:model-value="(val: boolean | null) => toggleCustomersGroupsStatus(item, val ?? false)"
               color="primary"
               hide-details
             />
@@ -1636,13 +1866,24 @@ const addNewUser = () => {
           </div>
         </template>
 
+        <!-- Компания -->
+        <template #item.customer="{ item }">
+          <VChip
+            size="small"
+            color="primary"
+            variant="tonal"
+          >
+            {{ getCustomerName(item.customerId) }}
+          </VChip>
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editServiceItem(item)">
+            <IconBtn @click="editCustomersGroupsItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteServiceItem(item)">
+            <IconBtn @click="deleteCustomersGroupsItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -1652,66 +1893,56 @@ const addNewUser = () => {
       <!-- Пагинация -->
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
-          v-model="servicesCurrentPage"
-          :length="Math.ceil(filteredServices.length / servicesItemsPerPage) || 1"
+          v-model="customersGroupsCurrentPage"
+          :length="Math.ceil(filteredCustomersGroups.length / customersGroupsItemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
     </VCard>
 
-    <!-- Диалог редактирования сервиса -->
+    <!-- Диалог редактирования группы клиентов -->
     <VDialog
-      v-model="editServiceDialog"
+      v-model="editCustomersGroupsDialog"
       max-width="600px"
     >
-      <VCard :title="editedServiceIndex > -1 ? 'Редактировать сервис' : 'Добавить сервис'">
+      <VCard :title="editedCustomersGroupsIndex > -1 ? 'Редактировать группу клиентов' : 'Добавить группу клиентов'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12" sm="6">
               <AppTextField
-                v-model="editedServiceItem.name"
+                v-model="editedCustomersGroupsItem.name"
                 label="Название *"
               />
             </VCol>
 
-            <!-- Тип -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <!-- Сообщение -->
+            <VCol cols="12">
+              <AppTextarea
+                v-model="editedCustomersGroupsItem.message"
+                label="Сообщение"
+                rows="3"
+                placeholder="Введите сообщение..."
+              />
+            </VCol>
+
+            <!-- Компания -->
+            <VCol cols="12" sm="6">
               <AppSelect
-                v-model="editedServiceItem.type"
-                :items="typeOptions"
-                label="Тип"
-                placeholder="Выберите тип"
+                v-model="editedCustomersGroupsItem.customerId"
+                :items="customers"
+                item-title="name"
+                item-value="id"
+                label="Компания"
+                placeholder="Выберите компанию"
                 clearable
               />
             </VCol>
 
-            <!-- Комментарий -->
-            <VCol
-              cols="12"
-            >
-              <AppTextarea
-                v-model="editedServiceItem.comment"
-                label="Комментарий"
-                rows="3"
-                placeholder="Введите комментарий..."
-              />
-            </VCol>
-
             <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
+            <VCol cols="12" sm="6">
               <VSwitch
-                v-model="editedServiceItem.isActive"
+                v-model="editedCustomersGroupsItem.isActive"
                 label="Активен"
                 color="primary"
               />
@@ -1724,14 +1955,14 @@ const addNewUser = () => {
             <VBtn
               color="error"
               variant="outlined"
-              @click="closeService"
+              @click="closeCustomersGroups"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="saveService"
+              @click="saveCustomersGroups"
             >
               Сохранить
             </VBtn>
@@ -1740,25 +1971,25 @@ const addNewUser = () => {
       </VCard>
     </VDialog>
 
-    <!-- Диалог удаления сервиса -->
+    <!-- Диалог удаления группы клиентов -->
     <VDialog
-      v-model="deleteServiceDialog"
+      v-model="deleteCustomersGroupsDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот сервис?">
+      <VCard title="Вы уверены, что хотите удалить эту группу клиентов?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn
               color="error"
               variant="outlined"
-              @click="closeServiceDelete"
+              @click="closeCustomersGroupsDelete"
             >
               Отмена
             </VBtn>
             <VBtn
               color="success"
               variant="elevated"
-              @click="deleteServiceItemConfirm"
+              @click="deleteCustomersGroupsConfirm"
             >
               Удалить
             </VBtn>
@@ -2001,7 +2232,7 @@ const addNewUser = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleUserStatus(item, val)"
+              @update:model-value="(val) => toggleUserStatus(item, val ?? false)"
               color="primary"
               hide-details
             />
@@ -2012,6 +2243,28 @@ const addNewUser = () => {
               size="small"
             />
           </div>
+        </template>
+
+        <!-- Компания -->
+        <template #item.customer="{ item }">
+          <VChip
+            size="small"
+            color="primary"
+            variant="tonal"
+          >
+            {{ getCustomerName(item.customerId) }}
+          </VChip>
+        </template>
+
+        <!-- Группа -->
+        <template #item.customersGroup="{ item }">
+          <VChip
+            size="small"
+            color="secondary"
+            variant="tonal"
+          >
+            {{ getCustomersGroupName(item.customersGroupId) }}
+          </VChip>
         </template>
 
         <!-- Действия -->
@@ -2109,6 +2362,38 @@ const addNewUser = () => {
               <AppTextField
                 v-model="editedUserItem.telegramAccount"
                 label="Телеграмм акк"
+              />
+            </VCol>
+
+            <!-- Компания -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedUserItem.customerId"
+                :items="customers"
+                item-title="name"
+                item-value="id"
+                label="Компания"
+                placeholder="Выберите компанию"
+                clearable
+              />
+            </VCol>
+
+            <!-- Группа клиентов -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedUserItem.customersGroupId"
+                :items="customersGroups"
+                item-title="name"
+                item-value="id"
+                label="Группа клиентов"
+                placeholder="Выберите группу"
+                clearable
               />
             </VCol>
 

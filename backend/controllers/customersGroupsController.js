@@ -42,6 +42,7 @@ const createCustomersGroups = asyncHandler(async (req, res) => {
   const data = {};
   data.name = req.body.name;
   data.message = req.body.message;
+  data.customerId = req.body.customerId;
   
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
@@ -69,6 +70,7 @@ const updateCustomersGroups = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.message !== undefined) data.message = req.body.message;
+  if (req.body.customerId !== undefined) data.customerId = req.body.customerId;
   
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {

@@ -12,6 +12,20 @@ interface CustomerUsers {
   email: string
   mobilePhone: string
   telegramAccount: string
+  customerId?: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Типы данных для Компания
+interface Customer {
+  id: number
+  name: string
+  street: string
+  zip: string
+  city: string
+  comment: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -20,6 +34,26 @@ interface CustomerUsers {
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Данные компании
+const customers = ref<Customer[]>([])
+
+// Загрузка компаний
+const fetchCustomers = async () => {
+  try {
+    const data = await $fetch<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
+    customers.value = data.customers
+  } catch (err) {
+    console.error('Error fetching customers:', err)
+  }
+}
+
+// Получить название компании по ID
+const getCustomerName = (customerId: number | undefined) => {
+  if (!customerId) return 'Не назначена'
+  const customer = customers.value.find(c => c.id === customerId)
+  return customer?.name || 'Не назначена'
+}
 
 // Данные клиенты
 const customerUsers = ref<CustomerUsers[]>([])
@@ -99,6 +133,7 @@ const deleteCustomerUsers = async (id: number) => {
 // Инициализация
 onMounted(() => {
   fetchCustomerUsers()
+  fetchCustomers()
 })
 
 const headers = [
@@ -109,6 +144,7 @@ const headers = [
   { title: 'Email', key: 'email', sortable: true },
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
+  { title: 'Компания', key: 'customer', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -225,6 +261,7 @@ const defaultItem = ref<CustomerUsers>({
   email: '',
   mobilePhone: '',
   telegramAccount: '',
+  customerId: undefined,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -281,6 +318,7 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
+        customerId: editedItem.value.customerId,
         isActive: editedItem.value.isActive
       })
       showToast('Клиент успешно сохранен')
@@ -294,6 +332,7 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
+        customerId: editedItem.value.customerId,
         isActive: editedItem.value.isActive
       })
       showToast('Клиент успешно добавлен')
@@ -608,6 +647,11 @@ const addNewCustomerUsers = () => {
           </div>
         </template>
 
+        <!-- Компания -->
+        <template #item.customer="{ item }">
+          {{ getCustomerName(item.customerId) }}
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -715,6 +759,22 @@ const addNewCustomerUsers = () => {
               <AppTextField
                 v-model="editedItem.telegramAccount"
                 label="Телеграмм акк"
+              />
+            </VCol>
+
+            <!-- Компания -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.customerId"
+                :items="customers"
+                item-title="name"
+                item-value="id"
+                label="Компания"
+                placeholder="Выберите компанию"
+                clearable
               />
             </VCol>
 
