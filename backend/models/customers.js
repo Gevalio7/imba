@@ -153,7 +153,7 @@ class Customers {
       
       // Добавляем новые связи
       if (serviceIds && serviceIds.length > 0) {
-        const values = serviceIds.map((id, index) => `($1, $${index + 2})`).join(', ');
+        const values = serviceIds.map((id, index) => `($1, ${index + 2})`).join(', ');
         await pool.query(
           `INSERT INTO customers_services (customer_id, service_id) VALUES ${values}`,
           [customerId, ...serviceIds]
@@ -165,6 +165,81 @@ class Customers {
     } catch (error) {
       await pool.query('ROLLBACK');
       console.error('Error in setServices:', error);
+      throw error;
+    }
+  }
+
+  // Получить сотрудников компании
+  static async getCustomerUsers(customerId) {
+    try {
+      const result = await pool.query(
+        `SELECT cu.id, cu.first_name as "firstName", cu.last_name as "lastName", 
+                cu.login, cu.email, cu.mobile_phone as "mobilePhone", 
+                cu.telegram_account as "telegramAccount", cu.is_active as "isActive",
+                cu.created_at as "createdAt", cu.updated_at as "updatedAt"
+         FROM customer_users cu
+         WHERE cu.customer_id = $1
+         ORDER BY cu.last_name, cu.first_name`,
+        [customerId]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getCustomerUsers:', error);
+      throw error;
+    }
+  }
+
+  // Добавить сотрудника к компании
+  static async addCustomerUser(customerId, customerUserId) {
+    try {
+      const result = await pool.query(
+        `UPDATE customer_users SET customer_id = $1 WHERE id = $2 RETURNING *`,
+        [customerId, customerUserId]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in addCustomerUser:', error);
+      throw error;
+    }
+  }
+
+  // Удалить сотрудника от компании
+  static async removeCustomerUser(customerUserId) {
+    try {
+      const result = await pool.query(
+        `UPDATE customer_users SET customer_id = NULL WHERE id = $1 RETURNING *`,
+        [customerUserId]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in removeCustomerUser:', error);
+      throw error;
+    }
+  }
+
+  // Установить сотрудников для компании (заменить все)
+  static async setCustomerUsers(customerId, customerUserIds) {
+    try {
+      await pool.query('BEGIN');
+      
+      // Удаляем все существующие связи сотрудников с компаниями для этой компании
+      await pool.query('UPDATE customer_users SET customer_id = NULL WHERE customer_id = $1', [customerId]);
+      
+      // Устанавливаем новые связи
+      if (customerUserIds && customerUserIds.length > 0) {
+        for (const userId of customerUserIds) {
+          await pool.query(
+            `UPDATE customer_users SET customer_id = $1 WHERE id = $2`,
+            [customerId, userId]
+          );
+        }
+      }
+      
+      await pool.query('COMMIT');
+      return true;
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      console.error('Error in setCustomerUsers:', error);
       throw error;
     }
   }

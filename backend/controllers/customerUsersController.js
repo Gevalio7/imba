@@ -49,6 +49,8 @@ const createCustomerUsers = asyncHandler(async (req, res) => {
   data.email = req.body.email;
   data.mobilePhone = req.body.mobilePhone;
   data.telegramAccount = req.body.telegramAccount;
+  data.customerId = req.body.customerId;
+  data.customersGroupId = req.body.customersGroupId;
   
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
@@ -90,6 +92,8 @@ const updateCustomerUsers = asyncHandler(async (req, res) => {
   if (req.body.email !== undefined) data.email = req.body.email;
   if (req.body.mobilePhone !== undefined) data.mobilePhone = req.body.mobilePhone;
   if (req.body.telegramAccount !== undefined) data.telegramAccount = req.body.telegramAccount;
+  if (req.body.customerId !== undefined) data.customerId = req.body.customerId;
+  if (req.body.customersGroupId !== undefined) data.customersGroupId = req.body.customersGroupId;
   
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {

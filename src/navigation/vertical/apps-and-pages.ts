@@ -35,8 +35,28 @@ export default [
     title: 'Пользователи',
     icon: { icon: 'bx-user' },
     children: [
-      { title: 'Список', to: 'apps-user-list' },
-      { title: 'Просмотр', to: { name: 'apps-user-view-id', params: { id: 21 } } },
+      { title: 'Список', to: 'apps-settings-users-groups-roles-customer-users' },
+      { title: 'Создать', to: { path: '/apps/tickets/add' } },     
+    ],
+  },
+  {
+    title: 'Агенты',
+    icon: { icon: 'bx-user' },
+    children: [
+      { title: 'Список', to: 'apps-settings-users-groups-roles-agents-groups' },
+      { title: 'Создать', to: { path: '/apps/tickets/add' } },
+     
+    ],
+  },
+  
+
+   {
+    title: 'Организация',
+    icon: { icon: 'bx-user' },
+    children: [
+      { title: 'Список', to: 'apps-settings-users-groups-roles-customers' },
+      { title: 'Создать', to: { path: '/apps/tickets/add' } },
+     
     ],
   },
   {
@@ -44,7 +64,7 @@ export default [
     icon: { icon: 'bx-check-shield' },
     children: [
       { title: 'Роли', to: 'apps-roles' },
-      { title: 'Разрешения', to: 'apps-permissions' },
+     
     ],
   },
   
@@ -75,14 +95,11 @@ export default [
     title: 'Пользователи и группы',
     icon: { icon: 'bx-group' },
     children: [
-      { title: 'Агенты', to: 'apps-settings-users-groups-roles-agents' },
-      { title: 'Группы агентов', to: 'apps-settings-users-groups-roles-agents-groups' },
-      { title: 'Роли агентов', to: 'apps-settings-users-groups-roles-roles' },
-      { title: 'Компании', to: 'apps-settings-users-groups-roles-customers' },
+      
+ 
       { title: 'Группы клиентов', to: 'apps-settings-users-groups-roles-customers-groups' },
       { title: 'Клиенты', to: 'apps-settings-users-groups-roles-customer-users' },
       { title: 'Клиенты компаний', to: 'apps-settings-users-groups-roles-customer-users-customers' },
-      { title: 'Группы', to: 'apps-settings-users-groups-roles-groups' },
       { title: 'Роли', to: 'apps-settings-users-groups-roles-roles' },
     ],
   },

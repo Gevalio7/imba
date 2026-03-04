@@ -1,6 +1,54 @@
 const Customers = require('../models/customers');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+// Получить всех сотрудников для конкретной компании
+const getCustomerCustomerUsers = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const customerId = parseInt(id, 10);
+
+  if (isNaN(customerId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const customerUsers = await Customers.getCustomerUsers(customerId);
+  res.json({ customerUsers });
+});
+
+// Добавить сотрудника к компании
+const addCustomerUser = asyncHandler(async (req, res) => {
+  const { id, userId } = req.params;
+  const customerId = parseInt(id, 10);
+  const customerUserId = parseInt(userId, 10);
+
+  if (isNaN(customerId) || isNaN(customerUserId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const result = await Customers.addCustomerUser(customerId, customerUserId);
+  if (!result) {
+    return res.status(400).json({ message: 'Не удалось добавить сотрудника' });
+  }
+
+  res.status(201).json(result);
+});
+
+// Удалить сотрудника от компании
+const removeCustomerUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const customerUserId = parseInt(userId, 10);
+
+  if (isNaN(customerUserId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const result = await Customers.removeCustomerUser(customerUserId);
+  if (!result) {
+    return res.status(404).json({ message: 'Сотрудник не найден' });
+  }
+
+  res.status(204).send();
+});
+
 const getCustomers = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
 
@@ -185,4 +233,7 @@ module.exports = {
   getCustomerServices,
   addCustomerService,
   removeCustomerService,
+  getCustomerCustomerUsers,
+  addCustomerUser,
+  removeCustomerUser,
 };
