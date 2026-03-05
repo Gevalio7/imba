@@ -24,106 +24,89 @@ export default [
     to: 'apps-kanban',
   },
   {
-    title: 'Организация',
-    icon: { icon: 'bx-sitemap' },
-    to: 'apps-settings-users-groups-roles-organization-structure',
-  },
-  {
     title: 'Тикеты',
     icon: { icon: BxTicket },
     children: [
       { title: 'Список', to: 'apps-tickets' },
-      { title: 'Создать', to: { path: '/apps/tickets/add' } },
+      { title: 'Создать', to: 'apps-tickets-add' },
     ],
   },
-  {
-    title: 'Пользователи',
-    icon: { icon: 'bx-user' },
-    children: [
-      { title: 'Список', to: 'apps-settings-users-groups-roles-customer-users' },
-      { title: 'Создать', to: { path: '/apps/tickets/add' } },     
-    ],
-  },
+  
+  { heading: 'Пользователи и группы' },
+  
   {
     title: 'Агенты',
     icon: { icon: 'bx-user' },
     children: [
-      { title: 'Список', to: 'apps-settings-users-groups-roles-agents-groups' },
-      { title: 'Создать', to: { path: '/apps/tickets/add' } },
-     
+      { title: 'Список', to: 'apps-agents' },
+      { title: 'Группы', to: 'apps-agents-groups' },
     ],
   },
-  
-
-   {
-    title: 'Организация',
+  {
+    title: 'Клиенты',
     icon: { icon: 'bx-user' },
     children: [
-      { title: 'Список', to: 'apps-settings-users-groups-roles-customers' },
-      { title: 'Структура', to: 'apps-settings-users-groups-roles-organization-structure' },
-      { title: 'Создать', to: { path: '/apps/tickets/add' } },
-     
+      { title: 'Список', to: 'apps-customer-users' },
+      { title: 'Компании', to: 'apps-customer-users-customers' },
     ],
   },
   {
-    title: 'Роли и разрешения',
-    icon: { icon: 'bx-check-shield' },
+    title: 'Организация',
+    icon: { icon: 'bx-sitemap' },
     children: [
-      { title: 'Роли', to: 'apps-roles' },
-     
+      { title: 'Компании', to: 'apps-customers' },
+      { title: 'Группы клиентов', to: 'apps-customers-groups' },
+      { title: 'Структура', to: 'apps-organization-structure' },
     ],
   },
-  
-  { heading: 'Настройки' },
+  {
+    title: 'Роли',
+    icon: { icon: 'bx-check-shield' },
+    to: 'apps-roles',
+  },
+
+  { heading: 'Заявки (настройки)' },
   
   {
-    title: 'Заявки (настройки)',
+    title: 'Заявки',
     icon: { icon: 'bx-detail' },
     children: [
-      { title: 'Вложения', to: 'apps-settings-ticket-settings-attachments' },
-      { title: 'Автоответы', to: 'apps-settings-ticket-settings-auto-responses' },
-      { title: 'Приветствия', to: 'apps-settings-ticket-settings-greetings' },
-      { title: 'Приоритеты', to: 'apps-settings-ticket-settings-priorities' },
-      { title: 'Автоответы очереди', to: 'apps-settings-ticket-settings-queue-auto-response' },
-      { title: 'Очереди', to: 'apps-settings-ticket-settings-queues' },
-      { title: 'Услуги', to: 'apps-settings-ticket-settings-services' },
-      { title: 'Подписи', to: 'apps-settings-ticket-settings-signatures' },
-      { title: 'SLA', to: 'apps-settings-ticket-settings-sla' },
-      { title: 'Статусы', to: 'apps-settings-ticket-settings-states' },
-      { title: 'Вложения шаблонов', to: 'apps-settings-ticket-settings-template-attachments' },
-      { title: 'Очереди шаблонов', to: 'apps-settings-ticket-settings-template-queues' },
-      { title: 'Шаблоны', to: 'apps-settings-ticket-settings-templates' },
-      { title: 'Типы', to: 'apps-settings-ticket-settings-types' },
-      { title: 'Рабочие процессы', to: 'apps-settings-ticket-settings-workflows' },
+      { title: 'Очереди', to: 'apps-queues' },
+      { title: 'Типы', to: 'apps-types' },
+      { title: 'Статусы', to: 'apps-states' },
+      { title: 'Приоритеты', to: 'apps-priorities' },
+      { title: 'SLA', to: 'apps-sla' },
+      { title: 'Шаблоны', to: 'apps-templates' },
+      { title: 'Очереди шаблонов', to: 'apps-template-queues' },
+      { title: 'Рабочие процессы', to: 'apps-workflows' },
+      { title: 'Приветствия', to: 'apps-greetings' },
+      { title: 'Подписи', to: 'apps-signatures' },
+      { title: 'Автоответы', to: 'apps-auto-responses' },
+      { title: 'Вложения', to: 'apps-attachments' },
+      { title: 'Услуги', to: 'apps-services' },
     ],
   },
+
+  { heading: 'Коммуникации' },
+  
   {
-    title: 'Пользователи и группы',
-    icon: { icon: 'bx-group' },
-    children: [
-      
- 
-      { title: 'Группы клиентов', to: 'apps-settings-users-groups-roles-customers-groups' },
-      { title: 'Клиенты', to: 'apps-settings-users-groups-roles-customer-users' },
-      { title: 'Клиенты компаний', to: 'apps-settings-users-groups-roles-customer-users-customers' },
-      { title: 'Роли', to: 'apps-settings-users-groups-roles-roles' },
-    ],
-  },
-  {
-    title: 'Коммуникации и уведомления',
+    title: 'Email',
     icon: { icon: 'bx-notification' },
     children: [
-      { title: 'Email адреса', to: 'apps-settings-communication-notifications-email-addresses' },
-      { title: 'Почтовые аккаунты', to: 'apps-settings-communication-notifications-post-master-mail-accounts' },
+      { title: 'Адреса', to: 'apps-email-addresses' },
+      { title: 'Почтовые аккаунты', to: 'apps-post-master-mail-accounts' },
     ],
   },
+
+  { heading: 'Администрирование' },
+  
   {
-    title: 'Администрирование',
+    title: 'Система',
     icon: { icon: 'bx-cog' },
     children: [
-      { title: 'Календари', to: 'apps-settings-administration-calendars' },
-      { title: 'Управление сессиями', to: 'apps-settings-administration-session-management' },
-      { title: 'Системный лог', to: 'apps-settings-administration-system-log' },
+      { title: 'Календари', to: 'apps-calendars' },
+      { title: 'Сессии', to: 'apps-session-management' },
+      { title: 'Лог', to: 'apps-system-log' },
     ],
   },
 ]
