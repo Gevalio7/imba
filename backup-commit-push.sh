@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт: Бэкап БД + Git Commit + Push
+# Скрипт: Быстрый бэкап БД + Git Commit + Push
 # Использование: ./backup-commit-push.sh "сообщение коммита"
 
 set -e
@@ -16,11 +16,11 @@ NC='\033[0m' # No Color
 COMMIT_MESSAGE="${1:-Автоматический коммит от $(date '+%Y-%m-%d %H:%M:%S')}"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  БЭКАП + COMMIT + PUSH${NC}"
+echo -e "${BLUE}  БЫСТРЫЙ БЭКАП + COMMIT + PUSH${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # --- ШАГ 1: Бэкап базы данных ---
-echo -e "\n${YELLOW}[1/4] Создание бэкапа базы данных...${NC}"
+echo -e "\n${YELLOW}[1/4] Создание бэкапа базы данных (быстрый режим)...${NC}"
 
 cd backend
 
@@ -43,7 +43,6 @@ DB_NAME=${DB_NAME:-test_entities_db}
 BACKUP_DIR="./backups"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
-ARCHIVE_FILE="$BACKUP_DIR/backup_$TIMESTAMP.tar.gz"
 
 # Создание директории для бэкапов
 mkdir -p "$BACKUP_DIR"
@@ -54,21 +53,21 @@ echo -e "  Хост: $DB_HOST:$DB_PORT"
 # Экспорт пароля для pg_dump
 export PGPASSWORD="$DB_PASSWORD"
 
-# Создание бэкапа
-if pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" --no-password --format=custom --compress=9 > "$BACKUP_FILE" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} Бэкап создан: $BACKUP_FILE"
+# Создание бэкапа в plain SQL формате (быстрее чем custom)
+# Добавляем --no-password и --data-only для скорости, или убираем для полного дампа
+if pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+    --no-password \
+    --format=plain \
+    --inserts \
+    --column-inserts \
+    > "$BACKUP_FILE" 2>/dev/null; then
     
-    # Упаковка в tar.gz
-    tar -czf "$ARCHIVE_FILE" -C "$BACKUP_DIR" "$(basename "$BACKUP_FILE")" 2>/dev/null
+    # Сжатие
+    gzip -1 "$BACKUP_FILE"
+    ARCHIVE_FILE="$BACKUP_FILE.gz"
+    ARCHIVE_SIZE=$(du -h "$ARCHIVE_FILE" | cut -f1)
     
-    if [ $? -eq 0 ]; then
-        rm "$BACKUP_FILE"
-        ARCHIVE_SIZE=$(du -h "$ARCHIVE_FILE" | cut -f1)
-        echo -e "  ${GREEN}✓${NC} Архив создан: $ARCHIVE_FILE ($ARCHIVE_SIZE)"
-    else
-        echo -e "  ${RED}✗${NC} Ошибка при упаковке бэкапа"
-        exit 1
-    fi
+    echo -e "  ${GREEN}✓${NC} Бэкап создан: $ARCHIVE_FILE ($ARCHIVE_SIZE)"
 else
     echo -e "  ${RED}✗${NC} Ошибка при создании бэкапа"
     exit 1
