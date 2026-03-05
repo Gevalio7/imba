@@ -73,7 +73,6 @@ declare module 'vue-router/auto-routes' {
     'apps-template-attachments': RouteRecordInfo<'apps-template-attachments', '/apps/TemplateAttachments', Record<never, never>, Record<never, never>>,
     'apps-template-queues': RouteRecordInfo<'apps-template-queues', '/apps/TemplateQueues', Record<never, never>, Record<never, never>>,
     'apps-templates': RouteRecordInfo<'apps-templates', '/apps/Templates', Record<never, never>, Record<never, never>>,
-    'apps-test-entities': RouteRecordInfo<'apps-test-entities', '/apps/test-entities', Record<never, never>, Record<never, never>>,
     'apps-tickets': RouteRecordInfo<'apps-tickets', '/apps/tickets', Record<never, never>, Record<never, never>>,
     'apps-tickets-add': RouteRecordInfo<'apps-tickets-add', '/apps/tickets/add', Record<never, never>, Record<never, never>>,
     'apps-tickets-edit': RouteRecordInfo<'apps-tickets-edit', '/apps/tickets/edit', Record<never, never>, Record<never, never>>,
