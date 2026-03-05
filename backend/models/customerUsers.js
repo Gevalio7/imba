@@ -17,10 +17,10 @@ class CustomerUsers {
       let params = [];
       let paramIndex = 1;
 
-      // Поиск по тексту
+      // Поиск по тексту - только по текстовым полям (исключаем числовые like customerId, customersGroupId)
       if (q) {
-        const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        const searchFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount'];
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
         whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
@@ -36,7 +36,7 @@ class CustomerUsers {
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      const sortableFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount', 'createdAt', 'updatedAt'];
       if (sortBy && sortableFields.includes(sortBy)) {
         const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : toSnakeCase(sortBy);
         orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;

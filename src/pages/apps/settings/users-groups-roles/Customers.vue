@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 // Типы данных для Группа клиентов
 interface CustomersGroups {
@@ -56,6 +56,47 @@ interface CustomerUsers {
   updatedAt: string
 }
 
+// ========== ПАГИНАЦИЯ ==========
+// Пагинация групп клиентов
+const customersGroupsCurrentPage = ref(1)
+const customersGroupsItemsPerPage = ref(10)
+
+// Пагинация компаний
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+// Пагинация сервисов
+const servicesCurrentPage = ref(1)
+const servicesItemsPerPage = ref(10)
+
+// Пагинация клиентов
+const usersCurrentPage = ref(1)
+const usersItemsPerPage = ref(10)
+
+// ========== ФИЛЬТРАЦИЯ ==========
+// Поиск
+const customersGroupsSearchQuery = ref('')
+const searchQuery = ref('')
+const servicesSearchQuery = ref('')
+const usersSearchQuery = ref('')
+
+// ========== ФИЛЬТРЫ ==========
+// Фильтры групп клиентов
+const customersGroupsStatusFilter = ref<number | null>(null)
+const isCustomersGroupsFilterDialogOpen = ref(false)
+
+// Фильтры компаний
+const statusFilter = ref<number | null>(null)
+const isFilterDialogOpen = ref(false)
+
+// Фильтры сервисов
+const servicesStatusFilter = ref<number | null>(null)
+const isServicesFilterDialogOpen = ref(false)
+
+// Фильтры клиентов
+const usersStatusFilter = ref<number | null>(null)
+const isUsersFilterDialogOpen = ref(false)
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -66,12 +107,20 @@ const customersGroupsTotal = ref(0)
 const customersGroupsLoading = ref(false)
 const customersGroupsError = ref<string | null>(null)
 
-// Загрузка данных из API
+// Загрузка данных из API с пагинацией
 const fetchCustomersGroups = async () => {
   try {
     customersGroupsLoading.value = true
     customersGroupsError.value = null
-    const data = await $fetch<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups`)
+    
+    const params = new URLSearchParams()
+    params.append('page', String(customersGroupsCurrentPage.value))
+    params.append('itemsPerPage', String(customersGroupsItemsPerPage.value))
+    if (customersGroupsSearchQuery.value.trim()) {
+      params.append('q', customersGroupsSearchQuery.value.trim())
+    }
+    
+    const data = await $fetch<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups?${params.toString()}`)
     customersGroups.value = data.customersGroups
     customersGroupsTotal.value = data.total
   } catch (err) {
@@ -81,6 +130,11 @@ const fetchCustomersGroups = async () => {
     customersGroupsLoading.value = false
   }
 }
+
+// Перезагрузка при изменении пагинации, фильтров и поиска
+watch([customersGroupsCurrentPage, customersGroupsItemsPerPage, customersGroupsSearchQuery, customersGroupsStatusFilter], () => {
+  fetchCustomersGroups()
+})
 
 // Создание группы клиентов
 const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -138,12 +192,22 @@ const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Загрузка данных из API
+// Загрузка данных из API с пагинацией
 const fetchCustomers = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    const params = new URLSearchParams()
+    params.append('page', String(currentPage.value))
+    params.append('itemsPerPage', String(itemsPerPage.value))
+    if (searchQuery.value.trim()) {
+      params.append('q', searchQuery.value.trim())
+    }
+    if (statusFilter.value !== null) {
+      params.append('isActive', statusFilter.value === 1 ? 'true' : 'false')
+    }
+    
+    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers?${params.toString()}`)
     customers.value = data.customers
     total.value = data.total
   } catch (err) {
@@ -153,6 +217,12 @@ const fetchCustomers = async () => {
     loading.value = false
   }
 }
+
+// Перезагрузка при изменении пагинации, фильтров и поиска
+watch([currentPage, itemsPerPage, searchQuery, statusFilter], () => {
+  // При изменении любого параметра загружаем данные
+  fetchCustomers()
+})
 
 // Создание компании
 const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -210,12 +280,20 @@ const usersTotal = ref(0)
 const usersLoading = ref(false)
 const usersError = ref<string | null>(null)
 
-// Загрузка клиентов из API
+// Загрузка клиентов из API с пагинацией
 const fetchCustomerUsers = async () => {
   try {
     usersLoading.value = true
     usersError.value = null
-    const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
+    
+    const params = new URLSearchParams()
+    params.append('page', String(usersCurrentPage.value))
+    params.append('itemsPerPage', String(usersItemsPerPage.value))
+    if (usersSearchQuery.value.trim()) {
+      params.append('q', usersSearchQuery.value.trim())
+    }
+    
+    const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers?${params.toString()}`)
     customerUsers.value = data.customerUsers
     usersTotal.value = data.total
   } catch (err) {
@@ -225,6 +303,11 @@ const fetchCustomerUsers = async () => {
     usersLoading.value = false
   }
 }
+
+// Перезагрузка при изменении пагинации, фильтров и поиска
+watch([usersCurrentPage, usersItemsPerPage, usersSearchQuery, usersStatusFilter], () => {
+  fetchCustomerUsers()
+})
 
 // Создание клиента компании
 const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -280,6 +363,7 @@ onMounted(() => {
   fetchCustomersGroups()
   fetchCustomers()
   fetchCustomerUsers()
+  fetchServices()
 })
 
 // ========== ЗАГОЛОВКИ ТАБЛИЦ ==========
@@ -326,108 +410,87 @@ const usersHeaders = [
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
-// ========== ФИЛЬТРАЦИЯ ==========
-// Поиск
-const customersGroupsSearchQuery = ref('')
-const searchQuery = ref('')
-const servicesSearchQuery = ref('')
-const usersSearchQuery = ref('')
+// ========== СЕРВИСЫ ==========
+// Данные сервисов
+const services = ref<Services[]>([])
+const servicesTotal = ref(0)
+const servicesLoading = ref(false)
+const servicesError = ref<string | null>(null)
 
-// Фильтрация групп клиентов
-const filteredCustomersGroups = computed(() => {
-  let filtered = customersGroups.value
-
-  if (customersGroupsStatusFilter.value !== null) {
-    filtered = filtered.filter(p => p.isActive === (customersGroupsStatusFilter.value === 1))
+// Загрузка сервисов из API
+const fetchServices = async () => {
+  try {
+    servicesLoading.value = true
+    servicesError.value = null
+    const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
+    services.value = data.services
+    servicesTotal.value = data.total
+  } catch (err) {
+    servicesError.value = 'Ошибка загрузки сервисов'
+    console.error('Error fetching services:', err)
+  } finally {
+    servicesLoading.value = false
   }
-
-  if (customersGroupsSearchQuery.value.trim()) {
-    const query = customersGroupsSearchQuery.value.toLowerCase()
-    filtered = filtered.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.message?.toLowerCase().includes(query)
-    )
-  }
-
-  return filtered
-})
-
-// Сброс фильтров групп клиентов
-const clearCustomersGroupsFilters = () => {
-  customersGroupsStatusFilter.value = null
 }
 
-// Фильтрация компаний
-const filteredCustomers = computed(() => {
-  let filtered = customers.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+// Создание сервиса
+const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Services>(`${API_BASE}/services`, {
+      method: 'POST',
+      body: item
+    })
+    services.value.push(data)
+    return data
+  } catch (err) {
+    console.error('Error creating services:', err)
+    throw err
   }
+}
 
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.city?.toLowerCase().includes(query) ||
-      p.street?.toLowerCase().includes(query)
-    )
+// Обновление сервиса
+const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const data = await $fetch<Services>(`${API_BASE}/services/${id}`, {
+      method: 'PUT',
+      body: item
+    })
+    const index = services.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      services.value[index] = data
+    }
+    return data
+  } catch (err) {
+    console.error('Error updating services:', err)
+    throw err
   }
+}
 
-  return filtered
-})
-
-// Фильтрация сервисов
-const filteredServices = computed(() => {
-  let filtered = services.value
-
-  if (servicesStatusFilter.value !== null) {
-    filtered = filtered.filter(p => p.isActive === (servicesStatusFilter.value === 1))
+// Удаление сервиса
+const deleteServices = async (id: number) => {
+  try {
+    await $fetch(`${API_BASE}/services/${id}`, {
+      method: 'DELETE'
+    })
+    const index = services.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      services.value.splice(index, 1)
+    }
+  } catch (err) {
+    console.error('Error deleting services:', err)
+    throw err
   }
-
-  if (servicesSearchQuery.value.trim()) {
-    const query = servicesSearchQuery.value.toLowerCase()
-    filtered = filtered.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.comment?.toLowerCase().includes(query) ||
-      p.type?.toLowerCase().includes(query)
-    )
-  }
-
-  return filtered
-})
+}
 
 // Сброс фильтров компаний
 const clearFilters = () => {
   statusFilter.value = null
 }
 
-// Сброс фильтров сервисов
-const clearServicesFilters = () => {
-  servicesStatusFilter.value = null
+// Сброс фильтров групп клиентов
+const clearCustomersGroupsFilters = () => {
+  customersGroupsStatusFilter.value = null
 }
-
-// Фильтрация клиентов компании
-const filteredCustomerUsers = computed(() => {
-  let filtered = customerUsers.value
-
-  if (usersStatusFilter.value !== null) {
-    filtered = filtered.filter(p => p.isActive === (usersStatusFilter.value === 1))
-  }
-
-  if (usersSearchQuery.value.trim()) {
-    const query = usersSearchQuery.value.toLowerCase()
-    filtered = filtered.filter(p => 
-      p.firstName?.toLowerCase().includes(query) ||
-      p.lastName?.toLowerCase().includes(query) ||
-      p.email?.toLowerCase().includes(query) ||
-      p.login?.toLowerCase().includes(query)
-    )
-  }
-
-  return filtered
-})
 
 // Получить название компании по ID
 const getCustomerName = (customerId: number | undefined) => {
@@ -616,47 +679,12 @@ const confirmBulkStatusChangeUsers = async () => {
 }
 
 const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
+  if (isActive) {
+    return { color: 'success', title: 'Активен' }
+  }
+  return { color: 'error', title: 'Не активен' }
 }
 
-// ========== ПАГИНАЦИЯ ==========
-// Пагинация групп клиентов
-const customersGroupsCurrentPage = ref(1)
-const customersGroupsItemsPerPage = ref(10)
-
-// Пагинация компаний
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Пагинация сервисов
-const servicesCurrentPage = ref(1)
-const servicesItemsPerPage = ref(10)
-
-// Пагинация клиентов
-const usersCurrentPage = ref(1)
-const usersItemsPerPage = ref(10)
-
-// ========== ФИЛЬТРЫ ==========
-// Фильтры групп клиентов
-const customersGroupsStatusFilter = ref<number | null>(null)
-const isCustomersGroupsFilterDialogOpen = ref(false)
-
-// Фильтры компаний
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Фильтры сервисов
-const servicesStatusFilter = ref<number | null>(null)
-const isServicesFilterDialogOpen = ref(false)
-
-// Фильтры клиентов
-const usersStatusFilter = ref<number | null>(null)
-const isUsersFilterDialogOpen = ref(false)
-
-// ========== МАССОВЫЕ ДЕЙСТВИЯ ==========
 // Массовые действия для групп клиентов
 const selectedCustomersGroups = ref<CustomersGroups[]>([])
 const isBulkCustomersGroupsActionsMenuOpen = ref(false)
@@ -1401,14 +1429,14 @@ const addNewUser = () => {
       <VDataTable
         v-model="selectedItems"
         v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
         :headers="headers"
-        :items="filteredCustomers"
+        :items="customers"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
         no-data-text="Нет данных"
+        @update:page="(page) => currentPage = page"
       >
         <!-- Активен -->
         <template #item.isActive="{ item }">
@@ -1463,8 +1491,9 @@ const addNewUser = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredCustomers.length / itemsPerPage) || 1"
+          :length="Math.ceil(total / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="() => fetchCustomers()"
         />
       </div>
     </VCard>
@@ -1839,14 +1868,14 @@ const addNewUser = () => {
       <VDataTable
         v-model="selectedCustomersGroups"
         v-model:items-per-page="customersGroupsItemsPerPage"
-        v-model:page="customersGroupsCurrentPage"
         :headers="customersGroupsHeaders"
-        :items="filteredCustomersGroups"
+        :items="customersGroups"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
         no-data-text="Нет данных"
+        @update:page="(page) => customersGroupsCurrentPage = page"
       >
         <!-- Активен -->
         <template #item.isActive="{ item }">
@@ -1894,8 +1923,9 @@ const addNewUser = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="customersGroupsCurrentPage"
-          :length="Math.ceil(filteredCustomersGroups.length / customersGroupsItemsPerPage) || 1"
+          :length="Math.ceil(customersGroupsTotal / customersGroupsItemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="() => fetchCustomersGroups()"
         />
       </div>
     </VCard>
@@ -2019,9 +2049,12 @@ const addNewUser = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
+            v-model="usersSearchQuery"
             placeholder="Поиск клиентов"
             style="inline-size: 250px;"
             class="me-3"
+            clearable
+            clear-icon="bx-x"
           />
         </div>
 
@@ -2218,14 +2251,14 @@ const addNewUser = () => {
       <VDataTable
         v-model="selectedUsers"
         v-model:items-per-page="usersItemsPerPage"
-        v-model:page="usersCurrentPage"
         :headers="usersHeaders"
-        :items="filteredCustomerUsers"
+        :items="customerUsers"
         show-select
         :hide-default-footer="true"
         item-value="id"
         return-object
         no-data-text="Нет данных"
+        @update:page="(page) => usersCurrentPage = page"
       >
         <!-- Активен -->
         <template #item.isActive="{ item }">
@@ -2284,8 +2317,9 @@ const addNewUser = () => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="usersCurrentPage"
-          :length="Math.ceil(filteredCustomerUsers.length / usersItemsPerPage) || 1"
+          :length="Math.ceil(usersTotal / usersItemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="() => fetchCustomerUsers()"
         />
       </div>
     </VCard>
