@@ -10,7 +10,7 @@ class WorkflowTransitions {
   static fields = 'workflowId, sourceStatusId, targetStatusId, actionLabel, sortOrder';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, workflowId } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, workflowId } = options;
 
     try {
       let whereClause = '';

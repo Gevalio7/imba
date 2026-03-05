@@ -25,7 +25,7 @@ class TicketHistory {
   };
 
   static async getAll(options = {}) {
-    const { ticketId, fieldName, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { ticketId, fieldName, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';

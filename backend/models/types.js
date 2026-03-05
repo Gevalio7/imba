@@ -10,7 +10,7 @@ class Types {
   static fields = 'name, comment, workflowId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';

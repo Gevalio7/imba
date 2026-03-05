@@ -10,7 +10,7 @@ class KnowledgeBase {
   static fields = 'title, content, categoryId, tags, serviceId, isPublished, viewsCount, createdBy';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, categoryId, serviceId, isPublished } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, categoryId, serviceId, isPublished } = options;
 
     try {
       let whereClause = '';

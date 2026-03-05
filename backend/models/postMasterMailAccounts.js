@@ -14,7 +14,7 @@ class PostMasterMailAccounts {
   static fields = 'type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';

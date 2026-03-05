@@ -10,7 +10,7 @@ class CustomerUsers {
   static fields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount, customerId, customersGroupId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 100000, page = 1, isActive } = options;
 
     try {
       let whereConditions = [];
@@ -20,7 +20,7 @@ class CustomerUsers {
       // Поиск по тексту - только по текстовым полям (исключаем числовые like customerId, customersGroupId)
       if (q) {
         const searchFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount'];
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;

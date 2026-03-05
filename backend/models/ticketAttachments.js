@@ -19,7 +19,7 @@ class TicketAttachments {
   }
 
   static async getAll(options = {}) {
-    const { ticketId, sortBy, orderBy = 'asc', itemsPerPage = 100, page = 1 } = options;
+    const { ticketId, sortBy, orderBy = 'asc', itemsPerPage = 10000, page = 1 } = options;
 
     try {
       let whereClause = '';

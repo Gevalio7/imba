@@ -10,15 +10,16 @@ class CustomersGroups {
   static fields = 'name, message, customerId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';
       let params = [];
       let paramIndex = 1;
 
+      // Поиск по тексту - только по текстовым полям (исключаем числовые like customerId)
       if (q) {
-        const searchFields = this.fields.split(', ');
+        const searchFields = ['name', 'message'];
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereClause = `WHERE ${conditions}`;
         params.push(`%${q}%`);
@@ -26,7 +27,7 @@ class CustomersGroups {
       }
 
       let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
+      const sortableFields = ['name', 'message', 'createdAt', 'updatedAt'];
       if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
