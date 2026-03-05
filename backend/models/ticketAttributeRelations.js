@@ -10,7 +10,7 @@ class TicketAttributeRelations {
   static fields = 'name, sourceAttribute, targetAttribute, relationType';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';

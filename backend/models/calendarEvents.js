@@ -10,7 +10,7 @@ class CalendarEvents {
   static fields = 'calendarId, title, start, eventEnd, allDay, description';
 
   static async getAll(options = {}) {
-    const { calendarId, q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, startDate, endDate } = options;
+    const { calendarId, q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, startDate, endDate } = options;
 
     try {
       let whereClause = '';

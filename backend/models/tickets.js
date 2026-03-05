@@ -9,7 +9,7 @@ class Tickets {
   static tableName = 'tickets';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     // Валидация пагинации
     const safePage = Math.max(1, parseInt(page, 10) || 1);

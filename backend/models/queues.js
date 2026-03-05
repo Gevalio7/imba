@@ -10,7 +10,7 @@ class Queues {
   static fields = 'name, description, maxTickets, priority, companyId, serviceId, slaId, workflowId, agentGroupId, priorityId, emailConfig, keywords, autoResponseTemplate';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, filters = {} } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {} } = options;
 
     try {
       let whereClause = '';

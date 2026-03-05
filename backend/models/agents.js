@@ -10,7 +10,7 @@ class Agents {
   static fields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
 
 
     try {

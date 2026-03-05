@@ -9,7 +9,7 @@ const getCalendarEvents = asyncHandler(async (req, res) => {
   const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
   // Если указаны даты или calendarId, возвращаем все события без пагинации
   const hasDateFilter = startDate || endDate;
-  const itemsPerPageLocal = (calendarId || hasDateFilter) ? 10000 : (typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10);
+  const itemsPerPageLocal = (calendarId || hasDateFilter) ? 10000 : (typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000);
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
   let calendarIdLocal;
   if (Array.isArray(calendarId)) {

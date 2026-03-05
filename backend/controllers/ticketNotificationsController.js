@@ -7,7 +7,7 @@ const getTicketNotifications = asyncHandler(async (req, res) => {
   const searchQuery = typeof q === 'string' ? q : undefined;
   const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
   const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 10;
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
   const result = await TicketNotifications.getAll({

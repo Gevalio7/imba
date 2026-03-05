@@ -11,7 +11,7 @@ class Sla {
 
   static async getAll(options = {}) {
     console.log('getAll called with options:', options);
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
 
     try {
       let whereClause = '';

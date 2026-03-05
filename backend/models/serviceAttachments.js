@@ -19,7 +19,7 @@ class ServiceAttachments {
   }
 
   static async getAll(options = {}) {
-    const { serviceId, sortBy, orderBy = 'asc', itemsPerPage = 100, page = 1 } = options;
+    const { serviceId, sortBy, orderBy = 'asc', itemsPerPage = 10000, page = 1 } = options;
 
     try {
       let whereClause = '';

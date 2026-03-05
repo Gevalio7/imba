@@ -606,7 +606,7 @@ const addNewCustomersGroups = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
+              @update:model-value="(val) => toggleStatus(item, !!val)"
               color="primary"
               hide-details
             />

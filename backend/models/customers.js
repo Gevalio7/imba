@@ -10,7 +10,7 @@ class Customers {
   static fields = 'name, street, zip, city, comment';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 10, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 100000, page = 1 } = options;
 
     try {
       let whereClause = '';
