@@ -62,7 +62,10 @@ export default [
   {
     title: 'Роли',
     icon: { icon: 'bx-check-shield' },
-    to: 'apps-roles',
+    children: [
+      { title: 'Роли', to: 'apps-roles' },
+      { title: 'Разрешения', to: 'apps-permissions' },
+    ],
   },
 
   { heading: 'Заявки (настройки)' },
