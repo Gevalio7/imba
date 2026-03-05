@@ -76,6 +76,7 @@ declare module 'vue-router/auto-routes' {
     'apps-settings-users-groups-roles-customers-groups': RouteRecordInfo<'apps-settings-users-groups-roles-customers-groups', '/apps/settings/users-groups-roles/CustomersGroups', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-customer-users': RouteRecordInfo<'apps-settings-users-groups-roles-customer-users', '/apps/settings/users-groups-roles/CustomerUsers', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-customer-users-customers': RouteRecordInfo<'apps-settings-users-groups-roles-customer-users-customers', '/apps/settings/users-groups-roles/CustomerUsersCustomers', Record<never, never>, Record<never, never>>,
+    'apps-settings-users-groups-roles-organization-structure': RouteRecordInfo<'apps-settings-users-groups-roles-organization-structure', '/apps/settings/users-groups-roles/OrganizationStructure', Record<never, never>, Record<never, never>>,
     'apps-settings-users-groups-roles-roles': RouteRecordInfo<'apps-settings-users-groups-roles-roles', '/apps/settings/users-groups-roles/Roles', Record<never, never>, Record<never, never>>,
     'apps-test-entities': RouteRecordInfo<'apps-test-entities', '/apps/test-entities', Record<never, never>, Record<never, never>>,
     'apps-tickets': RouteRecordInfo<'apps-tickets', '/apps/tickets', Record<never, never>, Record<never, never>>,

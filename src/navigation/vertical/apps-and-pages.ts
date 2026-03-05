@@ -24,6 +24,11 @@ export default [
     to: 'apps-kanban',
   },
   {
+    title: 'Организация',
+    icon: { icon: 'bx-sitemap' },
+    to: 'apps-settings-users-groups-roles-organization-structure',
+  },
+  {
     title: 'Тикеты',
     icon: { icon: BxTicket },
     children: [
@@ -55,6 +60,7 @@ export default [
     icon: { icon: 'bx-user' },
     children: [
       { title: 'Список', to: 'apps-settings-users-groups-roles-customers' },
+      { title: 'Структура', to: 'apps-settings-users-groups-roles-organization-structure' },
       { title: 'Создать', to: { path: '/apps/tickets/add' } },
      
     ],
