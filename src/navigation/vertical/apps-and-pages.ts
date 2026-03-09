@@ -1,8 +1,8 @@
 import BxTicket from '@core/components/icons/BxTicket.vue'
+import GridColumnRight from '@core/components/icons/GridColumnRight.vue'
 
 export default [
   { heading: 'Приложения' },
-  
   {
     title: 'Почта',
     icon: { icon: 'bx-envelope' },
@@ -31,32 +31,27 @@ export default [
       { title: 'Создать', to: 'apps-tickets-add' },
     ],
   },
-  
-  { heading: 'Пользователи и группы' },
-  
   {
     title: 'Агенты',
     icon: { icon: 'bx-user' },
     children: [
-      { title: 'Список', to: 'apps-agents' },
-      { title: 'Группы', to: 'apps-agents-groups' },
+      { title: 'Список', to: 'apps-agents-groups' },
     ],
   },
-  {
-    title: 'Клиенты',
-    icon: { icon: 'bx-user' },
-    children: [
-      { title: 'Список', to: 'apps-customer-users' },
-      { title: 'Компании', to: 'apps-customer-users-customers' },
-    ],
+  
+ {
+    title: 'Сервисы',
+    icon: { icon: 'bx-package' },
+    to: 'apps-services',
   },
   {
-    title: 'Организация',
-    icon: { icon: 'bx-sitemap' },
+    title: 'Наши компании',
+    icon: { icon: GridColumnRight },
     children: [
       { title: 'Компании', to: 'apps-customers' },
-      { title: 'Группы клиентов', to: 'apps-customers-groups' },
-      { title: 'Структура', to: 'apps-organization-structure' },
+      { title: 'Отделы и филиалы', to: 'apps-customers-groups' },
+      { title: 'Сотрудники', to: 'apps-customer-users' },
+      { title: 'Структура компании', to: 'apps-organization-structure' },
     ],
   },
   {
@@ -64,14 +59,16 @@ export default [
     icon: { icon: 'bx-check-shield' },
     children: [
       { title: 'Роли', to: 'apps-roles' },
+      { title: 'Список ролей', to: 'apps-roles-cards' },
+      { title: 'Пользователи', to: 'apps-roles-users' },
       { title: 'Разрешения', to: 'apps-permissions' },
     ],
   },
-
-  { heading: 'Заявки (настройки)' },
   
+  { heading: 'Справочники' },
+
   {
-    title: 'Заявки',
+    title: 'Настройки Тикетов',
     icon: { icon: 'bx-detail' },
     children: [
       { title: 'Очереди', to: 'apps-queues' },
@@ -86,23 +83,19 @@ export default [
       { title: 'Подписи', to: 'apps-signatures' },
       { title: 'Автоответы', to: 'apps-auto-responses' },
       { title: 'Вложения', to: 'apps-attachments' },
-      { title: 'Услуги', to: 'apps-services' },
+     
     ],
   },
 
-  { heading: 'Коммуникации' },
-  
   {
-    title: 'Email',
-    icon: { icon: 'bx-notification' },
+    title: 'Настройка Почты',
+    icon: { icon: 'bx-envelope' },
     children: [
       { title: 'Адреса', to: 'apps-email-addresses' },
       { title: 'Почтовые аккаунты', to: 'apps-post-master-mail-accounts' },
     ],
   },
-
   { heading: 'Администрирование' },
-  
   {
     title: 'Система',
     icon: { icon: 'bx-cog' },
@@ -112,4 +105,15 @@ export default [
       { title: 'Лог', to: 'apps-system-log' },
     ],
   },
+  {
+    title: 'Резервное копирование',
+    icon: { icon: 'bx-archive' },
+    to: 'apps-backup',
+  },
+  {
+    title: 'Контроль целостности',
+    icon: { icon: 'bx-shield' },
+    to: 'apps-integrity-check',
+  },
+  { heading: 'Администрирование' },
 ]

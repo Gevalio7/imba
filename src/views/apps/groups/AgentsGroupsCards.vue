@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import girlUsingLaptop from '@images/pages/girl-using-laptop.png'
+import { $fetch } from 'ofetch'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -7,6 +8,8 @@ interface AgentsGroups {
   name: string
   agents: Agent[]
   isActive: boolean
+  roleId?: number
+  role?: Role
   createdAt: string
   updatedAt: string
 }
@@ -21,13 +24,48 @@ interface Agent {
   isActive: boolean
 }
 
+// Тип для роли
+interface Role {
+  id: number
+  name: string
+}
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 // Props
 interface Props {
   agentsGroups: AgentsGroups[]
   loading: boolean
+  roles?: Role[]
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  roles: () => []
+})
+
+// Если роли не переданы, загружаем сами
+const localRoles = ref<Role[]>([])
+const loadingRoles = ref(false)
+
+const loadRoles = async () => {
+  if (props.roles && props.roles.length > 0) {
+    localRoles.value = props.roles
+  } else {
+    try {
+      loadingRoles.value = true
+      const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+      localRoles.value = data.roles
+    } catch (err) {
+      console.error('Error fetching roles:', err)
+    } finally {
+      loadingRoles.value = false
+    }
+  }
+}
+
+// Загружаем роли при монтировании
+loadRoles()
 
 // Emits
 const emit = defineEmits<{
@@ -51,6 +89,13 @@ const addNewGroup = () => {
 
 const toggleStatus = (group: AgentsGroups, newValue: boolean) => {
   emit('toggleStatus', group, newValue)
+}
+
+// Получить имя роли по ID
+const getRoleName = (roleId?: number) => {
+  if (!roleId) return ''
+  const role = localRoles.value.find(r => r.id === roleId)
+  return role ? role.name : ''
 }
 </script>
 
@@ -116,12 +161,21 @@ const toggleStatus = (group: AgentsGroups, newValue: boolean) => {
                 >
                   {{ group.isActive ? 'Группа активна' : 'Группа не активна' }}
                 </div>
+                <VChip
+                  v-if="group.roleId"
+                  color="primary"
+                  variant="tonal"
+                  size="x-small"
+                  label
+                >
+                  {{ getRoleName(group.roleId) }}
+                </VChip>
               </div>
             </div>
             <div class="d-flex flex-column align-end gap-2">
               <VSwitch
                 :model-value="group.isActive"
-                @update:model-value="(val) => toggleStatus(group, val)"
+                @update:model-value="(val) => toggleStatus(group, !!val)"
                 color="primary"
                 hide-details
                 density="compact"

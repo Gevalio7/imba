@@ -1,0 +1,12 @@
+{
+  "database": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retentionDays": 7
+  },
+  "filesystem": {
+    "enabled": true,
+    "schedule": "0 3 * * *",
+    "retentionDays": 7
+  }
+}

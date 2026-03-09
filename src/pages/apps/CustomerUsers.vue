@@ -13,6 +13,7 @@ interface CustomerUsers {
   mobilePhone: string
   telegramAccount: string
   customerId?: number
+  customersGroupId?: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -31,12 +32,26 @@ interface Customer {
   updatedAt: string
 }
 
+// Типы данных для Группа клиентов
+interface CustomersGroup {
+  id: number
+  name: string
+  message: string
+  customerId?: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Данные компании
 const customers = ref<Customer[]>([])
+
+// Данные групп клиентов
+const customersGroups = ref<CustomersGroup[]>([])
 
 // Загрузка компаний
 const fetchCustomers = async () => {
@@ -48,11 +63,28 @@ const fetchCustomers = async () => {
   }
 }
 
+// Загрузка групп клиентов
+const fetchCustomersGroups = async () => {
+  try {
+    const data = await $fetch<{ customersGroups: CustomersGroup[], total: number }>(`${API_BASE}/customersGroups`)
+    customersGroups.value = data.customersGroups
+  } catch (err) {
+    console.error('Error fetching customersGroups:', err)
+  }
+}
+
 // Получить название компании по ID
 const getCustomerName = (customerId: number | undefined) => {
   if (!customerId) return 'Не назначена'
   const customer = customers.value.find(c => c.id === customerId)
   return customer?.name || 'Не назначена'
+}
+
+// Получить название группы клиентов по ID
+const getCustomersGroupName = (customersGroupId: number | undefined) => {
+  if (!customersGroupId) return 'Не назначена'
+  const group = customersGroups.value.find(g => g.id === customersGroupId)
+  return group?.name || 'Не назначена'
 }
 
 // Данные клиенты
@@ -134,6 +166,7 @@ const deleteCustomerUsers = async (id: number) => {
 onMounted(() => {
   fetchCustomerUsers()
   fetchCustomers()
+  fetchCustomersGroups()
 })
 
 const headers = [
@@ -145,6 +178,7 @@ const headers = [
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
   { title: 'Компания', key: 'customer', sortable: false },
+  { title: 'Группа', key: 'customersGroup', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
@@ -262,6 +296,7 @@ const defaultItem = ref<CustomerUsers>({
   mobilePhone: '',
   telegramAccount: '',
   customerId: undefined,
+  customersGroupId: undefined,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -319,6 +354,7 @@ const save = async () => {
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
         customerId: editedItem.value.customerId,
+        customersGroupId: editedItem.value.customersGroupId,
         isActive: editedItem.value.isActive
       })
       showToast('Клиент успешно сохранен')
@@ -333,6 +369,7 @@ const save = async () => {
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
         customerId: editedItem.value.customerId,
+        customersGroupId: editedItem.value.customersGroupId,
         isActive: editedItem.value.isActive
       })
       showToast('Клиент успешно добавлен')
@@ -652,6 +689,11 @@ const addNewCustomerUsers = () => {
           {{ getCustomerName(item.customerId) }}
         </template>
 
+        <!-- Группа клиентов -->
+        <template #item.customersGroup="{ item }">
+          {{ getCustomersGroupName(item.customersGroupId) }}
+        </template>
+
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
@@ -774,6 +816,22 @@ const addNewCustomerUsers = () => {
                 item-value="id"
                 label="Компания"
                 placeholder="Выберите компанию"
+                clearable
+              />
+            </VCol>
+
+            <!-- Группа клиентов -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.customersGroupId"
+                :items="customersGroups"
+                item-title="name"
+                item-value="id"
+                label="Группа клиентов"
+                placeholder="Выберите группу"
                 clearable
               />
             </VCol>

@@ -47,12 +47,19 @@ const createAgentsGroups = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
+  // Добавляем roleId если передан - ЛОГ ДЛЯ ДИАГНОСТИКИ
+  console.log('[DEBUG] createAgentsGroups - roleId from request:', req.body.roleId);
+  if (req.body.roleId !== undefined) {
+    data.roleId = req.body.roleId;
+  }
+
   // Валидация обязательных полей
   if (!data.name) {
     return res.status(400).json({ message: 'name is required' });
   }
 
   const newAgentsGroup = await AgentsGroups.create(data);
+  console.log('[DEBUG] createAgentsGroups - created group with roleId:', newAgentsGroup.roleId);
 
   // Добавляем агентов в группу, если они переданы
   if (req.body.agents && Array.isArray(req.body.agents) && req.body.agents.length > 0) {
@@ -80,7 +87,18 @@ const updateAgentsGroups = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
+  // Добавляем roleId если передан
+  console.log('[DEBUG] updateAgentsGroups - roleId from request:', req.body.roleId);
+  if (req.body.roleId !== undefined) {
+    data.roleId = req.body.roleId;
+  }
+
+  console.log('[DEBUG] updateAgentsGroups - data to update:', data);
   const updatedAgentsGroup = await AgentsGroups.update(agentsgroupId, data);
+  console.log('[DEBUG] updateAgentsGroups - updated group:', updatedAgentsGroup);
+
+  // Роли теперь назначаются только через группы
+  // Роль группы автоматически применяется к агентам через SQL-запросы при выборке
 
   if (!updatedAgentsGroup) {
     return res.status(404).json({ message: 'AgentsGroup not found' });
@@ -129,6 +147,10 @@ const addAgentToGroup = asyncHandler(async (req, res) => {
   }
 
   await AgentsGroups.addAgent(groupId, agentIdNum);
+  console.log('[DEBUG] addAgentToGroup - agent', agentIdNum, 'added to group', groupId);
+  
+  // Роль больше не назначается напрямую агенту, а определяется через группу при выборке
+  
   res.status(201).json({ message: 'Agent added to group' });
 });
 

@@ -15,7 +15,10 @@ interface Agents {
   isActive: boolean
   createdAt: string
   updatedAt: string
-  groups?: string
+  groups?: Array<{id: number, name: string, roleName?: string}>
+  roleId?: number
+  roleName?: string
+  roleIcon?: string
 }
 
 // Тип для Группы агентов
@@ -24,6 +27,8 @@ interface AgentsGroups {
   name: string
   agents: Agent[]
   isActive: boolean
+  roleId?: number
+  roleName?: string
   createdAt: string
   updatedAt: string
 }
@@ -41,6 +46,9 @@ interface Agent {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Роли для отображения
+const rolesMap = ref<Map<number, { name: string; icon?: string }>>(new Map())
+
 // Данные агенты
 const agents = ref<Agents[]>([])
 const total = ref(0)
@@ -51,10 +59,23 @@ const statusLoading = ref<number[]>([])
 const bulkStatusLoading = ref(false)
 
 // Статусы групп для визуального отображения
-const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean }>>(new Map())
+const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean; roleId?: number }>>(new Map())
 
 // Список групп для выбора
-const availableGroups = ref<{ id: number; name: string; isActive: boolean }[]>([])
+const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleId?: number }[]>([])
+
+// Загрузка ролей
+const fetchRoles = async () => {
+  try {
+    const data = await $fetch<{ roles: { id: number; name: string; icon?: string }[], total: number }>(`${API_BASE}/roles`)
+    rolesMap.value.clear()
+    data.roles.forEach(role => {
+      rolesMap.value.set(role.id, { name: role.name, icon: role.icon })
+    })
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  }
+}
 const selectedGroupIds = ref<number[]>([])
 
 // Загрузка данных из API
@@ -82,6 +103,10 @@ const fetchAgents = async (silent = false) => {
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
       query,
     })
+    console.log('[DEBUG] AgentsTable - agents from API:', data.agents.length);
+    if (data.agents.length > 0) {
+      console.log('[DEBUG] AgentsTable - sample agent:', { id: data.agents[0].id, roleId: data.agents[0].roleId, roleName: data.agents[0].roleName, groups: data.agents[0].groups });
+    }
     agents.value = data.agents
     total.value = data.total
   } catch (err) {
@@ -121,15 +146,18 @@ const fetchGroupsStatus = async () => {
     availableGroups.value = []
     
     groupsData.forEach((group: any) => {
+      console.log('[DEBUG] AgentsTable - group data:', { id: group.id, name: group.name, roleId: group.roleId, isActive: group.isActive });
       groupsStatusMap.value.set(group.id, {
         name: group.name,
-        isActive: group.isActive
+        isActive: group.isActive,
+        roleId: group.roleId
       })
       // Добавляем в список доступных групп
       availableGroups.value.push({
         id: group.id,
         name: group.name,
-        isActive: group.isActive
+        isActive: group.isActive,
+        roleId: group.roleId
       })
     })
   } catch (err) {
@@ -194,6 +222,7 @@ const deleteAgents = async (id: number) => {
 onMounted(() => {
   fetchAgents()
   fetchGroupsStatus()
+  fetchRoles()
 
   // Периодическое обновление статусов групп (каждые 2 секунды)
   setInterval(fetchGroupsStatus, 2000)
@@ -210,6 +239,7 @@ const headers = [
   { title: 'Email', key: 'email', sortable: true },
   { title: 'Мобильный телефон', key: 'mobilePhone', sortable: true },
   { title: 'Телеграмм акк', key: 'telegramAccount', sortable: true },
+  { title: 'Роль', key: 'role', sortable: true },
   { title: 'Группы', key: 'groups', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
@@ -244,6 +274,10 @@ const bulkDelete = () => {
   isBulkDeleteDialogOpen.value = true
 }
 
+const bulkAddToGroup = () => {
+  isBulkAddToGroupDialogOpen.value = true
+}
+
 const bulkChangeStatus = () => {
   isBulkStatusDialogOpen.value = true
 }
@@ -257,6 +291,39 @@ const confirmBulkDelete = async () => {
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     console.error('Error bulk delete:', err)
+  }
+}
+
+const confirmBulkAddToGroup = async () => {
+  if (!bulkAddToGroupId.value) {
+    showToast('Выберите группу', 'error')
+    return
+  }
+
+  try {
+    bulkAddToGroupLoading.value = true
+    
+    // Добавляем каждого выбранного агента в группу
+    for (const agent of selectedItems.value) {
+      await $fetch(`${API_BASE}/agentsGroups/${bulkAddToGroupId.value}/agents`, {
+        method: 'POST',
+        body: { agentId: agent.id }
+      })
+    }
+    
+    showToast(`Агенты (${selectedItems.value.length}) добавлены в группу`)
+    selectedItems.value = []
+    isBulkAddToGroupDialogOpen.value = false
+    bulkAddToGroupId.value = null
+    emit('agent-updated')
+    
+    // Обновить данные
+    await fetchAgents(true)
+  } catch (err) {
+    console.error('Error bulk add to group:', err)
+    showToast('Ошибка добавления агентов в группу', 'error')
+  } finally {
+    bulkAddToGroupLoading.value = false
   }
 }
 
@@ -316,20 +383,20 @@ const getGroupStatus = (groupName: string) => {
 }
 
 // Определить цвет для группы
-const getGroupColor = (groupName: string) => {
-  const { isActive } = getGroupStatus(groupName)
+const getGroupColor = (groupInfo: string) => {
+  const { isActive } = getGroupStatus(groupInfo)
   return isActive ? 'primary' : 'grey'
 }
 
 // Определить вариант для группы
-const getGroupVariant = (groupName: string) => {
-  const { isActive } = getGroupStatus(groupName)
+const getGroupVariant = (groupInfo: string) => {
+  const { isActive } = getGroupStatus(groupInfo)
   return isActive ? 'flat' : 'outlined'
 }
 
 // Определить иконку для группы
-const getGroupIcon = (groupName: string) => {
-  const { isActive } = getGroupStatus(groupName)
+const getGroupIcon = (groupInfo: string) => {
+  const { isActive } = getGroupStatus(groupInfo)
   return isActive ? undefined : 'bx-pause-circle'
 }
 
@@ -338,11 +405,17 @@ const selectedItems = ref<Agents[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
+const isBulkAddToGroupDialogOpen = ref(false)
+const bulkAddToGroupId = ref<number | null>(null)
+const bulkAddToGroupLoading = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Диалоги
 const editDialog = ref(false)
 const deleteDialog = ref(false)
+const addToGroupDialog = ref(false)
+const selectedAgentForGroup = ref<Agents | null>(null)
+const selectedGroupForAgent = ref<number | null>(null)
 
 const defaultItem = ref<Agents>({
   id: -1,
@@ -492,6 +565,41 @@ const addNewAgents = () => {
   editDialog.value = true
 }
 
+// Открыть диалог добавления в группу
+const openAddToGroupDialog = (agent: Agents) => {
+  selectedAgentForGroup.value = agent
+  selectedGroupForAgent.value = null
+  addToGroupDialog.value = true
+}
+
+// Добавить агента в группу
+const addAgentToGroup = async () => {
+  if (!selectedAgentForGroup.value || !selectedGroupForAgent.value) {
+    showToast('Выберите группу', 'error')
+    return
+  }
+
+  try {
+    await $fetch(`${API_BASE}/agentsGroups/${selectedGroupForAgent.value}/agents`, {
+      method: 'POST',
+      body: { agentId: selectedAgentForGroup.value.id }
+    })
+    
+    // Обновить данные агента
+    await fetchAgents(true)
+    
+    showToast(`Агент добавлен в группу`)
+    addToGroupDialog.value = false
+    selectedAgentForGroup.value = null
+    selectedGroupForAgent.value = null
+    emit('agent-updated')
+    selectedGroupForAgent.value = null
+  } catch (err) {
+    console.error('Error adding agent to group:', err)
+    showToast('Ошибка добавления агента в группу', 'error')
+  }
+}
+
 const close = () => {
   editDialog.value = false
   editedIndex.value = -1
@@ -634,6 +742,9 @@ defineExpose({
             </VBtn>
           </template>
           <VList>
+            <VListItem @click="bulkAddToGroup(); isBulkActionsMenuOpen = false">
+              <VListItemTitle>Добавить в группу</VListItemTitle>
+            </VListItem>
             <VListItem @click="bulkDelete(); isBulkActionsMenuOpen = false">
               <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
@@ -785,10 +896,52 @@ defineExpose({
         </VCard>
       </VDialog>
 
+      <!-- Диалог массового добавления в группу -->
+      <VDialog
+        v-model="isBulkAddToGroupDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Добавить агентов в группу">
+          <VCardText>
+            <p class="mb-4">
+              Выбрано агентов: <strong>{{ selectedItems.length }}</strong>
+            </p>
+            <AppSelect
+              v-model="bulkAddToGroupId"
+              :items="availableGroups"
+              item-title="name"
+              item-value="id"
+              label="Выберите группу"
+              placeholder="Выберите группу"
+            />
+          </VCardText>
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkAddToGroupDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                :loading="bulkAddToGroupLoading"
+                @click="confirmBulkAddToGroup"
+              >
+                Добавить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
       <VDivider />
 
       <!-- Таблица -->
       <VDataTable
+        class="agents-table"
         v-model="selectedItems"
         :items-per-page="itemsPerPage"
         :page="currentPage"
@@ -800,29 +953,56 @@ defineExpose({
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Роль -->
+        <template #item.role="{ item }">
+          <div v-if="item.roleId && rolesMap.get(item.roleId)" class="d-flex align-center gap-2">
+            <VAvatar
+              :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+              size="32"
+              class="text-caption font-weight-medium"
+            >
+              <VIcon
+                v-if="rolesMap.get(item.roleId)?.icon"
+                :icon="rolesMap.get(item.roleId)?.icon"
+                size="18"
+                style="color: #666;"
+              />
+              <span v-else class="text-no-wrap" style="color: #666;">{{ rolesMap.get(item.roleId)?.name?.[0] || '' }}</span>
+            </VAvatar>
+            <span>{{ rolesMap.get(item.roleId)?.name }}</span>
+          </div>
+          <span v-else class="text-disabled">—</span>
+        </template>
+
         <!-- Группы -->
         <template #item.groups="{ item }">
           <div class="d-flex flex-wrap gap-1 align-center">
             <template v-if="item.groups">
               <VChip
-                v-for="group in item.groups.split(', ')"
-                :key="group"
-                :color="getGroupColor(group)"
-                :variant="getGroupVariant(group)"
+                v-for="group in item.groups"
+                :key="group.id"
+                :color="getGroupColor(group.name)"
+                :variant="getGroupVariant(group.name)"
                 density="compact"
                 label
                 size="small"
                 class="me-1"
               >
                 <VIcon
-                  v-if="!getGroupStatus(group).isActive"
+                  v-if="!getGroupStatus(group.name).isActive"
                   icon="bx-pause-circle"
                   size="small"
                   class="me-1"
                 />
-                {{ group }}
+                <template v-if="group.roleName">
+                  <span>{{ group.name }}</span>
+                  <span class="text-caption ms-1 font-weight-medium">• {{ group.roleName }}</span>
+                </template>
+                <template v-else>
+                  {{ group.name }}
+                </template>
                 <VTooltip
-                  v-if="!getGroupStatus(group).isActive"
+                  v-if="!getGroupStatus(group.name).isActive"
                   activator="parent"
                   location="top"
                 >
@@ -863,6 +1043,9 @@ defineExpose({
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
+            <IconBtn @click="openAddToGroupDialog(item)">
+              <VIcon icon="bx-user-plus" />
+            </IconBtn>
             <IconBtn @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
@@ -1066,5 +1249,59 @@ defineExpose({
     >
       {{ toastMessage }}
     </VSnackbar>
+
+    <!-- Диалог добавления агента в группу -->
+    <VDialog
+      v-model="addToGroupDialog"
+      max-width="400px"
+    >
+      <VCard title="Добавить агента в группу">
+        <VCardText>
+          <p v-if="selectedAgentForGroup" class="mb-4">
+            Агент: <strong>{{ selectedAgentForGroup.firstName }} {{ selectedAgentForGroup.lastName }}</strong>
+          </p>
+          <AppSelect
+            v-model="selectedGroupForAgent"
+            :items="availableGroups"
+            item-title="name"
+            item-value="id"
+            label="Выберите группу"
+            placeholder="Выберите группу"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            variant="text"
+            @click="addToGroupDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="primary"
+            @click="addAgentToGroup"
+          >
+            Добавить
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.agents-table {
+  width: 100%;
+  max-width: 100%;
+}
+
+:deep(.v-table) {
+  width: 100%;
+  max-width: 100%;
+}
+
+:deep(.v-data-table__wrapper) {
+  width: 100%;
+  overflow-x: auto;
+}
+</style>

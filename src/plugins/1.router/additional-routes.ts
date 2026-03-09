@@ -73,4 +73,28 @@ export const routes: RouteRecordRaw[] = [
     name: 'apps-ecommerce-dashboard',
     component: () => import('@/pages/dashboards/ecommerce.vue'),
   },
+  // RoleCards - моковая страница
+  {
+    path: '/apps/roles/cards',
+    name: 'apps-roles-cards',
+    component: () => import('@/views/apps/roles/RoleCards.vue'),
+  },
+  // UserList - моковая страница пользователей
+  {
+    path: '/apps/roles/users',
+    name: 'apps-roles-users',
+    component: () => import('@/views/apps/roles/UserList.vue'),
+  },
+  // Backup - страница резервного копирования
+  {
+    path: '/apps/backup',
+    name: 'apps-backup',
+    component: () => import('@/pages/apps/Backup.vue'),
+  },
+  // IntegrityCheck - страница контроля целостности
+  {
+    path: '/apps/integrity-check',
+    name: 'apps-integrity-check',
+    component: () => import('@/pages/apps/IntegrityCheck.vue'),
+  },
 ]

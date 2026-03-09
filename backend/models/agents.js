@@ -40,7 +40,8 @@ class Agents {
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at', 'groups']);
       if (sortBy && sortableFields.includes(sortBy)) {
         if (sortBy === 'groups') {
-          orderClause = `ORDER BY COALESCE(string_agg(ag.name, ', '), '') ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+          // Для сортировки по группам используем первую группу агента
+          orderClause = `ORDER BY MIN(COALESCE(ag_data.group_name, '')) ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
         } else {
           const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : `a.${toSnakeCase(sortBy)}`;
           orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
@@ -50,7 +51,7 @@ class Agents {
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM (SELECT a.id FROM ${Agents.tableName} a LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true ${whereClause} GROUP BY a.id) as sub`;
+      const countQuery = `SELECT COUNT(DISTINCT a.id) as total FROM ${Agents.tableName} a LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
@@ -61,10 +62,52 @@ class Agents {
       }).join(', ');
       // Для GROUP BY используем оригинальные имена полей без алиасов
       const groupByFields = this.fields.split(', ').map(f => `a.${toSnakeCase(f)}`).join(', ');
-      const dataQuery = `SELECT a.id, ${sqlFields}, a.created_at as "createdAt", a.updated_at as "updatedAt", a.is_active as "isActive", a.role_id as "roleId", string_agg(ag.name, ', ') as groups FROM ${Agents.tableName} a LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true ${whereClause} GROUP BY a.id, ${groupByFields}, a.created_at, a.updated_at, a.is_active, a.role_id ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      // Получаем роль от активных групп агента (если у агента нет своей роли)
+      // Группируем агентов по их ID и объединяем группы в одну строку
+      // Для каждой группы добавляем информацию о роли в формате "группа • роль"
+      const dataQuery = `
+      WITH agent_groups AS (
+        SELECT
+          a.id as agent_id,
+          ag.id as group_id,
+          ag.name as group_name,
+          r_group.name as group_role_name
+        FROM ${Agents.tableName} a
+        LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id
+        LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true
+        LEFT JOIN roles r_group ON ag.role_id = r_group.id
+        WHERE ag.name IS NOT NULL
+      )
+      SELECT
+        a.id,
+        ${sqlFields},
+        a.created_at as "createdAt",
+        a.updated_at as "updatedAt",
+        a.is_active as "isActive",
+        a.role_id as "roleId",
+        r.name as "roleName",
+        r.icon as "roleIcon",
+        array_to_json(
+          array_agg(
+            DISTINCT
+            jsonb_build_object(
+              'id', ag_data.group_id,
+              'name', ag_data.group_name,
+              'roleName', ag_data.group_role_name
+            )
+          )
+        ) as groups
+      FROM ${Agents.tableName} a
+      LEFT JOIN agent_groups ag_data ON a.id = ag_data.agent_id
+      LEFT JOIN roles r ON a.role_id = r.id
+      ${whereClause}
+      GROUP BY a.id, ${groupByFields}, a.created_at, a.updated_at, a.is_active, a.role_id, r.name, r.icon
+      ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
-
+      console.log('[DEBUG] Agents.getAll - agents data returned:', dataResult.rows.length, 'agents');
+      console.log('[DEBUG] Agents.getAll - sample agent:', dataResult.rows[0] ? { id: dataResult.rows[0].id, roleId: dataResult.rows[0].roleId, roleName: dataResult.rows[0].roleName, groups: dataResult.rows[0].groups } : 'none');
+      
       return {
         agents: dataResult.rows,
         total,
@@ -83,7 +126,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId" FROM ${Agents.tableName} WHERE id = $1`,
+        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId" FROM ${Agents.tableName} a WHERE a.id = $1`,
         [id]
       );
 
@@ -136,8 +179,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       
-      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active, role_id) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
-      values.push(agent.roleId !== undefined ? agent.roleId : null);
+      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -208,12 +250,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
 
-      // Добавляем roleId если передан
-      if (agent.roleId !== undefined) {
-        updates.push(`role_id = $${paramIndex}`);
-        values.push(agent.roleId);
-        paramIndex++;
-      }
+      // Роли больше не назначаются напрямую агентам, а только через группы
 
       const query = `UPDATE ${Agents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
       const result = await pool.query(query, values);

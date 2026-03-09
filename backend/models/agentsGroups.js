@@ -38,13 +38,15 @@ class AgentsGroups {
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
-      // Get paginated data
-      // Преобразуем имена полей в snake_case для SQL
+      // Get paginated data - преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
+        // Добавляем префикс таблицы для избежания неоднозначности
+        return snake === f ? `ag.${snake}` : `ag.${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${AgentsGroups.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      
+      // Исправлено: Добавлены знаки $ перед параметрами
+      const dataQuery = `SELECT ag.id, ${sqlFields}, ag.created_at as "createdAt", ag.updated_at as "updatedAt", ag.is_active as "isActive", ag.role_id as "roleId" FROM ${AgentsGroups.tableName} ag ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -63,10 +65,11 @@ class AgentsGroups {
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
+        // Добавляем префикс таблицы для избежания неоднозначности
+        return snake === f ? `ag.${snake}` : `ag.${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${AgentsGroups.tableName} WHERE id = $1`,
+        `SELECT ag.id, ${sqlFields}, ag.created_at as "createdAt", ag.updated_at as "updatedAt", ag.is_active as "isActive", ag.role_id as "roleId" FROM ${AgentsGroups.tableName} ag WHERE ag.id = $1`,
         [id]
       );
 
@@ -93,7 +96,11 @@ class AgentsGroups {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       
-      const query = `INSERT INTO ${AgentsGroups.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `INSERT INTO ${AgentsGroups.tableName} (${sqlFieldsInsert}, is_active, role_id) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
+      
+      // Добавляем roleId если передан
+      values.push(agentsgroup.roleId !== undefined ? agentsgroup.roleId : null);
+      
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -105,19 +112,23 @@ class AgentsGroups {
 
   static async update(id, agentsgroup) {
     try {
-      const fieldList = this.fields.split(', ');
       const updates = [];
       const values = [];
       let paramIndex = 1;
 
-      // Обновляем только переданные поля
-      fieldList.forEach(field => {
-        if (agentsgroup[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(agentsgroup[field]);
-          paramIndex++;
-        }
-      });
+      // Всегда обновляем name если передан
+      if (agentsgroup.name !== undefined) {
+        updates.push(`name = $${paramIndex}`);
+        values.push(agentsgroup.name);
+        paramIndex++;
+      }
+
+      // Обновляем roleId если передан (может быть null)
+      if (agentsgroup.roleId !== undefined) {
+        updates.push(`role_id = $${paramIndex}`);
+        values.push(agentsgroup.roleId);
+        paramIndex++;
+      }
 
       // Добавляем isActive если передан
       if (agentsgroup.isActive !== undefined) {
@@ -132,13 +143,7 @@ class AgentsGroups {
       // Добавляем id в конец
       values.push(id);
 
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-
-      const query = `UPDATE ${AgentsGroups.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
+      const query = `UPDATE ${AgentsGroups.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, name, role_id as "roleId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

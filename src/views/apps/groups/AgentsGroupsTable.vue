@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import AddEditGroupDialog from './AddEditGroupDialog.vue'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -9,6 +9,8 @@ interface AgentsGroups {
   name: string
   agents: Agent[]
   isActive: boolean
+  roleId?: number
+  role?: Role
   createdAt: string
   updatedAt: string
 }
@@ -23,11 +25,16 @@ interface Agent {
   isActive: boolean
 }
 
+// Тип для роли
+interface Role {
+  id: number
+  name: string
+}
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Роутер
-const router = useRouter()
 
 // Props
 interface Props {
@@ -57,12 +64,42 @@ const emit = defineEmits<{
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
+  { title: 'Роль', key: 'role', sortable: false },
   { title: 'Агентов', key: 'agents', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false }
 ]
 
 // Функция для определения варианта статуса
+// Состояние диалога редактирования/создания
+const isEditDialogVisible = ref(false)
+const editingGroup = ref<AgentsGroups | undefined>(undefined)
+
+// Роли
+const roles = ref<Role[]>([])
+const loadingRoles = ref(false)
+
+// Загрузка ролей
+const fetchRoles = async () => {
+  try {
+    loadingRoles.value = true
+    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    roles.value = data.roles
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  } finally {
+    loadingRoles.value = false
+  }
+}
+
+// Получить имя роли по ID
+const getRoleName = (roleId?: number) => {
+  if (!roleId) return '-'
+  const role = roles.value.find(r => r.id === roleId)
+  return role ? role.name : '-'
+}
+
+
 const resolveStatusVariant = (isActive: boolean) => {
   if (isActive)
     return { color: 'primary', text: 'Активен' }
@@ -71,7 +108,8 @@ const resolveStatusVariant = (isActive: boolean) => {
 }
 
 const editGroup = (group: AgentsGroups) => {
-  router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)
+  editingGroup.value = group
+  isEditDialogVisible.value = true
 }
 
 const deleteGroup = (group: AgentsGroups) => {
@@ -80,8 +118,13 @@ const deleteGroup = (group: AgentsGroups) => {
   deleteDialog.value = true
 }
 
+const handleGroupUpdated = () => {
+  emit('group-updated')
+}
+
 const addNewGroup = () => {
-  router.push('/apps/settings/users-groups-roles/AgentsGroupsEdit')
+  editingGroup.value = undefined
+  isEditDialogVisible.value = true
 }
 
 // Уведомления
@@ -171,7 +214,7 @@ const deleteItemConfirm = async () => {
     showToast('Ошибка удаления группы', 'error')
   } finally {
     if (editedItem.value) {
-      deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value.id)
+      deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value!.id)
     }
   }
 }
@@ -180,6 +223,11 @@ const deleteItemConfirm = async () => {
 watch(() => props.selectedItems, (newValue) => {
   console.log('Selected items:', newValue)
 }, { deep: true })
+
+// Загружаем роли при монтировании
+onMounted(() => {
+  fetchRoles()
+})
 </script>
 
 <template>
@@ -241,6 +289,20 @@ watch(() => props.selectedItems, (newValue) => {
             </div>
             <span class="ml-2">{{ item.agents.length }} агентов</span>
           </div>
+        </template>
+
+        <!-- Роль -->
+        <template #item.role="{ item }">
+          <VChip
+            v-if="item.roleId"
+            color="primary"
+            variant="tonal"
+            size="small"
+            label
+          >
+            {{ getRoleName(item.roleId) }}
+          </VChip>
+          <span v-else class="text-medium-emphasis">-</span>
         </template>
 
         <!-- Активен -->
@@ -312,7 +374,7 @@ watch(() => props.selectedItems, (newValue) => {
             <VBtn
               color="success"
               variant="elevated"
-              :loading="editedItem && deleteLoading.includes(editedItem.id)"
+              :loading="editedItem ? deleteLoading.includes(editedItem!.id) : false"
               @click="deleteItemConfirm"
             >
               Удалить
@@ -330,5 +392,12 @@ watch(() => props.selectedItems, (newValue) => {
     >
       {{ toastMessage }}
     </VSnackbar>
+
+    <!-- Диалог редактирования/создания группы -->
+    <AddEditGroupDialog
+      v-model:is-dialog-visible="isEditDialogVisible"
+      :group-detail="editingGroup"
+      @group-updated="handleGroupUpdated"
+    />
   </VCard>
 </template>

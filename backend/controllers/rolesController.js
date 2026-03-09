@@ -101,10 +101,84 @@ const deleteRoles = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+// Получить все доступные разрешения
+const getAvailablePermissions = asyncHandler(async (req, res) => {
+  const permissions = Roles.getAvailablePermissions();
+  res.json({ permissions });
+});
+
+// Получить разрешения роли
+const getRolePermissions = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const roleId = parseInt(id, 10);
+
+  if (isNaN(roleId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  // Проверяем существование роли
+  const role = await Roles.getById(roleId);
+  if (!role) {
+    return res.status(404).json({ message: 'Role not found' });
+  }
+
+  // Получаем разрешения с деталями
+  const permissions = await Roles.getPermissionsWithDetails(roleId);
+  
+  res.json({ permissions });
+});
+
+// Установить разрешения роли
+const setRolePermissions = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const roleId = parseInt(id, 10);
+
+  if (isNaN(roleId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  // Проверяем существование роли
+  const role = await Roles.getById(roleId);
+  if (!role) {
+    return res.status(404).json({ message: 'Role not found' });
+  }
+
+  const { permissions } = req.body;
+  
+  if (!permissions || typeof permissions !== 'object') {
+    return res.status(400).json({ message: 'permissions object is required' });
+  }
+
+  await Roles.setPermissions(roleId, permissions);
+  
+  // Получаем обновленные разрешения
+  const updatedPermissions = await Roles.getPermissionsWithDetails(roleId);
+  
+  res.json({ permissions: updatedPermissions });
+});
+
+// Получить разрешения агента
+const getAgentPermissions = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const agentId = parseInt(id, 10);
+
+  if (isNaN(agentId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const permissions = await Roles.getAgentPermissions(agentId);
+  
+  res.json({ permissions });
+});
+
 module.exports = {
   getRoles,
   getRoleById,
   createRoles,
   updateRoles,
   deleteRoles,
+  getAvailablePermissions,
+  getRolePermissions,
+  setRolePermissions,
+  getAgentPermissions,
 };

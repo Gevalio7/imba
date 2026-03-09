@@ -18,7 +18,14 @@ watch(groupsViewMode, (newValue) => {
 
 // Состояние аккордеонов (какие панели открыты)
 const expandedPanels = ref<number[]>(
-  JSON.parse(localStorage.getItem('agentsGroupsExpandedPanels') || '[]')
+  (() => {
+    try {
+      const stored = localStorage.getItem('agentsGroupsExpandedPanels')
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })()
 )
 
 // Сохраняем состояние аккордеонов при изменении
@@ -32,6 +39,7 @@ interface AgentsGroups {
   name: string
   agents: Agent[]
   isActive: boolean
+  roleId?: number
   createdAt: string
   updatedAt: string
 }
@@ -46,6 +54,12 @@ interface Agent {
   isActive: boolean
 }
 
+// Тип для роли
+interface Role {
+  id: number
+  name: string
+}
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -58,13 +72,24 @@ const agentsTableRef = ref<InstanceType<typeof AgentsTable> | null>(null)
 
 // Данные группы агентов
 const agentsGroups = ref<AgentsGroups[]>([])
+const roles = ref<Role[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Загрузка данных из API
-const fetchAgentsGroups = async () => {
+// Загрузка ролей
+const fetchRoles = async () => {
   try {
-    loading.value = true
+    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    roles.value = data.roles
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  }
+}
+
+// Загрузка данных из API
+const fetchAgentsGroups = async (silent = false) => {
+  try {
+    if (!silent) loading.value = true
     error.value = null
     const data = await $fetch<{ agentsGroups: AgentsGroups[], total: number }>(`${API_BASE}/agentsGroups`)
 
@@ -78,7 +103,7 @@ const fetchAgentsGroups = async () => {
     error.value = 'Ошибка загрузки группы агентов'
     console.error('Error fetching agentsGroups:', err)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -96,11 +121,12 @@ const fetchAgentsInGroup = async (groupId: number): Promise<Agent[]> => {
 // Инициализация
 onMounted(() => {
   fetchAgentsGroups()
+  fetchRoles()
 })
 
-// Единый обработчик обновления групп - обновляет и группы, и агентов
+// Единый обработчик обновления групп - обновляет и группы, и агентов (без моргания)
 const handleGroupsUpdated = async () => {
-  await fetchAgentsGroups() // Перезагружает группы + агентов в группах
+  await fetchAgentsGroups(true) // silent mode - без моргания
   agentsTableRef.value?.refresh?.() // КРИТИЧЕСКИ ВАЖНО: обновляет список ВСЕХ агентов
 }
 
@@ -218,9 +244,17 @@ const confirmBulkStatusChange = async () => {
 // Добавить агентов в группу (открыть редактирование группы)
 const addAgentsToGroup = () => {
   if (selectedItems.value.length === 1) {
-    const group = selectedItems.value[0]
-    router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)
+    editingGroup.value = selectedItems.value[0]
+    isEditDialogVisible.value = true
   }
+}
+
+// Модальное окно редактирования группы
+const isEditDialogVisible = ref(false)
+const editingGroup = ref<AgentsGroups | undefined>(undefined)
+
+const handleGroupUpdated = () => {
+  fetchAgentsGroups(true)
 }
 
 // Модальное окно создания группы
@@ -229,8 +263,8 @@ const newGroupName = ref('')
 const creatingGroup = ref(false)
 
 const openCreateGroupDialog = () => {
-  newGroupName.value = ''
-  isCreateGroupDialogOpen.value = true
+  editingGroup.value = undefined
+  isEditDialogVisible.value = true
 }
 
 const closeCreateGroupDialog = () => {
@@ -255,7 +289,7 @@ const createGroup = async () => {
     })
     showToast('Группа успешно создана')
     closeCreateGroupDialog()
-    await fetchAgentsGroups()
+    await fetchAgentsGroups(true)
   } catch (err) {
     console.error('Error creating group:', err)
     showToast('Ошибка создания группы', 'error')
@@ -316,7 +350,8 @@ const statusOptions = [
           v-if="groupsViewMode === 'cards'"
           :agents-groups="filteredGroups"
           :loading="loading"
-          @edit="(group) => router.push(`/apps/settings/users-groups-roles/AgentsGroupsEdit?id=${group.id}`)"
+          :roles="roles"
+          @edit="(group) => { editingGroup = group; isEditDialogVisible = true }"
           @delete="deleteGroup"
           @add="openCreateGroupDialog"
           @toggle-status="toggleGroupStatus"
@@ -562,7 +597,7 @@ const statusOptions = [
       </VCard>
     </VDialog>
 
-    <!-- Аккордеон для Агентов и Ролей -->
+    <!-- Аккордеон для Агентов -->
     <VCol cols="12">
       <VExpansionPanels
         v-model="expandedPanels"
@@ -585,27 +620,7 @@ const statusOptions = [
           </VExpansionPanelTitle>
 
           <VExpansionPanelText>
-            <AgentsTable ref="agentsTableRef" @agent-updated="fetchAgentsGroups" />
-          </VExpansionPanelText>
-        </VExpansionPanel>
-
-        <VExpansionPanel elevation="0" :value="1">
-          <VExpansionPanelTitle
-            collapse-icon="bx-minus"
-            expand-icon="bx-plus"
-          >
-            <div>
-              <h4 class="text-h4 mb-1">
-                Роли
-              </h4>
-              <p class="text-body-1 mb-0">
-                Список всех ролей системы с возможностью управления правами доступа.
-              </p>
-            </div>
-          </VExpansionPanelTitle>
-
-          <VExpansionPanelText>
-            <RolesTable />
+            <AgentsTable ref="agentsTableRef" @agent-updated="() => fetchAgentsGroups(true)" />
           </VExpansionPanelText>
         </VExpansionPanel>
       </VExpansionPanels>
@@ -620,6 +635,13 @@ const statusOptions = [
   >
     {{ toastMessage }}
   </VSnackbar>
+
+  <!-- Диалог редактирования/создания группы -->
+  <AddEditGroupDialog
+    v-model:is-dialog-visible="isEditDialogVisible"
+    :group-detail="editingGroup"
+    @group-updated="handleGroupUpdated"
+  />
 </template>
 
 <style lang="scss" scoped>

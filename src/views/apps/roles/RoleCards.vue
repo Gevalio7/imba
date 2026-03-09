@@ -1,268 +1,142 @@
 <script setup lang="ts">
-import avatar1 from '@images/avatars/avatar-1.png'
-import avatar10 from '@images/avatars/avatar-10.png'
-import avatar2 from '@images/avatars/avatar-2.png'
-import avatar3 from '@images/avatars/avatar-3.png'
-import avatar4 from '@images/avatars/avatar-4.png'
-import avatar5 from '@images/avatars/avatar-5.png'
-import avatar6 from '@images/avatars/avatar-6.png'
-import avatar7 from '@images/avatars/avatar-7.png'
-import avatar8 from '@images/avatars/avatar-8.png'
-import avatar9 from '@images/avatars/avatar-9.png'
 import girlUsingLaptop from '@images/pages/girl-using-laptop.png'
 
-interface Permission {
+// Тип для роли из API
+interface Role {
+  id: number
   name: string
-  read: boolean
-  write: boolean
-  create: boolean
+  message: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-interface RoleDetails {
-  name: string
-  permissions: Permission[]
+// Пропсы
+interface Props {
+  roles: Role[]
+  loading?: boolean
 }
 
-interface Roles {
-  role: string
-  users: string[]
-  details: RoleDetails
-}
+const props = withDefaults(defineProps<Props>(), {
+  roles: () => [],
+  loading: false,
+})
 
-// 👉 Roles List
-const roles = ref<Roles[]>([
-  {
-    role: 'Administrator',
-    users: [avatar1, avatar2, avatar3, avatar4],
-    details: {
-      name: 'Administrator',
-      permissions: [
-        {
-          name: 'User Management',
-          read: true,
-          write: true,
-          create: true,
-        },
-        {
-          name: 'Disputes Management',
-          read: true,
-          write: true,
-          create: true,
-        },
-        {
-          name: 'API Control',
-          read: true,
-          write: true,
-          create: true,
-        },
-      ],
-    },
-  },
-  {
-    role: 'Manager',
-    users: [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7],
-    details: {
-      name: 'Manager',
-      permissions: [
-        {
-          name: 'Reporting',
-          read: true,
-          write: true,
-          create: false,
-        },
-        {
-          name: 'Payroll',
-          read: true,
-          write: true,
-          create: true,
-        },
-        {
-          name: 'User Management',
-          read: true,
-          write: true,
-          create: true,
-        },
-      ],
-    },
-  },
-  {
-    role: 'Users',
-    users: [avatar1, avatar2, avatar3, avatar4, avatar5],
-    details: {
-      name: 'Users',
-      permissions: [
-        {
-          name: 'User Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Content Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Disputes Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Database Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-      ],
-    },
-  },
-  {
-    role: 'Support',
-    users: [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6],
-    details: {
-      name: 'Support',
-      permissions: [
-        {
-          name: 'Repository Management',
-          read: true,
-          write: true,
-          create: false,
-        },
-        {
-          name: 'Content Management',
-          read: true,
-          write: true,
-          create: false,
-        },
-        {
-          name: 'Database Management',
-          read: true,
-          write: true,
-          create: false,
-        },
-      ],
-    },
-  },
-  {
-    role: 'Restricted User',
-    users: [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7, avatar8, avatar9, avatar10],
-    details: {
-      name: 'Restricted User',
-      permissions: [
-        {
-          name: 'User Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Content Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Disputes Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-        {
-          name: 'Database Management',
-          read: true,
-          write: false,
-          create: false,
-        },
-      ],
-    },
-  },
-])
+// Эмиты
+const emit = defineEmits<{
+  (e: 'edit', role: Role): void
+  (e: 'delete', role: Role): void
+  (e: 'toggle-status', role: Role, newValue: boolean): void
+  (e: 'add'): void
+}>()
 
 const isRoleDialogVisible = ref(false)
-
-const roleDetail = ref<RoleDetails>()
-
 const isAddRoleDialogVisible = ref(false)
 
-const editPermission = (value: RoleDetails) => {
-  isRoleDialogVisible.value = true
-  roleDetail.value = value
+const editRole = (role: Role) => {
+  emit('edit', role)
+}
+
+const deleteRole = (role: Role) => {
+  emit('delete', role)
+}
+
+const toggleStatus = (role: Role, newValue: boolean) => {
+  emit('toggle-status', role, newValue)
+}
+
+const addNewRole = () => {
+  emit('add')
+}
+
+// Функция для получения статуса
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
+    return { color: 'primary', text: 'Активен' }
+  else
+    return { color: 'error', text: 'Не активен' }
 }
 </script>
 
 <template>
   <VRow>
-    <!-- 👉 Roles -->
-    <VCol
-      v-for="item in roles"
-      :key="item.role"
-      cols="12"
-      sm="6"
-      lg="4"
-    >
-      <VCard>
-        <VCardText class="d-flex align-center pb-4">
-          <div class="text-body-1">
-            Total {{ item.users.length }} users
-          </div>
-
-          <VSpacer />
-
-          <div class="v-avatar-group">
-            <template
-              v-for="(user, index) in item.users"
-              :key="user"
-            >
-              <VAvatar
-                v-if="item.users.length > 4 && item.users.length !== 4 && index < 3"
-                :image="user"
-              />
-
-              <VAvatar
-                v-if="item.users.length === 4"
-                :image="user"
-              />
-            </template>
-            <VAvatar
-              v-if="item.users.length > 4"
-              :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-            >
-              <span>
-                +{{ item.users.length - 3 }}
-              </span>
-            </VAvatar>
-          </div>
-        </VCardText>
-
-        <VCardText>
-          <div class="d-flex justify-space-between align-center">
-            <div>
-              <h5 class="text-h5 mb-1">
-                {{ item.role }}
-              </h5>
-              <div class="d-flex align-center">
-                <a
-                  href="javascript:void(0)"
-                  @click="editPermission(item.details)"
-                >
-                  Edit Role
-                </a>
-              </div>
-            </div>
-            <IconBtn class="align-self-end">
-              <VIcon
-                icon="bx-copy"
-                class="text-disabled"
-              />
-            </IconBtn>
-          </div>
-        </VCardText>
-      </VCard>
+    <!-- Отладка: показываем количество ролей -->
+    <VCol v-if="props.roles.length === 0" cols="12" class="pa-6">
+      <VAlert type="info">
+        Ролей не найдено. Всего ролей: {{ props.roles.length }}, Загрузка: {{ props.loading }}
+      </VAlert>
     </VCol>
 
-    <!-- 👉 Add New Role -->
+    <!-- Индикатор загрузки -->
+    <VCol v-if="loading" cols="12" class="d-flex justify-center pa-6">
+      <VProgressCircular indeterminate color="primary" />
+    </VCol>
+
+    <!-- 👉 Роли -->
+    <template v-else>
+      <VCol
+        v-for="role in props.roles"
+        :key="role.id"
+        cols="12"
+        sm="6"
+        lg="4"
+      >
+        <VCard>
+          <VCardText class="d-flex align-center pb-4">
+            <VChip
+              v-bind="resolveStatusVariant(role.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+
+            <VSpacer />
+
+            <!-- Переключатель статуса -->
+            <VSwitch
+              :model-value="role.isActive"
+              @update:model-value="(val) => toggleStatus(role, !!val)"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+          </VCardText>
+
+          <VCardText>
+            <div class="d-flex justify-space-between align-center">
+              <div>
+                <h5 class="text-h5 mb-1">
+                  {{ role.name }}
+                </h5>
+                <div class="d-flex align-center text-body-2 text-medium-emphasis">
+                  <span v-if="role.message">{{ role.message }}</span>
+                  <span v-else class="text-disabled">Нет описания</span>
+                </div>
+                <div class="d-flex align-center mt-2">
+                  <a
+                    href="javascript:void(0)"
+                    class="text-primary"
+                    @click="editRole(role)"
+                  >
+                    Редактировать
+                  </a>
+                </div>
+              </div>
+              <div class="d-flex flex-column gap-1">
+                <IconBtn @click="editRole(role)">
+                  <VIcon icon="bx-edit" />
+                </IconBtn>
+                <IconBtn @click="deleteRole(role)">
+                  <VIcon icon="bx-trash" />
+                </IconBtn>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </template>
+
+    <!-- 👉 Добавить новую роль -->
     <VCol
       cols="12"
       sm="6"
@@ -290,23 +164,18 @@ const editPermission = (value: RoleDetails) => {
             <VCardText class="d-flex flex-column align-end justify-end gap-4">
               <VBtn
                 size="small"
-                @click="isAddRoleDialogVisible = true"
+                color="primary"
+                @click="addNewRole"
               >
-                Add New Role
+                Добавить роль
               </VBtn>
-              <div class="text-end">
-                Add new role,<br> if it doesn't exist.
+              <div class="text-end text-body-2">
+                Добавьте новую роль,<br> если её не существует.
               </div>
             </VCardText>
           </VCol>
         </VRow>
       </VCard>
-      <AddEditRoleDialog v-model:is-dialog-visible="isAddRoleDialogVisible" />
     </VCol>
   </VRow>
-
-  <AddEditRoleDialog
-    v-model:is-dialog-visible="isRoleDialogVisible"
-    v-model:role-permissions="roleDetail"
-  />
 </template>

@@ -26,7 +26,6 @@ console.log('📁 Static files served from /uploads');
 // Логирование запросов в dev режиме
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
     next();
   });
 }

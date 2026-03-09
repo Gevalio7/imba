@@ -8,6 +8,7 @@ interface AgentsGroups {
   name: string
   agents: Agent[]
   isActive: boolean
+  roleId?: number
   createdAt: string
   updatedAt: string
 }
@@ -20,6 +21,12 @@ interface Agent {
   login: string
   email: string
   isActive: boolean
+}
+
+// Тип для роли
+interface Role {
+  id: number
+  name: string
 }
 
 interface Props {
@@ -47,6 +54,7 @@ const group = ref<AgentsGroups>({
   name: '',
   agents: [],
   isActive: true,
+  roleId: undefined,
   createdAt: '',
   updatedAt: '',
 })
@@ -54,6 +62,10 @@ const group = ref<AgentsGroups>({
 const allAgents = ref<Agent[]>([])
 const loadingAgents = ref(false)
 const selectedAgent = ref<Agent | null>(null)
+
+// Роли
+const roles = ref<Role[]>([])
+const loadingRoles = ref(false)
 
 // Загрузка всех агентов
 const fetchAllAgents = async () => {
@@ -68,9 +80,22 @@ const fetchAllAgents = async () => {
   }
 }
 
+// Загрузка всех ролей
+const fetchAllRoles = async () => {
+  try {
+    loadingRoles.value = true
+    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    roles.value = data.roles
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  } finally {
+    loadingRoles.value = false
+  }
+}
+
 // Доступные агенты для группы (не добавленные в эту группу)
 const availableAgents = computed(() => {
-  const currentAgentIds = group.value.agents.map(a => a.id)
+  const currentAgentIds = (group.value.agents || []).map(a => a.id)
   return allAgents.value.filter(agent => !currentAgentIds.includes(agent.id))
 })
 
@@ -118,7 +143,8 @@ const saveGroup = async () => {
         method: 'PUT',
         body: {
           name: group.value.name,
-          isActive: group.value.isActive
+          isActive: group.value.isActive,
+          roleId: group.value.roleId
         }
       })
       showToast('Группа обновлена')
@@ -128,9 +154,12 @@ const saveGroup = async () => {
         method: 'POST',
         body: {
           name: group.value.name,
-          isActive: group.value.isActive
+          isActive: group.value.isActive,
+          roleId: group.value.roleId
         }
       })
+      // Убедимся что agents существует
+      newGroup.agents = newGroup.agents || []
       group.value = newGroup
       showToast('Группа создана')
     }
@@ -168,11 +197,13 @@ watch(() => props.isDialogVisible, (newVal) => {
         name: '',
         agents: [],
         isActive: true,
+        roleId: undefined,
         createdAt: '',
         updatedAt: '',
       }
     }
     fetchAllAgents()
+    fetchAllRoles()
   }
 })
 </script>
@@ -195,6 +226,20 @@ watch(() => props.isDialogVisible, (newVal) => {
               v-model="group.name"
               label="Название группы *"
               placeholder="Введите название группы"
+            />
+          </VCol>
+
+          <VCol cols="12">
+            <AppSelect
+              v-model="group.roleId"
+              :items="roles"
+              item-title="name"
+              item-value="id"
+              label="Роль"
+              placeholder="Выберите роль для группы"
+              :loading="loadingRoles"
+              clearable
+              clear-icon="bx-x"
             />
           </VCol>
 

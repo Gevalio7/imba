@@ -1,6 +1,19 @@
 <script setup lang="ts">
+import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
+import RoleCards from '@/views/apps/roles/RoleCards.vue'
+import RolePermissions from '@/views/apps/roles/RolePermissions.vue'
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
+
+// Переключатель вида ролей (карточки/таблица)
+const rolesViewMode = ref<'cards' | 'table'>(
+  (localStorage.getItem('rolesViewMode') as 'cards' | 'table') || 'table'
+)
+
+// Сохраняем состояние при изменении
+watch(rolesViewMode, (newValue) => {
+  localStorage.setItem('rolesViewMode', newValue)
+})
 
 // Типы данных для Роль
 interface Roles {
@@ -201,6 +214,9 @@ watch(selectedItems, (newValue) => {
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 
+// Вкладки в диалоге редактирования
+const editTab = ref('main') // 'main' | 'permissions'
+
 const defaultItem = ref<Roles>({
   id: -1,
   name: '',
@@ -316,11 +332,49 @@ const addNewRoles = () => {
   editedIndex.value = -1
   editDialog.value = true
 }
+
+// Состояние аккордеонов (какие панели открыты)
+const expandedPanels = ref<number[]>(
+  JSON.parse(localStorage.getItem('rolesExpandedPanels') || '[]')
+)
+
+// Сохраняем состояние аккордеонов при изменении
+watch(expandedPanels, (newValue) => {
+  localStorage.setItem('rolesExpandedPanels', JSON.stringify(newValue))
+}, { deep: true })
+
+// Ref для таблицы агентов
+const agentsTableRef = ref<InstanceType<typeof AgentsTable> | null>(null)
+
+// Обработчик обновления агента
+const handleAgentUpdated = () => {
+  // Можно добавить дополнительную логику при обновлении агента
+}
 </script>
 
 <template>
   <div>
-    <VCard title="Роли">
+    <VCard>
+      <!-- Заголовок с переключателем вида -->
+      <div class="d-flex justify-space-between align-center pa-6">
+        <div>
+          <h4 class="text-h4 mb-1">
+            Роли
+          </h4>
+          <p class="text-body-1 mb-0">
+            Управление ролями пользователей системы.
+          </p>
+        </div>
+        <VBtnToggle
+          v-model="rolesViewMode"
+          mandatory
+          variant="outlined"
+          divided
+        >
+          <VBtn value="cards" icon="bx-grid-alt" />
+          <VBtn value="table" icon="bx-list-ul" />
+        </VBtnToggle>
+      </div>
 
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
@@ -334,86 +388,158 @@ const addNewRoles = () => {
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
-        <div class="d-flex align-center">
-          <!-- Поиск -->
-          <AppTextField
-            placeholder="Поиск роли"
-            style="inline-size: 250px;"
-            class="me-3"
+      <template v-else>
+        <!-- Карточный вид -->
+        <div v-if="rolesViewMode === 'cards'" class="pa-6">
+          <RoleCards
+            :roles="filteredRoles"
+            :loading="loading"
+            @edit="editItem"
+            @delete="deleteItem"
+            @toggle-status="toggleStatus"
+            @add="addNewRoles"
           />
         </div>
 
-        <!-- Кнопка фильтра -->
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="bx-filter"
-          @click="isFilterDialogOpen = true"
-        >
-          Фильтр
-        </VBtn>
+        <!-- Табличный вид -->
+        <template v-if="rolesViewMode === 'table'">
+          <div class="d-flex flex-wrap gap-4 pa-6">
+            <div class="d-flex align-center">
+              <!-- Поиск -->
+              <AppTextField
+                placeholder="Поиск роли"
+                style="inline-size: 250px;"
+                class="me-3"
+              />
+            </div>
 
-        <!-- Кнопка массовых действий -->
-        <VMenu
-          v-model="isBulkActionsMenuOpen"
-          :close-on-content-click="false"
-        >
-          <template #activator="{ props }">
+            <!-- Кнопка фильтра -->
             <VBtn
               variant="tonal"
               color="secondary"
-              prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedItems.length === 0"
-              v-bind="props"
+              prepend-icon="bx-filter"
+              @click="isFilterDialogOpen = true"
             >
-              Действия ({{ selectedItems.length }})
+              Фильтр
             </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Удалить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Изменить статус</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
 
-        <VSpacer />
-        <div class="d-flex gap-4 flex-wrap align-center">
-          <AppSelect
-            v-model="itemsPerPage"
-            :items="[5, 10, 20, 25, 50]"
-          />
-          <!-- Экспорт -->
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            prepend-icon="bx-export"
-          >
-            Экспорт
-          </VBtn>
+            <!-- Кнопка массовых действий -->
+            <VMenu
+              v-model="isBulkActionsMenuOpen"
+              :close-on-content-click="false"
+            >
+              <template #activator="{ props }">
+                <VBtn
+                  variant="tonal"
+                  color="secondary"
+                  prepend-icon="bx-dots-vertical-rounded"
+                  :disabled="selectedItems.length === 0"
+                  v-bind="props"
+                >
+                  Действия ({{ selectedItems.length }})
+                </VBtn>
+              </template>
+              <VList>
+                <VListItem
+                  @click="() => {
+                    bulkDelete()
+                    isBulkActionsMenuOpen = false
+                  }"
+                >
+                  <VListItemTitle>Удалить</VListItemTitle>
+                </VListItem>
+                <VListItem
+                  @click="() => {
+                    bulkChangeStatus()
+                    isBulkActionsMenuOpen = false
+                  }"
+                >
+                  <VListItemTitle>Изменить статус</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewRoles"
+            <VSpacer />
+            <div class="d-flex gap-4 flex-wrap align-center">
+              <AppSelect
+                v-model="itemsPerPage"
+                :items="[5, 10, 20, 25, 50]"
+              />
+              <!-- Экспорт -->
+              <VBtn
+                variant="tonal"
+                color="secondary"
+                prepend-icon="bx-export"
+              >
+                Экспорт
+              </VBtn>
+
+              <VBtn
+                color="primary"
+                prepend-icon="bx-plus"
+                @click="addNewRoles"
+              >
+                Добавить роль
+              </VBtn>
+            </div>
+          </div>
+
+          <VDivider />
+
+          <!-- Таблица -->
+          <VDataTable
+            v-model="selectedItems"
+            v-model:items-per-page="itemsPerPage"
+            v-model:page="currentPage"
+            :headers="headers"
+            :items="filteredRoles"
+            show-select
+            :hide-default-footer="true"
+            item-value="id"
+            return-object
+            no-data-text="Нет данных"
           >
-            Добавить роль
-          </VBtn>
-        </div>
-      </div>
+            <!-- Активен -->
+            <template #item.isActive="{ item }">
+              <div class="d-flex align-center gap-2">
+                <VSwitch
+                  :model-value="item.isActive"
+                  @update:model-value="(val) => toggleStatus(item, !!val)"
+                  color="primary"
+                  hide-details
+                />
+                <VChip
+                  v-bind="resolveStatusVariant(item.isActive)"
+                  density="compact"
+                  label
+                  size="small"
+                />
+              </div>
+            </template>
+
+            <!-- Действия -->
+            <template #item.actions="{ item }">
+              <div class="d-flex gap-1">
+                <IconBtn @click="editItem(item)">
+                  <VIcon icon="bx-edit" />
+                </IconBtn>
+                <IconBtn @click="deleteItem(item)">
+                  <VIcon icon="bx-trash" />
+                </IconBtn>
+              </div>
+            </template>
+          </VDataTable>
+
+          <!-- Пагинация -->
+          <div class="d-flex justify-center mt-4 pb-4">
+            <VPagination
+              v-model="currentPage"
+              :length="Math.ceil(filteredRoles.length / itemsPerPage) || 1"
+              :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+            />
+          </div>
+        </template>
+      </template>
 
 
       <!-- Диалог фильтров -->
@@ -531,108 +657,97 @@ const addNewRoles = () => {
           </VCardText>
         </VCard>
       </VDialog>
-
-      <VDivider />
-
-      <!-- Таблица -->
-      <VDataTable
-        v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
-        :headers="headers"
-        :items="filteredRoles"
-        show-select
-        :hide-default-footer="true"
-        item-value="id"
-        return-object
-        no-data-text="Нет данных"
-      >
-        <!-- Активен -->
-        <template #item.isActive="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VSwitch
-              :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, !!val)"
-              color="primary"
-              hide-details
-            />
-            <VChip
-              v-bind="resolveStatusVariant(item.isActive)"
-              density="compact"
-              label
-              size="small"
-            />
-          </div>
-        </template>
-
-        <!-- Действия -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn @click="deleteItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
-          </div>
-        </template>
-      </VDataTable>
-
-      <!-- Пагинация -->
-      <div class="d-flex justify-center mt-4 pb-4">
-        <VPagination
-          v-model="currentPage"
-          :length="Math.ceil(filteredRoles.length / itemsPerPage) || 1"
-          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
-        />
-      </div>
     </VCard>
+
+    <!-- Аккордеон для Агентов -->
+    <VCol cols="12">
+      <VExpansionPanels
+        v-model="expandedPanels"
+        variant="accordion"
+        class="expansion-panels-width-border mt-6"
+      >
+        <VExpansionPanel elevation="0" :value="0">
+          <VExpansionPanelTitle
+            collapse-icon="bx-minus"
+            expand-icon="bx-plus"
+          >
+            <div>
+              <h4 class="text-h4 mb-1">
+                Все агенты
+              </h4>
+              <p class="text-body-1 mb-0">
+                Список всех агентов системы с возможностью фильтрации и массовых действий.
+              </p>
+            </div>
+          </VExpansionPanelTitle>
+
+          <VExpansionPanelText class="w-100">
+            <AgentsTable ref="agentsTableRef" @agent-updated="handleAgentUpdated" />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
+    </VCol>
 
     <!-- Диалог редактирования -->
     <VDialog
       v-model="editDialog"
-      max-width="600px"
+      max-width="800px"
     >
       <VCard :title="editedIndex > -1 ? 'Редактировать роль' : 'Добавить роль'">
-        <VCardText>
-          <VRow>
+        <!-- Вкладки -->
+        <VTabs v-model="editTab" color="primary">
+          <VTab value="main">Основное</VTab>
+          <VTab value="permissions" :disabled="editedIndex === -1">Разрешения</VTab>
+        </VTabs>
 
-            <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
-              />
-            </VCol>
+        <VDivider />
 
-            <!-- Сообщение -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextarea
-                v-model="editedItem.message"
-                label="Сообщение"
-                rows="3"
-                placeholder="Введите сообщение..."
-              />
-            </VCol>
+        <VCardText style="max-height: 60vh; overflow-y: auto;">
+          <VWindow v-model="editTab">
+            <!-- Вкладка Основное -->
+            <VWindowItem value="main">
+              <VRow>
+                <!-- Название -->
+                <VCol cols="12" sm="6">
+                  <AppTextField
+                    v-model="editedItem.name"
+                    label="Название *"
+                  />
+                </VCol>
 
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
+                <!-- Сообщение -->
+                <VCol cols="12">
+                  <AppTextarea
+                    v-model="editedItem.message"
+                    label="Сообщение"
+                    rows="3"
+                    placeholder="Введите сообщение..."
+                  />
+                </VCol>
+
+                <!-- Активен -->
+                <VCol cols="12" sm="6">
+                  <VSwitch
+                    v-model="editedItem.isActive"
+                    label="Активен"
+                    color="primary"
+                  />
+                </VCol>
+              </VRow>
+            </VWindowItem>
+
+            <!-- Вкладка Разрешения -->
+            <VWindowItem value="permissions">
+              <RolePermissions
+                v-if="editedItem.id > 0"
+                :role-id="editedItem.id"
+                @saved="showToast('Разрешения сохранены')"
               />
-            </VCol>
-          </VRow>
+              <div v-else class="text-center pa-6 text-medium-emphasis">
+                Сохраните роль сначала, чтобы редактировать разрешения
+              </div>
+            </VWindowItem>
+          </VWindow>
         </VCardText>
 
         <VCardText>
@@ -697,5 +812,25 @@ const addNewRoles = () => {
 <style lang="scss" scoped>
 .v-card {
   margin-block-end: 1rem;
+  max-width: 100%;
+  width: 100%;
+}
+
+.expansion-panels-width-border {
+  width: 100%;
+}
+
+:deep(.v-expansion-panel-text__wrapper) {
+  width: 100%;
+  max-width: 100%;
+}
+
+:deep(.v-data-table) {
+  width: 100%;
+  max-width: 100%;
+}
+
+:deep(.v-expansion-panel) {
+  max-width: 100%;
 }
 </style>
