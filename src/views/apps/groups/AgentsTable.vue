@@ -621,11 +621,13 @@ const save = async () => {
       const agent = agents.value.find(a => a.id === editedItem.value.id)
       if (agent) {
         Object.assign(agent, editedItem.value)
-        // Обновляем отображаемые группы
+        // Обновляем отображаемые группы в новом формате {id, roleId}
         agent.groups = selectedGroupIds.value
-          .map(id => availableGroups.value.find(g => g.id === id)?.name)
-          .filter(Boolean)
-          .join(', ')
+          .map(id => {
+            const group = availableGroups.value.find(g => g.id === id)
+            return group ? { id: group.id, roleId: group.roleId } : null
+          })
+          .filter((g): g is { id: number, roleId?: number } => g !== null)
       }
 
       // Генерируем событие для обновления списка групп (счётчики агентов)
@@ -1154,10 +1156,15 @@ defineExpose({
                       class="me-1"
                     />
                     {{ item.raw.name }}
+                    <span v-if="item.raw.roleId" class="text-caption ms-1 font-weight-medium">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
                   </VChip>
                 </template>
                 <template #item="{ props, item }">
-                  <VListItem v-bind="props" :title="item.raw.name">
+                  <VListItem v-bind="props">
+                    <template #title>
+                      {{ item.raw.name }}
+                      <span v-if="item.raw.roleId" class="text-caption text-grey ms-1">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
+                    </template>
                     <template #prepend>
                       <VIcon
                         v-if="!item.raw.isActive"
