@@ -15,10 +15,7 @@ interface Agents {
   isActive: boolean
   createdAt: string
   updatedAt: string
-  groups?: Array<{id: number, name: string, roleName?: string}>
-  roleId?: number
-  roleName?: string
-  roleIcon?: string
+  groups?: Array<{id: number, roleId?: number}>
 }
 
 // Тип для Группы агентов
@@ -103,10 +100,6 @@ const fetchAgents = async (silent = false) => {
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
       query,
     })
-    console.log('[DEBUG] AgentsTable - agents from API:', data.agents.length);
-    if (data.agents.length > 0) {
-      console.log('[DEBUG] AgentsTable - sample agent:', { id: data.agents[0].id, roleId: data.agents[0].roleId, roleName: data.agents[0].roleName, groups: data.agents[0].groups });
-    }
     agents.value = data.agents
     total.value = data.total
   } catch (err) {
@@ -372,31 +365,27 @@ const resolveStatusVariant = (isActive: boolean) => {
     return { color: 'error', text: 'Не активен' }
 }
 
-// Получить статус группы по имени
-const getGroupStatus = (groupName: string) => {
-  for (const [id, group] of groupsStatusMap.value.entries()) {
-    if (group.name === groupName) {
-      return { id, isActive: group.isActive }
-    }
-  }
-  return { id: null, isActive: true } // по умолчанию активна
+// Получить статус группы по id
+const getGroupStatus = (groupId: number) => {
+  const group = groupsStatusMap.value.get(groupId)
+  return { isActive: group?.isActive ?? true }
 }
 
 // Определить цвет для группы
-const getGroupColor = (groupInfo: string) => {
-  const { isActive } = getGroupStatus(groupInfo)
+const getGroupColor = (groupId: number) => {
+  const { isActive } = getGroupStatus(groupId)
   return isActive ? 'primary' : 'grey'
 }
 
 // Определить вариант для группы
-const getGroupVariant = (groupInfo: string) => {
-  const { isActive } = getGroupStatus(groupInfo)
+const getGroupVariant = (groupId: number) => {
+  const { isActive } = getGroupStatus(groupId)
   return isActive ? 'flat' : 'outlined'
 }
 
 // Определить иконку для группы
-const getGroupIcon = (groupInfo: string) => {
-  const { isActive } = getGroupStatus(groupInfo)
+const getGroupIcon = (groupId: number) => {
+  const { isActive } = getGroupStatus(groupId)
   return isActive ? undefined : 'bx-pause-circle'
 }
 
@@ -953,56 +942,54 @@ defineExpose({
         return-object
         no-data-text="Нет данных"
       >
-        <!-- Роль -->
+        <!-- Роль (из групп агента) -->
         <template #item.role="{ item }">
-          <div v-if="item.roleId && rolesMap.get(item.roleId)" class="d-flex align-center gap-2">
-            <VAvatar
-              :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-              size="32"
-              class="text-caption font-weight-medium"
-            >
-              <VIcon
-                v-if="rolesMap.get(item.roleId)?.icon"
-                :icon="rolesMap.get(item.roleId)?.icon"
-                size="18"
-                style="color: #666;"
-              />
-              <span v-else class="text-no-wrap" style="color: #666;">{{ rolesMap.get(item.roleId)?.name?.[0] || '' }}</span>
-            </VAvatar>
-            <span>{{ rolesMap.get(item.roleId)?.name }}</span>
-          </div>
+          <template v-if="item.groups && item.groups.some(g => g.roleId)">
+            <div class="d-flex align-center gap-2">
+              <VAvatar
+                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                size="32"
+                class="text-caption font-weight-medium"
+              >
+                <span class="text-no-wrap" style="color: #666;">
+                  {{ [...new Set(item.groups.filter(g => g.roleId).map(g => rolesMap.get(g.roleId!)?.name).filter(Boolean))].join(', ')?.[0] || '' }}
+                </span>
+              </VAvatar>
+              <span>{{ [...new Set(item.groups.filter(g => g.roleId).map(g => rolesMap.get(g.roleId!)?.name).filter(Boolean))].join(', ') }}</span>
+            </div>
+          </template>
           <span v-else class="text-disabled">—</span>
         </template>
 
         <!-- Группы -->
         <template #item.groups="{ item }">
           <div class="d-flex flex-wrap gap-1 align-center">
-            <template v-if="item.groups">
+            <template v-if="item.groups && item.groups.length > 0">
               <VChip
                 v-for="group in item.groups"
                 :key="group.id"
-                :color="getGroupColor(group.name)"
-                :variant="getGroupVariant(group.name)"
+                :color="getGroupColor(group.id)"
+                :variant="getGroupVariant(group.id)"
                 density="compact"
                 label
                 size="small"
                 class="me-1"
               >
                 <VIcon
-                  v-if="!getGroupStatus(group.name).isActive"
+                  v-if="!getGroupStatus(group.id).isActive"
                   icon="bx-pause-circle"
                   size="small"
                   class="me-1"
                 />
-                <template v-if="group.roleName">
-                  <span>{{ group.name }}</span>
-                  <span class="text-caption ms-1 font-weight-medium">• {{ group.roleName }}</span>
+                <template v-if="group.roleId">
+                  <span>{{ groupsStatusMap.get(group.id)?.name }}</span>
+                  <span class="text-caption ms-1 font-weight-medium">• {{ rolesMap.get(group.roleId)?.name }}</span>
                 </template>
                 <template v-else>
-                  {{ group.name }}
+                  {{ groupsStatusMap.get(group.id)?.name }}
                 </template>
                 <VTooltip
-                  v-if="!getGroupStatus(group.name).isActive"
+                  v-if="!getGroupStatus(group.id).isActive"
                   activator="parent"
                   location="top"
                 >

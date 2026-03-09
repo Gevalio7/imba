@@ -40,8 +40,8 @@ class Agents {
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at', 'groups']);
       if (sortBy && sortableFields.includes(sortBy)) {
         if (sortBy === 'groups') {
-          // Для сортировки по группам используем первую группу агента
-          orderClause = `ORDER BY MIN(COALESCE(ag_data.group_name, '')) ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+          // Для сортировки по группам используем имя первой группы из агрегата
+          orderClause = `ORDER BY COALESCE((SELECT MIN(ag2.name) FROM agents_groups_agents aga2 JOIN agents_groups ag2 ON aga2.agents_group_id = ag2.id WHERE aga2.agent_id = a.id AND ag2.is_active = true), '') ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
         } else {
           const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : `a.${toSnakeCase(sortBy)}`;
           orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
@@ -60,23 +60,20 @@ class Agents {
         const snake = toSnakeCase(f);
         return `a.${snake} as "${f}"`;
       }).join(', ');
-      // Для GROUP BY используем оригинальные имена полей без алиасов
-      const groupByFields = this.fields.split(', ').map(f => `a.${toSnakeCase(f)}`).join(', ');
-      // Получаем роль от активных групп агента (если у агента нет своей роли)
-      // Группируем агентов по их ID и объединяем группы в одну строку
-      // Для каждой группы добавляем информацию о роли в формате "группа • роль"
+      // Одна строка на агента: только идентификаторы, фронтенд резолвит названия сам
       const dataQuery = `
-      WITH agent_groups AS (
+      WITH agent_groups_agg AS (
         SELECT
-          a.id as agent_id,
-          ag.id as group_id,
-          ag.name as group_name,
-          r_group.name as group_role_name
-        FROM ${Agents.tableName} a
-        LEFT JOIN agents_groups_agents aga ON a.id = aga.agent_id
-        LEFT JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true
-        LEFT JOIN roles r_group ON ag.role_id = r_group.id
-        WHERE ag.name IS NOT NULL
+          aga.agent_id,
+          json_agg(
+            json_build_object(
+              'id', ag.id,
+              'roleId', ag.role_id
+            ) ORDER BY ag.id
+          ) FILTER (WHERE ag.id IS NOT NULL) as groups_json
+        FROM agents_groups_agents aga
+        JOIN agents_groups ag ON aga.agents_group_id = ag.id AND ag.is_active = true
+        GROUP BY aga.agent_id
       )
       SELECT
         a.id,
@@ -84,29 +81,13 @@ class Agents {
         a.created_at as "createdAt",
         a.updated_at as "updatedAt",
         a.is_active as "isActive",
-        a.role_id as "roleId",
-        r.name as "roleName",
-        r.icon as "roleIcon",
-        array_to_json(
-          array_agg(
-            DISTINCT
-            jsonb_build_object(
-              'id', ag_data.group_id,
-              'name', ag_data.group_name,
-              'roleName', ag_data.group_role_name
-            )
-          )
-        ) as groups
+        aga.groups_json as groups
       FROM ${Agents.tableName} a
-      LEFT JOIN agent_groups ag_data ON a.id = ag_data.agent_id
-      LEFT JOIN roles r ON a.role_id = r.id
+      LEFT JOIN agent_groups_agg aga ON a.id = aga.agent_id
       ${whereClause}
-      GROUP BY a.id, ${groupByFields}, a.created_at, a.updated_at, a.is_active, a.role_id, r.name, r.icon
       ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
-      console.log('[DEBUG] Agents.getAll - agents data returned:', dataResult.rows.length, 'agents');
-      console.log('[DEBUG] Agents.getAll - sample agent:', dataResult.rows[0] ? { id: dataResult.rows[0].id, roleId: dataResult.rows[0].roleId, roleName: dataResult.rows[0].roleName, groups: dataResult.rows[0].groups } : 'none');
       
       return {
         agents: dataResult.rows,
