@@ -524,14 +524,11 @@ const closeDelete = () => {
 
 // Обновление выбранных групп при открытии диалога
 const updateSelectedGroups = () => {
-  if (editedItem.value.groups) {
-    const groupNames = editedItem.value.groups.split(', ').filter(Boolean)
-    selectedGroupIds.value = groupNames.map(name => {
-      for (const [id, group] of groupsStatusMap.value.entries()) {
-        if (group.name === name) return id
-      }
-      return null
-    }).filter((id): id is number => id !== null)
+  if (editedItem.value.groups && Array.isArray(editedItem.value.groups)) {
+    // groups — массив объектов { id, roleId }, берём только id групп
+    selectedGroupIds.value = editedItem.value.groups
+      .map(g => g.id)
+      .filter((id): id is number => typeof id === 'number')
   } else {
     selectedGroupIds.value = []
   }
