@@ -330,7 +330,12 @@ const addNewQueues = () => {
 
 // Добавление нового очередь версия 2
 const addNewQueuesV2 = () => {
-  router.push('/apps/settings/ticket-settings/Queues-create')
+  router.push('/apps/Queues-create')
+}
+
+// Добавление нового очередь версия 3
+const addNewQueuesV3 = () => {
+  router.push('/apps/Queues-create-v3')
 }
 </script>
 
@@ -436,6 +441,15 @@ const addNewQueuesV2 = () => {
             @click="addNewQueuesV2"
           >
             Добавить очередь версия 2
+          </VBtn>
+
+          <VBtn
+            color="warning"
+            variant="tonal"
+            prepend-icon="bx-plus"
+            @click="addNewQueuesV3"
+          >
+            Создать очередь версия 3
           </VBtn>
         </div>
       </div>

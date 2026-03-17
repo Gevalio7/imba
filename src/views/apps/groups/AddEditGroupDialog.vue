@@ -9,6 +9,8 @@ interface AgentsGroups {
   agents: Agent[]
   isActive: boolean
   roleId?: number
+  roleIds?: number[]
+  roles?: Role[]
   createdAt: string
   updatedAt: string
 }
@@ -55,9 +57,14 @@ const group = ref<AgentsGroups>({
   agents: [],
   isActive: true,
   roleId: undefined,
+  roleIds: [],
+  roles: [],
   createdAt: '',
   updatedAt: '',
 })
+
+// Выбранные роли (массив ID)
+const selectedRoleIds = ref<number[]>([])
 
 const allAgents = ref<Agent[]>([])
 const loadingAgents = ref(false)
@@ -144,7 +151,7 @@ const saveGroup = async () => {
         body: {
           name: group.value.name,
           isActive: group.value.isActive,
-          roleId: group.value.roleId
+          roleIds: selectedRoleIds.value
         }
       })
       showToast('Группа обновлена')
@@ -155,7 +162,7 @@ const saveGroup = async () => {
         body: {
           name: group.value.name,
           isActive: group.value.isActive,
-          roleId: group.value.roleId
+          roleIds: selectedRoleIds.value
         }
       })
       // Убедимся что agents существует
@@ -186,11 +193,43 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
+// Загрузка актуальных данных группы с сервера
+const fetchGroupById = async (groupId: number) => {
+  try {
+    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups/${groupId}`)
+    group.value = { ...data, agents: group.value.agents || [] }
+    // Инициализируем выбранные роли из актуальных данных
+    if (data.roles && data.roles.length > 0) {
+      selectedRoleIds.value = data.roles.map(r => r.id)
+    } else if (data.roleId) {
+      selectedRoleIds.value = [data.roleId]
+    } else {
+      selectedRoleIds.value = []
+    }
+  } catch (err) {
+    console.error('Error fetching group by id:', err)
+  }
+}
+
 // Watchers
-watch(() => props.isDialogVisible, (newVal) => {
+watch(() => props.isDialogVisible, async (newVal) => {
   if (newVal) {
     if (props.groupDetail) {
       group.value = { ...props.groupDetail }
+      // Инициализируем выбранные роли из данных группы
+      if (props.groupDetail.roles && props.groupDetail.roles.length > 0) {
+        selectedRoleIds.value = props.groupDetail.roles.map(r => r.id)
+      } else if (props.groupDetail.roleIds && props.groupDetail.roleIds.length > 0) {
+        selectedRoleIds.value = [...props.groupDetail.roleIds]
+      } else if (props.groupDetail.roleId) {
+        selectedRoleIds.value = [props.groupDetail.roleId]
+      } else {
+        selectedRoleIds.value = []
+      }
+      // Загружаем актуальные данные с сервера (включая roles)
+      if (props.groupDetail.id > 0) {
+        await fetchGroupById(props.groupDetail.id)
+      }
     } else {
       group.value = {
         id: -1,
@@ -198,9 +237,12 @@ watch(() => props.isDialogVisible, (newVal) => {
         agents: [],
         isActive: true,
         roleId: undefined,
+        roleIds: [],
+        roles: [],
         createdAt: '',
         updatedAt: '',
       }
+      selectedRoleIds.value = []
     }
     fetchAllAgents()
     fetchAllRoles()
@@ -231,16 +273,38 @@ watch(() => props.isDialogVisible, (newVal) => {
 
           <VCol cols="12">
             <AppSelect
-              v-model="group.roleId"
+              v-model="selectedRoleIds"
               :items="roles"
               item-title="name"
               item-value="id"
-              label="Роль"
-              placeholder="Выберите роль для группы"
+              label="Роли"
+              placeholder="Выберите роли для группы"
               :loading="loadingRoles"
+              multiple
+              chips
               clearable
               clear-icon="bx-x"
-            />
+              :menu-props="{ maxHeight: '300px' }"
+            >
+              <template #chip="{ props: chipProps, item }">
+                <VChip
+                  v-bind="chipProps"
+                  color="primary"
+                  variant="tonal"
+                  density="compact"
+                  size="small"
+                >
+                  {{ item.raw.name }}
+                </VChip>
+              </template>
+              <template #item="{ props: itemProps, item }">
+                <VListItem v-bind="itemProps">
+                  <template #title>
+                    {{ item.raw.name }}
+                  </template>
+                </VListItem>
+              </template>
+            </AppSelect>
           </VCol>
 
           <VCol cols="12">

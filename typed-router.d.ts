@@ -65,6 +65,7 @@ declare module 'vue-router/auto-routes' {
     'apps-queue-auto-response': RouteRecordInfo<'apps-queue-auto-response', '/apps/QueueAutoResponse', Record<never, never>, Record<never, never>>,
     'apps-queues': RouteRecordInfo<'apps-queues', '/apps/Queues', Record<never, never>, Record<never, never>>,
     'apps-queues-create': RouteRecordInfo<'apps-queues-create', '/apps/Queues-create', Record<never, never>, Record<never, never>>,
+    'apps-queues-create-v3': RouteRecordInfo<'apps-queues-create-v3', '/apps/Queues-create-v3', Record<never, never>, Record<never, never>>,
     'apps-roles': RouteRecordInfo<'apps-roles', '/apps/Roles', Record<never, never>, Record<never, never>>,
     'apps-services': RouteRecordInfo<'apps-services', '/apps/Services', Record<never, never>, Record<never, never>>,
     'apps-session-management': RouteRecordInfo<'apps-session-management', '/apps/SessionManagement', Record<never, never>, Record<never, never>>,

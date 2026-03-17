@@ -3,34 +3,26 @@ import GridColumnRight from '@core/components/icons/GridColumnRight.vue'
 
 export default [
   { heading: 'Приложения' },
-  {
-    title: 'Почта',
-    icon: { icon: 'bx-envelope' },
-    to: 'apps-email',
-  },
-  {
-    title: 'Чат',
-    icon: { icon: 'bx-chat' },
-    to: 'apps-chat',
-  },
-  {
-    title: 'Календарь',
-    icon: { icon: 'bx-calendar' },
-    to: 'apps-calendar',
-  },
-  {
-    title: 'Канбан',
-    icon: { icon: 'bx-grid' },
-    to: 'apps-kanban',
-  },
-  {
-    title: 'Тикеты',
+ {
+    title: 'Обращения',
     icon: { icon: BxTicket },
     children: [
       { title: 'Список', to: 'apps-tickets' },
       { title: 'Создать', to: 'apps-tickets-add' },
     ],
   },
+  {
+    title: 'Чат',
+    icon: { icon: 'bx-chat' },
+    to: 'apps-chat',
+  },
+  
+  {
+    title: 'Канбан',
+    icon: { icon: 'bx-grid' },
+    to: 'apps-kanban',
+  },
+  
   {
     title: 'Агенты',
     icon: { icon: 'bx-user' },

@@ -9,6 +9,8 @@ interface AgentsGroups {
   agents: Agent[]
   isActive: boolean
   roleId?: number
+  roleIds?: number[]
+  roles?: Role[]
   role?: Role
   createdAt: string
   updatedAt: string
@@ -97,6 +99,18 @@ const getRoleName = (roleId?: number) => {
   const role = localRoles.value.find(r => r.id === roleId)
   return role ? role.name : ''
 }
+
+// Получить список ролей группы
+const getGroupRoles = (group: AgentsGroups): Role[] => {
+  if (group.roles && group.roles.length > 0) {
+    return group.roles
+  }
+  if (group.roleId) {
+    const role = localRoles.value.find(r => r.id === group.roleId)
+    return role ? [role] : []
+  }
+  return []
+}
 </script>
 
 <template>
@@ -154,22 +168,25 @@ const getRoleName = (roleId?: number) => {
               <h5 class="text-h5 mb-1">
                 {{ group.name }}
               </h5>
-              <div class="d-flex align-center gap-2">
+              <div class="d-flex align-center gap-2 flex-wrap">
                 <div
                   class="text-body-2"
                   :class="group.isActive ? 'text-success' : 'text-error'"
                 >
                   {{ group.isActive ? 'Группа активна' : 'Группа не активна' }}
                 </div>
-                <VChip
-                  v-if="group.roleId"
-                  color="primary"
-                  variant="tonal"
-                  size="x-small"
-                  label
-                >
-                  {{ getRoleName(group.roleId) }}
-                </VChip>
+                <template v-if="getGroupRoles(group).length > 0">
+                  <VChip
+                    v-for="role in getGroupRoles(group)"
+                    :key="role.id"
+                    color="primary"
+                    variant="tonal"
+                    size="x-small"
+                    label
+                  >
+                    {{ role.name }}
+                  </VChip>
+                </template>
               </div>
             </div>
             <div class="d-flex flex-column align-end gap-2">

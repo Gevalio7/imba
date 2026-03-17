@@ -10,6 +10,8 @@ interface AgentsGroups {
   agents: Agent[]
   isActive: boolean
   roleId?: number
+  roleIds?: number[]
+  roles?: Role[]
   role?: Role
   createdAt: string
   updatedAt: string
@@ -97,6 +99,18 @@ const getRoleName = (roleId?: number) => {
   if (!roleId) return '-'
   const role = roles.value.find(r => r.id === roleId)
   return role ? role.name : '-'
+}
+
+// Получить список ролей группы
+const getGroupRoles = (group: AgentsGroups): Role[] => {
+  if (group.roles && group.roles.length > 0) {
+    return group.roles
+  }
+  if (group.roleId) {
+    const role = roles.value.find(r => r.id === group.roleId)
+    return role ? [role] : []
+  }
+  return []
 }
 
 
@@ -293,16 +307,21 @@ onMounted(() => {
 
         <!-- Роль -->
         <template #item.role="{ item }">
-          <VChip
-            v-if="item.roleId"
-            color="primary"
-            variant="tonal"
-            size="small"
-            label
-          >
-            {{ getRoleName(item.roleId) }}
-          </VChip>
-          <span v-else class="text-medium-emphasis">-</span>
+          <div class="d-flex flex-wrap gap-1">
+            <template v-if="getGroupRoles(item).length > 0">
+              <VChip
+                v-for="role in getGroupRoles(item)"
+                :key="role.id"
+                color="primary"
+                variant="tonal"
+                size="small"
+                label
+              >
+                {{ role.name }}
+              </VChip>
+            </template>
+            <span v-else class="text-medium-emphasis">-</span>
+          </div>
         </template>
 
         <!-- Активен -->

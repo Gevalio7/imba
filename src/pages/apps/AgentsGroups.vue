@@ -33,6 +33,12 @@ watch(expandedPanels, (newValue) => {
   localStorage.setItem('agentsGroupsExpandedPanels', JSON.stringify(newValue))
 }, { deep: true })
 
+// Тип для роли
+interface Role {
+  id: number
+  name: string
+}
+
 // Типы данных для Группа агентов
 interface AgentsGroups {
   id: number
@@ -40,6 +46,8 @@ interface AgentsGroups {
   agents: Agent[]
   isActive: boolean
   roleId?: number
+  roleIds?: number[]
+  roles?: Role[]
   createdAt: string
   updatedAt: string
 }
@@ -52,12 +60,6 @@ interface Agent {
   login: string
   email: string
   isActive: boolean
-}
-
-// Тип для роли
-interface Role {
-  id: number
-  name: string
 }
 
 // API base URL

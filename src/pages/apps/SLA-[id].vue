@@ -164,7 +164,7 @@ const save = async () => {
 
 // Отмена
 const cancel = () => {
-   router.push('/apps/settings/ticket-settings/SLA')
+   router.push('/apps/SLA')
 }
 
 // Инициализация

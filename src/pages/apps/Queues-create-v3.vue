@@ -362,7 +362,7 @@ const showToast = (message: string, color: string = 'success') => {
   <div>
     <VCard>
       <VCardTitle>
-        Создание очереди (версия 2)
+        Создание очереди (версия 3)
       </VCardTitle>
 
       <VCardText>

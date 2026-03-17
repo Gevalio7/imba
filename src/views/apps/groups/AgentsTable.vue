@@ -18,6 +18,12 @@ interface Agents {
   groups?: Array<{id: number, roleId?: number}>
 }
 
+// Тип для роли
+interface Role {
+  id: number
+  name: string
+}
+
 // Тип для Группы агентов
 interface AgentsGroups {
   id: number
@@ -25,6 +31,8 @@ interface AgentsGroups {
   agents: Agent[]
   isActive: boolean
   roleId?: number
+  roleIds?: number[]
+  roles?: Role[]
   roleName?: string
   createdAt: string
   updatedAt: string
@@ -56,10 +64,10 @@ const statusLoading = ref<number[]>([])
 const bulkStatusLoading = ref(false)
 
 // Статусы групп для визуального отображения
-const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean; roleId?: number }>>(new Map())
+const groupsStatusMap = ref<Map<number, { name: string; isActive: boolean; roleId?: number; roles?: Role[] }>>(new Map())
 
 // Список групп для выбора
-const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleId?: number }[]>([])
+const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleId?: number; roles?: Role[] }[]>([])
 
 // Загрузка ролей
 const fetchRoles = async () => {
@@ -139,18 +147,20 @@ const fetchGroupsStatus = async () => {
     availableGroups.value = []
     
     groupsData.forEach((group: any) => {
-      console.log('[DEBUG] AgentsTable - group data:', { id: group.id, name: group.name, roleId: group.roleId, isActive: group.isActive });
+      console.log('[DEBUG] AgentsTable - group data:', { id: group.id, name: group.name, roleId: group.roleId, roles: group.roles, isActive: group.isActive });
       groupsStatusMap.value.set(group.id, {
         name: group.name,
         isActive: group.isActive,
-        roleId: group.roleId
+        roleId: group.roleId,
+        roles: group.roles || []
       })
       // Добавляем в список доступных групп
       availableGroups.value.push({
         id: group.id,
         name: group.name,
         isActive: group.isActive,
-        roleId: group.roleId
+        roleId: group.roleId,
+        roles: group.roles || []
       })
     })
   } catch (err) {
@@ -217,11 +227,11 @@ onMounted(() => {
   fetchGroupsStatus()
   fetchRoles()
 
-  // Периодическое обновление статусов групп (каждые 2 секунды)
-  setInterval(fetchGroupsStatus, 2000)
-
-  // Обновление при фокусе окна
-  window.addEventListener('focus', fetchGroupsStatus)
+  // Периодическое обновление статусов групп (каждые 30 секунд - для отображения изменений от других пользователей)
+  // setInterval(fetchGroupsStatus, 30000)
+  
+  // Обновление при фокусе окна (только вручную пользователем, не при каждом переключении вкладки)
+  // window.addEventListener('focus', fetchGroupsStatus)
 })
 
 const headers = [
@@ -387,6 +397,49 @@ const getGroupVariant = (groupId: number) => {
 const getGroupIcon = (groupId: number) => {
   const { isActive } = getGroupStatus(groupId)
   return isActive ? undefined : 'bx-pause-circle'
+}
+
+// Получить все уникальные роли агента из его групп
+const getAgentRoles = (agentGroups: Array<{id: number, roleId?: number}> | undefined): Role[] => {
+  if (!agentGroups || agentGroups.length === 0) return []
+  
+  const roleIds = new Set<number>()
+  const roles: Role[] = []
+  
+  agentGroups.forEach(group => {
+    // Сначала проверяем роли из groupsStatusMap (новый формат с несколькими ролями)
+    const groupData = groupsStatusMap.value.get(group.id)
+    if (groupData?.roles && groupData.roles.length > 0) {
+      groupData.roles.forEach(role => {
+        if (!roleIds.has(role.id)) {
+          roleIds.add(role.id)
+          roles.push(role)
+        }
+      })
+    } else if (group.roleId && !roleIds.has(group.roleId)) {
+      // Обратная совместимость: одна роль через roleId
+      const roleData = rolesMap.value.get(group.roleId)
+      if (roleData) {
+        roleIds.add(group.roleId)
+        roles.push({ id: group.roleId, name: roleData.name })
+      }
+    }
+  })
+  
+  return roles
+}
+
+// Получить роли группы для отображения в чипе
+const getGroupRolesForDisplay = (groupId: number): Role[] => {
+  const groupData = groupsStatusMap.value.get(groupId)
+  if (groupData?.roles && groupData.roles.length > 0) {
+    return groupData.roles
+  }
+  if (groupData?.roleId) {
+    const roleData = rolesMap.value.get(groupData.roleId)
+    return roleData ? [{ id: groupData.roleId, name: roleData.name }] : []
+  }
+  return []
 }
 
 // Массовые действия
@@ -625,9 +678,9 @@ const save = async () => {
         agent.groups = selectedGroupIds.value
           .map(id => {
             const group = availableGroups.value.find(g => g.id === id)
-            return group ? { id: group.id, roleId: group.roleId } : null
+            return group ? { id: group.id, roleId: group.roleId ?? undefined } : null
           })
-          .filter((g): g is { id: number, roleId?: number } => g !== null)
+          .filter((g): g is { id: number; roleId: number | undefined } => g !== null)
       }
 
       // Генерируем событие для обновления списка групп (счётчики агентов)
@@ -943,18 +996,19 @@ defineExpose({
       >
         <!-- Роль (из групп агента) -->
         <template #item.role="{ item }">
-          <template v-if="item.groups && item.groups.some(g => g.roleId)">
-            <div class="d-flex align-center gap-2">
-              <VAvatar
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                size="32"
-                class="text-caption font-weight-medium"
+          <template v-if="getAgentRoles(item.groups).length > 0">
+            <div class="d-flex flex-wrap gap-1">
+              <VChip
+                v-for="role in getAgentRoles(item.groups)"
+                :key="role.id"
+                color="primary"
+                variant="tonal"
+                density="compact"
+                size="small"
+                label
               >
-                <span class="text-no-wrap" style="color: #666;">
-                  {{ [...new Set(item.groups.filter(g => g.roleId).map(g => rolesMap.get(g.roleId!)?.name).filter(Boolean))].join(', ')?.[0] || '' }}
-                </span>
-              </VAvatar>
-              <span>{{ [...new Set(item.groups.filter(g => g.roleId).map(g => rolesMap.get(g.roleId!)?.name).filter(Boolean))].join(', ') }}</span>
+                {{ role.name }}
+              </VChip>
             </div>
           </template>
           <span v-else class="text-disabled">—</span>
@@ -980,12 +1034,11 @@ defineExpose({
                   size="small"
                   class="me-1"
                 />
-                <template v-if="group.roleId">
-                  <span>{{ groupsStatusMap.get(group.id)?.name }}</span>
-                  <span class="text-caption ms-1 font-weight-medium">• {{ rolesMap.get(group.roleId)?.name }}</span>
-                </template>
-                <template v-else>
-                  {{ groupsStatusMap.get(group.id)?.name }}
+                <span>{{ groupsStatusMap.get(group.id)?.name }}</span>
+                <template v-if="getGroupRolesForDisplay(group.id).length > 0">
+                  <span class="text-caption ms-1 font-weight-medium">
+                    • {{ getGroupRolesForDisplay(group.id).map(r => r.name).join(', ') }}
+                  </span>
                 </template>
                 <VTooltip
                   v-if="!getGroupStatus(group.id).isActive"
@@ -1156,14 +1209,24 @@ defineExpose({
                       class="me-1"
                     />
                     {{ item.raw.name }}
-                    <span v-if="item.raw.roleId" class="text-caption ms-1 font-weight-medium">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
+                    <template v-if="item.raw.roles && item.raw.roles.length > 0">
+                      <span class="text-caption ms-1 font-weight-medium">• {{ item.raw.roles.map((r: any) => r.name).join(', ') }}</span>
+                    </template>
+                    <template v-else-if="item.raw.roleId">
+                      <span class="text-caption ms-1 font-weight-medium">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
+                    </template>
                   </VChip>
                 </template>
                 <template #item="{ props, item }">
                   <VListItem v-bind="props">
                     <template #title>
                       {{ item.raw.name }}
-                      <span v-if="item.raw.roleId" class="text-caption text-grey ms-1">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
+                      <template v-if="item.raw.roles && item.raw.roles.length > 0">
+                        <span class="text-caption text-grey ms-1">• {{ item.raw.roles.map((r: any) => r.name).join(', ') }}</span>
+                      </template>
+                      <template v-else-if="item.raw.roleId">
+                        <span class="text-caption text-grey ms-1">• {{ rolesMap.get(item.raw.roleId)?.name }}</span>
+                      </template>
                     </template>
                     <template #prepend>
                       <VIcon

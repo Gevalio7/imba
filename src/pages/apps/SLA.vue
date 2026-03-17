@@ -287,7 +287,7 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SLA) => {
-   router.push(`/apps/settings/ticket-settings/SLA-${item.id}`)
+   router.push(`/apps/SLA-${item.id}`)
 }
 
 const deleteItem = (item: SLA) => {
@@ -341,7 +341,7 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового sla
 const addNewSLA = () => {
-   router.push('/apps/settings/ticket-settings/SLA-new')
+   router.push('/apps/SLA-new')
 }
 </script>
 
