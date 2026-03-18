@@ -4,6 +4,9 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+// Импорт функции очистки бэкапов
+const { cleanupOldBackups } = require('./controllers/backupController');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -75,8 +78,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!', error: err.message });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Database: ${process.env.DB_NAME || 'test_entities_db'}`);
+  
+  // Запускаем очистку старых бэкапов при старте сервера
+  console.log('🧹 Запуск очистки старых бэкапов...');
+  await cleanupOldBackups();
+  console.log('✅ Очистка бэкапов завершена');
 });

@@ -45,16 +45,21 @@ const execCommand = (command, args) => {
   });
 };
 
-// Получить список всех бэкапов
+// Получить список всех бэкапов с пагинацией
 const getBackups = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const type = req.query.type || 'all';
+    
     const files = fs.readdirSync(BACKUP_DIR);
-    const backups = files
+    let backups = files
       .filter(file => file.endsWith('.tar.gz') || file.endsWith('.sql.gz'))
       .map(file => {
         const filePath = path.join(BACKUP_DIR, file);
         const stats = fs.statSync(filePath);
-        const type = file.includes('db') ? 'database' : 'filesystem';
+        const isDbBackup = file.includes('db') || file.includes('backup_db');
+        const backupType = isDbBackup ? 'database' : 'filesystem';
         
         return {
           id: file.replace(/\.(tar\.gz|sql\.gz)$/, ''),
@@ -63,12 +68,33 @@ const getBackups = async (req, res) => {
           size: stats.size,
           sizeFormatted: formatBytes(stats.size),
           createdAt: stats.birthtime,
-          type,
+          type: backupType,
         };
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.json(backups);
+    // Фильтрация по типу
+    if (type !== 'all') {
+      backups = backups.filter(b => b.type === type);
+    }
+
+    const total = backups.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedBackups = backups.slice(startIndex, endIndex);
+
+    res.json({
+      data: paginatedBackups,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
   } catch (error) {
     console.error('Error getting backups:', error);
     res.status(500).json({ message: 'Ошибка при получении списка бэкапов', error: error.message });
@@ -106,6 +132,9 @@ const createDatabaseBackup = async (req, res) => {
     fs.unlinkSync(backupFile);
 
     const stats = fs.statSync(archiveFile);
+    
+    // Запускаем очистку после создания бэкапа
+    await cleanupOldBackups();
     
     res.json({
       success: true,
@@ -154,6 +183,9 @@ const createFilesystemBackup = async (req, res) => {
     await execCommand('tar', args);
 
     const stats = fs.statSync(archiveFile);
+
+    // Запускаем очистку после создания бэкапа
+    await cleanupOldBackups();
 
     res.json({
       success: true,
@@ -273,6 +305,9 @@ const saveScheduleSettings = async (req, res) => {
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
+    // Запускаем очистку после сохранения настроек
+    await cleanupOldBackups();
+
     res.json({ success: true, message: 'Настройки расписания сохранены', config });
   } catch (error) {
     console.error('Error saving schedule settings:', error);
@@ -296,6 +331,52 @@ function isValidCron(cron) {
   return true;
 }
 
+// Функция для удаления просроченных бэкапов
+const cleanupOldBackups = async () => {
+  try {
+    const configPath = path.join(__dirname, 'backup-config.json');
+    
+    if (!fs.existsSync(configPath)) {
+      console.log('Конфигурация бэкапов не найдена, пропускаем очистку');
+      return;
+    }
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const dbRetentionDays = config.database?.retentionDays || 7;
+    const fsRetentionDays = config.filesystem?.retentionDays || 7;
+
+    const files = fs.readdirSync(BACKUP_DIR);
+    const now = new Date();
+    let deletedCount = 0;
+
+    for (const file of files) {
+      if (!file.endsWith('.tar.gz') && !file.endsWith('.sql.gz')) {
+        continue;
+      }
+
+      const filePath = path.join(BACKUP_DIR, file);
+      const stats = fs.statSync(filePath);
+      const isDbBackup = file.includes('db') || file.includes('backup_db');
+      const retentionDays = isDbBackup ? dbRetentionDays : fsRetentionDays;
+      
+      const createdDate = new Date(stats.birthtime);
+      const ageInDays = (now - createdDate) / (1000 * 60 * 60 * 24);
+
+      if (ageInDays > retentionDays) {
+        console.log(`Удаление просроченного бэкапа: ${file} (возраст: ${ageInDays.toFixed(1)} дней, лимит: ${retentionDays} дней)`);
+        fs.unlinkSync(filePath);
+        deletedCount++;
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log(`Удалено ${deletedCount} просроченных бэкапов`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up old backups:', error);
+  }
+};
+
 module.exports = {
   getBackups,
   createDatabaseBackup,
@@ -304,4 +385,5 @@ module.exports = {
   downloadBackup,
   getScheduleSettings,
   saveScheduleSettings,
+  cleanupOldBackups,
 };

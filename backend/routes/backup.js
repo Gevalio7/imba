@@ -8,10 +8,22 @@ const {
   downloadBackup,
   getScheduleSettings,
   saveScheduleSettings,
+  cleanupOldBackups,
 } = require('../controllers/backupController');
 
-// GET /backup - список всех бэкапов
+// GET /backup - список всех бэкапов с пагинацией
 router.get('/', getBackups);
+
+// POST /backup/cleanup - запустить очистку старых бэкапов
+router.post('/cleanup', async (req, res) => {
+  try {
+    await cleanupOldBackups();
+    res.json({ success: true, message: 'Очистка старых бэкапов завершена' });
+  } catch (error) {
+    console.error('Error during cleanup:', error);
+    res.status(500).json({ message: 'Ошибка при очистке бэкапов', error: error.message });
+  }
+});
 
 // POST /backup/database - создать бэкап базы данных
 router.post('/database', createDatabaseBackup);

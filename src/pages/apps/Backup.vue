@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для резервного копирования
 interface Backup {
@@ -26,11 +26,26 @@ interface ScheduleSettings {
   }
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Store
+const searchQuery = ref('')
+const itemsPerPage = ref(10)
+const currentPage = ref(1)
+
 // Данные
 const backups = ref<Backup[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const creatingBackup = ref(false)
@@ -53,13 +68,28 @@ const scheduleSettings = ref<ScheduleSettings>({
 const scheduleDialog = ref(false)
 const savingSchedule = ref(false)
 
-// Загрузка списка бэкапов
+// Выбранные элементы для массовых действий
+const selectedItems = ref<Backup[]>([])
+const isBulkActionsMenuOpen = ref(false)
+const isBulkDeleteDialogOpen = ref(false)
+
+// Загрузка списка бэкапов с пагинацией
 const fetchBackups = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<Backup[]>(`${API_BASE}/backup`)
-    backups.value = data
+    const response = await $fetch<{ data: Backup[]; pagination: Pagination }>(
+      `${API_BASE}/backup`,
+      {
+        query: {
+          page: currentPage.value,
+          limit: itemsPerPage.value,
+          type: filterType.value
+        }
+      }
+    )
+    backups.value = response.data
+    total.value = response.pagination.total
   } catch (err: any) {
     error.value = 'Ошибка загрузки списка бэкапов'
     console.error('Error fetching backups:', err)
@@ -87,7 +117,9 @@ const createDatabaseBackup = async () => {
       method: 'POST'
     })
     backups.value.unshift(result.backup)
+    total.value++
     showToast('Бэкап базы данных успешно создан')
+    await fetchBackups()
   } catch (err: any) {
     showToast(err.message || 'Ошибка при создании бэкапа базы данных', 'error')
   } finally {
@@ -105,7 +137,9 @@ const createFilesystemBackup = async () => {
       method: 'POST'
     })
     backups.value.unshift(result.backup)
+    total.value++
     showToast('Бэкап файловой системы успешно создан')
+    await fetchBackups()
   } catch (err: any) {
     showToast(err.message || 'Ошибка при создании бэкапа файловой системы', 'error')
   } finally {
@@ -124,10 +158,32 @@ const deleteBackup = async (backup: Backup) => {
     await $fetch(`${API_BASE}/backup/${backup.id}`, {
       method: 'DELETE'
     })
-    backups.value = backups.value.filter(b => b.id !== backup.id)
     showToast('Бэкап успешно удален')
+    await fetchBackups()
   } catch (err: any) {
     showToast(err.message || 'Ошибка при удалении бэкапа', 'error')
+  }
+}
+
+// Массовое удаление
+const bulkDelete = () => {
+  isBulkDeleteDialogOpen.value = true
+}
+
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const itemId of selectedItems.value) {
+      await $fetch(`${API_BASE}/backup/${itemId}`, {
+        method: 'DELETE'
+      })
+    }
+    selectedItems.value = []
+    showToast(`Удалено ${count} бэкапов`)
+    isBulkDeleteDialogOpen.value = false
+    await fetchBackups()
+  } catch (err: any) {
+    showToast('Ошибка массового удаления', 'error')
   }
 }
 
@@ -191,16 +247,73 @@ const getBackupTypeColor = (type: string) => {
 // Фильтрация бэкапов по типу
 const filterType = ref<'all' | 'database' | 'filesystem'>('all')
 
+// Следим за изменением фильтра и сбрасываем страницу
+watch(filterType, () => {
+  currentPage.value = 1
+  fetchBackups()
+})
+
+//watch(itemsPerPage, () => {
+//  currentPage.value = 1
+//  fetchBackups()
+//})
+
+// Функция для получения понятного текста расписания
+const getScheduleText = (cron: string) => {
+  const option = scheduleOptions.find(o => o.value === cron)
+  return option ? option.title : cron
+}
+
+//watch(currentPage, () => {
+//  fetchBackups()
+//})
+
+watch(itemsPerPage, () => {
+  currentPage.value = 1
+  fetchBackups()
+})
+
+watch(currentPage, () => {
+  fetchBackups()
+})
+
+// Варианты расписания
+const scheduleOptions = [
+  { title: 'Каждый день в 2:00', value: '0 2 * * *' },
+  { title: 'Каждый день в 3:00', value: '0 3 * * *' },
+  { title: 'Каждый день в полночь', value: '0 0 * * *' },
+  { title: 'Каждый час', value: '0 * * * *' },
+  { title: 'Каждые 6 часов', value: '0 */6 * * *' },
+  { title: 'Каждые 12 часов', value: '0 */12 * * *' },
+  { title: 'Раз в неделю (Воскресенье)', value: '0 4 * * 0' },
+  { title: 'Раз в неделю (Понедельник)', value: '0 4 * * 1' },
+  { title: 'Раз в месяц (1 числа)', value: '0 4 1 * *' },
+]
+
+// Заголовки таблицы
+const headers = [
+  { title: 'Тип', key: 'type', sortable: true },
+  { title: 'Имя файла', key: 'filename', sortable: true },
+  { title: 'Размер', key: 'size', sortable: true },
+  { title: 'Дата создания', key: 'createdAt', sortable: true },
+  { title: 'Действия', key: 'actions', sortable: false }
+]
+
+// Фильтрация на клиенте
 const filteredBackups = computed(() => {
-  if (filterType.value === 'all') {
-    return backups.value
+  let filtered = backups.value
+
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(b => b.filename.toLowerCase().includes(query))
   }
-  return backups.value.filter(b => b.type === filterType.value)
+
+  return filtered
 })
 
 // Статистика
 const stats = computed(() => ({
-  total: backups.value.length,
+  total: total.value,
   database: backups.value.filter(b => b.type === 'database').length,
   filesystem: backups.value.filter(b => b.type === 'filesystem').length,
   totalSize: backups.value.reduce((sum, b) => sum + b.size, 0)
@@ -327,8 +440,16 @@ onMounted(() => {
 
           <VDivider />
 
-          <!-- Фильтр -->
-          <div class="pa-6">
+          <!-- Панель фильтров и поиска -->
+          <div class="d-flex flex-wrap gap-4 pa-6 align-center">
+            <!-- Поиск -->
+            <AppTextField
+              v-model="searchQuery"
+              placeholder="Поиск по имени файла"
+              style="inline-size: 250px;"
+            />
+
+            <!-- Фильтр по типу -->
             <AppSelect
               v-model="filterType"
               :items="[
@@ -336,8 +457,40 @@ onMounted(() => {
                 { title: 'Базы данных', value: 'database' },
                 { title: 'Файловые системы', value: 'filesystem' },
               ]"
-              label="Тип бэкапа"
-              style="max-width: 250px;"
+              style="max-width: 200px;"
+              hide-details
+            />
+
+            <!-- Кнопка массовых действий -->
+            <VMenu
+              v-model="isBulkActionsMenuOpen"
+              :close-on-content-click="false"
+            >
+              <template #activator="{ props }">
+                <VBtn
+                  variant="tonal"
+                  color="secondary"
+                  prepend-icon="bx-dots-vertical-rounded"
+                  :disabled="selectedItems.length === 0"
+                  v-bind="props"
+                >
+                  Действия ({{ selectedItems.length }})
+                </VBtn>
+              </template>
+              <VList>
+                <VListItem @click="() => { bulkDelete(); isBulkActionsMenuOpen = false }">
+                  <VListItemTitle>Удалить выбранные</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
+
+            <VSpacer />
+
+            <!-- Количество на странице -->
+            <AppSelect
+              v-model="itemsPerPage"
+              :items="[5, 10, 20, 25, 50]"
+              style="max-width: 120px;"
             />
           </div>
 
@@ -353,63 +506,73 @@ onMounted(() => {
             </VAlert>
           </div>
 
-          <!-- Список бэкапов -->
-          <div v-else-if="filteredBackups.length > 0">
-            <VTable hover>
-              <thead>
-                <tr>
-                  <th>Тип</th>
-                  <th>Имя файла</th>
-                  <th>Размер</th>
-                  <th>Дата создания</th>
-                  <th>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="backup in filteredBackups" :key="backup.id">
-                  <td>
-                    <VChip
-                      :color="getBackupTypeColor(backup.type)"
-                      size="small"
-                      label
-                    >
-                      {{ getBackupTypeLabel(backup.type) }}
-                    </VChip>
-                  </td>
-                  <td>
-                    <div class="d-flex align-center gap-2">
-                      <VIcon 
-                        :icon="backup.type === 'database' ? 'bx-data' : 'bx-folder'" 
-                        size="20"
-                        :color="getBackupTypeColor(backup.type)"
-                      />
-                      <span class="font-weight-medium">{{ backup.filename }}</span>
-                    </div>
-                  </td>
-                  <td>{{ backup.sizeFormatted }}</td>
-                  <td>{{ formatDate(backup.createdAt) }}</td>
-                  <td>
-                    <div class="d-flex gap-1">
-                      <IconBtn @click="downloadBackup(backup)">
-                        <VIcon icon="bx-download" />
-                        <VTooltip activator="parent">Скачать</VTooltip>
-                      </IconBtn>
-                      <IconBtn color="error" @click="deleteBackup(backup)">
-                        <VIcon icon="bx-trash" />
-                        <VTooltip activator="parent">Удалить</VTooltip>
-                      </IconBtn>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-          </div>
+          <!-- Таблица -->
+          <VDataTable
+            v-model="selectedItems"
+            v-model:items-per-page="itemsPerPage"
+            v-model:page="currentPage"
+            :headers="headers"
+            :items="filteredBackups"
+            show-select
+            item-value="id"
+            :hide-default-footer="true"
+            no-data-text="Нет резервных копий"
+          >
+            <!-- Тип -->
+            <template #item.type="{ item }">
+              <VChip
+                :color="getBackupTypeColor(item.type)"
+                size="small"
+                label
+              >
+                {{ getBackupTypeLabel(item.type) }}
+              </VChip>
+            </template>
 
-          <!-- Нет данных -->
-          <div v-else class="d-flex flex-column align-center justify-center pa-12">
-            <VIcon icon="bx-archive" size="64" color="disabled" class="mb-4" />
-            <p class="text-body-1 text-medium-emphasis">Нет резервных копий</p>
-            <p class="text-body-2 text-medium-emphasis">Создайте первый бэкап, нажав на кнопку выше</p>
+            <!-- Имя файла -->
+            <template #item.filename="{ item }">
+              <div class="d-flex align-center gap-2">
+                <VIcon 
+                  :icon="item.type === 'database' ? 'bx-data' : 'bx-folder'" 
+                  size="20"
+                  :color="getBackupTypeColor(item.type)"
+                />
+                <span class="font-weight-medium">{{ item.filename }}</span>
+              </div>
+            </template>
+
+            <!-- Размер -->
+            <template #item.size="{ item }">
+              {{ item.sizeFormatted }}
+            </template>
+
+            <!-- Дата создания -->
+            <template #item.createdAt="{ item }">
+              {{ formatDate(item.createdAt) }}
+            </template>
+
+            <!-- Действия -->
+            <template #item.actions="{ item }">
+              <div class="d-flex gap-1">
+                <IconBtn @click="downloadBackup(item)">
+                  <VIcon icon="bx-download" />
+                  <VTooltip activator="parent">Скачать</VTooltip>
+                </IconBtn>
+                <IconBtn color="error" @click="deleteBackup(item)">
+                  <VIcon icon="bx-trash" />
+                  <VTooltip activator="parent">Удалить</VTooltip>
+                </IconBtn>
+              </div>
+            </template>
+          </VDataTable>
+
+          <!-- Пагинация -->
+          <div class="d-flex justify-center mt-4 pb-4">
+            <VPagination
+              v-model="currentPage"
+              :length="Math.ceil(total / itemsPerPage) || 1"
+              :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+            />
           </div>
         </VCard>
       </VCol>
@@ -433,7 +596,7 @@ onMounted(() => {
               </div>
               
               <div v-if="scheduleSettings.database.enabled" class="ps-6">
-                <p class="text-body-2 text-medium-emphasis">Расписание: {{ scheduleSettings.database.schedule }}</p>
+                <p class="text-body-2 text-medium-emphasis">Расписание: {{ getScheduleText(scheduleSettings.database.schedule) }}</p>
                 <p class="text-body-2 text-medium-emphasis">Хранение: {{ scheduleSettings.database.retentionDays }} дней</p>
               </div>
 
@@ -446,14 +609,14 @@ onMounted(() => {
                 </div>
                 <VSwitch
                   v-model="scheduleSettings.filesystem.enabled"
-                  color="secondary"
+                  color="primary"
                   hide-details
                   @update:model-value="scheduleDialog = true"
                 />
               </div>
 
               <div v-if="scheduleSettings.filesystem.enabled" class="ps-6">
-                <p class="text-body-2 text-medium-emphasis">Расписание: {{ scheduleSettings.filesystem.schedule }}</p>
+                <p class="text-body-2 text-medium-emphasis">Расписание: {{ getScheduleText(scheduleSettings.filesystem.schedule) }}</p>
                 <p class="text-body-2 text-medium-emphasis">Хранение: {{ scheduleSettings.filesystem.retentionDays }} дней</p>
               </div>
             </div>
@@ -535,13 +698,11 @@ onMounted(() => {
               />
             </VCol>
             <VCol cols="12">
-              <AppTextField
+              <AppSelect
                 v-model="scheduleSettings.database.schedule"
-                label="Расписание (cron)"
-                placeholder="0 2 * * *"
+                :items="scheduleOptions"
+                label="Расписание"
                 :disabled="!scheduleSettings.database.enabled"
-                hint="Формат: минута час день_месяца месяц день_недели"
-                persistent-hint
               />
             </VCol>
 
@@ -557,7 +718,7 @@ onMounted(() => {
               <VSwitch
                 v-model="scheduleSettings.filesystem.enabled"
                 label="Включить автоматический бэкап"
-                color="secondary"
+                color="primary"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -569,13 +730,11 @@ onMounted(() => {
               />
             </VCol>
             <VCol cols="12">
-              <AppTextField
+              <AppSelect
                 v-model="scheduleSettings.filesystem.schedule"
-                label="Расписание (cron)"
-                placeholder="0 3 * * *"
+                :items="scheduleOptions"
+                label="Расписание"
                 :disabled="!scheduleSettings.filesystem.enabled"
-                hint="Формат: минута час день_месяца месяц день_недели"
-                persistent-hint
               />
             </VCol>
           </VRow>
@@ -599,6 +758,36 @@ onMounted(() => {
             Сохранить
           </VBtn>
         </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог массового удаления -->
+    <VDialog
+      v-model="isBulkDeleteDialogOpen"
+      max-width="500px"
+    >
+      <VCard title="Подтверждение удаления">
+        <VCardText>
+          Вы уверены, что хотите удалить выбранные бэкапы? Это действие нельзя отменить.
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="isBulkDeleteDialogOpen = false"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="confirmBulkDelete"
+            >
+              Удалить
+            </VBtn>
+          </div>
+        </VCardText>
       </VCard>
     </VDialog>
 
