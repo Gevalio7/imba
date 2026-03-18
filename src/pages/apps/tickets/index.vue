@@ -93,7 +93,7 @@ const headers = [
   { title: 'SLA', key: 'slaStatus', sortable: false },
   { title: 'Срок ответа', key: 'responseDeadline', sortable: true },
   { title: 'Срок решения', key: 'resolutionDeadline', sortable: true },
-  { title: 'Владелец', key: 'ownerLogin', sortable: false },
+  { title: 'Автор', key: 'ownerLogin', sortable: false },
   { title: 'Компания', key: 'companyName', sortable: false },
   { title: 'Сервис', key: 'serviceName', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -486,7 +486,7 @@ const editTicket = (id: number) => {
           </span>
         </template>
 
-        <!-- Владелец -->
+        <!-- Автор -->
         <template #item.ownerLogin="{ item }">
           <span class="text-body-2">{{ getOwnerName(item) }}</span>
         </template>

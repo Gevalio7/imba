@@ -65,6 +65,8 @@ class Tickets {
           ow.login as "ownerLogin",
           ow.first_name as "ownerFirstname",
           ow.last_name as "ownerLastname",
+          t.executor_agent_ids as "executorAgentIds",
+          t.executor_group_ids as "executorGroupIds",
           t.company_id as "companyId",
           c.name as "companyName",
           t.service_id as "serviceId",
@@ -90,9 +92,8 @@ class Tickets {
         LEFT JOIN sla ON t.sla_id = sla.id
         ${whereClause}
         ${orderClause}
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        LIMIT ${safeItemsPerPage} OFFSET ${offset}
       `;
-      params.push(safeItemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
       // Calculate age for each ticket
@@ -133,6 +134,8 @@ class Tickets {
           ow.login as "ownerLogin",
           ow.first_name as "ownerFirstname",
           ow.last_name as "ownerLastname",
+          t.executor_agent_ids as "executorAgentIds",
+          t.executor_group_ids as "executorGroupIds",
           t.company_id as "companyId",
           c.name as "companyName",
           t.service_id as "serviceId",
@@ -177,12 +180,13 @@ class Tickets {
       const query = `
         INSERT INTO ${Tickets.tableName} (
           ticket_number, title, description, type_id, priority_id, queue_id, state_id, 
-          owner_id, company_id, service_id, sla_id, response_deadline, resolution_deadline, 
+          owner_id, executor_agent_ids, executor_group_ids, company_id, service_id, sla_id, response_deadline, resolution_deadline, 
           first_response_at, sla_violated, pending_start_at, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
-          owner_id as "ownerId", company_id as "companyId", service_id as "serviceId",
+          owner_id as "ownerId", executor_agent_ids as "executorAgentIds", executor_group_ids as "executorGroupIds",
+          company_id as "companyId", service_id as "serviceId",
           sla_id as "slaId", response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
           first_response_at as "firstResponseAt", sla_violated as "slaViolated", 
           pending_start_at as "pendingStartAt",
@@ -198,6 +202,8 @@ class Tickets {
         ticket.queueId || null,
         ticket.stateId || null,
         ticket.ownerId || null,
+        ticket.executorAgentIds || [],
+        ticket.executorGroupIds || [],
         ticket.companyId || null,
         ticket.serviceId || null,
         ticket.slaId || null,
@@ -241,6 +247,8 @@ class Tickets {
         firstResponseAt: 'first_response_at',
         slaViolated: 'sla_violated',
         pendingStartAt: 'pending_start_at',
+        executorAgentIds: 'executor_agent_ids',
+        executorGroupIds: 'executor_group_ids',
       };
 
       Object.entries(fieldMap).forEach(([field, column]) => {
@@ -268,7 +276,8 @@ class Tickets {
         WHERE id = $1
         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
           priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
-          owner_id as "ownerId", company_id as "companyId", service_id as "serviceId",
+          owner_id as "ownerId", executor_agent_ids as "executorAgentIds", executor_group_ids as "executorGroupIds",
+          company_id as "companyId", service_id as "serviceId",
           sla_id as "slaId", response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
           first_response_at as "firstResponseAt", sla_violated as "slaViolated",
           pending_start_at as "pendingStartAt",

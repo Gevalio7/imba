@@ -31,6 +31,7 @@ const queues = ref<any[]>([])
 const states = ref<any[]>([])
 const types = ref<any[]>([])
 const agents = ref<any[]>([])
+const agentGroups = ref<any[]>([])
 const customers = ref<any[]>([])
 const services = ref<any[]>([])
 const slaList = ref<any[]>([])
@@ -79,6 +80,14 @@ const fetchAgents = async () => {
     agents.value = (data as any).agents || []
   }
   catch (err) { console.log('Error fetching agents:', err) }
+}
+
+const fetchAgentGroups = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/agentsGroups`)
+    agentGroups.value = (data as any).agentsGroups || []
+  }
+  catch (err) { console.log('Error fetching agent groups:', err) }
 }
 
 const fetchCustomers = async () => {
@@ -223,6 +232,8 @@ const ticket = reactive({
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
   ownerId: undefined as number | undefined,
+  executorAgentIds: [] as number[],
+  executorGroupIds: [] as number[],
   companyId: undefined as number | undefined,
   serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
@@ -291,6 +302,22 @@ watch(() => ticket.serviceId, (newServiceId, oldServiceId) => {
   }
 })
 
+// Watcher для изменения очереди - автозаполнение исполнителя
+watch(() => ticket.queueId, (newQueueId, oldQueueId) => {
+  // Пропускаем начальную загрузку (когда ещё тикет не загружен)
+  if (oldQueueId === undefined || ticket.id === -1) return
+  
+  if (newQueueId) {
+    const queue = queues.value.find((q: any) => q.id === newQueueId)
+    if (queue && queue.agentGroupId) {
+      // Автозаполняем группу исполнителей из очереди если не выбраны исполнители
+      if (ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0) {
+        ticket.executorGroupIds = [queue.agentGroupId]
+      }
+    }
+  }
+})
+
 // Вложения
 const existingAttachments = ref<any[]>([])
 const newAttachments = ref<File[]>([])
@@ -327,6 +354,37 @@ const agentOptions = computed(() => {
     value: a.id,
   }))
 })
+
+// Группы агентов для выбора
+const agentGroupOptions = computed(() => {
+  return agentGroups.value.map((g: any) => ({
+    title: g.name,
+    value: g.id,
+  }))
+})
+
+// Текущий пользователь
+const userData = useCookie<any>('userData')
+
+// Назначить на себя
+const assignToMe = () => {
+  // Находим агента по логину пользователя
+  const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+  if (currentAgent) {
+    // Добавляем себя как исполнителя
+    if (!ticket.executorAgentIds.includes(currentAgent.id)) {
+      ticket.executorAgentIds = [...ticket.executorAgentIds, currentAgent.id]
+    }
+    // Добавляем группы, в которые входит пользователь
+    if (currentAgent.groups && currentAgent.groups.length > 0) {
+      const groupIds = currentAgent.groups.map((g: any) => g.id).filter((id: number) => !ticket.executorGroupIds.includes(id))
+      ticket.executorGroupIds = [...ticket.executorGroupIds, ...groupIds]
+    }
+    showToast('Вы назначены исполнителем')
+  } else {
+    showToast('Вы не являетесь агентом', 'error')
+  }
+}
 
 // Вычисляемый список статусов для выбора
 const statusOptions = computed(() => {
@@ -378,6 +436,8 @@ const fetchTicket = async () => {
     ticket.queueId = t.queueId || undefined
     ticket.stateId = t.stateId || undefined
     ticket.ownerId = t.ownerId || undefined
+    ticket.executorAgentIds = t.executorAgentIds || []
+    ticket.executorGroupIds = t.executorGroupIds || []
     ticket.companyId = t.companyId || undefined
     ticket.slaId = t.slaId || undefined
     ticket.serviceId = t.serviceId || undefined
@@ -546,6 +606,8 @@ const save = async () => {
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
       ownerId: ticket.ownerId ?? null,
+      executorAgentIds: ticket.executorAgentIds,
+      executorGroupIds: ticket.executorGroupIds,
       companyId: ticket.companyId ?? null,
       serviceId: ticket.serviceId ?? null,
       slaId: ticket.slaId ?? null,
@@ -738,6 +800,7 @@ onMounted(async () => {
     fetchStates(),
     fetchTypes(),
     fetchAgents(),
+    fetchAgentGroups(),
     fetchCustomers(),
     fetchServices(),
     fetchSla(),
@@ -1451,10 +1514,43 @@ const showToast = (message: string, color: string = 'success') => {
               <AppSelect
                 v-model="ticket.ownerId"
                 :items="agentOptions"
-                label="Владелец"
-                placeholder="Выберите владельца"
+                label="Автор"
+                placeholder="Выберите автора"
                 clearable
               />
+
+              <!-- Группы исполнителей -->
+              <AppSelect
+                v-model="ticket.executorGroupIds"
+                :items="agentGroupOptions"
+                label="Группы исполнителей"
+                placeholder="Выберите группы исполнителей"
+                multiple
+                chips
+                clearable
+              />
+
+              <!-- Исполнители -->
+              <AppSelect
+                v-model="ticket.executorAgentIds"
+                :items="agentOptions"
+                label="Исполнители"
+                placeholder="Выберите исполнителей"
+                multiple
+                chips
+                clearable
+              >
+                <template #append-inner>
+                  <VBtn
+                    variant="text"
+                    size="small"
+                    color="primary"
+                    @click="assignToMe"
+                  >
+                    Назначить на себя
+                  </VBtn>
+                </template>
+              </AppSelect>
 
               <AppSelect
                 v-model="ticket.companyId"

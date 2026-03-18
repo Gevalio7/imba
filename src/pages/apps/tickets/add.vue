@@ -20,6 +20,7 @@ const queues = ref<any[]>([])
 const states = ref<any[]>([])
 const types = ref<any[]>([])
 const agents = ref<any[]>([])
+const agentGroups = ref<any[]>([])
 const customers = ref<any[]>([])
 const services = ref<any[]>([])
 const slaList = ref<any[]>([])
@@ -78,6 +79,16 @@ const fetchAgents = async () => {
   }
   catch (err) {
     console.error('Error fetching agents:', err)
+  }
+}
+
+const fetchAgentGroups = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/agentsGroups`)
+    agentGroups.value = (data as any).agentsGroups || []
+  }
+  catch (err) {
+    console.error('Error fetching agent groups:', err)
   }
 }
 
@@ -153,6 +164,8 @@ const ticket = ref({
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
   ownerId: undefined as number | undefined,
+  executorAgentIds: [] as number[],
+  executorGroupIds: [] as number[],
   companyId: undefined as number | undefined,
   serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
@@ -195,6 +208,11 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
       // Автозаполняем приоритет если не выбран
       if (!ticket.value.priorityId && queue.priorityId) {
         ticket.value.priorityId = queue.priorityId
+      }
+      
+      // Автозаполняем исполнителя из группы очереди если не выбраны исполнители
+      if (queue.agentGroupId && ticket.value.executorGroupIds.length === 0 && ticket.value.executorAgentIds.length === 0) {
+        ticket.value.executorGroupIds = [queue.agentGroupId]
       }
       
       // Если у очереди есть workflow - ищем тип с этим workflow
@@ -280,6 +298,37 @@ const agentOptions = computed(() => {
     value: a.id,
   }))
 })
+
+// Группы агентов для выбора
+const agentGroupOptions = computed(() => {
+  return agentGroups.value.map((g: any) => ({
+    title: g.name,
+    value: g.id,
+  }))
+})
+
+// Текущий пользователь
+const userData = useCookie<any>('userData')
+
+// Назначить на себя
+const assignToMe = () => {
+  // Находим агента по логину пользователя
+  const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+  if (currentAgent) {
+    // Добавляем себя как исполнителя
+    if (!ticket.value.executorAgentIds.includes(currentAgent.id)) {
+      ticket.value.executorAgentIds = [...ticket.value.executorAgentIds, currentAgent.id]
+    }
+    // Добавляем группы, в которые входит пользователь
+    if (currentAgent.groups && currentAgent.groups.length > 0) {
+      const groupIds = currentAgent.groups.map((g: any) => g.id).filter((id: number) => !ticket.value.executorGroupIds.includes(id))
+      ticket.value.executorGroupIds = [...ticket.value.executorGroupIds, ...groupIds]
+    }
+    showToast('Вы назначены исполнителем')
+  } else {
+    showToast('Вы не являетесь агентом', 'error')
+  }
+}
 
 // Вычисляемый список статусов для выбора
 const statusOptions = computed(() => {
@@ -462,6 +511,7 @@ onMounted(async () => {
     fetchStates(),
     fetchTypes(),
     fetchAgents(),
+    fetchAgentGroups(),
     fetchCustomers(),
     fetchServices(),
     fetchSla(),
@@ -715,10 +765,43 @@ onMounted(async () => {
               <AppSelect
                 v-model="ticket.ownerId"
                 :items="agentOptions"
-                label="Владелец"
-                placeholder="Выберите владельца"
+                label="Автор"
+                placeholder="Выберите автора"
                 clearable
               />
+
+              <!-- Группы исполнителей -->
+              <AppSelect
+                v-model="ticket.executorGroupIds"
+                :items="agentGroupOptions"
+                label="Группы исполнителей"
+                placeholder="Выберите группы исполнителей"
+                multiple
+                chips
+                clearable
+              />
+
+              <!-- Исполнители -->
+              <AppSelect
+                v-model="ticket.executorAgentIds"
+                :items="agentOptions"
+                label="Исполнители"
+                placeholder="Выберите исполнителей"
+                multiple
+                chips
+                clearable
+              >
+                <template #append-inner>
+                  <VBtn
+                    variant="text"
+                    size="small"
+                    color="primary"
+                    @click="assignToMe"
+                  >
+                    Назначить на себя
+                  </VBtn>
+                </template>
+              </AppSelect>
 
               <AppSelect
                 v-model="ticket.companyId"
