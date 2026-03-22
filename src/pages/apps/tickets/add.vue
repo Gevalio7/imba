@@ -450,12 +450,12 @@ const save = async () => {
       await uploadAttachments(newTicketId)
     }
     
-    showToast('Тикет успешно создан')
+    showToast('Обращение успешно создан')
     router.push('/apps/tickets')
   }
   catch (err) {
     console.error('Error saving ticket:', err)
-    showToast('Ошибка создания тикета', 'error')
+    showToast('Ошибка создания обращения', 'error')
   }
   finally {
     saving.value = false
@@ -525,10 +525,10 @@ onMounted(async () => {
     <div class="d-flex flex-wrap justify-start justify-sm-space-between gap-y-4 gap-x-6 mb-6">
       <div class="d-flex flex-column justify-center">
         <h4 class="text-h4 mb-1">
-          Создание тикета
+          Создание обращения
         </h4>
         <div class="text-body-1">
-          Заполните информацию для создания нового тикета
+          Заполните информацию для создания нового обращения
         </div>
       </div>
 
@@ -544,7 +544,7 @@ onMounted(async () => {
           :loading="saving"
           @click="save"
         >
-          Создать тикет
+          Создать обращение
         </VBtn>
       </div>
     </div>
@@ -568,7 +568,7 @@ onMounted(async () => {
                 <AppTextField
                   v-model="ticket.title"
                   label="Заголовок *"
-                  placeholder="Введите заголовок тикета"
+                  placeholder="Введите заголовок обращения"
                 />
               </VCol>
 

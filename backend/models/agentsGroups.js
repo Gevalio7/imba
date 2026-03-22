@@ -10,7 +10,7 @@ class AgentsGroups {
   static fields = 'name';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeAgents = false } = options;
 
     try {
       let whereClause = '';
@@ -79,6 +79,33 @@ class AgentsGroups {
             group.roleId = group.roles[0].id;
           }
         });
+
+        // Если запрошены агенты - загружаем их одним запросом
+        if (includeAgents && groups.length > 0) {
+          const groupIds = groups.map(g => g.id);
+          const agentsResult = await pool.query(
+            `SELECT aga.agents_group_id as "groupId", a.id, a.first_name as "firstName", a.last_name as "lastName", 
+                    a.login, a.email, a.is_active as "isActive", a.created_at as "createdAt", a.updated_at as "updatedAt"
+             FROM agents_groups_agents aga
+             JOIN agents a ON a.id = aga.agent_id
+             WHERE aga.agents_group_id = ANY($1)`,
+            [groupIds]
+          );
+          
+          // Группируем агентов по groupId
+          const agentsByGroup = {};
+          agentsResult.rows.forEach(agent => {
+            if (!agentsByGroup[agent.groupId]) {
+              agentsByGroup[agent.groupId] = [];
+            }
+            agentsByGroup[agent.groupId].push(agent);
+          });
+          
+          // Добавляем агентов к каждой группе
+          groups.forEach(group => {
+            group.agents = agentsByGroup[group.id] || [];
+          });
+        }
       }
 
       return {

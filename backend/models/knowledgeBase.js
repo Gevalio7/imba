@@ -49,8 +49,8 @@ class KnowledgeBase {
         whereClause = `WHERE ${filterConditions.join(' AND ')}`;
       }
 
-      let orderClause = 'ORDER BY updated_at DESC';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at', 'views_count']);
+      let orderClause = 'ORDER BY kb.updated_at DESC';
+      const sortableFields = ['kb.created_at', 'kb.updated_at', 'kb.views_count', 'title', 'content'];
       if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${toSnakeCase(sortBy)} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }

@@ -59,7 +59,7 @@ const fetchTickets = async () => {
     tickets.value = data.tickets
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки тикетов'
+    error.value = 'Ошибка загрузки обращений'
     console.error('Error fetching tickets:', err)
   } finally {
     loading.value = false
@@ -150,7 +150,7 @@ const confirmBulkDelete = async () => {
       await deleteTicketById(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} тикетов`)
+    showToast(`Удалено ${count} обращений`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -248,10 +248,10 @@ const deleteItemConfirm = async () => {
   if (!deletingItem.value) return
   try {
     await deleteTicketById(deletingItem.value.id)
-    showToast('Тикет успешно удалён')
+    showToast('Обращение успешно удалёно')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления тикета', 'error')
+    showToast('Ошибка удаления обращения', 'error')
   }
 }
 
@@ -278,7 +278,7 @@ const editTicket = (id: number) => {
 
 <template>
   <div>
-    <VCard title="Тикеты">
+    <VCard title="Обращения">
 
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
@@ -296,7 +296,7 @@ const editTicket = (id: number) => {
         <div class="d-flex align-center">
           <AppTextField
             v-model="searchQuery"
-            placeholder="Поиск тикета"
+            placeholder="Поиск обращения"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -357,7 +357,7 @@ const editTicket = (id: number) => {
             prepend-icon="bx-plus"
             @click="createTicket"
           >
-            Создать тикет
+            Создать обращение
           </VBtn>
         </div>
       </div>
@@ -395,7 +395,7 @@ const editTicket = (id: number) => {
       <VDialog v-model="isBulkDeleteDialogOpen" max-width="500px">
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные тикеты? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные обращения? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -531,7 +531,7 @@ const editTicket = (id: number) => {
 
     <!-- Диалог удаления -->
     <VDialog v-model="deleteDialog" max-width="500px">
-      <VCard title="Вы уверены, что хотите удалить этот тикет?">
+      <VCard title="Вы уверены, что хотите удалить это обращение?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>

@@ -16,6 +16,7 @@ const getAgentsGroups = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
+    includeAgents: true, // Оптимизация: загружаем агентов вместе с группами одним запросом
   });
 
   res.json(result);

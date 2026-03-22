@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Тип
 interface Types {
@@ -9,6 +9,8 @@ interface Types {
   comment: string
   workflowId: number | null
   workflowName?: string
+  categoryIds?: number[]
+  categories?: TypeCategory[]
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -20,6 +22,16 @@ interface Workflow {
   name: string
   description: string
   isActive: boolean
+}
+
+// Типы данных для Категории
+interface TypeCategory {
+  id: number
+  name: string
+  laborHours: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 
@@ -39,8 +51,29 @@ const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Состояние аккордеонов
+const expandedPanels = ref<number[]>(
+  (() => {
+    try {
+      const stored = localStorage.getItem('typesExpandedPanels')
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })()
+)
+
+// Сохраняем состояние аккордеонов
+watch(expandedPanels, (newValue) => {
+  localStorage.setItem('typesExpandedPanels', JSON.stringify(newValue))
+}, { deep: true })
+
 // Данные воркфлоу
 const workflows = ref<Workflow[]>([])
+
+// Данные категорий
+const typeCategories = ref<TypeCategory[]>([])
+const loadingCategories = ref(false)
 
 // Загрузка списка воркфлоу
 const fetchWorkflows = async () => {
@@ -49,6 +82,61 @@ const fetchWorkflows = async () => {
     workflows.value = data.workflows || []
   } catch (err) {
     console.error('Error fetching workflows:', err)
+  }
+}
+
+// Загрузка категорий
+const fetchCategories = async () => {
+  try {
+    loadingCategories.value = true
+    // Получаем все категории (включая неактивные для админ-функций)
+    const data = await $fetch<{ typeCategories: TypeCategory[], total: number }>(`${API_BASE}/typeCategories`, {
+      query: { itemsPerPage: 1000, isActive: 'all' }
+    })
+    typeCategories.value = data.typeCategories || []
+  } catch (err) {
+    console.error('Error fetching categories:', err)
+  } finally {
+    loadingCategories.value = false
+  }
+}
+
+// Доступные категории для конкретного типа (те, которые еще не добавлены)
+const availableCategoriesForType = (type: Types): TypeCategory[] => {
+  const typeCategoryIds = type.categoryIds || []
+  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
+}
+
+// Добавить категорию к типу из таблицы
+const addCategoryToTypeFromTable = async (type: Types, categoryId: number) => {
+  try {
+    await $fetch(`${API_BASE}/types/${type.id}/categories`, {
+      method: 'POST',
+      body: { categoryId }
+    })
+    showToast('Категория добавлена')
+    await fetchTypes()
+  } catch (err: any) {
+    if (err.data?.message?.includes('already added')) {
+      showToast('Категория уже добавлена', 'error')
+    } else {
+      showToast('Ошибка добавления категории', 'error')
+    }
+  }
+}
+
+// Получить типы с категориями из API
+const fetchTypesWithCategories = async () => {
+  try {
+    loading.value = true
+    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
+    types.value = data.types
+    total.value = data.total
+  } catch (err) {
+    error.value = 'Ошибка загрузки типов'
+    console.error('Error fetching types with categories:', err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -63,13 +151,13 @@ const fetchTypes = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching types from:', `${API_BASE}/types`)
-    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/types`)
+    console.log('Fetching types from:', `${API_BASE}/typeCategories/with-types`)
+    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
     console.log('Fetched types data:', data)
     types.value = data.types
     total.value = data.total
   } catch (err) {
-    error.value = 'Ошибка загрузки типы'
+    error.value = 'Ошибка загрузки типов'
     console.error('Error fetching types:', err)
   } finally {
     loading.value = false
@@ -129,11 +217,20 @@ const deleteTypes = async (id: number) => {
 onMounted(() => {
   fetchTypes()
   fetchWorkflows()
+  fetchCategories()
+})
+
+// Опции категорий для селекта
+const categoryOptions = computed(() => {
+  return typeCategories.value
+    .filter(c => c.isActive)
+    .map(c => ({ title: c.name, value: c.id, laborHours: c.laborHours }))
 })
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
+  { title: 'Категории', key: 'categories', sortable: false },
   { title: 'Воркфлоу', key: 'workflowName', sortable: true },
   { title: 'Комментарий', key: 'comment', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
@@ -205,7 +302,7 @@ const confirmBulkDelete = async () => {
       await deleteTypes(item.id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} типы`)
+    showToast(count === 1 ? `Удален 1 тип` : count <= 4 ? `Удалено ${count} типа` : `Удалено ${count} типов`)
     isBulkDeleteDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
@@ -222,7 +319,7 @@ const confirmBulkStatusChange = async () => {
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} типы`)
+    showToast(count === 1 ? `Статус изменен для 1 типа` : count <= 4 ? `Статус изменен для ${count} типов` : `Статус изменен для ${count} типов`)
     isBulkStatusDialogOpen.value = false
   } catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
@@ -290,10 +387,58 @@ const statusOptions = [
   { text: 'Не активен', value: 2 },
 ]
 
+// Выбранные категории в диалоге редактирования
+const selectedCategoryIds = ref<number[]>([])
+
+// Выбранные категории в меню таблицы (для множественного добавления)
+const selectedCategoriesForMenu = ref<number[]>([])
+
+// Переключить категорию в меню
+const toggleCategoryForMenu = (categoryId: number) => {
+  const index = selectedCategoriesForMenu.value.indexOf(categoryId)
+  if (index === -1) {
+    selectedCategoriesForMenu.value.push(categoryId)
+  } else {
+    selectedCategoriesForMenu.value.splice(index, 1)
+  }
+}
+
+// Добавить выбранные категории к типу
+const addSelectedCategoriesToType = async (item: Types) => {
+  const categoryIds = [...selectedCategoriesForMenu.value]
+  if (categoryIds.length === 0) return
+  
+  console.log('Добавляем категории:', categoryIds, 'к типу:', item.id)
+  
+  try {
+    for (const catId of categoryIds) {
+      await $fetch(`${API_BASE}/types/${item.id}/categories`, {
+        method: 'POST',
+        body: { categoryId: catId }
+      })
+    }
+    const count = categoryIds.length
+    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
+    selectedCategoriesForMenu.value = []
+    await fetchTypes()
+  } catch (err: any) {
+    console.error('Ошибка добавления:', err)
+    if (err.data?.message?.includes('already added')) {
+      showToast('Некоторые категории уже добавлены', 'error')
+    } else {
+      showToast('Ошибка добавления категорий', 'error')
+    }
+  }
+}
+
 // Методы
 const editItem = (item: Types) => {
   editedIndex.value = types.value.indexOf(item)
   editedItem.value = { ...item }
+  // Загружаем выбранные категории
+  selectedCategoryIds.value = item.categoryIds || []
+  // Сбрасываем выбор в меню таблицы
+  selectedCategoriesForMenu.value = []
   editDialog.value = true
 }
 
@@ -307,6 +452,7 @@ const close = () => {
   editDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
+  selectedCategoryIds.value = []
 }
 
 const closeDelete = () => {
@@ -328,6 +474,30 @@ const save = async () => {
         ...editedItem.value,
         isActive: editedItem.value.isActive
       })
+      
+      // Синхронизируем категории: удаляем старые и добавляем новые
+      const currentCategoryIds = updated.categoryIds || []
+      const newCategoryIds = selectedCategoryIds.value
+      
+      // Удаляем старые категории
+      for (const catId of currentCategoryIds) {
+        if (!newCategoryIds.includes(catId)) {
+          await $fetch(`${API_BASE}/types/${updated.id}/categories/${catId}`, {
+            method: 'DELETE'
+          })
+        }
+      }
+      
+      // Добавляем новые категории
+      for (const catId of newCategoryIds) {
+        if (!currentCategoryIds.includes(catId)) {
+          await $fetch(`${API_BASE}/types/${updated.id}/categories`, {
+            method: 'POST',
+            body: { categoryId: catId }
+          })
+        }
+      }
+      
       showToast('Тип успешно сохранен')
     } else {
       // Добавление нового
@@ -335,11 +505,21 @@ const save = async () => {
         ...editedItem.value,
         isActive: editedItem.value.isActive
       })
+      
+      // Добавляем категории для нового типа
+      for (const catId of selectedCategoryIds.value) {
+        await $fetch(`${API_BASE}/types/${created.id}/categories`, {
+          method: 'POST',
+          body: { categoryId: catId }
+        })
+      }
+      
       showToast('Тип успешно добавлен')
     }
     close()
+    await fetchTypes()
   } catch (err) {
-    showToast('Ошибка сохранения тип', 'error')
+    showToast('Ошибка сохранения типа', 'error')
   }
 }
 
@@ -349,7 +529,7 @@ const deleteItemConfirm = async () => {
     showToast('Тип успешно удален')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления тип', 'error')
+    showToast('Ошибка удаления типа', 'error')
   }
 }
 
@@ -366,7 +546,7 @@ const toggleStatus = async (item: Types, newValue: boolean | null) => {
       ...item,
       isActive: newValue
     })
-    showToast('Статус тип изменен')
+    showToast('Статус типа изменен')
   } catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
@@ -388,6 +568,207 @@ const addNewTypes = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
   editDialog.value = true
+}
+
+// === Функционал категорий ===
+
+// Диалоги категорий
+const categoryDialog = ref(false)
+const deleteCategoryDialog = ref(false)
+const linkCategoryDialog = ref(false)
+const linkCategoriesToTypeDialog = ref(false)
+const editingCategory = ref<TypeCategory | null>(null)
+const deletingCategory = ref<TypeCategory | null>(null)
+const linkingCategory = ref<TypeCategory | null>(null)
+const linkingTypeForCategories = ref<Types | null>(null)
+const selectedTypesForLink = ref<number[]>([])
+const selectedCategoriesForLink = ref<number[]>([])
+const savingCategory = ref(false)
+
+// Доступные категории для связывания с типом (те, которые ещё не привязаны)
+const availableCategoriesForLinkToType = computed(() => {
+  if (!linkingTypeForCategories.value) return []
+  const typeCategoryIds = linkingTypeForCategories.value.categoryIds || []
+  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
+})
+
+// Открыть диалог добавления категорий к типу
+const openLinkCategoriesToTypeDialog = (type: Types) => {
+  linkingTypeForCategories.value = type
+  selectedCategoriesForLink.value = []
+  linkCategoriesToTypeDialog.value = true
+}
+
+// Добавить выбранные категории к типу
+const addCategoriesToType = async () => {
+  if (!linkingTypeForCategories.value || selectedCategoriesForLink.value.length === 0) return
+  
+  try {
+    for (const catId of selectedCategoriesForLink.value) {
+      await $fetch(`${API_BASE}/types/${linkingTypeForCategories.value.id}/categories`, {
+        method: 'POST',
+        body: { categoryId: catId }
+      })
+    }
+    const count = selectedCategoriesForLink.value.length
+    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
+    linkCategoriesToTypeDialog.value = false
+    await fetchTypes()
+  } catch (err: any) {
+    if (err.data?.message?.includes('already added')) {
+      showToast('Некоторые категории уже добавлены', 'error')
+    } else {
+      showToast('Ошибка добавления категорий', 'error')
+    }
+  }
+}
+
+// Форма категории
+const defaultCategoryForm = {
+  name: '',
+  laborHours: 0,
+  isActive: true
+}
+
+const categoryForm = ref({ ...defaultCategoryForm })
+
+// Получить типы для категории
+const getTypesForCategory = (categoryId: number): Types[] => {
+  return types.value.filter(t => 
+    t.categoryIds && t.categoryIds.includes(categoryId)
+  )
+}
+
+// Доступные типы для связывания (те, которые еще не имеют эту категорию)
+const availableTypesForLink = computed(() => {
+  if (!linkingCategory.value) return []
+  const categoryId = linkingCategory.value.id
+  return types.value.filter(t => 
+    !t.categoryIds || !t.categoryIds.includes(categoryId)
+  )
+})
+
+// Открыть диалог создания категории
+const openCategoryDialog = () => {
+  editingCategory.value = null
+  categoryForm.value = { ...defaultCategoryForm }
+  categoryDialog.value = true
+}
+
+// Редактировать категорию
+const editCategory = (category: TypeCategory) => {
+  editingCategory.value = category
+  categoryForm.value = {
+    name: category.name,
+    laborHours: category.laborHours,
+    isActive: category.isActive
+  }
+  categoryDialog.value = true
+}
+
+// Удалить категорию
+const deleteCategory = (category: TypeCategory) => {
+  deletingCategory.value = category
+  deleteCategoryDialog.value = true
+}
+
+// Подтвердить удаление категории
+const confirmDeleteCategory = async () => {
+  if (!deletingCategory.value) return
+  try {
+    await $fetch(`${API_BASE}/typeCategories/${deletingCategory.value.id}`, {
+      method: 'DELETE'
+    })
+    showToast('Категория удалена')
+    await fetchCategories()
+    await fetchTypes()
+    deleteCategoryDialog.value = false
+  } catch (err) {
+    showToast('Ошибка удаления категории', 'error')
+  }
+}
+
+// Сохранить категорию
+const saveCategory = async () => {
+  if (!categoryForm.value.name?.trim()) {
+    showToast('Название обязательно', 'error')
+    return
+  }
+  try {
+    savingCategory.value = true
+    if (editingCategory.value) {
+      // Обновление
+      await $fetch(`${API_BASE}/typeCategories/${editingCategory.value.id}`, {
+        method: 'PUT',
+        body: categoryForm.value
+      })
+      showToast('Категория обновлена')
+    } else {
+      // Создание
+      await $fetch(`${API_BASE}/typeCategories`, {
+        method: 'POST',
+        body: categoryForm.value
+      })
+      showToast('Категория создана')
+    }
+    categoryDialog.value = false
+    await fetchCategories()
+  } catch (err) {
+    showToast('Ошибка сохранения категории', 'error')
+  } finally {
+    savingCategory.value = false
+  }
+}
+
+// Открыть диалог связывания
+const openLinkCategoryDialog = async (category: TypeCategory) => {
+  linkingCategory.value = category
+  selectedTypesForLink.value = []
+  
+  // Всегда загружаем свежие данные перед открытием диалога
+  await fetchTypes()
+  
+  linkCategoryDialog.value = true
+  console.log('Открыт диалог связывания, доступные типы:', availableTypesForLink.value)
+}
+
+// Добавить категорию к типам
+const addCategoryToType = async () => {
+  if (!linkingCategory.value || selectedTypesForLink.value.length === 0) return
+  
+  try {
+    // Добавляем категорию к каждому выбранному типу
+    for (const typeId of selectedTypesForLink.value) {
+      await $fetch(`${API_BASE}/types/${typeId}/categories`, {
+        method: 'POST',
+        body: { categoryId: linkingCategory.value.id }
+      })
+    }
+    
+    const count = selectedTypesForLink.value.length
+    showToast(count === 1 ? 'Связь добавлена' : `Связи добавлены к ${count} типам`)
+    linkCategoryDialog.value = false
+    await fetchTypes()
+  } catch (err: any) {
+    if (err.data?.message?.includes('already added')) {
+      showToast('Категория уже добавлена к некоторым типам', 'error')
+    } else {
+      showToast('Ошибка добавления связей', 'error')
+    }
+  }
+}
+
+// Удалить категорию из типа
+const removeCategoryFromType = async (type: Types, categoryId: number) => {
+  try {
+    await $fetch(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
+      method: 'DELETE'
+    })
+    showToast('Связь удалена')
+    await fetchTypes()
+  } catch (err) {
+    showToast('Ошибка удаления связи', 'error')
+  }
 }
 </script>
 
@@ -412,7 +793,7 @@ const addNewTypes = () => {
           <!-- Поиск -->
           <AppTextField
             v-model="searchQuery"
-            placeholder="Поиск типы"
+            placeholder="Поиск типов"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -643,6 +1024,29 @@ const addNewTypes = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Категории (чипы + переключатель) -->
+        <template #item.categories="{ item }">
+          <div class="d-flex flex-wrap align-center gap-1">
+            <template v-if="item.categories && item.categories.length > 0">
+              <VChip
+                v-for="cat in item.categories"
+                :key="cat.id"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+                closable
+                @click:close="removeCategoryFromType(item, cat.id)"
+              >
+                {{ cat.name }}
+              </VChip>
+            </template>
+
+            <span v-if="!item.categories || item.categories.length === 0" class="text-medium-emphasis text-caption">
+              нет
+            </span>
+          </div>
+        </template>
+
         <!-- Воркфлоу -->
         <template #item.workflowName="{ item }">
           <VChip
@@ -746,6 +1150,23 @@ const addNewTypes = () => {
               />
             </VCol>
 
+            <!-- Категории -->
+            <VCol
+              cols="12"
+            >
+              <AppSelect
+                v-model="selectedCategoryIds"
+                :items="categoryOptions"
+                label="Категории"
+                placeholder="Выберите категории"
+                multiple
+                chips
+                closable-chips
+                clearable
+                clear-icon="bx-x"
+              />
+            </VCol>
+
             <!-- Активен -->
             <VCol
               cols="12"
@@ -818,6 +1239,310 @@ const addNewTypes = () => {
   >
     {{ toastMessage }}
   </VSnackbar>
+
+  <!-- Аккордеон для Категорий и связей -->
+  <VExpansionPanels
+    v-model="expandedPanels"
+    variant="accordion"
+    class="expansion-panels-width-border mt-6"
+  >
+    <VExpansionPanel elevation="0" :value="0">
+      <VExpansionPanelTitle
+        collapse-icon="bx-minus"
+        expand-icon="bx-plus"
+      >
+        <div>
+          <h4 class="text-h4 mb-1">
+            Категории и связи
+          </h4>
+          <p class="text-body-1 mb-0">
+            Справочник категорий типов обращений с указанием времени трудозатрат.
+          </p>
+        </div>
+      </VExpansionPanelTitle>
+
+      <VExpansionPanelText>
+        <div v-if="loadingCategories || typeCategories.length === 0" class="d-flex justify-center pa-6">
+          <VProgressCircular v-if="loadingCategories" indeterminate color="primary" />
+          <div v-else class="text-center">
+            <p class="text-body-1 text-medium-emphasis mb-4">
+              Категории пока не созданы
+            </p>
+            <VBtn
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="openCategoryDialog()"
+            >
+              Добавить категорию
+            </VBtn>
+          </div>
+        </div>
+        
+        <div v-else>
+          <!-- Кнопка добавления категории -->
+          <div class="d-flex justify-end mb-4">
+            <VBtn
+              color="primary"
+              prepend-icon="bx-plus"
+              size="small"
+              @click="openCategoryDialog()"
+            >
+              Добавить категорию
+            </VBtn>
+          </div>
+
+          <!-- Список категорий -->
+          <VRow>
+            <VCol
+              v-for="category in typeCategories"
+              :key="category.id"
+              cols="12"
+              md="6"
+              lg="4"
+            >
+              <VCard
+                variant="outlined"
+                class="pa-4"
+              >
+                <div class="d-flex justify-space-between align-start mb-2">
+                  <div>
+                    <h5 class="text-h5 mb-1">{{ category.name }}</h5>
+                    <div class="d-flex gap-2 align-center">
+                      <VChip
+                        size="x-small"
+                        :color="category.isActive ? 'success' : 'error'"
+                        variant="tonal"
+                      >
+                        {{ category.isActive ? 'Активна' : 'Не активна' }}
+                      </VChip>
+                      <span class="text-body-2 text-medium-emphasis">
+                        <VIcon icon="bx-time" size="14" />
+                        {{ category.laborHours || 0 }} ч.
+                      </span>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <IconBtn size="small" @click="editCategory(category)">
+                      <VIcon icon="bx-edit" size="18" />
+                    </IconBtn>
+                    <IconBtn size="small" @click="deleteCategory(category)">
+                      <VIcon icon="bx-trash" size="18" />
+                    </IconBtn>
+                  </div>
+                </div>
+
+                <!-- Связанные типы -->
+                <VDivider class="mb-3" />
+                <div v-if="getTypesForCategory(category.id).length > 0">
+                  <p class="text-caption text-medium-emphasis mb-2">
+                    Связанные типы:
+                  </p>
+                  <div class="d-flex flex-wrap gap-1">
+                    <VChip
+                      v-for="type in getTypesForCategory(category.id)"
+                      :key="type.id"
+                      size="x-small"
+                      color="primary"
+                      variant="tonal"
+                      closable
+                      @click:close="removeCategoryFromType(type, category.id)"
+                    >
+                      {{ type.name }}
+                    </VChip>
+                  </div>
+                </div>
+                <p v-else class="text-body-2 text-medium-emphasis">
+                  Нет связанных типов
+                </p>
+
+                <!-- Кнопка добавить связь: категория -> типы -->
+                <VBtn
+                  variant="tonal"
+                  color="secondary"
+                  size="x-small"
+                  class="mt-3 me-2"
+                  @click="openLinkCategoryDialog(category)"
+                >
+                  <VIcon icon="bx-link" start size="14" />
+                  К типам
+                </VBtn>
+              </VCard>
+            </VCol>
+          </VRow>
+        </div>
+      </VExpansionPanelText>
+    </VExpansionPanel>
+  </VExpansionPanels>
+
+  <!-- Диалог создания/редактирования категории -->
+  <VDialog v-model="categoryDialog" max-width="500px">
+    <VCard :title="editingCategory ? 'Редактировать категорию' : 'Добавить категорию'">
+      <VCardText>
+        <VRow>
+          <VCol cols="12">
+            <AppTextField
+              v-model="categoryForm.name"
+              label="Название *"
+              placeholder="Введите название категории"
+            />
+          </VCol>
+          <VCol cols="12">
+            <AppTextField
+              v-model.number="categoryForm.laborHours"
+              label="Время трудозатрат (часы)"
+              type="number"
+              placeholder="0"
+            />
+          </VCol>
+          <VCol cols="12">
+            <VSwitch
+              v-model="categoryForm.isActive"
+              :label="categoryForm.isActive ? 'Активна' : 'Не активна'"
+              color="primary"
+              density="compact"
+            />
+          </VCol>
+        </VRow>
+      </VCardText>
+      <VCardText>
+        <div class="d-flex justify-end gap-4">
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="categoryDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="success"
+            variant="elevated"
+            @click="saveCategory"
+          >
+            Сохранить
+          </VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+  </VDialog>
+
+  <!-- Диалог удаления категории -->
+  <VDialog v-model="deleteCategoryDialog" max-width="400px">
+    <VCard title="Подтверждение удаления">
+      <VCardText>
+        Вы уверены, что хотите удалить категорию "{{ deletingCategory?.name }}"?
+      </VCardText>
+      <VCardText>
+        <div class="d-flex justify-end gap-4">
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="deleteCategoryDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="success"
+            variant="elevated"
+            @click="confirmDeleteCategory"
+          >
+            Удалить
+          </VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+  </VDialog>
+
+  <!-- Диалог добавления категорий к типу (в аккордеоне) -->
+  <VDialog v-model="linkCategoriesToTypeDialog" max-width="500px">
+    <VCard title="Добавить категории к типу">
+      <VCardText>
+        <p class="mb-4">
+          Выберите категории для типа "{{ linkingTypeForCategories?.name }}":
+        </p>
+        <VSelect
+          v-model="selectedCategoriesForLink"
+          :items="availableCategoriesForLinkToType"
+          item-title="name"
+          item-value="id"
+          label="Категории"
+          placeholder="Выберите категории"
+          multiple
+          chips
+          closable-chips
+        >
+          <template #item="{ item, props }">
+            <VListItem v-bind="props">
+              <template #append>
+                <span v-if="item.raw.laborHours" class="text-caption text-medium-emphasis ms-2">
+                  {{ item.raw.laborHours }}ч.
+                </span>
+              </template>
+            </VListItem>
+          </template>
+        </VSelect>
+      </VCardText>
+      <VCardText>
+        <div class="d-flex justify-end gap-4">
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="linkCategoriesToTypeDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="success"
+            variant="elevated"
+            :disabled="selectedCategoriesForLink.length === 0"
+            @click="addCategoriesToType"
+          >
+            Добавить
+          </VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+  </VDialog>
+
+  <!-- Диалог связывания категории с типом -->
+  <VDialog v-model="linkCategoryDialog" max-width="500px">
+    <VCard title="Добавить связь с типом">
+      <VCardText>
+        <p class="mb-4">
+          Выберите тип для категории "{{ linkingCategory?.name }}":
+        </p>
+        <VSelect
+          v-model="selectedTypesForLink"
+          :items="availableTypesForLink"
+          item-title="name"
+          item-value="id"
+          label="Типы"
+          placeholder="Выберите типы"
+          multiple
+          chips
+          closable-chips
+        />
+      </VCardText>
+      <VCardText>
+        <div class="d-flex justify-end gap-4">
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="linkCategoryDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="success"
+            variant="elevated"
+            :disabled="selectedTypesForLink.length === 0"
+            @click="addCategoryToType"
+          >
+            Добавить
+          </VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+  </VDialog>
 </template>
 
 <style lang="scss" scoped>

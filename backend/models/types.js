@@ -10,7 +10,7 @@ class Types {
   static fields = 'name, comment, workflowId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeCategories = false } = options;
 
     try {
       let whereClause = '';
@@ -45,6 +45,7 @@ class Types {
           t.name, 
           t.comment, 
           t.workflow_id as "workflowId",
+          t.category_ids as "categoryIds",
           t.created_at as "createdAt", 
           t.updated_at as "updatedAt", 
           t.is_active as "isActive",
@@ -59,8 +60,24 @@ class Types {
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
+      // Если запрошены категории - загружаем их
+      const types = dataResult.rows;
+      if (includeCategories && types.length > 0) {
+        // Получаем все категории
+        const categoriesResult = await pool.query(
+          `SELECT id, name, labor_hours as "laborHours", is_active as "isActive" FROM type_categories WHERE is_active = true ORDER BY name`
+        );
+        const allCategories = categoriesResult.rows;
+        
+        // Добавляем категории к каждому типу
+        types.forEach(type => {
+          const categoryIds = type.categoryIds || [];
+          type.categories = allCategories.filter(c => categoryIds.includes(c.id));
+        });
+      }
+
       return {
-        types: dataResult.rows,
+        types,
         total,
       };
     } catch (error) {
@@ -77,6 +94,7 @@ class Types {
           t.name, 
           t.comment, 
           t.workflow_id as "workflowId",
+          t.category_ids as "categoryIds",
           t.created_at as "createdAt", 
           t.updated_at as "updatedAt", 
           t.is_active as "isActive",
@@ -87,7 +105,20 @@ class Types {
         [id]
       );
 
-      return result.rows[0] || null;
+      const type = result.rows[0] || null;
+      
+      // Загружаем категории
+      if (type && type.categoryIds && type.categoryIds.length > 0) {
+        const categoriesResult = await pool.query(
+          `SELECT id, name, labor_hours as "laborHours", is_active as "isActive" FROM type_categories WHERE id = ANY($1)`,
+          [type.categoryIds]
+        );
+        type.categories = categoriesResult.rows;
+      } else if (type) {
+        type.categories = [];
+      }
+
+      return type;
     } catch (error) {
       console.error('Error in getById:', error);
       throw error;
@@ -97,13 +128,14 @@ class Types {
   static async create(type) {
     try {
       const query = `
-        INSERT INTO ${Types.tableName} (name, comment, workflow_id, is_active) 
-        VALUES ($1, $2, $3, $4) 
+        INSERT INTO ${Types.tableName} (name, comment, workflow_id, category_ids, is_active) 
+        VALUES ($1, $2, $3, $4, $5) 
         RETURNING 
           id, 
           name, 
           comment, 
           workflow_id as "workflowId",
+          category_ids as "categoryIds",
           created_at as "createdAt", 
           updated_at as "updatedAt", 
           is_active as "isActive"
@@ -112,6 +144,7 @@ class Types {
         type.name,
         type.comment || null,
         type.workflowId || null,
+        type.categoryIds || [],
         type.isActive !== undefined ? type.isActive : true,
       ]);
 
@@ -152,6 +185,12 @@ class Types {
         paramIndex++;
       }
 
+      if (type.categoryIds !== undefined) {
+        updates.push(`category_ids = $${paramIndex}`);
+        values.push(type.categoryIds);
+        paramIndex++;
+      }
+
       if (updates.length === 0) {
         return this.getById(id);
       }
@@ -171,6 +210,7 @@ class Types {
           name, 
           comment, 
           workflow_id as "workflowId",
+          category_ids as "categoryIds",
           created_at as "createdAt", 
           updated_at as "updatedAt", 
           is_active as "isActive"

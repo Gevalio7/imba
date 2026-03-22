@@ -1,10 +1,17 @@
 <script setup lang="ts">
+// Страница "Агенты" - показывает группы агентов и всех агентов
 import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
 import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
 import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
+definePage({
+  meta: {
+    navActiveLink: 'apps-agents-groups',
+  },
+})
 
 // Переключатель вида групп (карточки/таблица)
 const groupsViewMode = ref<'cards' | 'table'>(
@@ -84,7 +91,7 @@ const error = ref<string | null>(null)
 // Загрузка ролей
 const fetchRoles = async () => {
   try {
-    console.log('[AgentsGroups.vue] GET /api/roles - fetching roles')
+    console.log('[Agents/index.vue] GET /api/roles - fetching roles')
     const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
     roles.value = data.roles
   } catch (err) {
@@ -97,28 +104,14 @@ const fetchAgentsGroups = async (silent = false) => {
   try {
     if (!silent) loading.value = true
     error.value = null
-    console.log('[AgentsGroups.vue] GET /api/agentsGroups - fetching groups')
+    console.log('[Agents/index.vue] GET /api/agentsGroups - fetching groups')
     const data = await $fetch<{ agentsGroups: AgentsGroups[], total: number }>(`${API_BASE}/agentsGroups`)
-
-    // Агенты теперь загружаются вместе с группами (includeAgents: true в контроллере)
-    // Убрали лишние запросы для каждой группы - теперь все в одном ответе
     agentsGroups.value = data.agentsGroups
   } catch (err) {
     error.value = 'Ошибка загрузки группы агентов'
     console.error('Error fetching agentsGroups:', err)
   } finally {
     if (!silent) loading.value = false
-  }
-}
-
-// Загрузка агентов в группе
-const fetchAgentsInGroup = async (groupId: number): Promise<Agent[]> => {
-  try {
-    const agents = await $fetch<Agent[]>(`${API_BASE}/agentsGroups/${groupId}/agents`)
-    return agents
-  } catch (err) {
-    console.error('Error fetching agents in group:', err)
-    return []
   }
 }
 
@@ -144,10 +137,10 @@ onMounted(() => {
   fetchAllAgents()
 })
 
-// Единый обработчик обновления групп - обновляет и группы, и агентов (без моргания)
+// Единый обработчик обновления групп
 const handleGroupsUpdated = async () => {
-  await fetchAgentsGroups(true) // silent mode - без моргания
-  agentsTableRef.value?.refresh?.() // КРИТИЧЕСКИ ВАЖНО: обновляет список ВСЕХ агентов
+  await fetchAgentsGroups(true)
+  agentsTableRef.value?.refresh?.()
 }
 
 // Удаление группы
@@ -233,10 +226,7 @@ const confirmBulkDelete = async () => {
     }
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
-
-    // Используем единый обработчик для обновления
     await handleGroupsUpdated()
-
     showToast('Выбранные группы успешно удалены')
   } catch (err) {
     console.error('Error bulk deleting:', err)
@@ -261,7 +251,7 @@ const confirmBulkStatusChange = async () => {
   }
 }
 
-// Добавить агентов в группу (открыть редактирование группы)
+// Добавить агентов в группу
 const addAgentsToGroup = () => {
   if (selectedItems.value.length === 1) {
     editingGroup.value = selectedItems.value[0]
@@ -365,7 +355,7 @@ const statusOptions = [
       </div>
 
       <template v-else>
-        <!-- Карточный вид - без VCard обертки -->
+        <!-- Карточный вид -->
         <AgentsGroupsCards
           v-if="groupsViewMode === 'cards'"
           :agents-groups="filteredGroups"
@@ -377,12 +367,10 @@ const statusOptions = [
           @toggle-status="toggleGroupStatus"
         />
 
-        <!-- Табличный вид - с VCard оберткой -->
+        <!-- Табличный вид -->
         <VCard v-else title="Группы агентов">
-          <!-- Табличный вид - панель инструментов -->
           <div class="d-flex flex-wrap gap-4 pa-6">
             <div class="d-flex align-center">
-              <!-- Поиск -->
               <AppTextField
                 placeholder="Поиск групп"
                 style="inline-size: 250px;"
@@ -390,7 +378,6 @@ const statusOptions = [
               />
             </div>
 
-            <!-- Кнопка фильтра -->
             <VBtn
               variant="tonal"
               color="secondary"
@@ -400,7 +387,6 @@ const statusOptions = [
               Фильтр
             </VBtn>
 
-            <!-- Кнопка массовых действий -->
             <VMenu
               v-model="isBulkActionsMenuOpen"
               :close-on-content-click="false"

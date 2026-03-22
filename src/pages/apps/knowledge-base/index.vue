@@ -23,17 +23,32 @@ interface Article {
   isActive: boolean
 }
 
+// Images
+import kbIllustration1 from '@images/pages/academy-course-illustration1.png'
+import kbIllustration2Dark from '@images/pages/academy-course-illustration2-dark.png'
+import kbIllustration2Light from '@images/pages/academy-course-illustration2-light.png'
+
+const kbIllustration2 = useGenerateImageVariant(kbIllustration2Light, kbIllustration2Dark)
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Роутер
 const router = useRouter()
 
 // Данные
 const articles = ref<Article[]>([])
-const total = ref(0)
+const categoriesList = ref<any[]>([])
+const servicesList = ref<any[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Поиск
+const searchQuery = ref('')
+
+// Диалоги
+const categoryDialog = ref(false)
+const serviceDialog = ref(false)
+const newCategory = ref({ name: '', comment: '' })
+const newService = ref({ name: '' })
 
 // Загрузка данных
 const fetchArticles = async () => {
@@ -42,7 +57,6 @@ const fetchArticles = async () => {
     error.value = null
     const data = await $fetch<{ articles: Article[], total: number }>(`${API_BASE}/knowledge-base`)
     articles.value = data.articles
-    total.value = data.total
   } catch (err) {
     error.value = 'Ошибка загрузки статей'
     console.error('Error fetching articles:', err)
@@ -50,6 +64,92 @@ const fetchArticles = async () => {
     loading.value = false
   }
 }
+
+// Загрузка категорий
+const fetchCategories = async () => {
+  try {
+    const data = await $fetch<any>(`${API_BASE}/types`)
+    categoriesList.value = data.types || []
+  } catch (err) {
+    console.error('Error fetching categories:', err)
+  }
+}
+
+// Загрузка сервисов
+const fetchServices = async () => {
+  try {
+    const data = await $fetch<any>(`${API_BASE}/services`)
+    servicesList.value = data.services || []
+  } catch (err) {
+    console.error('Error fetching services:', err)
+  }
+}
+
+// Создание категории
+const createCategory = async () => {
+  if (!newCategory.value.name?.trim()) return
+  try {
+    await $fetch(`${API_BASE}/types`, {
+      method: 'POST',
+      body: { name: newCategory.value.name, comment: newCategory.value.comment }
+    })
+    showToast('Категория создана')
+    categoryDialog.value = false
+    newCategory.value = { name: '', comment: '' }
+    fetchCategories()
+  } catch (err) {
+    showToast('Ошибка создания категории', 'error')
+  }
+}
+
+// Создание сервиса
+const createService = async () => {
+  if (!newService.value.name?.trim()) return
+  try {
+    await $fetch(`${API_BASE}/services`, {
+      method: 'POST',
+      body: { name: newService.value.name }
+    })
+    showToast('Сервис создан')
+    serviceDialog.value = false
+    newService.value = { name: '' }
+    fetchServices()
+  } catch (err) {
+    showToast('Ошибка создания сервиса', 'error')
+  }
+}
+
+// Фильтрованные статьи
+const filteredArticles = computed(() => {
+  if (!searchQuery.value) return articles.value
+  const q = searchQuery.value.toLowerCase()
+  return articles.value.filter(a =>
+    a.title?.toLowerCase().includes(q) ||
+    a.content?.toLowerCase().includes(q) ||
+    a.categoryName?.toLowerCase().includes(q) ||
+    a.tags?.some(t => t.toLowerCase().includes(q))
+  )
+})
+
+// Популярные статьи
+const popularArticles = computed(() => {
+  return [...articles.value]
+    .sort((a, b) => b.viewsCount - a.viewsCount)
+    .slice(0, 4)
+})
+
+// Статистика
+const stats = computed(() => ({
+  total: articles.value.length,
+  published: articles.value.filter(a => a.isPublished).length,
+  views: articles.value.reduce((sum, a) => sum + a.viewsCount, 0),
+}))
+
+onMounted(() => {
+  fetchArticles()
+  fetchCategories()
+  fetchServices()
+})
 
 // Удаление статьи
 const deleteArticleById = async (id: number) => {
@@ -63,45 +163,6 @@ const deleteArticleById = async (id: number) => {
   }
 }
 
-// Инициализация
-onMounted(() => {
-  fetchArticles()
-})
-
-const headers = [
-  { title: 'Заголовок', key: 'title', sortable: true },
-  { title: 'Категория', key: 'categoryName', sortable: false },
-  { title: 'Теги', key: 'tags', sortable: false },
-  { title: 'Сервис', key: 'serviceName', sortable: false },
-  { title: 'Опубликовано', key: 'isPublished', sortable: true },
-  { title: 'Просмотры', key: 'viewsCount', sortable: true },
-  { title: 'Автор', key: 'createdByLogin', sortable: false },
-  { title: 'Обновлено', key: 'updatedAt', sortable: true },
-  { title: 'Действия', key: 'actions', sortable: false },
-]
-
-// Фильтрация
-const searchQuery = ref('')
-
-const filteredArticles = computed(() => {
-  let filtered = articles.value
-
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(a =>
-      a.title?.toLowerCase().includes(q) ||
-      a.content?.toLowerCase().includes(q)
-    )
-  }
-
-  return filtered
-})
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Диалог удаления
 const deleteDialog = ref(false)
 const deletingItem = ref<Article | null>(null)
 
@@ -110,23 +171,22 @@ const deleteItem = (item: Article) => {
   deleteDialog.value = true
 }
 
+const deleteItemConfirm = async () => {
+  if (!deletingItem.value) return
+  try {
+    await deleteArticleById(deletingItem.value.id)
+    showToast('Статья удалена')
+    closeDelete()
+  } catch (err) {
+    showToast('Ошибка удаления', 'error')
+  }
+}
+
 const closeDelete = () => {
   deleteDialog.value = false
   deletingItem.value = null
 }
 
-const deleteItemConfirm = async () => {
-  if (!deletingItem.value) return
-  try {
-    await deleteArticleById(deletingItem.value.id)
-    showToast('Статья успешно удалена')
-    closeDelete()
-  } catch (err) {
-    showToast('Ошибка удаления статьи', 'error')
-  }
-}
-
-// Уведомления
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
@@ -137,18 +197,9 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Навигация
-const createArticle = () => {
-  router.push('/apps/knowledge-base/add')
-}
-
-const editArticle = (id: number) => {
-  router.push({ path: '/apps/knowledge-base/edit', query: { id } })
-}
-
-const viewArticle = (id: number) => {
-  router.push({ path: '/apps/knowledge-base/view', query: { id } })
-}
+const createArticle = () => router.push('/apps/knowledge-base/add')
+const editArticle = (id: number) => router.push({ path: '/apps/knowledge-base/edit', query: { id } })
+const viewArticle = (id: number) => router.push({ path: '/apps/knowledge-base/view', query: { id } })
 
 const getAuthorName = (article: Article) => {
   if (!article.createdByFirstname && !article.createdByLastname)
@@ -156,171 +207,487 @@ const getAuthorName = (article: Article) => {
   return `${article.createdByFirstname || ''} ${article.createdByLastname || ''}`.trim()
 }
 
-const resolvePublishedVariant = (isPublished: boolean) => {
-  return isPublished
-    ? { color: 'success', text: 'Да' }
-    : { color: 'warning', text: 'Нет' }
+const formatDate = (date: string) => new Date(date).toLocaleDateString('ru-RU')
+
+const getExcerpt = (content: string, length: number = 60) => {
+  if (!content) return ''
+  const text = content.replace(/<[^>]*>/g, '')
+  return text.length > length ? text.slice(0, length) + '...' : text
 }
+
+const categoryColors = ['primary', 'success', 'warning', 'error', 'info', 'secondary']
+const getCategoryColor = (index: number) => categoryColors[index % categoryColors.length]
+
+const cardImages = [
+  'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=400&h=200&fit=crop',
+]
+
+const getCardImage = (index: number) => cardImages[index % cardImages.length]
 </script>
 
 <template>
   <div>
-    <VCard title="База знаний">
-
-      <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
-      </div>
-
-      <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
-          {{ error }}
-        </VAlert>
-      </div>
-
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
-        <div class="d-flex align-center">
-          <AppTextField
-            v-model="searchQuery"
-            placeholder="Поиск статей"
-            style="inline-size: 250px;"
-            class="me-3"
-            prepend-inner-icon="bx-search"
-          />
+    <!-- Hero Section с поиском -->
+    <VCard class="mb-6">
+      <VCardText class="py-12 position-relative">
+        <div
+          class="d-flex flex-column gap-y-4 mx-auto"
+          :class="
+            $vuetify.display.mdAndUp
+              ? 'w-50'
+              : $vuetify.display.xs
+                ? 'w-100'
+                : 'w-75'
+          "
+        >
+          <h4
+            class="text-h4 text-center text-wrap mx-auto"
+            :class="$vuetify.display.mdAndUp ? 'w-75' : 'w-100'"
+          >
+            База знаний
+            <span class="text-primary text-no-wrap"> для поддержки</span>
+          </h4>
+          <p class="text-center text-wrap text-body-1 mx-auto mb-0">
+            Найдите ответы на часто задаваемые вопросы, 
+            изучите документацию и повысьте эффективность работы.
+          </p>
+          <div class="d-flex justify-center align-center gap-4 flex-wrap">
+            <div
+              class="flex-grow-1"
+              style="max-inline-size: 350px"
+            >
+              <AppTextField
+                v-model="searchQuery"
+                placeholder="Поиск статей..."
+              />
+            </div>
+            <VBtn
+              color="primary"
+              density="comfortable"
+              icon="bx-search"
+              class="rounded"
+            />
+          </div>
         </div>
+        <img
+          :src="kbIllustration1"
+          class="illustration1 d-none d-md-block flip-in-rtl"
+          height="180"
+        >
+        <img
+          :src="kbIllustration2"
+          class="illustration2 d-none d-md-block"
+          height="124"
+        >
+      </VCardText>
+    </VCard>
 
-        <VSpacer />
-        <div class="d-flex gap-4 flex-wrap align-center">
-          <AppSelect
-            v-model="itemsPerPage"
-            :items="[5, 10, 20, 25, 50]"
-          />
+    <!-- Статистика и кнопки -->
+    <VRow class="mb-6">
+      <VCol cols="12" md="8">
+        <VRow>
+          <VCol cols="4">
+            <VCard>
+              <VCardText class="d-flex align-center pa-3">
+                <VAvatar color="primary" variant="tonal" size="40" class="mr-3">
+                  <VIcon icon="bx-file" />
+                </VAvatar>
+                <div>
+                  <div class="text-caption text-medium-emphasis">Всего статей</div>
+                  <div class="text-h5">{{ stats.total }}</div>
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+          <VCol cols="4">
+            <VCard>
+              <VCardText class="d-flex align-center pa-3">
+                <VAvatar color="success" variant="tonal" size="40" class="mr-3">
+                  <VIcon icon="bx-check-circle" />
+                </VAvatar>
+                <div>
+                  <div class="text-caption text-medium-emphasis">Опубликовано</div>
+                  <div class="text-h5">{{ stats.published }}</div>
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+          <VCol cols="4">
+            <VCard>
+              <VCardText class="d-flex align-center pa-3">
+                <VAvatar color="info" variant="tonal" size="40" class="mr-3">
+                  <VIcon icon="bx-show" />
+                </VAvatar>
+                <div>
+                  <div class="text-caption text-medium-emphasis">Просмотров</div>
+                  <div class="text-h5">{{ stats.views }}</div>
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+      </VCol>
+      <VCol cols="12" md="4">
+        <div class="d-flex gap-2 h-100 align-center justify-start justify-md-end flex-wrap">
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            size="small"
+            prepend-icon="bx-folder-plus"
+            @click="categoryDialog = true"
+          >
+            Категория
+          </VBtn>
+          <VBtn
+            variant="tonal"
+            color="info"
+            size="small"
+            prepend-icon="bx-server"
+            @click="serviceDialog = true"
+          >
+            Сервис
+          </VBtn>
           <VBtn
             color="primary"
+            size="small"
             prepend-icon="bx-plus"
             @click="createArticle"
           >
-            Создать статью
+            Новая статья
           </VBtn>
         </div>
-      </div>
+      </VCol>
+    </VRow>
 
-      <VDivider />
+    <!-- Основной контент -->
+    <VRow>
+      <!-- Список статей -->
+      <VCol cols="12" md="8">
+        <!-- Популярные статьи с картинками -->
+        <VCard class="mb-6">
+          <VCardTitle class="d-flex align-center py-3 px-4">
+            <VIcon icon="bx-star" color="warning" class="mr-2" />
+            Популярные статьи
+          </VCardTitle>
+          <VCardText class="pa-0">
+            <div v-if="loading" class="d-flex justify-center pa-6">
+              <VProgressCircular indeterminate color="primary" />
+            </div>
+            
+            <div v-else-if="error" class="pa-4">
+              <VAlert type="error">{{ error }}</VAlert>
+            </div>
+            
+            <VRow v-else-if="popularArticles.length" class="ma-0">
+              <VCol
+                v-for="(article, index) in popularArticles"
+                :key="article.id"
+                cols="12"
+                sm="6"
+              >
+                <VCard flat border class="h-100">
+                  <VImg
+                    :src="getCardImage(index)"
+                    height="120"
+                    cover
+                    class="cursor-pointer"
+                    @click="viewArticle(article.id)"
+                  />
+                  <VCardText class="pb-2">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <VChip
+                        v-if="article.categoryName"
+                        size="x-small"
+                        :color="getCategoryColor(index)"
+                        variant="tonal"
+                      >
+                        {{ article.categoryName }}
+                      </VChip>
+                      <div class="d-flex align-center text-caption text-medium-emphasis">
+                        <VIcon icon="bx-show" size="14" class="mr-1" />
+                        {{ article.viewsCount }}
+                      </div>
+                    </div>
+                    
+                    <h6 
+                      class="text-subtitle-1 font-weight-bold mb-1 cursor-pointer text-primary"
+                      @click="viewArticle(article.id)"
+                    >
+                      {{ article.title }}
+                    </h6>
+                    
+                    <p class="text-caption text-medium-emphasis mb-2">
+                      {{ getExcerpt(article.content, 60) }}
+                    </p>
+                    
+                    <div class="d-flex justify-space-between align-center">
+                      <span class="text-caption">{{ formatDate(article.updatedAt) }}</span>
+                      <div class="d-flex gap-1">
+                        <IconBtn size="x-small" @click="editArticle(article.id)">
+                          <VIcon icon="bx-edit" size="16" />
+                        </IconBtn>
+                        <IconBtn size="x-small" color="error" @click="deleteItem(article)">
+                          <VIcon icon="bx-trash" size="16" />
+                        </IconBtn>
+                      </div>
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
+            </VRow>
+            
+            <div v-else class="text-center pa-6">
+              <VIcon icon="bx-file" size="48" color="grey" />
+              <p class="mt-2">Нет статей</p>
+            </div>
+          </VCardText>
+        </VCard>
 
-      <!-- Таблица -->
-      <VDataTable
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
-        :headers="headers"
-        :items="filteredArticles"
-        :hide-default-footer="true"
-        item-value="id"
-        return-object
-        no-data-text="Нет данных"
-      >
-        <!-- Заголовок статьи -->
-        <template #item.title="{ item }">
-          <span
-            class="text-body-1 font-weight-medium text-primary cursor-pointer"
-            @click="viewArticle(item.id)"
-          >
-            {{ item.title }}
-          </span>
-        </template>
+        <!-- Все статьи -->
+        <VCard>
+          <VCardTitle class="d-flex align-center py-3 px-4">
+            <VIcon icon="bx-list-ul" class="mr-2" />
+            Все статьи
+            <VSpacer />
+            <span class="text-body-2 text-medium-emphasis">{{ filteredArticles.length }}</span>
+          </VCardTitle>
+          <VDivider />
+          <VCardText class="pa-0">
+            <VList v-if="filteredArticles.length" lines="three">
+              <template v-for="(article, index) in filteredArticles" :key="article.id">
+                <VListItem class="py-3">
+                  <template #prepend>
+                    <VAvatar
+                      :color="getCategoryColor(index)"
+                      variant="tonal"
+                      size="40"
+                    >
+                      <VIcon icon="bx-file" />
+                    </VAvatar>
+                  </template>
+                  
+                  <VListItemTitle class="font-weight-medium">
+                    <span 
+                      class="cursor-pointer text-primary"
+                      @click="viewArticle(article.id)"
+                    >
+                      {{ article.title }}
+                    </span>
+                  </VListItemTitle>
+                  
+                  <VListItemSubtitle class="mt-1">
+                    <div class="d-flex flex-wrap gap-1 align-center">
+                      <VChip
+                        v-if="article.categoryName"
+                        size="x-small"
+                        variant="tonal"
+                        :color="getCategoryColor(index)"
+                      >
+                        {{ article.categoryName }}
+                      </VChip>
+                      <VChip
+                        v-if="article.serviceName"
+                        size="x-small"
+                        variant="tonal"
+                        color="info"
+                      >
+                        {{ article.serviceName }}
+                      </VChip>
+                      <VChip
+                        :color="article.isPublished ? 'success' : 'warning'"
+                        size="x-small"
+                        label
+                      >
+                        {{ article.isPublished ? 'Опубликовано' : 'Черновик' }}
+                      </VChip>
+                    </div>
+                  </VListItemSubtitle>
+                  
+                  <template #append>
+                    <div class="d-flex flex-column align-center">
+                      <div class="text-caption text-medium-emphasis mb-1">
+                        <VIcon icon="bx-show" size="14" class="mr-1" />
+                        {{ article.viewsCount }}
+                      </div>
+                      <div class="d-flex gap-1">
+                        <IconBtn size="small" @click="editArticle(article.id)">
+                          <VIcon icon="bx-edit" size="18" />
+                        </IconBtn>
+                        <IconBtn size="small" color="error" @click="deleteItem(article)">
+                          <VIcon icon="bx-trash" size="18" />
+                        </IconBtn>
+                      </div>
+                    </div>
+                  </template>
+                </VListItem>
+                <VDivider v-if="index < filteredArticles.length - 1" />
+              </template>
+            </VList>
+            
+            <div v-else class="text-center pa-6">
+              <VIcon icon="bx-search" size="48" color="grey" />
+              <p class="mt-2">Статьи не найдены</p>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-        <!-- Категория -->
-        <template #item.categoryName="{ item }">
-          <span class="text-body-2">{{ item.categoryName || '-' }}</span>
-        </template>
+      <!-- Боковая панель -->
+      <VCol cols="12" md="4">
+        <!-- Категории -->
+        <VCard class="mb-4">
+          <VCardTitle class="d-flex align-center py-3 px-4">
+            <VIcon icon="bx-folder" class="mr-2" />
+            Категории
+            <VSpacer />
+            <VBtn icon="bx-plus" size="x-small" variant="text" @click="categoryDialog = true" />
+          </VCardTitle>
+          <VDivider />
+          <VCardText class="pa-2">
+            <div v-if="categoriesList.length" class="d-flex flex-column gap-1">
+              <div
+                v-for="cat in categoriesList.slice(0, 8)"
+                :key="cat.id"
+                class="pa-2 rounded cursor-pointer hover-bg"
+              >
+                <div class="d-flex justify-space-between align-center">
+                  <div class="d-flex align-center">
+                    <VIcon icon="bx-folder" size="18" class="mr-2 text-medium-emphasis" />
+                    <span class="text-body-2">{{ cat.name }}</span>
+                  </div>
+                  <VChip size="x-small" variant="tonal">
+                    {{ articles.filter(a => a.categoryId === cat.id).length }}
+                  </VChip>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-medium-emphasis py-4">
+              <p class="text-body-2">Нет категорий</p>
+            </div>
+          </VCardText>
+        </VCard>
+
+        <!-- Сервисы -->
+        <VCard class="mb-4">
+          <VCardTitle class="d-flex align-center py-3 px-4">
+            <VIcon icon="bx-server" class="mr-2" />
+            Сервисы
+            <VSpacer />
+            <VBtn icon="bx-plus" size="x-small" variant="text" @click="serviceDialog = true" />
+          </VCardTitle>
+          <VDivider />
+          <VCardText class="pa-2">
+            <div v-if="servicesList.length" class="d-flex flex-column gap-1">
+              <div
+                v-for="srv in servicesList.slice(0, 6)"
+                :key="srv.id"
+                class="pa-2 rounded cursor-pointer hover-bg"
+              >
+                <div class="d-flex justify-space-between align-center">
+                  <div class="d-flex align-center">
+                    <VIcon icon="bx-server" size="18" class="mr-2 text-medium-emphasis" />
+                    <span class="text-body-2">{{ srv.name }}</span>
+                  </div>
+                  <VChip size="x-small" variant="tonal">
+                    {{ articles.filter(a => a.serviceId === srv.id).length }}
+                  </VChip>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-medium-emphasis py-4">
+              <p class="text-body-2">Нет сервисов</p>
+            </div>
+          </VCardText>
+        </VCard>
 
         <!-- Теги -->
-        <template #item.tags="{ item }">
-          <div v-if="item.tags && item.tags.length > 0" class="d-flex gap-1 flex-wrap">
-            <VChip
-              v-for="tag in item.tags.slice(0, 3)"
-              :key="tag"
-              size="x-small"
-              color="secondary"
-              variant="tonal"
-            >
-              {{ tag }}
-            </VChip>
-            <span v-if="item.tags.length > 3" class="text-caption text-medium-emphasis">
-              +{{ item.tags.length - 3 }}
-            </span>
-          </div>
-          <span v-else class="text-body-2">-</span>
-        </template>
+        <VCard>
+          <VCardTitle class="py-3 px-4">
+            <VIcon icon="bx-purchase-tag" class="mr-2" />
+            Теги
+          </VCardTitle>
+          <VDivider />
+          <VCardText>
+            <div class="d-flex flex-wrap gap-1">
+              <template v-if="articles.some(a => a.tags?.length)">
+                <VChip
+                  v-for="tag in [...new Set(articles.flatMap(a => a.tags || []))].slice(0, 15)"
+                  :key="tag"
+                  size="small"
+                  variant="tonal"
+                  color="secondary"
+                >
+                  {{ tag }}
+                </VChip>
+              </template>
+              <span v-else class="text-body-2 text-medium-emphasis">
+                Нет тегов
+              </span>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
 
-        <!-- Сервис -->
-        <template #item.serviceName="{ item }">
-          <span class="text-body-2">{{ item.serviceName || '-' }}</span>
-        </template>
-
-        <!-- Опубликовано -->
-        <template #item.isPublished="{ item }">
-          <VChip
-            v-bind="resolvePublishedVariant(item.isPublished)"
-            density="compact"
-            label
-            size="small"
+    <!-- Диалог создания категории -->
+    <VDialog v-model="categoryDialog" max-width="400">
+      <VCard>
+        <VCardTitle>Новая категория</VCardTitle>
+        <VCardText>
+          <AppTextField
+            v-model="newCategory.name"
+            label="Название"
+            placeholder="Введите название категории"
+            class="mb-3"
           />
-        </template>
+          <AppTextField
+            v-model="newCategory.comment"
+            label="Описание"
+            placeholder="Краткое описание"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn variant="text" @click="categoryDialog = false">Отмена</VBtn>
+          <VBtn color="primary" @click="createCategory">Создать</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 
-        <!-- Просмотры -->
-        <template #item.viewsCount="{ item }">
-          <div class="d-flex align-center gap-1">
-            <VIcon icon="bx-show" size="small" />
-            <span class="text-body-2">{{ item.viewsCount }}</span>
-          </div>
-        </template>
-
-        <!-- Автор -->
-        <template #item.createdByLogin="{ item }">
-          <span class="text-body-2">{{ getAuthorName(item) }}</span>
-        </template>
-
-        <!-- Обновлено -->
-        <template #item.updatedAt="{ item }">
-          <span class="text-body-2">{{ new Date(item.updatedAt).toLocaleDateString('ru-RU') }}</span>
-        </template>
-
-        <!-- Действия -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1">
-            <IconBtn @click="viewArticle(item.id)">
-              <VIcon icon="bx-show" />
-            </IconBtn>
-            <IconBtn @click="editArticle(item.id)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn @click="deleteItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
-          </div>
-        </template>
-      </VDataTable>
-
-      <!-- Пагинация -->
-      <div class="d-flex justify-center mt-4 pb-4">
-        <VPagination
-          v-model="currentPage"
-          :length="Math.ceil(filteredArticles.length / itemsPerPage) || 1"
-          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
-        />
-      </div>
-    </VCard>
+    <!-- Диалог создания сервиса -->
+    <VDialog v-model="serviceDialog" max-width="400">
+      <VCard>
+        <VCardTitle>Новый сервис</VCardTitle>
+        <VCardText>
+          <AppTextField
+            v-model="newService.name"
+            label="Название"
+            placeholder="Введите название сервиса"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn variant="text" @click="serviceDialog = false">Отмена</VBtn>
+          <VBtn color="primary" @click="createService">Создать</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 
     <!-- Диалог удаления -->
-    <VDialog v-model="deleteDialog" max-width="500px">
-      <VCard title="Вы уверены, что хотите удалить эту статью?">
+    <VDialog v-model="deleteDialog" max-width="400">
+      <VCard>
+        <VCardTitle>Подтверждение удаления</VCardTitle>
         <VCardText>
-          <div class="d-flex justify-center gap-4">
-            <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
-            <VBtn color="success" variant="elevated" @click="deleteItemConfirm">Удалить</VBtn>
-          </div>
+          Удалить статью "{{ deletingItem?.title }}"?
         </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
+          <VBtn color="success" @click="deleteItemConfirm">Удалить</VBtn>
+        </VCardActions>
       </VCard>
     </VDialog>
 
@@ -331,12 +698,26 @@ const resolvePublishedVariant = (isPublished: boolean) => {
   </div>
 </template>
 
-<style lang="scss" scoped>
-.v-card {
-  margin-block-end: 1rem;
+<style lang="scss">
+.illustration1 {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
 }
 
+.illustration2 {
+  position: absolute;
+  inset-block-start: 2rem;
+  inset-inline-start: 2.5rem;
+}
+</style>
+
+<style lang="scss" scoped>
 .cursor-pointer {
   cursor: pointer;
+}
+
+.hover-bg:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 </style>

@@ -85,6 +85,7 @@ const loadingRoles = ref(false)
 const fetchRoles = async () => {
   try {
     loadingRoles.value = true
+    console.log('[AgentsGroupsTable.vue] GET /api/roles - fetching roles')
     const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
     roles.value = data.roles
   } catch (err) {

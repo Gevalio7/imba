@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 definePage({
   meta: {
@@ -12,27 +12,7 @@ definePage({
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-const route = useRoute()
 const router = useRouter()
-
-// ID статьи (если редактирование)
-const articleId = computed(() => route.query.id ? Number(route.query.id) : null)
-const isEditMode = computed(() => !!articleId.value)
-
-// Теги
-const tagInput = ref('')
-
-const addTag = () => {
-  const tag = tagInput.value.trim()
-  if (tag && !article.value.tags.includes(tag)) {
-    article.value.tags.push(tag)
-  }
-  tagInput.value = ''
-}
-
-const removeTag = (index: number) => {
-  article.value.tags.splice(index, 1)
-}
 
 // Справочники
 const types = ref<any[]>([])
@@ -52,6 +32,21 @@ const article = ref({
   isActive: true,
 })
 
+// Теги
+const tagInput = ref('')
+
+const addTag = () => {
+  const tag = tagInput.value.trim()
+  if (tag && !article.value.tags.includes(tag)) {
+    article.value.tags.push(tag)
+  }
+  tagInput.value = ''
+}
+
+const removeTag = (index: number) => {
+  article.value.tags.splice(index, 1)
+}
+
 // Загрузка справочников
 const fetchTypes = async () => {
   try {
@@ -68,32 +63,6 @@ const fetchServices = async () => {
     services.value = (data as any).services || []
   } catch (err) {
     console.error('Error fetching services:', err)
-  }
-}
-
-// Загрузка статьи для редактирования
-const fetchArticle = async () => {
-  if (!articleId.value) return
-  
-  try {
-    loading.value = true
-    const data = await $fetch(`${API_BASE}/knowledge-base/${articleId.value}`)
-    const item = data as any
-    
-    article.value = {
-      title: item.title || '',
-      content: item.content || '',
-      categoryId: item.categoryId || undefined,
-      tags: item.tags || [],
-      serviceId: item.serviceId || undefined,
-      isPublished: item.isPublished || false,
-      isActive: item.isActive !== undefined ? item.isActive : true,
-    }
-  } catch (err) {
-    console.error('Error fetching article:', err)
-    showToast('Ошибка загрузки статьи', 'error')
-  } finally {
-    loading.value = false
   }
 }
 
@@ -117,19 +86,11 @@ const save = async () => {
       tags: article.value.tags.length > 0 ? article.value.tags : null,
     }
     
-    if (isEditMode.value) {
-      await $fetch(`${API_BASE}/knowledge-base/${articleId.value}`, {
-        method: 'PUT',
-        body: articleData,
-      })
-      showToast('Статья успешно обновлена')
-    } else {
-      await $fetch(`${API_BASE}/knowledge-base`, {
-        method: 'POST',
-        body: articleData,
-      })
-      showToast('Статья успешно создана')
-    }
+    await $fetch(`${API_BASE}/knowledge-base`, {
+      method: 'POST',
+      body: articleData,
+    })
+    showToast('Статья успешно создана')
     
     router.push('/apps/knowledge-base')
   } catch (err) {
@@ -162,10 +123,6 @@ onMounted(async () => {
     fetchTypes(),
     fetchServices(),
   ])
-  
-  if (isEditMode.value) {
-    await fetchArticle()
-  }
 })
 </script>
 
@@ -175,10 +132,10 @@ onMounted(async () => {
     <div class="d-flex flex-wrap justify-start justify-sm-space-between gap-y-4 gap-x-6 mb-6">
       <div class="d-flex flex-column justify-center">
         <h4 class="text-h4 mb-1">
-          {{ isEditMode ? 'Редактирование статьи' : 'Создание статьи' }}
+          Создание статьи
         </h4>
         <div class="text-body-1">
-          {{ isEditMode ? 'Измените информацию статьи' : 'Заполните информацию для создания новой статьи' }}
+          Заполните информацию для создания новой статьи
         </div>
       </div>
 
@@ -194,18 +151,12 @@ onMounted(async () => {
           :loading="saving"
           @click="save"
         >
-          {{ isEditMode ? 'Сохранить' : 'Создать' }}
+          Создать
         </VBtn>
       </div>
     </div>
 
-    <VRow v-if="loading">
-      <VCol cols="12" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
-      </VCol>
-    </VRow>
-
-    <VRow v-else>
+    <VRow>
       <!-- Левая колонка - Основная информация -->
       <VCol
         cols="12"

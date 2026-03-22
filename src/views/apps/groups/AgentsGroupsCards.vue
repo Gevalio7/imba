@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import girlUsingLaptop from '@images/pages/girl-using-laptop.png'
-import { $fetch } from 'ofetch'
+import { ref, watch } from 'vue'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -46,28 +46,16 @@ const props = withDefaults(defineProps<Props>(), {
   roles: () => []
 })
 
-// Если роли не переданы, загружаем сами
-const localRoles = ref<Role[]>([])
+// Если роли переданы через props, используем их
+const localRoles = ref<Role[]>(props.roles || [])
 const loadingRoles = ref(false)
 
-const loadRoles = async () => {
-  if (props.roles && props.roles.length > 0) {
-    localRoles.value = props.roles
-  } else {
-    try {
-      loadingRoles.value = true
-      const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
-      localRoles.value = data.roles
-    } catch (err) {
-      console.error('Error fetching roles:', err)
-    } finally {
-      loadingRoles.value = false
-    }
+// Следим за изменениями props.roles и обновляем локальное состояние
+watch(() => props.roles, (newRoles) => {
+  if (newRoles && newRoles.length > 0) {
+    localRoles.value = newRoles
   }
-}
-
-// Загружаем роли при монтировании
-loadRoles()
+}, { immediate: true })
 
 // Emits
 const emit = defineEmits<{

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
 import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 // Типы данных для Агент
 interface Agents {
@@ -51,6 +52,22 @@ interface Agent {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
+// Props - для получения данных из родителя
+interface Props {
+  initialAgents?: Agents[]
+  initialGroups?: AgentsGroups[]
+  initialRoles?: Role[]
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  initialAgents: () => [],
+  initialGroups: () => [],
+  initialRoles: () => []
+})
+
+// Роутер для навигации
+const router = useRouter()
+
 // Роли для отображения
 const rolesMap = ref<Map<number, { name: string; icon?: string }>>(new Map())
 
@@ -72,6 +89,7 @@ const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleI
 // Загрузка ролей
 const fetchRoles = async () => {
   try {
+    console.log('[AgentsTable.vue] GET /api/roles - fetching roles')
     const data = await $fetch<{ roles: { id: number; name: string; icon?: string }[], total: number }>(`${API_BASE}/roles`)
     rolesMap.value.clear()
     data.roles.forEach(role => {
@@ -105,6 +123,7 @@ const fetchAgents = async (silent = false) => {
       query.isActive = statusFilter.value === 1
     }
     
+    console.log('[AgentsTable.vue] GET /api/agents - fetching agents')
     const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
       query,
     })
@@ -125,6 +144,7 @@ const fetchAgents = async (silent = false) => {
 // Получение статусов групп
 const fetchGroupsStatus = async () => {
   try {
+    console.log('[AgentsTable.vue] GET /api/agentsGroups - fetching groups')
     const response = await $fetch(`${API_BASE}/agentsGroups`)
     console.log('📋 Groups API response:', response)
     console.log('📊 Type:', typeof response)
@@ -221,17 +241,46 @@ const deleteAgents = async (id: number) => {
   }
 }
 
-// Инициализация
-onMounted(() => {
-  fetchAgents()
-  fetchGroupsStatus()
-  fetchRoles()
-
-  // Периодическое обновление статусов групп (каждые 30 секунд - для отображения изменений от других пользователей)
-  // setInterval(fetchGroupsStatus, 30000)
+// Инициализация - используем переданные данные или загружаем сами
+onMounted(async () => {
+  // Если переданы данные из родителя - используем их
+  if (props.initialRoles.length > 0) {
+    props.initialRoles.forEach(role => {
+      rolesMap.value.set(role.id, { name: role.name })
+    })
+  }
   
-  // Обновление при фокусе окна (только вручную пользователем, не при каждом переключении вкладки)
-  // window.addEventListener('focus', fetchGroupsStatus)
+  if (props.initialGroups.length > 0) {
+    props.initialGroups.forEach((group: any) => {
+      groupsStatusMap.value.set(group.id, {
+        name: group.name,
+        isActive: group.isActive,
+        roleId: group.roleId,
+        roles: group.roles || []
+      })
+      availableGroups.value.push({
+        id: group.id,
+        name: group.name,
+        isActive: group.isActive,
+        roleId: group.roleId,
+        roles: group.roles || []
+      })
+    })
+  }
+  
+  // Загружаем данные - если есть initialAgents используем их, иначе запрашиваем
+  if (props.initialAgents.length > 0) {
+    agents.value = props.initialAgents
+    total.value = props.initialAgents.length
+    loading.value = false
+  } else {
+    // Загружаем данные с сервера
+    await Promise.all([
+      fetchAgents(),
+      props.initialGroups.length === 0 ? fetchGroupsStatus() : Promise.resolve(),
+      props.initialRoles.length === 0 ? fetchRoles() : Promise.resolve()
+    ])
+  }
 })
 
 const headers = [
@@ -588,12 +637,9 @@ const updateSelectedGroups = () => {
   console.log('🔄 Selected groups updated:', selectedGroupIds.value)
 }
 
-// Редактирование
+// Редактирование агента - переход на страницу редактирования
 const editItem = (item: Agents) => {
-  editedIndex.value = agents.value.indexOf(item)
-  editedItem.value = { ...item }
-  updateSelectedGroups()
-  editDialog.value = true
+  router.push({ path: '/apps/Agents/edit', query: { id: item.id } })
 }
 
 // Добавление нового агента

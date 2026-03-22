@@ -459,7 +459,7 @@ const fetchTicket = async () => {
   }
   catch (err) {
     console.error('Error fetching ticket:', err)
-    showToast('Ошибка загрузки тикета', 'error')
+    showToast('Ошибка загрузки обращения', 'error')
   }
   finally {
     loading.value = false
@@ -637,7 +637,7 @@ const save = async () => {
     newAttachments.value = []
   }
   catch (err) {
-    showToast('Ошибка сохранения тикета', 'error')
+    showToast('Ошибка сохранения обращения', 'error')
   }
   finally {
     saving.value = false
@@ -831,7 +831,7 @@ const showToast = (message: string, color: string = 'success') => {
     <div class="d-flex flex-wrap justify-start justify-sm-space-between gap-y-4 gap-x-6 mb-6">
       <div class="d-flex flex-column justify-center">
         <h4 class="text-h4 mb-1">
-          Редактирование тикета
+          Редактирование обращения
         </h4>
         <div
           v-if="ticket.ticketNumber"
@@ -888,7 +888,7 @@ const showToast = (message: string, color: string = 'success') => {
                 <AppTextField
                   v-model="ticket.title"
                   label="Заголовок *"
-                  placeholder="Введите заголовок тикета"
+                  placeholder="Введите заголовок обращения"
                 />
               </VCol>
 
@@ -1415,7 +1415,7 @@ const showToast = (message: string, color: string = 'success') => {
             <div class="d-flex flex-column gap-y-4">
               <AppTextField
                 :model-value="ticket.ticketNumber"
-                label="Номер тикета"
+                label="Номер обращения"
                 disabled
               />
 

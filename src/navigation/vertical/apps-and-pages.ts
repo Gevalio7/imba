@@ -30,6 +30,11 @@ export default [
       { title: 'Список', to: 'apps-agents-groups' },
     ],
   },
+  {
+    title: 'База знаний',
+    icon: { icon: 'bx-book' },
+    to: 'apps-knowledge-base',
+  },
   
  {
     title: 'Сервисы',

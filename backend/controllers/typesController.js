@@ -55,6 +55,11 @@ const createTypes = asyncHandler(async (req, res) => {
     data.workflowId = req.body.workflowId;
   }
 
+  // Добавляем categoryIds если передан
+  if (req.body.categoryIds !== undefined) {
+    data.categoryIds = req.body.categoryIds;
+  }
+
   // Валидация обязательных полей
   if (!data.name) {
     return res.status(400).json({ message: 'name is required' });
@@ -85,6 +90,11 @@ const updateTypes = asyncHandler(async (req, res) => {
   // Добавляем workflowId если передан
   if (req.body.workflowId !== undefined) {
     data.workflowId = req.body.workflowId;
+  }
+
+  // Добавляем categoryIds если передан
+  if (req.body.categoryIds !== undefined) {
+    data.categoryIds = req.body.categoryIds;
   }
 
   const updatedType = await Types.update(typeId, data);
