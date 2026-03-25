@@ -1,5 +1,6 @@
 const Tickets = require('../models/tickets');
 const Types = require('../models/types');
+const TypeCategories = require('../models/typeCategories');
 const WorkflowTransitions = require('../models/workflowTransitions');
 const TicketHistory = require('../models/ticketHistory');
 const TicketStatusHistory = require('../models/ticketStatusHistory');
@@ -17,6 +18,7 @@ const fieldDisplayNames = {
   title: 'Заголовок',
   description: 'Описание',
   typeId: 'Тип',
+  categoryId: 'Категория',
   priorityId: 'Приоритет',
   queueId: 'Очередь',
   stateId: 'Статус',
@@ -133,6 +135,7 @@ const createTicket = asyncHandler(async (req, res) => {
   data.title = req.body.title;
   data.description = req.body.description || null;
   data.typeId = req.body.typeId || null;
+  data.categoryId = req.body.categoryId || null;
   data.priorityId = req.body.priorityId || null;
   data.queueId = req.body.queueId || null;
   data.ownerId = req.body.ownerId || null;
@@ -175,6 +178,8 @@ const createTicket = asyncHandler(async (req, res) => {
   } else if (req.body.stateId) {
     data.stateId = req.body.stateId;
   }
+
+  // Примечание: валидация категории убрана - frontend требует выбор категории если тип имеет связанные
 
   const newTicket = await Tickets.create(data);
 
@@ -252,12 +257,23 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (req.body.title !== undefined) data.title = req.body.title;
   if (req.body.description !== undefined) data.description = req.body.description;
   if (req.body.typeId !== undefined) data.typeId = req.body.typeId;
+  if (req.body.categoryId !== undefined) data.categoryId = req.body.categoryId;
   if (req.body.priorityId !== undefined) data.priorityId = req.body.priorityId;
   if (req.body.queueId !== undefined) data.queueId = req.body.queueId;
   if (req.body.ownerId !== undefined) data.ownerId = req.body.ownerId;
   if (req.body.companyId !== undefined) data.companyId = req.body.companyId;
   if (req.body.serviceId !== undefined) data.serviceId = req.body.serviceId;
   if (req.body.slaId !== undefined) data.slaId = req.body.slaId;
+  
+  // Поля исполнителей (массивы ID)
+  if (req.body.executorAgentIds !== undefined) {
+    // Убеждаемся что это массив
+    data.executorAgentIds = Array.isArray(req.body.executorAgentIds) ? req.body.executorAgentIds : [];
+  }
+  if (req.body.executorGroupIds !== undefined) {
+    // Убеждаемся что это массив
+    data.executorGroupIds = Array.isArray(req.body.executorGroupIds) ? req.body.executorGroupIds : [];
+  }
   
   // SLA поля
   if (req.body.responseDeadline !== undefined) data.responseDeadline = req.body.responseDeadline;
@@ -309,6 +325,9 @@ const updateTicket = asyncHandler(async (req, res) => {
     data.stateId = newStatusId;
   }
 
+  // Примечание: валидация категории убрана на frontend
+  // Если у типа есть связанные категории - frontend требует выбрать категорию
+
   const updatedTicket = await Tickets.update(ticketId, data);
 
   if (!updatedTicket) {
@@ -352,13 +371,14 @@ const updateTicket = asyncHandler(async (req, res) => {
   // =====================================================
   // Записываем историю изменений всех полей
   // =====================================================
-  const fieldsToTrack = ['title', 'description', 'typeId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'serviceId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt'];
+  const fieldsToTrack = ['title', 'description', 'typeId', 'categoryId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'serviceId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt', 'executorAgentIds', 'executorGroupIds'];
   
   // Определяем какие справочники нужны на основе изменяемых полей
   const neededLookups = new Set();
   for (const field of fieldsToTrack) {
     if (data[field] !== undefined && currentTicket[field] !== data[field]) {
       if (field === 'typeId') neededLookups.add('types');
+      else if (field === 'categoryId') neededLookups.add('typeCategories');
       else if (field === 'priorityId') neededLookups.add('priorities');
       else if (field === 'queueId') neededLookups.add('queues');
       else if (field === 'stateId') neededLookups.add('states');
@@ -373,6 +393,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   const lookupPromises = [];
   const lookupOrder = [];
   if (neededLookups.has('types')) { lookupPromises.push(Types.getAll({ itemsPerPage: 1000 })); lookupOrder.push('types'); }
+  if (neededLookups.has('typeCategories')) { lookupPromises.push(TypeCategories.getAll({ itemsPerPage: 1000 })); lookupOrder.push('typeCategories'); }
   if (neededLookups.has('priorities')) { lookupPromises.push(Priorities.getAll({ itemsPerPage: 1000 })); lookupOrder.push('priorities'); }
   if (neededLookups.has('queues')) { lookupPromises.push(Queues.getAll({ itemsPerPage: 1000 })); lookupOrder.push('queues'); }
   if (neededLookups.has('states')) { lookupPromises.push(States.getAll({ itemsPerPage: 1000 })); lookupOrder.push('states'); }
@@ -388,6 +409,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   lookupOrder.forEach((key, index) => {
     const result = lookupResults[index];
     if (key === 'types') lookupData.typesList = result.types || [];
+    else if (key === 'typeCategories') lookupData.typeCategoriesList = result.typeCategories || [];
     else if (key === 'priorities') lookupData.prioritiesList = result.priorities || [];
     else if (key === 'queues') lookupData.queuesList = result.queues || [];
     else if (key === 'states') lookupData.statesList = result.states || [];
@@ -397,7 +419,7 @@ const updateTicket = asyncHandler(async (req, res) => {
     else if (key === 'sla') lookupData.slaList = result.sla || [];
   });
   
-  const { typesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], servicesList = [], slaList = [] } = lookupData;
+  const { typesList = [], typeCategoriesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], servicesList = [], slaList = [] } = lookupData;
   
   for (const field of fieldsToTrack) {
     const oldValue = currentTicket[field];
@@ -415,6 +437,12 @@ const updateTicket = asyncHandler(async (req, res) => {
       const newType = typesList.find(t => t.id === newValue);
       oldDisplayValue = oldType ? oldType.name : String(oldValue ?? '');
       newDisplayValue = newType ? newType.name : String(newValue ?? '');
+    }
+    else if (field === 'categoryId') {
+      const oldCategory = typeCategoriesList.find(c => c.id === oldValue);
+      const newCategory = typeCategoriesList.find(c => c.id === newValue);
+      oldDisplayValue = oldCategory ? oldCategory.name : String(oldValue ?? '');
+      newDisplayValue = newCategory ? newCategory.name : String(newValue ?? '');
     }
     else if (field === 'priorityId') {
       const oldPriority = prioritiesList.find(p => p.id === oldValue);
@@ -474,6 +502,40 @@ const updateTicket = asyncHandler(async (req, res) => {
       };
       oldDisplayValue = truncate(String(oldValue ?? ''));
       newDisplayValue = truncate(String(newValue ?? ''));
+    }
+    else if (field === 'executorAgentIds') {
+      // Для исполнителей-агентов показываем имена
+      const oldIds = Array.isArray(oldValue) ? oldValue : [];
+      const newIds = Array.isArray(newValue) ? newValue : [];
+      const oldAgents = agentsList.filter(a => oldIds.includes(a.id));
+      const newAgents = agentsList.filter(a => newIds.includes(a.id));
+      oldDisplayValue = oldAgents.length > 0 ? oldAgents.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') : '-';
+      newDisplayValue = newAgents.length > 0 ? newAgents.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') : '-';
+    }
+    else if (field === 'executorGroupIds') {
+      // Для групп исполнителей показываем названия
+      const oldIds = Array.isArray(oldValue) ? oldValue : [];
+      const newIds = Array.isArray(newValue) ? newValue : [];
+      // Загружаем группы агентов если изменяются executorGroupIds
+      if (!neededLookups.has('agentsGroups')) {
+        const AgentsGroups = require('../models/agentsGroups');
+        try {
+          const groupsResult = await AgentsGroups.getAll({ itemsPerPage: 1000 });
+          const groupsList = groupsResult.agentsGroups || [];
+          const oldGroups = groupsList.filter(g => oldIds.includes(g.id));
+          const newGroups = groupsList.filter(g => newIds.includes(g.id));
+          oldDisplayValue = oldGroups.length > 0 ? oldGroups.map(g => g.name).join(', ') : '-';
+          newDisplayValue = newGroups.length > 0 ? newGroups.map(g => g.name).join(', ') : '-';
+        } catch (err) {
+          console.error('Error loading agent groups for history:', err);
+          oldDisplayValue = oldIds.join(', ');
+          newDisplayValue = newIds.join(', ');
+        }
+      } else {
+        // Если группы уже загружены, используем их
+        oldDisplayValue = oldIds.length > 0 ? oldIds.join(', ') : '-';
+        newDisplayValue = newIds.length > 0 ? newIds.join(', ') : '-';
+      }
     }
     
     // Записываем в историю

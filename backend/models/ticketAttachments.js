@@ -52,7 +52,7 @@ class TicketAttachments {
           id, 
           ticket_id as "ticketId", 
           file_name as "filename", 
-          file_name as "originalName",
+          file_path as "originalName",
           mime_type as "mimetype", 
           file_size as "filesize", 
           uploaded_by as "uploaderId",
@@ -83,7 +83,7 @@ class TicketAttachments {
           id, 
           ticket_id as "ticketId", 
           file_name as "filename", 
-          file_name as "originalName",
+          file_path as "originalName",
           mime_type as "mimetype", 
           file_size as "filesize", 
           uploaded_by as "uploaderId",
@@ -92,6 +92,7 @@ class TicketAttachments {
         WHERE id = $1`,
         [id]
       );
+
 
       return result.rows[0] || null;
     } catch (error) {
@@ -113,7 +114,7 @@ class TicketAttachments {
           id, 
           ticket_id as "ticketId", 
           file_name as "filename", 
-          file_name as "originalName",
+          file_path as "originalName",
           mime_type as "mimetype", 
           file_size as "filesize", 
           uploaded_by as "uploaderId",
@@ -121,7 +122,7 @@ class TicketAttachments {
       `;
       const result = await pool.query(query, [
         ticketId,
-        originalName || filename, // file_name - оригинальное имя файла
+        filename, // file_name - имя файла на диске (для отображения)
         filename, // file_path - путь к файлу на сервере
         filesize,
         mimetype,
@@ -143,8 +144,8 @@ class TicketAttachments {
         return false;
       }
 
-      // Удаляем файл с диска (attachment.filename содержит file_path)
-      const filePath = path.join(this.uploadDir, attachment.filename);
+      // Удаляем файл с диска (используем file_path)
+      const filePath = path.join(this.uploadDir, attachment.originalName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -164,9 +165,9 @@ class TicketAttachments {
       // Получаем все вложения тикета
       const { attachments } = await this.getAll({ ticketId });
       
-      // Удаляем файлы с диска
+      // Удаляем файлы с диска (используем originalName = file_path)
       for (const attachment of attachments) {
-        const filePath = path.join(this.uploadDir, attachment.filename);
+        const filePath = path.join(this.uploadDir, attachment.originalName);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }

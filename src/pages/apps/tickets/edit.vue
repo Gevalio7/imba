@@ -30,6 +30,7 @@ const priorities = ref<any[]>([])
 const queues = ref<any[]>([])
 const states = ref<any[]>([])
 const types = ref<any[]>([])
+const categories = ref<any[]>([])
 const agents = ref<any[]>([])
 const agentGroups = ref<any[]>([])
 const customers = ref<any[]>([])
@@ -72,6 +73,14 @@ const fetchTypes = async () => {
     types.value = (data as any).types || []
   }
   catch (err) { console.log('Error fetching types:', err) }
+}
+
+const fetchCategories = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/typeCategories`)
+    categories.value = (data as any).typeCategories || []
+  }
+  catch (err) { console.log('Error fetching categories:', err) }
 }
 
 const fetchAgents = async () => {
@@ -135,6 +144,37 @@ const filteredServices = computed(() => {
     // Проверяем есть ли компания в списке компаний сервиса
     return s.customers.some((c: any) => c.id === ticket.companyId)
   })
+})
+
+// Вычисляемые категории - фильтруются по выбранному типу
+const filteredCategories = computed(() => {
+  // Если тип не выбран - показываем пустой массив (категория скрыта)
+  if (!ticket.typeId) {
+    return []
+  }
+  // Находим тип и его categoryIds
+  const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
+  if (!selectedType) {
+    return []
+  }
+  // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
+  if (!selectedType.categoryIds || selectedType.categoryIds.length === 0) {
+    return []
+  }
+  // Фильтруем категории по categoryIds типа
+  return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+})
+
+// Есть ли связанные категории для текущего типа
+const hasCategoriesForType = computed(() => {
+  if (!ticket.typeId) return false
+  const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
+  return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
+})
+
+// Видимость поля категории - показываем если есть связанные категории
+const categoryVisible = computed(() => {
+  return !ticket.typeId || hasCategoriesForType.value
 })
 
 // Дедлайны SLA
@@ -228,6 +268,7 @@ const ticket = reactive({
   ticketNumber: '',
   title: '',
   typeId: undefined as number | undefined,
+  categoryId: undefined as number | undefined,
   priorityId: undefined as number | undefined,
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
@@ -249,6 +290,15 @@ watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
   
   if (newTypeId) {
     await fetchTypeWorkflow(newTypeId, ticket.stateId)
+    
+    // Очищаем категорию если она не входит в список разрешённых для нового типа
+    const selectedType = types.value.find((t: any) => t.id === newTypeId)
+    if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
+      // Если у типа есть связанные категории - проверяем текущую
+      if (ticket.categoryId && !selectedType.categoryIds.includes(ticket.categoryId)) {
+        ticket.categoryId = undefined
+      }
+    }
   }
   else {
     currentWorkflow.value = null
@@ -321,6 +371,128 @@ watch(() => ticket.queueId, (newQueueId, oldQueueId) => {
 // Вложения
 const existingAttachments = ref<any[]>([])
 const newAttachments = ref<File[]>([])
+
+// Превью изображения
+const imagePreview = ref<{ show: boolean; src: string; filename: string }>({
+  show: false,
+  src: '',
+  filename: ''
+})
+
+// Состояние зума для превью изображения
+const imageZoom = ref(100)
+
+// Увеличить изображение
+const zoomIn = () => {
+  if (imageZoom.value < 300) {
+    imageZoom.value += 25
+  }
+}
+
+// Уменьшить изображение
+const zoomOut = () => {
+  if (imageZoom.value > 25) {
+    imageZoom.value -= 25
+  }
+}
+
+// Сбросить зум
+const resetZoom = () => {
+  imageZoom.value = 100
+}
+
+// Скачать изображение
+const downloadImage = async () => {
+  try {
+    const response = await fetch(imagePreview.value.src)
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = imagePreview.value.filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Error downloading image:', err)
+    showToast('Ошибка скачивания файла', 'error')
+  }
+}
+
+// Напечатать изображение
+const printImage = () => {
+  const printWindow = window.open('', '_blank')
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${imagePreview.value.filename}</title>
+          <style>
+            body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+            img { max-width: 100%; max-height: 100vh; }
+            @media print { body { display: block; } img { max-width: 100%; max-height: none; } }
+          </style>
+        </head>
+        <body>
+          <img src="${imagePreview.value.src}" alt="${imagePreview.value.filename}">
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.onload = () => {
+      printWindow.print()
+    }
+  }
+}
+
+// Проверка - является ли файл изображением по расширению
+const isImageFile = (filename: string) => {
+  if (!filename) return false
+  const ext = filename.toLowerCase().split('.').pop()
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
+}
+
+// Проверка - является ли объект файлом изображения (для новых файлов)
+const isImageType = (file: File) => {
+  return file.type?.startsWith('image/')
+}
+
+// Создание URL для превью изображения
+const createObjectUrl = (file: File): string => {
+  console.log('createObjectUrl called:', { file, type: typeof file, isFile: file instanceof File })
+  if (typeof window === 'undefined' || !window.URL) {
+    console.log('No window.URL available')
+    return ''
+  }
+  if (!file) {
+    console.log('No file provided')
+    return ''
+  }
+  try {
+    const url = window.URL.createObjectURL(file)
+    console.log('Created URL:', url)
+    return url
+  } catch (e) {
+    console.error('Error creating object URL:', e)
+    return ''
+  }
+}
+
+// Открыть превью изображения
+const openImagePreview = (attachment: any) => {
+  imagePreview.value = {
+    show: true,
+    src: `/uploads/${attachment.filename}`,
+    filename: attachment.filename
+  }
+}
+
+// Закрыть превью
+const closeImagePreview = () => {
+  imagePreview.value.show = false
+  imageZoom.value = 100 // Сбрасываем зум при закрытии
+}
 
 // Комментарии
 const comments = ref<any[]>([])
@@ -432,6 +604,7 @@ const fetchTicket = async () => {
     ticket.ticketNumber = t.ticketNumber || ''
     ticket.title = t.title || ''
     ticket.typeId = t.typeId || undefined
+    ticket.categoryId = t.categoryId || undefined
     ticket.priorityId = t.priorityId || undefined
     ticket.queueId = t.queueId || undefined
     ticket.stateId = t.stateId || undefined
@@ -593,6 +766,12 @@ const save = async () => {
     return
   }
 
+  // Проверка обязательности категории если тип имеет связанные категории
+  if (hasCategoriesForType.value && !ticket.categoryId) {
+    showToast('Выберите категорию для данного типа', 'error')
+    return
+  }
+
   try {
     saving.value = true
     
@@ -602,6 +781,7 @@ const save = async () => {
       ticketNumber: ticket.ticketNumber,
       title: ticket.title,
       typeId: ticket.typeId ?? null,
+      categoryId: ticket.categoryId ?? null,
       priorityId: ticket.priorityId ?? null,
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
@@ -635,9 +815,17 @@ const save = async () => {
     await fetchHistory() // Обновляем историю изменений
     await fetchStatusHistory() // Обновляем историю переходов
     newAttachments.value = []
+    
+    // Перенаправляем на список тикетов
+    router.push('/apps/tickets')
   }
-  catch (err) {
-    showToast('Ошибка сохранения обращения', 'error')
+  catch (err: any) {
+    // Показываем более информативное сообщение об ошибке
+    if (err.data?.message) {
+      showToast(err.data.message, 'error')
+    } else {
+      showToast('Ошибка сохранения обращения', 'error')
+    }
   }
   finally {
     saving.value = false
@@ -753,6 +941,182 @@ const deleteExistingAttachment = async (attachmentId: number) => {
   }
 }
 
+// Скачать одно вложение
+const downloadAttachment = async (attachment: any) => {
+  try {
+    const link = document.createElement('a')
+    link.href = `/uploads/${attachment.filename}`
+    link.download = attachment.filename
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    console.error('Error downloading attachment:', err)
+    showToast('Ошибка скачивания файла', 'error')
+  }
+}
+
+// Скачать все вложения
+const downloadAllAttachments = async () => {
+  if (existingAttachments.value.length === 0) return
+  
+  try {
+    for (const attachment of existingAttachments.value) {
+      // Небольшая задержка между скачиваниями
+      await new Promise(resolve => setTimeout(resolve, 300))
+      const link = document.createElement('a')
+      link.href = `/uploads/${attachment.filename}`
+      link.download = attachment.filename
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+    showToast(`Скачано ${existingAttachments.value.length} файлов`)
+  } catch (err) {
+    console.error('Error downloading all attachments:', err)
+    showToast('Ошибка скачивания файлов', 'error')
+  }
+}
+
+// Получить MIME тип по расширению файла
+const getMimeType = (filename: string): string => {
+  const ext = filename.toLowerCase().split('.').pop()
+  const mimeTypes: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    zip: 'application/zip',
+    rar: 'application/x-rar-compressed',
+  }
+  return mimeTypes[ext || ''] || 'application/octet-stream'
+}
+
+// Попытаться использовать Web Share API для шаринга файлов
+const tryWebShare = async (files: File[]): Promise<boolean> => {
+  if (!navigator.share || !navigator.canShare) {
+    return false
+  }
+  
+  try {
+    const shareData = {
+      title: `Файлы из тикета #${ticket.ticketNumber}`,
+      files: files,
+    }
+    
+    if (navigator.canShare(shareData)) {
+      await navigator.share(shareData)
+      return true
+    }
+  } catch (err) {
+    console.log('Web Share API not available or failed:', err)
+  }
+  return false
+}
+
+// Загрузить файл как Blob для шаринга
+const fetchFileAsBlob = async (url: string): Promise<{ blob: Blob; filename: string } | null> => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const filename = url.split('/').pop() || 'file'
+    return { blob, filename }
+  } catch (err) {
+    console.error('Error fetching file:', err)
+    return null
+  }
+}
+
+// Поделиться через Telegram (с файлами если возможно)
+const shareToTelegram = async () => {
+  if (existingAttachments.value.length === 0) return
+  
+  try {
+    // Пробуем использовать Web Share API для отправки файлов
+    const files: File[] = []
+    for (const attachment of existingAttachments.value) {
+      const url = `/uploads/${attachment.filename}`
+      const result = await fetchFileAsBlob(url)
+      if (result) {
+        const mimeType = getMimeType(attachment.filename)
+        files.push(new File([result.blob], attachment.filename, { type: mimeType }))
+      }
+    }
+    
+    // Если удалось загрузить файлы и Web Share поддерживает их
+    if (files.length > 0) {
+      const shared = await tryWebShare(files)
+      if (shared) return
+    }
+    
+    // Фоллбек на ссылки
+    const baseUrl = window.location.origin
+    const fileLinks = existingAttachments.value
+      .map((attachment) => `${attachment.filename}: ${baseUrl}/uploads/${encodeURIComponent(attachment.filename)}`)
+      .join('\n')
+    
+    const message = `📎 Файлы из тикета #${ticket.ticketNumber}\n\n${fileLinks}`
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(message)}`
+    
+    window.open(telegramUrl, '_blank')
+  } catch (err) {
+    console.error('Error sharing to Telegram:', err)
+    showToast('Ошибка открытия Telegram', 'error')
+  }
+}
+
+// Поделиться через Mail.ru
+const shareToMail = async () => {
+  if (existingAttachments.value.length === 0) return
+  
+  try {
+    const baseUrl = window.location.origin
+    const fileLinks = existingAttachments.value
+      .map((attachment) => `${attachment.filename}: ${baseUrl}/uploads/${encodeURIComponent(attachment.filename)}`)
+      .join('\n')
+    
+    const subject = encodeURIComponent(`Файлы из тикета #${ticket.ticketNumber}`)
+    const body = encodeURIComponent(`📎 Файлы из тикета #${ticket.ticketNumber}\n\n${fileLinks}`)
+    
+    window.open(`https://e.mail.ru/compose/?mailto=&subject=${subject}&body=${body}`, '_blank')
+  } catch (err) {
+    console.error('Error sharing to Mail:', err)
+    showToast('Ошибка открытия Mail.ru', 'error')
+  }
+}
+
+// Поделиться по email
+const shareToEmail = async () => {
+  if (existingAttachments.value.length === 0) return
+  
+  try {
+    const baseUrl = window.location.origin
+    const fileLinks = existingAttachments.value
+      .map((attachment) => `${attachment.filename}: ${baseUrl}/uploads/${encodeURIComponent(attachment.filename)}`)
+      .join('\n')
+    
+    const subject = encodeURIComponent(`Файлы из тикета #${ticket.ticketNumber}`)
+    const body = encodeURIComponent(`📎 Файлы из тикета #${ticket.ticketNumber}\n\n${fileLinks}`)
+    
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  } catch (err) {
+    console.error('Error sharing to Email:', err)
+    showToast('Ошибка открытия почты', 'error')
+  }
+}
+
+// Показать/скрыть меню шеринга
+const showShareMenu = ref(false)
+
 const uploadNewAttachments = async () => {
   for (const file of newAttachments.value) {
     const formData = new FormData()
@@ -799,6 +1163,7 @@ onMounted(async () => {
     fetchQueues(),
     fetchStates(),
     fetchTypes(),
+    fetchCategories(),
     fetchAgents(),
     fetchAgentGroups(),
     fetchCustomers(),
@@ -913,83 +1278,178 @@ const showToast = (message: string, color: string = 'success') => {
           </VCardTitle>
           <VCardText>
             <!-- Существующие вложения -->
-            <VList
-              v-if="existingAttachments.length > 0"
-              class="border rounded mb-4"
-            >
-              <VListItem
-                v-for="attachment in existingAttachments"
-                :key="attachment.id"
-                class="py-3"
-              >
-                <template #prepend>
-                  <VIcon
-                    icon="bx-file"
-                    class="me-3"
-                  />
-                </template>
-
-                <VListItemTitle>{{ attachment.filename }}</VListItemTitle>
-                <VListItemSubtitle>{{ formatFileSize(attachment.filesize || 0) }}</VListItemSubtitle>
-
-                <template #append>
-                  <VBtn
-                    icon
-                    variant="text"
-                    color="primary"
-                    size="small"
-                    class="me-2"
-                    :href="`${API_BASE}/uploads/${attachment.filename}`"
-                    target="_blank"
+            <div v-if="existingAttachments.length > 0" class="mb-4">
+              <div class="d-flex justify-space-between align-center mb-2">
+                <p class="text-body-2 mb-0">Прикрепленные файлы:</p>
+                <div class="d-flex gap-2">
+                  <!-- Меню поделиться -->
+                  <VMenu
+                    v-model="showShareMenu"
+                    :close-on-content-click="false"
+                    location="bottom end"
                   >
-                    <VIcon icon="bx-download" />
+                    <template #activator="{ props }">
+                      <VBtn
+                        v-if="existingAttachments.length > 0"
+                        v-bind="props"
+                        icon
+                        variant="tonal"
+                        size="small"
+                        color="info"
+                      >
+                        <VIcon icon="bx-share" />
+                      </VBtn>
+                    </template>
+                    <VList density="compact" nav>
+                      <VListItem
+                        prepend-icon="bxl-telegram"
+                        title="Telegram"
+                        @click="shareToTelegram"
+                      />
+                      <VListItem
+                        prepend-icon="bxl-mail.ru"
+                        title="Mail.ru"
+                        @click="shareToMail"
+                      />
+                      <VListItem
+                        prepend-icon="bx-envelope"
+                        title="Email"
+                        @click="shareToEmail"
+                      />
+                    </VList>
+                  </VMenu>
+                  
+                  <VBtn
+                    v-if="existingAttachments.length > 1"
+                    variant="tonal"
+                    size="small"
+                    color="primary"
+                    @click="downloadAllAttachments"
+                  >
+                    <VIcon icon="bx-download" class="me-1" />
+                    Скачать все
                   </VBtn>
+                </div>
+              </div>
+              <div class="attachments-grid d-flex flex-wrap gap-2">
+                <div
+                  v-for="attachment in existingAttachments"
+                  :key="attachment.id"
+                  class="attachment-item position-relative"
+                >
+                  <!-- Изображение - показываем превью -->
+                  <VImg
+                    v-if="isImageFile(attachment.filename)"
+                    :src="`/uploads/${attachment.filename}`"
+                    :alt="attachment.filename"
+                    class="attachment-thumbnail rounded cursor-pointer"
+                    cover
+                    height="80"
+                    width="80"
+                    @click="openImagePreview(attachment)"
+                  >
+                    <template #placeholder>
+                      <div class="d-flex align-center justify-center fill-height bg-surface-variant">
+                        <VProgressCircular indeterminate size="20" />
+                      </div>
+                    </template>
+                  </VImg>
+                  
+                  <!-- Иконка для не-изображений -->
+                  <VCard
+                    v-else
+                    class="attachment-thumbnail rounded d-flex align-center justify-center cursor-pointer"
+                    height="80"
+                    width="80"
+                    @click="openImagePreview(attachment)"
+                  >
+                    <VIcon icon="bx-file" size="32" color="grey" />
+                  </VCard>
+                  
+                  <!-- Кнопка скачивания -->
                   <VBtn
                     icon
-                    variant="text"
+                    size="x-small"
+                    color="primary"
+                    class="attachment-download-btn"
+                    @click.stop="downloadAttachment(attachment)"
+                  >
+                    <VIcon icon="bx-download" size="14" />
+                  </VBtn>
+                  
+                  <!-- Кнопка удаления -->
+                  <VBtn
+                    icon
+                    size="x-small"
                     color="error"
-                    size="small"
+                    class="attachment-delete-btn"
                     @click="deleteExistingAttachment(attachment.id)"
                   >
-                    <VIcon icon="bx-x" />
+                    <VIcon icon="bx-x" size="14" />
                   </VBtn>
-                </template>
-              </VListItem>
-            </VList>
+                  
+                  <!-- Название файла -->
+                  <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+                    {{ attachment.filename }}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Новые файлы для загрузки -->
-            <VList
-              v-if="newAttachments.length > 0"
-              class="border rounded mb-4"
-            >
-              <VListItem
-                v-for="(file, index) in newAttachments"
-                :key="index"
-                class="py-3"
-              >
-                <template #prepend>
-                  <VIcon
-                    icon="bx-file"
-                    class="me-3"
-                  />
-                </template>
-
-                <VListItemTitle>{{ file.name }}</VListItemTitle>
-                <VListItemSubtitle>{{ formatFileSize(file.size) }}</VListItemSubtitle>
-
-                <template #append>
+            <div v-if="newAttachments.length > 0" class="mb-4">
+              <p class="text-body-2 mb-2">Новые файлы:</p>
+              <div class="attachments-grid d-flex flex-wrap gap-2">
+                <div
+                  v-for="(file, index) in newAttachments"
+                  :key="index"
+                  class="attachment-item position-relative"
+                >
+                  <!-- Превью для новых изображений -->
+                  <VImg
+                    v-if="isImageType(file)"
+                    :src="createObjectUrl(file)"
+                    :alt="file.name"
+                    class="attachment-thumbnail rounded"
+                    cover
+                    height="80"
+                    width="80"
+                  >
+                    <template #placeholder>
+                      <div class="d-flex align-center justify-center fill-height bg-surface-variant">
+                        <VProgressCircular indeterminate size="20" />
+                      </div>
+                    </template>
+                  </VImg>
+                  
+                  <!-- Иконка для не-изображений -->
+                  <VCard
+                    v-else
+                    class="attachment-thumbnail rounded d-flex align-center justify-center"
+                    height="80"
+                    width="80"
+                  >
+                    <VIcon icon="bx-file" size="32" color="grey" />
+                  </VCard>
+                  
+                  <!-- Кнопка удаления -->
                   <VBtn
                     icon
-                    variant="text"
+                    size="x-small"
                     color="error"
-                    size="small"
+                    class="attachment-delete-btn"
                     @click="removeNewAttachment(index)"
                   >
-                    <VIcon icon="bx-x" />
+                    <VIcon icon="bx-x" size="14" />
                   </VBtn>
-                </template>
-              </VListItem>
-            </VList>
+                  
+                  <!-- Название файла -->
+                  <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+                    {{ file.name }}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Drop Zone -->
             <div class="drop-zone pa-6 text-center">
@@ -1429,6 +1889,20 @@ const showToast = (message: string, color: string = 'success') => {
                 clearable
               />
 
+              <!-- Категория - зависит от типа: показываем только если есть связанные категории -->
+              <AppSelect
+                v-if="categoryVisible"
+                v-model="ticket.categoryId"
+                :items="filteredCategories"
+                item-title="name"
+                item-value="id"
+                label="Категория"
+                placeholder="Выберите категорию"
+                :disabled="!ticket.typeId"
+                :error-messages="hasCategoriesForType && !ticket.categoryId ? 'Выберите категорию' : undefined"
+                clearable
+              />
+
               <!-- Информация о workflow -->
               <VAlert
                 v-if="currentWorkflow"
@@ -1662,6 +2136,104 @@ const showToast = (message: string, color: string = 'success') => {
         </VCardActions>
       </VCard>
     </VDialog>
+
+    <!-- Превью изображения -->
+    <VDialog
+      v-model="imagePreview.show"
+      max-width="90%"
+      width="auto"
+    >
+      <VCard class="pa-2">
+        <VCardTitle class="d-flex justify-space-between align-center">
+          <span class="text-truncate">{{ imagePreview.filename }}</span>
+          <div class="d-flex align-center gap-1">
+            <!-- Кнопки управления зумом -->
+            <VBtn
+              icon
+              variant="text"
+              size="small"
+              :disabled="imageZoom <= 25"
+              @click="zoomOut"
+            >
+              <VIcon icon="bx-zoom-out" />
+            </VBtn>
+            <VChip
+              size="small"
+              variant="tonal"
+              class="mx-1"
+              @click="resetZoom"
+              style="cursor: pointer"
+            >
+              {{ imageZoom }}%
+            </VChip>
+            <VBtn
+              icon
+              variant="text"
+              size="small"
+              :disabled="imageZoom >= 300"
+              @click="zoomIn"
+            >
+              <VIcon icon="bx-zoom-in" />
+            </VBtn>
+            
+            <VDivider vertical class="mx-2" />
+            
+            <!-- Кнопка скачивания -->
+            <VBtn
+              icon
+              variant="text"
+              size="small"
+              @click="downloadImage"
+            >
+              <VIcon icon="bx-download" />
+            </VBtn>
+            
+            <!-- Кнопка печати -->
+            <VBtn
+              icon
+              variant="text"
+              size="small"
+              @click="printImage"
+            >
+              <VIcon icon="bx-printer" />
+            </VBtn>
+            
+            <VDivider vertical class="mx-2" />
+            
+            <!-- Кнопка закрытия -->
+            <VBtn
+              icon
+              variant="text"
+              size="small"
+              @click="closeImagePreview"
+            >
+              <VIcon icon="bx-x" />
+            </VBtn>
+          </div>
+        </VCardTitle>
+        <VCardText class="d-flex justify-center align-center pa-0" style="overflow: auto;">
+          <VImg
+            :src="imagePreview.src"
+            :alt="imagePreview.filename"
+            :max-height="imageZoom > 100 ? 'none' : '80vh'"
+            :max-width="imageZoom > 100 ? 'none' : '90vw'"
+            :height="imageZoom > 100 ? `${imageZoom}%` : 'auto'"
+            :width="imageZoom > 100 ? `${imageZoom}%` : 'auto'"
+            contain
+            :style="imageZoom > 100 ? 'object-fit: contain;' : ''"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            variant="tonal"
+            @click="closeImagePreview"
+          >
+            Закрыть
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -1714,6 +2286,43 @@ const showToast = (message: string, color: string = 'success') => {
 
   &:hover {
     background-color: rgba(var(--v-theme-on-surface), 0.02);
+  }
+}
+
+// Стили для миниатюр вложений
+.attachments-grid {
+  .attachment-item {
+    &:hover {
+      .attachment-download-btn,
+      .attachment-delete-btn {
+        opacity: 1;
+      }
+    }
+  }
+
+  .attachment-thumbnail {
+    transition: transform 0.2s, box-shadow 0.2s;
+
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .attachment-download-btn {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .attachment-delete-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    opacity: 0;
+    transition: opacity 0.2s;
   }
 }
 </style>
