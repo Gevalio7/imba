@@ -45,6 +45,74 @@ if (fs.existsSync(routesPath)) {
   });
 }
 
+// ========== CRON ДЛЯ АВТОМАТИЧЕСКОГО СОЗДАНИЯ ТИКЕТОВ ==========
+const TicketSchedules = require('./models/ticketSchedules');
+const Tickets = require('./models/tickets');
+
+// Функция для выполнения просроченных расписаний
+const processDueSchedules = async () => {
+  try {
+    console.log('🔄 Проверка расписаний тикетов...');
+    const dueSchedules = await TicketSchedules.getDueSchedules();
+    
+    if (dueSchedules.length > 0) {
+      console.log(`📋 Найдено ${dueSchedules.length} расписаний для выполнения`);
+      
+      for (const schedule of dueSchedules) {
+        try {
+          // Создаём новый тикет
+          const ticketNumber = await Tickets.generateTicketNumber();
+          const newTicket = await Tickets.create({
+            ticketNumber,
+            title: schedule.title,
+            description: schedule.description,
+            typeId: schedule.typeId,
+            categoryId: schedule.categoryId,
+            priorityId: schedule.priorityId,
+            queueId: schedule.queueId,
+            stateId: schedule.stateId,
+            ownerId: schedule.ownerId,
+            executorAgentIds: schedule.executorAgentIds,
+            executorGroupIds: schedule.executorGroupIds,
+            companyId: schedule.companyId,
+            serviceId: schedule.serviceId,
+            slaId: schedule.slaId,
+          });
+          
+          console.log(`✅ Создан тикет #${ticketNumber} по расписанию ID ${schedule.id}`);
+          
+          // Обновляем время последнего и следующего запуска
+          const lastRunAt = new Date();
+          const { calculateNextRunAt } = require('./models/ticketSchedules');
+          const nextScheduleData = {
+            scheduleType: schedule.scheduleType,
+            scheduleTime: schedule.scheduleTime,
+            scheduleDays: schedule.scheduleDays,
+            scheduleDayOfMonth: schedule.scheduleDayOfMonth,
+            startDate: schedule.startDate,
+            endDate: schedule.endDate,
+          };
+          const nextRunAt = calculateNextRunAt(nextScheduleData);
+          
+          await TicketSchedules.updateRunTime(schedule.id, lastRunAt, nextRunAt);
+        } catch (err) {
+          console.error(`❌ Ошибка при выполнении расписания ID ${schedule.id}:`, err);
+        }
+      }
+    } else {
+      console.log('✅ Нет расписаний для выполнения');
+    }
+  } catch (err) {
+    console.error('❌ Ошибка при проверке расписаний:', err);
+  }
+}
+
+// Запускаем cron каждую минуту
+setInterval(processDueSchedules, 60 * 1000);
+
+// Также запускаем при старте сервера (с небольшой задержкой)
+setTimeout(processDueSchedules, 5000);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

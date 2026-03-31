@@ -676,7 +676,20 @@ const deleteCategory = (category: TypeCategory) => {
 const confirmDeleteCategory = async () => {
   if (!deletingCategory.value) return
   try {
-    await $fetch(`${API_BASE}/typeCategories/${deletingCategory.value.id}`, {
+    const categoryId = deletingCategory.value.id
+
+    // Сначала очищаем связи в типах
+    const typesWithCategory = types.value.filter(t =>
+      t.categoryIds && t.categoryIds.includes(categoryId)
+    )
+    for (const type of typesWithCategory) {
+      await $fetch(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
+        method: 'DELETE'
+      })
+    }
+
+    // Теперь удаляем саму категорию
+    await $fetch(`${API_BASE}/typeCategories/${categoryId}`, {
       method: 'DELETE'
     })
     showToast('Категория удалена')
@@ -713,6 +726,7 @@ const saveCategory = async () => {
     }
     categoryDialog.value = false
     await fetchCategories()
+    await fetchTypes()
   } catch (err) {
     showToast('Ошибка сохранения категории', 'error')
   } finally {

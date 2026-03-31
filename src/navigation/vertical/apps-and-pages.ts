@@ -9,6 +9,7 @@ export default [
     children: [
       { title: 'Список', to: 'apps-tickets' },
       { title: 'Создать', to: 'apps-tickets-add' },
+      { title: 'Расписания', to: 'apps-tickets-schedules' },
     ],
   },
   {
@@ -80,7 +81,6 @@ export default [
       { title: 'Подписи', to: 'apps-signatures' },
       { title: 'Автоответы', to: 'apps-auto-responses' },
       { title: 'Вложения', to: 'apps-attachments' },
-     
     ],
   },
 

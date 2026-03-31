@@ -97,4 +97,10 @@ export const routes: RouteRecordRaw[] = [
     name: 'apps-integrity-check',
     component: () => import('@/pages/apps/IntegrityCheck.vue'),
   },
+  // SystemConfiguration - страница Конфигурация системы
+  {
+    path: '/apps/tickets/system-configuration',
+    name: 'apps-tickets-system-configuration',
+    component: () => import('@/pages/apps/settings/ticket-settings/SystemConfiguration.vue'),
+  },
 ]

@@ -9,20 +9,30 @@ class Tickets {
   static tableName = 'tickets';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
 
     // Валидация пагинации
     const safePage = Math.max(1, parseInt(page, 10) || 1);
     const safeItemsPerPage = Math.max(1, Math.min(100, parseInt(itemsPerPage, 10) || 10));
 
     try {
-      let whereClause = 'WHERE t.is_active = true';
+      let whereClause = '';
       let params = [];
       let paramIndex = 1;
 
+      // Фильтр по активности
+      if (isActive !== undefined) {
+        whereClause = `WHERE t.is_active = ${paramIndex}`;
+        params.push(isActive === 'true' || isActive === true);
+        paramIndex++;
+      } else {
+        // По умолчанию показываем только активные
+        whereClause = 'WHERE t.is_active = true';
+      }
+
       if (q) {
         const searchFields = ['ticket_number', 'title'];
-        const conditions = searchFields.map(field => `${field} ILIKE $${paramIndex}`).join(' OR ');
+        const conditions = searchFields.map(field => `${field} ILIKE ${paramIndex}`).join(' OR ');
         whereClause += ` AND (${conditions})`;
         params.push(`%${q}%`);
         paramIndex++;
@@ -53,6 +63,8 @@ class Tickets {
           t.title,
           t.type_id as "typeId",
           typ.name as "typeName",
+          t.category_id as "categoryId",
+          tc.name as "categoryName",
           t.priority_id as "priorityId",
           p.name as "priorityName",
           p.color as "priorityColor",
@@ -67,6 +79,14 @@ class Tickets {
           ow.last_name as "ownerLastname",
           t.executor_agent_ids as "executorAgentIds",
           t.executor_group_ids as "executorGroupIds",
+          (SELECT COALESCE(json_agg(json_build_object('id', ag.id, 'name', ag.name)), '[]'::json) 
+           FROM unnest(t.executor_group_ids) AS eg_id 
+           LEFT JOIN agents_groups ag ON ag.id = eg_id 
+           WHERE eg_id IS NOT NULL) as "executorGroups",
+          (SELECT COALESCE(json_agg(json_build_object('id', a.id, 'login', a.login, 'firstName', a.first_name, 'lastName', a.last_name)), '[]'::json) 
+           FROM unnest(t.executor_agent_ids) AS ea_id 
+           LEFT JOIN agents a ON a.id = ea_id 
+           WHERE ea_id IS NOT NULL) as "executorAgents",
           t.company_id as "companyId",
           c.name as "companyName",
           t.service_id as "serviceId",
@@ -83,6 +103,7 @@ class Tickets {
           t.is_active as "isActive"
         FROM ${Tickets.tableName} t
         LEFT JOIN types typ ON t.type_id = typ.id
+        LEFT JOIN type_categories tc ON t.category_id = tc.id
         LEFT JOIN priorities p ON t.priority_id = p.id
         LEFT JOIN queues q ON t.queue_id = q.id
         LEFT JOIN states s ON t.state_id = s.id
@@ -112,8 +133,9 @@ class Tickets {
     }
   }
 
-  static async getById(id) {
+  static async getById(id, includeInactive = false) {
     try {
+      const activeFilter = includeInactive ? '' : 'AND t.is_active = true';
       const result = await pool.query(
         `SELECT 
           t.id,
@@ -122,6 +144,8 @@ class Tickets {
           t.description,
           t.type_id as "typeId",
           typ.name as "typeName",
+          t.category_id as "categoryId",
+          tc.name as "categoryName",
           t.priority_id as "priorityId",
           p.name as "priorityName",
           p.color as "priorityColor",
@@ -136,6 +160,14 @@ class Tickets {
           ow.last_name as "ownerLastname",
           t.executor_agent_ids as "executorAgentIds",
           t.executor_group_ids as "executorGroupIds",
+          (SELECT COALESCE(json_agg(json_build_object('id', ag.id, 'name', ag.name)), '[]'::json) 
+           FROM unnest(t.executor_group_ids) AS eg_id 
+           LEFT JOIN agents_groups ag ON ag.id = eg_id 
+           WHERE eg_id IS NOT NULL) as "executorGroups",
+          (SELECT COALESCE(json_agg(json_build_object('id', a.id, 'login', a.login, 'firstName', a.first_name, 'lastName', a.last_name)), '[]'::json) 
+           FROM unnest(t.executor_agent_ids) AS ea_id 
+           LEFT JOIN agents a ON a.id = ea_id 
+           WHERE ea_id IS NOT NULL) as "executorAgents",
           t.company_id as "companyId",
           c.name as "companyName",
           t.service_id as "serviceId",
@@ -152,6 +184,7 @@ class Tickets {
           t.is_active as "isActive"
         FROM ${Tickets.tableName} t
         LEFT JOIN types typ ON t.type_id = typ.id
+        LEFT JOIN type_categories tc ON t.category_id = tc.id
         LEFT JOIN priorities p ON t.priority_id = p.id
         LEFT JOIN queues q ON t.queue_id = q.id
         LEFT JOIN states s ON t.state_id = s.id
@@ -159,7 +192,7 @@ class Tickets {
         LEFT JOIN customers c ON t.company_id = c.id
         LEFT JOIN services svc ON t.service_id = svc.id
         LEFT JOIN sla ON t.sla_id = sla.id
-        WHERE t.id = $1 AND t.is_active = true`,
+        WHERE t.id = $1 ${activeFilter}`,
         [id]
       );
 
@@ -179,12 +212,12 @@ class Tickets {
     try {
       const query = `
         INSERT INTO ${Tickets.tableName} (
-          ticket_number, title, description, type_id, priority_id, queue_id, state_id, 
+          ticket_number, title, description, type_id, category_id, priority_id, queue_id, state_id, 
           owner_id, executor_agent_ids, executor_group_ids, company_id, service_id, sla_id, response_deadline, resolution_deadline, 
           first_response_at, sla_violated, pending_start_at, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId", 
-          priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
+          category_id as "categoryId", priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
           owner_id as "ownerId", executor_agent_ids as "executorAgentIds", executor_group_ids as "executorGroupIds",
           company_id as "companyId", service_id as "serviceId",
           sla_id as "slaId", response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
@@ -198,6 +231,7 @@ class Tickets {
         ticket.title,
         ticket.description || null,
         ticket.typeId || null,
+        ticket.categoryId || null,
         ticket.priorityId || null,
         ticket.queueId || null,
         ticket.stateId || null,
@@ -235,6 +269,7 @@ class Tickets {
         title: 'title',
         description: 'description',
         typeId: 'type_id',
+        categoryId: 'category_id',
         priorityId: 'priority_id',
         queueId: 'queue_id',
         stateId: 'state_id',

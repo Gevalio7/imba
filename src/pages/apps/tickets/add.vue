@@ -19,11 +19,13 @@ const priorities = ref<any[]>([])
 const queues = ref<any[]>([])
 const states = ref<any[]>([])
 const types = ref<any[]>([])
+const categories = ref<any[]>([])
 const agents = ref<any[]>([])
 const agentGroups = ref<any[]>([])
 const customers = ref<any[]>([])
 const services = ref<any[]>([])
 const slaList = ref<any[]>([])
+const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
 
 // Workflow данные
 const currentWorkflow = ref<any>(null)
@@ -69,6 +71,16 @@ const fetchTypes = async () => {
   }
   catch (err) {
     console.error('Error fetching types:', err)
+  }
+}
+
+const fetchCategories = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/typeCategories`)
+    categories.value = (data as any).typeCategories || []
+  }
+  catch (err) {
+    console.error('Error fetching categories:', err)
   }
 }
 
@@ -122,6 +134,16 @@ const fetchSla = async () => {
   }
 }
 
+const fetchCustomerUsers = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/customerUsers`)
+    customerUsers.value = (data as any).customerUsers || []
+  }
+  catch (err) {
+    console.error('Error fetching customerUsers:', err)
+  }
+}
+
 // Получение очереди по ID
 const getQueueById = (queueId: number) => {
   return queues.value.find(q => q.id === queueId)
@@ -160,28 +182,42 @@ const description = ref('')
 const ticket = ref({
   title: '',
   typeId: undefined as number | undefined,
+  categoryId: undefined as number | undefined,
   priorityId: undefined as number | undefined,
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
-  ownerId: undefined as number | undefined,
+  ownerId: undefined as number | { value: number; customerId: number; customerName?: string } | undefined,
   executorAgentIds: [] as number[],
   executorGroupIds: [] as number[],
   companyId: undefined as number | undefined,
   serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
-  isActive: true,
 })
 
-// Watcher для изменения типа
-watch(() => ticket.value.typeId, async (newTypeId) => {
+// Watcher для изменения типа - автоподстановка категории
+watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
   if (newTypeId) {
     await fetchTypeWorkflow(newTypeId)
+    
+    // Автоподстановка категории при выборе типа
+    const selectedType = types.value.find((t: any) => t.id === newTypeId)
+    if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
+      // Если у типа только одна категория - автоподставляем
+      if (selectedType.categoryIds.length === 1) {
+        ticket.value.categoryId = selectedType.categoryIds[0]
+      }
+      // Если у типа несколько категорий - не сбрасываем уже выбранную (если она в списке)
+      else if (ticket.value.categoryId && !selectedType.categoryIds.includes(ticket.value.categoryId)) {
+        ticket.value.categoryId = undefined
+      }
+    }
   }
   else {
     currentWorkflow.value = null
     initialStatus.value = null
     availableStatuses.value = []
     ticket.value.stateId = undefined
+    ticket.value.categoryId = undefined
   }
 })
 
@@ -267,6 +303,21 @@ watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
   }
 })
 
+// Watcher для изменения автора - автозаполнение компании
+watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
+  // Пропускаем начальную загрузку
+  if (oldOwnerId === undefined) return
+  
+  // ownerId может быть объектом (с customerId) или числом
+  const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : newOwnerId
+  if (customerId) {
+    // Автозаполняем компанию если она ещё не выбрана
+    if (!ticket.value.companyId) {
+      ticket.value.companyId = customerId
+    }
+  }
+})
+
 // Вложения
 const attachments = ref<File[]>([])
 const uploadingFiles = ref(false)
@@ -294,10 +345,145 @@ const formatFileSize = (bytes: number) => {
 // Агенты для выбора
 const agentOptions = computed(() => {
   return agents.value.map((a: any) => ({
-    title: `${a.firstName || ''} ${a.lastName || ''} (${a.login})`.trim(),
+    title: `${a.firstName || ''} ${a.lastName || ''} (${a.email || a.login})`.trim(),
     value: a.id,
   }))
 })
+
+// Авторы (сотрудники) для выбора - с информацией о компании
+const authorOptions = computed(() => {
+  return customerUsers.value.map((c: any) => {
+    const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
+    const email = c.email ? ` (${c.email})` : ''
+    const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
+    return {
+      title: `${name}${email}${companyInfo}`,
+      value: c.id,
+      customerId: c.customerId,
+      customerName: c.customerName,
+    }
+  })
+})
+
+// Поиск для поля автор
+const authorSearch = ref('')
+
+// Флаг - показывать ли опцию создания нового сотрудника
+const showCreateNewAuthor = ref(false)
+
+// Временные данные для нового сотрудника
+const newAuthorData = ref({
+  email: '',
+  firstName: 'Новый',
+  lastName: 'Сотрудник',
+})
+
+// Загрузка настроек системы
+const systemConfigs = ref<any[]>([])
+const fetchSystemConfigs = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/systemConfiguration`)
+    systemConfigs.value = (data as any).systemConfiguration || []
+  } catch (err) {
+    console.error('Error fetching system configs:', err)
+  }
+}
+
+// Проверка - разрешено ли создание сотрудника по email
+const canCreateCustomerUserByEmail = computed(() => {
+  const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
+  return config?.value === 'true' && config?.isActive
+})
+
+// Фильтрованный список авторов по поиску
+const filteredAuthorOptions = computed(() => {
+  if (!authorSearch.value.trim()) {
+    return authorOptions.value
+  }
+  const search = authorSearch.value.toLowerCase()
+  return authorOptions.value.filter((a: any) => {
+    return a.title.toLowerCase().includes(search)
+  })
+})
+
+// Проверка - является ли введенный текст email
+const isEmail = (text: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(text)
+}
+
+// Выбор автора из списка
+const handleAuthorSelect = (item: any) => {
+  showCreateNewAuthor.value = false
+  newAuthorData.value.email = ''
+}
+
+// Очистка выбора автора
+const handleAuthorClear = () => {
+  showCreateNewAuthor.value = false
+  newAuthorData.value.email = ''
+}
+
+// Обработка ввода в поле автора
+const handleAuthorUpdate = (search: string) => {
+  authorSearch.value = search || ''
+  
+  // Если включена опция создания по email и введен email
+  if (canCreateCustomerUserByEmail.value && search && isEmail(search)) {
+    // Проверяем, есть ли сотрудник с таким email
+    const found = authorOptions.value.find((a: any) => 
+      a.title.toLowerCase().includes(search.toLowerCase())
+    )
+    if (!found) {
+      // Показываем опцию создания нового сотрудника
+      showCreateNewAuthor.value = true
+      newAuthorData.value.email = search
+    } else {
+      showCreateNewAuthor.value = false
+    }
+  } else {
+    showCreateNewAuthor.value = false
+  }
+}
+
+// Создание нового сотрудника
+const createNewAuthor = async () => {
+  if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
+    showToast('Введите корректный email', 'error')
+    return
+  }
+  
+  try {
+    // Создаем сотрудника
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: newAuthorData.value.email,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: newAuthorData.value.email,
+        customerId: ticket.value.companyId || null,
+      },
+    })
+    
+    // Обновляем список сотрудников
+    await fetchCustomerUsers()
+    
+    // Устанавливаем выбранного сотрудника
+    ticket.value.ownerId = {
+      value: (newUser as any).id,
+      customerId: (newUser as any).customerId,
+      customerName: (newUser as any).customerName,
+    }
+    
+    showToast('Сотрудник создан', 'success')
+    showCreateNewAuthor.value = false
+    authorSearch.value = ''
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+  }
+}
 
 // Группы агентов для выбора
 const agentGroupOptions = computed(() => {
@@ -372,6 +558,32 @@ const filteredServices = computed(() => {
   })
 })
 
+// Вычисляемые категории - фильтруются по выбранному типу
+const filteredCategories = computed(() => {
+  // Если тип не выбран - показываем пустой массив (категория скрыта)
+  if (!ticket.value.typeId) {
+    return []
+  }
+  // Находим тип и его categoryIds
+  const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+  if (!selectedType) {
+    return []
+  }
+  // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
+  if (!selectedType.categoryIds || selectedType.categoryIds.length === 0) {
+    return []
+  }
+  // Фильтруем категории по categoryIds типа
+  return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+})
+
+// Есть ли связанные категории для текущего типа
+const hasCategoriesForType = computed(() => {
+  if (!ticket.value.typeId) return false
+  const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+  return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
+})
+
 // Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
 const formatSlaTime = (value: number | null | undefined, isHours: boolean = false) => {
   if (!value) return '-'
@@ -432,9 +644,11 @@ const save = async () => {
   try {
     saving.value = true
     
-    // Создаём тикет
+    // Подготавливаем данные для отправки
     const ticketData = {
       ...ticket.value,
+      // ownerId может быть объектом (при использовании VAutocomplete с return-object)
+      ownerId: ticket.value.ownerId?.value ?? ticket.value.ownerId ?? null,
       description: description.value,
     }
     
@@ -510,11 +724,14 @@ onMounted(async () => {
     fetchQueues(),
     fetchStates(),
     fetchTypes(),
+    fetchCategories(),
     fetchAgents(),
     fetchAgentGroups(),
     fetchCustomers(),
     fetchServices(),
     fetchSla(),
+    fetchCustomerUsers(),
+    fetchSystemConfigs(),
   ])
 })
 </script>
@@ -680,6 +897,23 @@ onMounted(async () => {
                 clearable
               />
 
+              <!-- Категория - зависит от типа -->
+              <AppSelect
+                v-model="ticket.categoryId"
+                :items="filteredCategories"
+                item-title="name"
+                item-value="id"
+                label="Категория"
+                :placeholder="hasCategoriesForType ? 'Выберите категорию' : 'Нет категорий для типа'"
+                :disabled="!ticket.typeId || !hasCategoriesForType"
+                clearable
+              >
+                <template #append-inner>
+                  <span v-if="!ticket.typeId" class="text-caption text-medium-emphasis">(выберите тип)</span>
+                  <span v-else-if="!hasCategoriesForType" class="text-caption text-error">(нет категорий)</span>
+                </template>
+              </AppSelect>
+
               <!-- Информация о workflow -->
               <VAlert
                 v-if="currentWorkflow"
@@ -762,13 +996,56 @@ onMounted(async () => {
                 </template>
               </AppSelect>
 
-              <AppSelect
+              <VAutocomplete
                 v-model="ticket.ownerId"
-                :items="agentOptions"
+                :items="filteredAuthorOptions"
                 label="Автор"
-                placeholder="Выберите автора"
+                placeholder="Введите имя или email для поиска..."
+                :search-input="authorSearch"
                 clearable
-              />
+                hide-no-data
+                return-object
+                @update:model-value="handleAuthorSelect"
+                @update:search-input="handleAuthorUpdate"
+                @click:clear="handleAuthorClear"
+              >
+                <!-- Если показывать опцию создания -->
+                <template #append-item>
+                  <div v-if="showCreateNewAuthor && canCreateCustomerUserByEmail" class="pa-2">
+                    <VCard variant="tonal" color="primary" class="pa-3">
+                      <div class="text-body-2 mb-2">
+                        <VIcon icon="bx-plus" size="small" class="me-1" />
+                        Создать нового сотрудника: <strong>{{ newAuthorData.email }}</strong>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <AppTextField
+                          v-model="newAuthorData.firstName"
+                          label="Имя"
+                          placeholder="Имя"
+                          density="compact"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                        <AppTextField
+                          v-model="newAuthorData.lastName"
+                          label="Фамилия"
+                          placeholder="Фамилия"
+                          density="compact"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                        <VBtn
+                          color="primary"
+                          size="small"
+                          @click="createNewAuthor"
+                        >
+                          Создать
+                        </VBtn>
+                      </div>
+                    </VCard>
+                  </div>
+                </template>
+              </VAutocomplete>
 
               <!-- Группы исполнителей -->
               <AppSelect
@@ -854,16 +1131,6 @@ onMounted(async () => {
               </VAlert>
 
               <VDivider class="my-2" />
-
-              <div class="d-flex align-center justify-space-between">
-                <span>Активен</span>
-                <VSwitch
-                  v-model="ticket.isActive"
-                  color="primary"
-                  density="compact"
-                  hide-details
-                />
-              </div>
             </div>
           </VCardText>
         </VCard>

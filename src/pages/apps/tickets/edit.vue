@@ -36,6 +36,7 @@ const agentGroups = ref<any[]>([])
 const customers = ref<any[]>([])
 const services = ref<any[]>([])
 const slaList = ref<any[]>([])
+const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
 
 // Workflow данные
 const currentWorkflow = ref<any>(null)
@@ -113,6 +114,14 @@ const fetchSla = async () => {
     slaList.value = (data as any).sla || []
   }
   catch (err) { console.log('Error fetching sla:', err) }
+}
+
+const fetchCustomerUsers = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/customerUsers`)
+    customerUsers.value = (data as any).customerUsers || []
+  }
+  catch (err) { console.log('Error fetching customerUsers:', err) }
 }
 
 const fetchServices = async () => {
@@ -272,7 +281,7 @@ const ticket = reactive({
   priorityId: undefined as number | undefined,
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
-  ownerId: undefined as number | undefined,
+  ownerId: undefined as number | { value: number; customerId: number; customerName?: string } | undefined,
   executorAgentIds: [] as number[],
   executorGroupIds: [] as number[],
   companyId: undefined as number | undefined,
@@ -280,7 +289,6 @@ const ticket = reactive({
   slaId: undefined as number | undefined,
   responseDeadline: undefined as string | undefined,
   resolutionDeadline: undefined as string | undefined,
-  isActive: true,
 })
 
 // Watcher для изменения типа
@@ -364,6 +372,21 @@ watch(() => ticket.queueId, (newQueueId, oldQueueId) => {
       if (ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0) {
         ticket.executorGroupIds = [queue.agentGroupId]
       }
+    }
+  }
+})
+
+// Watcher для изменения автора - автозаполнение компании
+watch(() => ticket.ownerId, (newOwnerId, oldOwnerId) => {
+  // Пропускаем начальную загрузку
+  if (oldOwnerId === undefined) return
+  
+  // ownerId может быть объектом (с customerId) или числом
+  const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : newOwnerId
+  if (customerId) {
+    // Автозаполняем компанию если она ещё не выбрана
+    if (!ticket.companyId) {
+      ticket.companyId = customerId
     }
   }
 })
@@ -522,10 +545,145 @@ const loadingStatusHistory = ref(false)
 // Агенты для выбора
 const agentOptions = computed(() => {
   return agents.value.map((a: any) => ({
-    title: `${a.firstName || ''} ${a.lastName || ''} (${a.login})`.trim(),
+    title: `${a.firstName || ''} ${a.lastName || ''} (${a.email || a.login})`.trim(),
     value: a.id,
   }))
 })
+
+// Авторы (сотрудники) для выбора - с информацией о компании
+const authorOptions = computed(() => {
+  return customerUsers.value.map((c: any) => {
+    const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
+    const email = c.email ? ` (${c.email})` : ''
+    const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
+    return {
+      title: `${name}${email}${companyInfo}`,
+      value: c.id,
+      customerId: c.customerId,
+      customerName: c.customerName,
+    }
+  })
+})
+
+// Поиск для поля автор
+const authorSearch = ref('')
+
+// Флаг - показывать ли опцию создания нового сотрудника
+const showCreateNewAuthor = ref(false)
+
+// Временные данные для нового сотрудника
+const newAuthorData = ref({
+  email: '',
+  firstName: 'Новый',
+  lastName: 'Сотрудник',
+})
+
+// Загрузка настроек системы
+const systemConfigs = ref<any[]>([])
+const fetchSystemConfigs = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/systemConfiguration`)
+    systemConfigs.value = (data as any).systemConfiguration || []
+  } catch (err) {
+    console.error('Error fetching system configs:', err)
+  }
+}
+
+// Проверка - разрешено ли создание сотрудника по email
+const canCreateCustomerUserByEmail = computed(() => {
+  const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
+  return config?.value === 'true' && config?.isActive
+})
+
+// Фильтрованный список авторов по поиску
+const filteredAuthorOptions = computed(() => {
+  if (!authorSearch.value.trim()) {
+    return authorOptions.value
+  }
+  const search = authorSearch.value.toLowerCase()
+  return authorOptions.value.filter((a: any) => {
+    return a.title.toLowerCase().includes(search)
+  })
+})
+
+// Проверка - является ли введенный текст email
+const isEmail = (text: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(text)
+}
+
+// Выбор автора из списка
+const handleAuthorSelect = (item: any) => {
+  showCreateNewAuthor.value = false
+  newAuthorData.value.email = ''
+}
+
+// Очистка выбора автора
+const handleAuthorClear = () => {
+  showCreateNewAuthor.value = false
+  newAuthorData.value.email = ''
+}
+
+// Обработка ввода в поле автора
+const handleAuthorUpdate = (search: string) => {
+  authorSearch.value = search || ''
+  
+  // Если включена опция создания по email и введен email
+  if (canCreateCustomerUserByEmail.value && search && isEmail(search)) {
+    // Проверяем, есть ли сотрудник с таким email
+    const found = authorOptions.value.find((a: any) => 
+      a.title.toLowerCase().includes(search.toLowerCase())
+    )
+    if (!found) {
+      // Показываем опцию создания нового сотрудника
+      showCreateNewAuthor.value = true
+      newAuthorData.value.email = search
+    } else {
+      showCreateNewAuthor.value = false
+    }
+  } else {
+    showCreateNewAuthor.value = false
+  }
+}
+
+// Создание нового сотрудника
+const createNewAuthor = async () => {
+  if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
+    showToast('Введите корректный email', 'error')
+    return
+  }
+  
+  try {
+    // Создаем сотрудника
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: newAuthorData.value.email,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: newAuthorData.value.email,
+        customerId: ticket.companyId || null,
+      },
+    })
+    
+    // Обновляем список сотрудников
+    await fetchCustomerUsers()
+    
+    // Устанавливаем выбранного сотрудника
+    ticket.ownerId = {
+      value: (newUser as any).id,
+      customerId: (newUser as any).customerId,
+      customerName: (newUser as any).customerName,
+    }
+    
+    showToast('Сотрудник создан', 'success')
+    showCreateNewAuthor.value = false
+    authorSearch.value = ''
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+  }
+}
 
 // Группы агентов для выбора
 const agentGroupOptions = computed(() => {
@@ -608,7 +766,13 @@ const fetchTicket = async () => {
     ticket.priorityId = t.priorityId || undefined
     ticket.queueId = t.queueId || undefined
     ticket.stateId = t.stateId || undefined
-    ticket.ownerId = t.ownerId || undefined
+    // ownerId может быть числом или объектом
+    if (t.ownerId) {
+      const owner = authorOptions.value.find((a: any) => a.value === t.ownerId)
+      ticket.ownerId = owner || t.ownerId
+    } else {
+      ticket.ownerId = undefined
+    }
     ticket.executorAgentIds = t.executorAgentIds || []
     ticket.executorGroupIds = t.executorGroupIds || []
     ticket.companyId = t.companyId || undefined
@@ -616,7 +780,6 @@ const fetchTicket = async () => {
     ticket.serviceId = t.serviceId || undefined
     ticket.responseDeadline = t.responseDeadline || undefined
     ticket.resolutionDeadline = t.resolutionDeadline || undefined
-    ticket.isActive = t.isActive !== undefined ? t.isActive : true
     description.value = t.description || ''
     
     // Загружаем вложения
@@ -785,7 +948,8 @@ const save = async () => {
       priorityId: ticket.priorityId ?? null,
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
-      ownerId: ticket.ownerId ?? null,
+      // ownerId может быть объектом (при использовании VAutocomplete с return-object)
+      ownerId: ticket.ownerId?.value ?? ticket.ownerId ?? null,
       executorAgentIds: ticket.executorAgentIds,
       executorGroupIds: ticket.executorGroupIds,
       companyId: ticket.companyId ?? null,
@@ -793,7 +957,6 @@ const save = async () => {
       slaId: ticket.slaId ?? null,
       responseDeadline: ticket.responseDeadline ?? null,
       resolutionDeadline: ticket.resolutionDeadline ?? null,
-      isActive: ticket.isActive,
     }
     
     await $fetch(`${API_BASE}/tickets/${ticketId.value}`, {
@@ -1139,18 +1302,7 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return ''
-  
-  return new Date(dateStr).toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
+// Отмена
 // Отмена
 const cancel = () => {
   router.push('/apps/tickets')
@@ -1169,6 +1321,8 @@ onMounted(async () => {
     fetchCustomers(),
     fetchServices(),
     fetchSla(),
+    fetchCustomerUsers(),
+    fetchSystemConfigs(),
   ])
   await fetchTicket()
   await fetchComments()
@@ -1176,6 +1330,7 @@ onMounted(async () => {
   await fetchHistory()
   await fetchApprovalHistory()
   await fetchStatusHistory()
+  await fetchTicketSchedule()
 })
 
 // Уведомления
@@ -1187,6 +1342,197 @@ const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
   toastColor.value = color
   isToastVisible.value = true
+}
+
+// ========== РАСПИСАНИЕ ТИКЕТА ==========
+const ticketSchedule = ref<any>(null)
+const loadingSchedule = ref(false)
+const showScheduleDialog = ref(false)
+
+// Форма расписания
+const scheduleForm = reactive({
+  scheduleType: 'daily' as 'daily' | 'weekly' | 'monthly',
+  scheduleTime: '09:00',
+  scheduleDays: [] as number[],
+  scheduleDayOfMonth: 1,
+  startDate: null as string | null,
+  endDate: null as string | null,
+  isActive: true,
+})
+
+// Варианты типов расписания
+const scheduleTypeOptions = [
+  { title: 'Ежедневно', value: 'daily' },
+  { title: 'Еженедельно', value: 'weekly' },
+  { title: 'Ежемесячно', value: 'monthly' },
+]
+
+// Дни недели
+const weekDays = [
+  { title: 'Пн', value: 1 },
+  { title: 'Вт', value: 2 },
+  { title: 'Ср', value: 3 },
+  { title: 'Чт', value: 4 },
+  { title: 'Пт', value: 5 },
+  { title: 'Сб', value: 6 },
+  { title: 'Вс', value: 7 },
+]
+
+// Дни месяца (1-31)
+const monthDays = Array.from({ length: 31 }, (_, i) => ({
+  title: String(i + 1),
+  value: i + 1,
+}))
+
+// Загрузка расписания для тикета
+const fetchTicketSchedule = async () => {
+  if (!ticketId.value) return
+  
+  try {
+    loadingSchedule.value = true
+    const data = await $fetch(`${API_BASE}/ticketSchedules/ticket/${ticketId.value}`)
+    ticketSchedule.value = (data as any).schedule || null
+  }
+  catch (err) {
+    console.log('Error fetching schedule:', err)
+  }
+  finally {
+    loadingSchedule.value = false
+  }
+}
+
+// Открыть диалог настройки расписания
+const openScheduleDialog = () => {
+  if (ticketSchedule.value) {
+    // Редактирование - заполняем форму текущими значениями
+    scheduleForm.scheduleType = ticketSchedule.value.scheduleType || 'daily'
+    scheduleForm.scheduleTime = ticketSchedule.value.scheduleTime || '09:00'
+    scheduleForm.scheduleDays = ticketSchedule.value.scheduleDays || []
+    scheduleForm.scheduleDayOfMonth = ticketSchedule.value.scheduleDayOfMonth || 1
+    scheduleForm.startDate = ticketSchedule.value.startDate || null
+    scheduleForm.endDate = ticketSchedule.value.endDate || null
+    scheduleForm.isActive = ticketSchedule.value.isActive !== false
+  } else {
+    // Создание - сбрасываем форму
+    scheduleForm.scheduleType = 'daily'
+    scheduleForm.scheduleTime = '09:00'
+    scheduleForm.scheduleDays = []
+    scheduleForm.scheduleDayOfMonth = 1
+    scheduleForm.startDate = null
+    scheduleForm.endDate = null
+    scheduleForm.isActive = true
+  }
+  showScheduleDialog.value = true
+}
+
+// Сохранить расписание
+const saveSchedule = async () => {
+  if (!ticketId.value) return
+  
+  try {
+    saving.value = true
+    
+    const scheduleData = {
+      ticketId: ticketId.value,
+      copyFromTicket: true,
+      ...scheduleForm,
+    }
+    
+    if (ticketSchedule.value?.id) {
+      // Обновляем
+      await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}`, {
+        method: 'PUT',
+        body: scheduleData,
+      })
+      showToast('Расписание обновлено')
+    } else {
+      // Создаём
+      await $fetch(`${API_BASE}/ticketSchedules`, {
+        method: 'POST',
+        body: scheduleData,
+      })
+      showToast('Расписание создано')
+    }
+    
+    showScheduleDialog.value = false
+    await fetchTicketSchedule()
+  }
+  catch (err: any) {
+    console.error('Error saving schedule:', err)
+    if (err.data?.message) {
+      showToast(err.data.message, 'error')
+    } else {
+      showToast('Ошибка сохранения расписания', 'error')
+    }
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+// Удалить расписание
+const deleteSchedule = async () => {
+  if (!ticketSchedule.value?.id) return
+  
+  try {
+    await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}`, {
+      method: 'DELETE',
+    })
+    showToast('Расписание удалено')
+    ticketSchedule.value = null
+  }
+  catch (err) {
+    console.error('Error deleting schedule:', err)
+    showToast('Ошибка удаления расписания', 'error')
+  }
+}
+
+// Запустить расписание вручную (создать тикет)
+const runScheduleNow = async () => {
+  if (!ticketSchedule.value?.id) return
+  
+  try {
+    saving.value = true
+    const data = await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}/run`, {
+      method: 'POST',
+    })
+    showToast((data as any).message || 'Тикет создан')
+  }
+  catch (err: any) {
+    console.error('Error running schedule:', err)
+    if (err.data?.message) {
+      showToast(err.data.message, 'error')
+    } else {
+      showToast('Ошибка запуска расписания', 'error')
+    }
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+// Форматирование даты
+const formatDate = (dateStr: string | null) => {
+  if (!dateStr) return ''
+  
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// Форматирование даты только для даты (без времени)
+const formatDateOnly = (dateStr: string | null) => {
+  if (!dateStr) return ''
+  
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 </script>
 
@@ -1207,6 +1553,14 @@ const showToast = (message: string, color: string = 'success') => {
       </div>
 
       <div class="d-flex gap-4 align-center flex-wrap">
+        <VBtn
+          variant="tonal"
+          color="primary"
+          @click="openScheduleDialog"
+        >
+          <VIcon icon="bx-calendar" class="me-1" />
+          Расписание
+        </VBtn>
         <VBtn
           variant="tonal"
           color="secondary"
@@ -1985,13 +2339,56 @@ const showToast = (message: string, color: string = 'success') => {
                 </template>
               </AppSelect>
 
-              <AppSelect
+              <VAutocomplete
                 v-model="ticket.ownerId"
-                :items="agentOptions"
+                :items="filteredAuthorOptions"
                 label="Автор"
-                placeholder="Выберите автора"
+                placeholder="Введите имя или email для поиска..."
+                :search-input="authorSearch"
                 clearable
-              />
+                hide-no-data
+                return-object
+                @update:model-value="handleAuthorSelect"
+                @update:search-input="handleAuthorUpdate"
+                @click:clear="handleAuthorClear"
+              >
+                <!-- Если показывать опцию создания -->
+                <template #append-item>
+                  <div v-if="showCreateNewAuthor && canCreateCustomerUserByEmail" class="pa-2">
+                    <VCard variant="tonal" color="primary" class="pa-3">
+                      <div class="text-body-2 mb-2">
+                        <VIcon icon="bx-plus" size="small" class="me-1" />
+                        Создать нового сотрудника: <strong>{{ newAuthorData.email }}</strong>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <AppTextField
+                          v-model="newAuthorData.firstName"
+                          label="Имя"
+                          placeholder="Имя"
+                          density="compact"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                        <AppTextField
+                          v-model="newAuthorData.lastName"
+                          label="Фамилия"
+                          placeholder="Фамилия"
+                          density="compact"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                        <VBtn
+                          color="primary"
+                          size="small"
+                          @click="createNewAuthor"
+                        >
+                          Создать
+                        </VBtn>
+                      </div>
+                    </VCard>
+                  </div>
+                </template>
+              </VAutocomplete>
 
               <!-- Группы исполнителей -->
               <AppSelect
@@ -2083,17 +2480,6 @@ const showToast = (message: string, color: string = 'success') => {
                 </div>
               </VAlert>
 
-              <VDivider class="my-2" />
-
-              <div class="d-flex align-center justify-space-between">
-                <span>Активен</span>
-                <VSwitch
-                  v-model="ticket.isActive"
-                  color="primary"
-                  density="compact"
-                  hide-details
-                />
-              </div>
             </div>
           </VCardText>
         </VCard>
@@ -2230,6 +2616,130 @@ const showToast = (message: string, color: string = 'success') => {
             @click="closeImagePreview"
           >
             Закрыть
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог настройки расписания -->
+    <VDialog
+      v-model="showScheduleDialog"
+      max-width="500"
+    >
+      <VCard>
+        <VCardTitle>
+          {{ ticketSchedule?.id ? 'Редактирование расписания' : 'Создание расписания' }}
+        </VCardTitle>
+        <VCardText>
+          <VAlert
+            v-if="ticketSchedule?.isActive === false"
+            type="warning"
+            variant="tonal"
+            class="mb-4"
+          >
+            Расписание приостановлено
+          </VAlert>
+
+          <VSelect
+            v-model="scheduleForm.scheduleType"
+            :items="scheduleTypeOptions"
+            label="Тип расписания"
+            class="mb-4"
+          />
+
+          <AppTextField
+            v-model="scheduleForm.scheduleTime"
+            label="Время выполнения (HH:MM)"
+            type="time"
+            class="mb-4"
+          />
+
+          <!-- Дни недели (только для weekly) -->
+          <VSelect
+            v-if="scheduleForm.scheduleType === 'weekly'"
+            v-model="scheduleForm.scheduleDays"
+            :items="weekDays"
+            label="Дни недели"
+            multiple
+            chips
+            class="mb-4"
+          />
+
+          <!-- День месяца (только для monthly) -->
+          <VSelect
+            v-if="scheduleForm.scheduleType === 'monthly'"
+            v-model="scheduleForm.scheduleDayOfMonth"
+            :items="monthDays"
+            label="День месяца"
+            class="mb-4"
+          />
+
+          <VRow>
+            <VCol cols="6">
+              <AppTextField
+                v-model="scheduleForm.startDate"
+                label="Дата начала"
+                type="date"
+              />
+            </VCol>
+            <VCol cols="6">
+              <AppTextField
+                v-model="scheduleForm.endDate"
+                label="Дата окончания"
+                type="date"
+              />
+            </VCol>
+          </VRow>
+
+          <VCheckbox
+            v-model="scheduleForm.isActive"
+            label="Расписание активно"
+            color="success"
+            class="mt-2"
+          />
+
+          <!-- Информация о расписании -->
+          <VAlert
+            v-if="ticketSchedule?.nextRunAt"
+            type="info"
+            variant="tonal"
+            class="mt-4"
+          >
+            <div class="text-body-2">
+              <div>Следующий запуск: <strong>{{ formatDate(ticketSchedule.nextRunAt) }}</strong></div>
+              <div v-if="ticketSchedule.lastRunAt">Последний запуск: {{ formatDate(ticketSchedule.lastRunAt) }}</div>
+            </div>
+          </VAlert>
+        </VCardText>
+        <VCardActions>
+          <VBtn
+            v-if="ticketSchedule?.id"
+            variant="tonal"
+            color="error"
+            @click="deleteSchedule"
+          >
+            Удалить
+          </VBtn>
+          <VBtn
+            v-if="ticketSchedule?.id && ticketSchedule.isActive"
+            variant="tonal"
+            color="primary"
+            @click="runScheduleNow"
+          >
+            Создать тикет сейчас
+          </VBtn>
+          <VSpacer />
+          <VBtn
+            variant="tonal"
+            @click="showScheduleDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            :loading="saving"
+            @click="saveSchedule"
+          >
+            Сохранить
           </VBtn>
         </VCardActions>
       </VCard>

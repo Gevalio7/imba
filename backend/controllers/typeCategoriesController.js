@@ -90,6 +90,23 @@ const deleteTypeCategory = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
+  // Получаем все типы с этой категорией
+  const typesResult = await pool.query(
+    `SELECT id, category_ids FROM types WHERE category_ids && ARRAY[$1]`,
+    [categoryId]
+  );
+
+  // Удаляем категорию из всех типов
+  for (const type of typesResult.rows) {
+    const currentCategoryIds = type.category_ids || [];
+    const newCategoryIds = currentCategoryIds.filter(cid => cid !== categoryId);
+    await pool.query(
+      `UPDATE types SET category_ids = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [newCategoryIds, type.id]
+    );
+  }
+
+  // Теперь удаляем саму категорию
   const deleted = await TypeCategories.delete(categoryId);
 
   if (!deleted) {

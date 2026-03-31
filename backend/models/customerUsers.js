@@ -20,7 +20,7 @@ class CustomerUsers {
       // Поиск по тексту - только по текстовым полям (исключаем числовые like customerId, customersGroupId)
       if (q) {
         const searchFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount'];
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
         whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
@@ -28,7 +28,7 @@ class CustomerUsers {
       
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        whereConditions.push(`is_active = $${paramIndex}`);
+        whereConditions.push(`cu.is_active = ${paramIndex}`);
         params.push(isActive);
         paramIndex++;
       }
@@ -39,22 +39,34 @@ class CustomerUsers {
       const sortableFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount', 'createdAt', 'updatedAt'];
       if (sortBy && sortableFields.includes(sortBy)) {
         const sortField = sortBy === 'created_at' || sortBy === 'updated_at' ? sortBy : toSnakeCase(sortBy);
-        orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        orderClause = `ORDER BY cu.${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
 
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${CustomerUsers.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${CustomerUsers.tableName} cu ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
-      // Get paginated data
+      // Get paginated data with customer name
       const sqlFields = this.fields.split(', ').map(f => {
         const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
+        return `cu.${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${CustomerUsers.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `
+        SELECT 
+          cu.id, 
+          ${sqlFields}, 
+          cu.created_at as "createdAt", 
+          cu.updated_at as "updatedAt", 
+          cu.is_active as "isActive",
+          c.name as "customerName"
+        FROM ${CustomerUsers.tableName} cu
+        LEFT JOIN customers c ON cu.customer_id = c.id
+        ${whereClause} 
+        ${orderClause} 
+        LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 

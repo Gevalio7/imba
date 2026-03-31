@@ -11,6 +11,8 @@ const Agents = require('../models/agents');
 const Customers = require('../models/customers');
 const Services = require('../models/services');
 const Sla = require('../models/sla');
+const CustomerUsers = require('../models/customerUsers');
+const SystemConfiguration = require('../models/systemConfiguration');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 // Маппинг названий полей для отображения
@@ -36,7 +38,7 @@ const fieldDisplayNames = {
 };
 
 const getTickets = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page, isActive } = req.query;
 
   const searchQuery = typeof q === 'string' ? q : undefined;
   const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
@@ -50,6 +52,7 @@ const getTickets = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
+    isActive: isActive,
   });
 
   res.json(result);
@@ -63,7 +66,8 @@ const getTicketById = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  const ticket = await Tickets.getById(ticketId);
+  // Включаем неактивные тикеты для редактирования
+  const ticket = await Tickets.getById(ticketId, true);
 
   if (!ticket) {
     return res.status(404).json({ message: 'Ticket not found' });
@@ -84,8 +88,8 @@ const getTicketActions = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  // Получаем тикет
-  const ticket = await Tickets.getById(ticketId);
+  // Получаем тикет (включая неактивные)
+  const ticket = await Tickets.getById(ticketId, true);
   if (!ticket) {
     return res.status(404).json({ message: 'Ticket not found' });
   }
@@ -138,10 +142,56 @@ const createTicket = asyncHandler(async (req, res) => {
   data.categoryId = req.body.categoryId || null;
   data.priorityId = req.body.priorityId || null;
   data.queueId = req.body.queueId || null;
-  data.ownerId = req.body.ownerId || null;
   data.companyId = req.body.companyId || null;
   data.serviceId = req.body.serviceId || null;
   data.slaId = req.body.slaId || null;
+  
+  // =====================================================
+  // НОВАЯ ЛОГИКА: Обработка ownerId - создание сотрудника по email
+  // =====================================================
+  let ownerId = req.body.ownerId || null;
+  
+  // Если ownerId передан как объект с email (для создания нового сотрудника)
+  if (ownerId && typeof ownerId === 'object' && ownerId.email) {
+    // Проверяем параметр create_customer_user_by_email
+    try {
+      const configResult = await SystemConfiguration.getAll({ q: 'create_customer_user_by_email', itemsPerPage: 1 });
+      const config = configResult.systemConfiguration?.[0];
+      const shouldCreateUser = config?.value === 'true';
+      
+      if (shouldCreateUser) {
+        // Создаём нового сотрудника
+        const newCustomerUser = await CustomerUsers.create({
+          firstName: ownerId.firstName || 'Новый',
+          lastName: ownerId.lastName || 'Сотрудник',
+          email: ownerId.email,
+          login: ownerId.email, // Используем email как login
+          customerId: ownerId.customerId || req.body.companyId || null,
+        });
+        
+        // Используем ID нового сотрудника
+        ownerId = newCustomerUser.id;
+        
+        // Также устанавливаем companyId если она ещё не установлена
+        if (!data.companyId && ownerId.customerId) {
+          data.companyId = ownerId.customerId;
+        }
+        
+        console.log(`✅ Создан новый сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
+      } else {
+        // Параметр отключён - не создаём сотрудника
+        ownerId = null;
+      }
+    } catch (configError) {
+      console.error('Ошибка проверки конфигурации:', configError);
+      ownerId = null;
+    }
+  }
+  
+  data.ownerId = ownerId;
+  // =====================================================
+  // КОНЕЦ НОВОЙ ЛОГИКИ
+  // =====================================================
   
   // SLA поля
   if (req.body.responseDeadline) data.responseDeadline = req.body.responseDeadline;
@@ -247,7 +297,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   }
 
   // Получаем текущий тикет
-  const currentTicket = await Tickets.getById(ticketId);
+  const currentTicket = await Tickets.getById(ticketId, true);
   if (!currentTicket) {
     return res.status(404).json({ message: 'Ticket not found' });
   }
@@ -579,8 +629,8 @@ const changeTicketStatus = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'targetStatusId is required' });
   }
 
-  // Получаем текущий тикет
-  const currentTicket = await Tickets.getById(ticketId);
+  // Получаем текущий тикет (включая неактивные)
+  const currentTicket = await Tickets.getById(ticketId, true);
   if (!currentTicket) {
     return res.status(404).json({ message: 'Ticket not found' });
   }

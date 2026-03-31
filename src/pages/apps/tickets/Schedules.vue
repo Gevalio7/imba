@@ -2,50 +2,36 @@
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
-// Типы данных
-interface Ticket {
-  id: number
-  ticketNumber: string
-  title: string
-  typeId: number | null
-  typeName: string | null
-  categoryId: number | null
-  categoryName: string | null
-  priorityId: number | null
-  priorityName: string | null
-  priorityColor: string | null
-  queueId: number | null
-  queueName: string | null
-  stateId: number | null
-  stateName: string | null
-  stateColor: string | null
-  ownerId: number | null
-  ownerLogin: string | null
-  ownerFirstname: string | null
-  ownerLastname: string | null
-  executorAgentIds: number[] | null
-  executorGroupIds: number[] | null
-  executorAgents: { id: number; login: string; firstName: string | null; lastName: string | null }[] | null
-  executorGroups: { id: number; name: string }[] | null
-  companyId: number | null
-  companyName: string | null
-  serviceId: number | null
-  serviceName: string | null
-  slaId: number | null
-  slaName: string | null
-  createdAt: string
-  updatedAt: string
-  responseDeadline: string | null
-  resolutionDeadline: string | null
-  firstResponseAt: string | null
-  slaViolated: boolean | null
-  pendingStartAt: string | null
-}
+definePage({
+  meta: {
+    navActiveLink: 'apps-tickets',
+  },
+})
 
-// API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 const router = useRouter()
+
+// Интерфейс расписания
+interface TicketSchedule {
+  id: number
+  ticketId: number | null
+  ticketNumber: string | null
+  scheduleType: string
+  scheduleTime: string
+  scheduleDays: number[] | null
+  scheduleDayOfMonth: number | null
+  startDate: string | null
+  endDate: string | null
+  isActive: boolean
+  lastRunAt: string | null
+  nextRunAt: string | null
+  title: string
+  description: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 // Используем composable для фильтров
 const {
@@ -67,71 +53,59 @@ const {
   booleanOptions,
 } = useFilters()
 
-const FILTER_PRESETS_KEY = 'tickets-filter-presets'
+const FILTER_PRESETS_KEY = 'schedules-filter-presets'
 
 // Данные
-const tickets = ref<Ticket[]>([])
+const schedules = ref<TicketSchedule[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
 // Загрузка данных
-const fetchTickets = async () => {
+const fetchSchedules = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ tickets: Ticket[], total: number }>(`${API_BASE}/tickets`)
-    tickets.value = data.tickets
+    const data = await $fetch<{ schedules: TicketSchedule[], total: number }>(`${API_BASE}/ticketSchedules`)
+    schedules.value = data.schedules
     total.value = data.total
-    
-    // После загрузки тикетов - обновляем опции фильтров
-    if (tickets.value.length > 0) {
-      loadUniqueValuesFromTickets()
-    }
   } catch (err) {
-    error.value = 'Ошибка загрузки обращений'
-    console.error('Error fetching tickets:', err)
+    error.value = 'Ошибка загрузки расписаний'
+    console.error('Error fetching schedules:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Удаление тикета
-const deleteTicketById = async (id: number) => {
+// Удаление расписания
+const deleteScheduleById = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/tickets/${id}`, { method: 'DELETE' })
-    const index = tickets.value.findIndex(t => t.id === id)
-    if (index !== -1) tickets.value.splice(index, 1)
+    await $fetch(`${API_BASE}/ticketSchedules/${id}`, { method: 'DELETE' })
+    const index = schedules.value.findIndex(s => s.id === id)
+    if (index !== -1) schedules.value.splice(index, 1)
   } catch (err) {
-    console.error('Error deleting ticket:', err)
+    console.error('Error deleting schedule:', err)
     throw err
   }
 }
 
 // Доступные колонки с типами и опциями
 const availableColumns: ColumnSetting[] = [
-  { key: 'ticketNumber', title: 'Номер', visible: true, sortable: true, type: 'text' },
-  { key: 'title', title: 'Заголовок', visible: true, sortable: true, type: 'text' },
-  { key: 'typeName', title: 'Тип', visible: true, sortable: false, type: 'select' },
-  { key: 'categoryName', title: 'Категория', visible: true, sortable: false, type: 'select' },
-  { key: 'priorityName', title: 'Приоритет', visible: true, sortable: false, type: 'select' },
-  { key: 'queueName', title: 'Очередь', visible: true, sortable: false, type: 'select' },
-  { key: 'stateName', title: 'Статус', visible: true, sortable: false, type: 'select' },
-  { key: 'slaStatus', title: 'SLA', visible: true, sortable: false, type: 'select' },
-  { key: 'responseDeadline', title: 'Срок ответа', visible: true, sortable: true, type: 'date' },
-  { key: 'resolutionDeadline', title: 'Срок решения', visible: true, sortable: true, type: 'date' },
-  { key: 'ownerLogin', title: 'Автор', visible: true, sortable: false, type: 'select' },
-  { key: 'executorGroupIds', title: 'Группы', visible: true, sortable: false, type: 'select' },
-  { key: 'executorAgentIds', title: 'Исполнители', visible: true, sortable: false, type: 'select' },
-  { key: 'companyName', title: 'Компания', visible: true, sortable: false, type: 'select' },
-  { key: 'serviceName', title: 'Сервис', visible: true, sortable: false, type: 'select' },
-  { key: 'createdAt', title: 'Дата создания', visible: true, sortable: true, type: 'date' },
-  { key: 'updatedAt', title: 'Дата изменения', visible: true, sortable: true, type: 'date' },
+  { key: 'ticketNumber', title: 'Тикет', visible: true, sortable: true, type: 'text' },
+  { key: 'title', title: 'Название', visible: true, sortable: true, type: 'text' },
+  { key: 'scheduleType', title: 'Тип расписания', visible: true, sortable: false, type: 'select' },
+  { key: 'scheduleTime', title: 'Время', visible: true, sortable: true, type: 'text' },
+  { key: 'period', title: 'Период', visible: true, sortable: false, type: 'text' },
+  { key: 'startDate', title: 'Дата начала', visible: true, sortable: true, type: 'date' },
+  { key: 'endDate', title: 'Дата окончания', visible: true, sortable: true, type: 'date' },
+  { key: 'nextRunAt', title: 'Следующий запуск', visible: true, sortable: true, type: 'date' },
+  { key: 'lastRunAt', title: 'Последний запуск', visible: true, sortable: true, type: 'date' },
+  { key: 'isActive', title: 'Статус', visible: true, sortable: false, type: 'boolean' },
   { key: 'actions', title: 'Действия', visible: true, sortable: false, type: 'text' },
 ]
 
 // Загрузка/сохранение настроек колонок
-const STORAGE_KEY = 'tickets-columns-settings'
+const STORAGE_KEY = 'schedules-columns-settings'
 
 const loadColumnSettings = (): ColumnSetting[] => {
   try {
@@ -199,28 +173,27 @@ const filterableColumns = computed(() => {
 const searchQuery = ref('')
 
 // Получить специальное значение для фильтрации
-const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string | undefined => {
-  if (columnKey === 'slaStatus') {
-    return getSlaStatus(ticket).text
-  } else if (columnKey === 'executorGroupIds') {
-    return ticket.executorGroups?.map(g => g.name).join(', ') || ''
-  } else if (columnKey === 'executorAgentIds') {
-    return ticket.executorAgents?.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') || ''
-  } else if (columnKey === 'ownerLogin') {
-    return getOwnerName(ticket)
+const getFilterSpecialValue = (schedule: TicketSchedule, columnKey: string): string | undefined => {
+  if (columnKey === 'scheduleType') {
+    return getScheduleTypeText(schedule.scheduleType)
+  } else if (columnKey === 'period') {
+    return getPeriodText(schedule)
+  } else if (columnKey === 'isActive') {
+    return schedule.isActive ? 'Активно' : 'Приостановлено'
   }
   return undefined
 }
 
-const filteredTickets = computed(() => {
-  let filtered = tickets.value
+const filteredSchedules = computed(() => {
+  let filtered = schedules.value
 
   // Поиск
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(t =>
-      t.title?.toLowerCase().includes(q) ||
-      t.ticketNumber?.toLowerCase().includes(q)
+    filtered = filtered.filter(s =>
+      s.title?.toLowerCase().includes(q) ||
+      s.ticketNumber?.toLowerCase().includes(q) ||
+      s.scheduleType?.toLowerCase().includes(q)
     )
   }
 
@@ -235,161 +208,136 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<TicketSchedule[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 
-const bulkDelete = () => {
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkClone = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await cloneTicketById(item.id)
-    }
-    showToast(`Клонировано ${count} обращений`)
-    // Обновляем данные
-    await fetchTickets()
-  } catch (err) {
-    showToast('Ошибка клонирования обращений', 'error')
-  }
-}
-
-// Клонирование тикета
-const cloneTicketById = async (id: number) => {
-  try {
-    // Получаем тикет
-    const ticket = tickets.value.find(t => t.id === id)
-    if (!ticket) throw new Error('Тикет не найден')
-    
-    // Создаем копию с основными полями
-    const cloneData = {
-      title: `${ticket.title} (копия)`,
-      typeId: ticket.typeId,
-      categoryId: ticket.categoryId,
-      priorityId: ticket.priorityId,
-      queueId: ticket.queueId,
-      ownerId: ticket.ownerId,
-      companyId: ticket.companyId,
-      serviceId: ticket.serviceId,
-      slaId: ticket.slaId,
-      description: ticket.description || null,
-      executorAgentIds: ticket.executorAgentIds || [],
-      executorGroupIds: ticket.executorGroupIds || [],
-    }
-    
-    const newTicket = await $fetch(`${API_BASE}/tickets`, {
-      method: 'POST',
-      body: cloneData
-    })
-    
-    return newTicket
-  } catch (err) {
-    console.error('Error cloning ticket:', err)
-    throw err
-  }
-}
-
+// Удалить выбранные расписания
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await deleteTicketById(item.id)
+    for (const id of selectedItems.value) {
+      await deleteScheduleById(id)
     }
     selectedItems.value = []
-    showToast(`Удалено ${count} обращений`)
+    showToast(`Удалено ${count} расписаний`)
     isBulkDeleteDialogOpen.value = false
+    await fetchSchedules()
   } catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
 
-
-
-const resolvePriorityColor = (color?: string | null) => {
-  return color || 'secondary'
+// Сделать активным/неактивным
+const toggleActiveStatus = async (scheduleId: number, makeActive: boolean) => {
+  try {
+    await $fetch(`${API_BASE}/ticketSchedules/${scheduleId}`, {
+      method: 'PUT',
+      body: { isActive: makeActive }
+    })
+    showToast(makeActive ? 'Расписание активировано' : 'Расписание приостановлено')
+    await fetchSchedules()
+  } catch (err) {
+    showToast('Ошибка изменения статуса', 'error')
+  }
 }
 
-const resolveStateColor = (color?: string | null) => {
-  return color || 'secondary'
-}
-
-// Функция для определения статуса SLA
-const getSlaStatus = (ticket: Ticket) => {
-  if (!ticket.responseDeadline && !ticket.resolutionDeadline) {
-    return { color: 'grey', text: 'Нет SLA', variant: 'text' }
-  }
-  
-  const now = new Date()
-  
-  if (ticket.slaViolated) {
-    return { color: 'error', text: 'SLA нарушен', variant: 'flat' }
-  }
-  
-  if (ticket.responseDeadline) {
-    const deadline = new Date(ticket.responseDeadline)
-    const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
-    
-    if (hoursLeft < 0) {
-      return { color: 'error', text: 'Просрочен', variant: 'flat' }
-    } else if (hoursLeft < 4) {
-      return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
+// Массовая активация/деактивация
+const bulkSetActive = async (makeActive: boolean) => {
+  try {
+    const count = selectedItems.value.length
+    for (const id of selectedItems.value) {
+      await $fetch(`${API_BASE}/ticketSchedules/${id}`, {
+        method: 'PUT',
+        body: { isActive: makeActive }
+      })
     }
+    selectedItems.value = []
+    showToast(makeActive ? `Активировано ${count} расписаний` : `Приостановлено ${count} расписаний`)
+    isBulkActionsMenuOpen.value = false
+    await fetchSchedules()
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
   }
-  
-  if (ticket.resolutionDeadline) {
-    const deadline = new Date(ticket.resolutionDeadline)
-    const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
-    
-    if (hoursLeft < 0) {
-      return { color: 'error', text: 'Просрочен', variant: 'flat' }
-    } else if (hoursLeft < 4) {
-      return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
-    }
-  }
-  
-  return { color: 'success', text: 'В норме', variant: 'flat' }
 }
 
-// Форматтер даты
+// Форматирование даты
 const formatDate = (dateStr: string | null) => {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('ru-RU', {
+  return new Date(dateStr).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
+    year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
-const getOwnerName = (ticket: Ticket) => {
-  if (!ticket.ownerFirstname && !ticket.ownerLastname)
-    return ticket.ownerLogin || '-'
-  return `${ticket.ownerFirstname || ''} ${ticket.ownerLastname || ''}`.trim()
+// Форматирование даты только для даты
+const formatDateOnly = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+// Получить текстовое представление типа расписания
+const getScheduleTypeText = (type: string) => {
+  switch (type) {
+    case 'daily': return 'Ежедневно'
+    case 'weekly': return 'Еженедельно'
+    case 'monthly': return 'Ежемесячно'
+    default: return type
+  }
+}
+
+// Получить текстовое представление периода
+const getPeriodText = (schedule: TicketSchedule) => {
+  if (schedule.scheduleType === 'weekly') {
+    return getWeekDaysText(schedule.scheduleDays)
+  } else if (schedule.scheduleType === 'monthly') {
+    return `${schedule.scheduleDayOfMonth} числа`
+  }
+  return '-'
+}
+
+// Получить текстовое представление дней недели
+const getWeekDaysText = (days: number[] | null) => {
+  if (!days || days.length === 0) return '-'
+  const dayNames: Record<number, string> = {
+    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'
+  }
+  return days.map(d => dayNames[d]).join(', ')
+}
+
+// Статус расписания
+const getScheduleStatus = (schedule: TicketSchedule) => {
+  if (!schedule.isActive) return { text: 'Приостановлено', color: 'warning', variant: 'flat' as const }
+  if (schedule.nextRunAt && new Date(schedule.nextRunAt) <= new Date()) {
+    return { text: 'Готов к выполнению', color: 'success', variant: 'flat' as const }
+  }
+  if (schedule.nextRunAt) {
+    return { text: 'Ожидание', color: 'info', variant: 'flat' as const }
+  }
+  return { text: 'Завершено', color: 'error', variant: 'flat' as const }
+}
+
+// Перейти к редактированию тикета
+const goToTicket = (ticketId: number | null) => {
+  if (ticketId) {
+    window.location.href = `/apps/tickets/edit?id=${ticketId}`
+  }
 }
 
 // Диалог удаления
 const deleteDialog = ref(false)
-const deletingItem = ref<Ticket | null>(null)
+const deletingItem = ref<TicketSchedule | null>(null)
 
-const deleteItem = (item: Ticket) => {
+const deleteItem = (item: TicketSchedule) => {
   deletingItem.value = item
   deleteDialog.value = true
-}
-
-// Клонирование тикета
-const cloneTicket = async (item: Ticket) => {
-  try {
-    await cloneTicketById(item.id)
-    showToast('Обращение склонировано')
-    // Обновляем данные
-    await fetchTickets()
-  } catch (err) {
-    showToast('Ошибка клонирования обращения', 'error')
-  }
 }
 
 const closeDelete = () => {
@@ -400,11 +348,11 @@ const closeDelete = () => {
 const deleteItemConfirm = async () => {
   if (!deletingItem.value) return
   try {
-    await deleteTicketById(deletingItem.value.id)
-    showToast('Обращение успешно удалёно')
+    await deleteScheduleById(deletingItem.value.id)
+    showToast('Расписание успешно удалено')
     closeDelete()
   } catch (err) {
-    showToast('Ошибка удаления обращения', 'error')
+    showToast('Ошибка удаления расписания', 'error')
   }
 }
 
@@ -419,118 +367,16 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Навигация
-const createTicket = () => {
-  router.push('/apps/tickets/add')
-}
-
-const editTicket = (id: number) => {
-  router.push({ path: '/apps/tickets/edit', query: { id } })
-}
-
-// Загрузка уникальных значений из данных тикетов
-const loadUniqueValuesFromTickets = () => {
-  console.log('Loading unique values from tickets data...')
-  
-  // Собираем все уникальные значения из тикетов
-  const uniqueValues: Record<string, Set<string>> = {}
-  
-  tickets.value.forEach(ticket => {
-    // Тип
-    if (ticket.typeName) {
-      if (!uniqueValues.typeName) uniqueValues.typeName = new Set()
-      uniqueValues.typeName.add(ticket.typeName)
-    }
-    // Категория
-    if (ticket.categoryName) {
-      if (!uniqueValues.categoryName) uniqueValues.categoryName = new Set()
-      uniqueValues.categoryName.add(ticket.categoryName)
-    }
-    // Приоритет
-    if (ticket.priorityName) {
-      if (!uniqueValues.priorityName) uniqueValues.priorityName = new Set()
-      uniqueValues.priorityName.add(ticket.priorityName)
-    }
-    // Очередь
-    if (ticket.queueName) {
-      if (!uniqueValues.queueName) uniqueValues.queueName = new Set()
-      uniqueValues.queueName.add(ticket.queueName)
-    }
-    // Статус
-    if (ticket.stateName) {
-      if (!uniqueValues.stateName) uniqueValues.stateName = new Set()
-      uniqueValues.stateName.add(ticket.stateName)
-    }
-    // Сервис
-    if (ticket.serviceName) {
-      if (!uniqueValues.serviceName) uniqueValues.serviceName = new Set()
-      uniqueValues.serviceName.add(ticket.serviceName)
-    }
-    // Компания
-    if (ticket.companyName) {
-      if (!uniqueValues.companyName) uniqueValues.companyName = new Set()
-      uniqueValues.companyName.add(ticket.companyName)
-    }
-    // Автор
-    const ownerName = getOwnerName(ticket)
-    if (ownerName && ownerName !== '-') {
-      if (!uniqueValues.ownerLogin) uniqueValues.ownerLogin = new Set()
-      uniqueValues.ownerLogin.add(ownerName)
-    }
-    // Группы
-    if (ticket.executorGroups && ticket.executorGroups.length > 0) {
-      if (!uniqueValues.executorGroupIds) uniqueValues.executorGroupIds = new Set()
-      ticket.executorGroups.forEach(g => uniqueValues.executorGroupIds!.add(g.name))
-    }
-    // Исполнители
-    if (ticket.executorAgents && ticket.executorAgents.length > 0) {
-      if (!uniqueValues.executorAgentIds) uniqueValues.executorAgentIds = new Set()
-      ticket.executorAgents.forEach(a => {
-        const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login
-        if (name) uniqueValues.executorAgentIds!.add(name)
-      })
-    }
-  })
-  
-  console.log('Unique values collected:', Object.keys(uniqueValues).map(k => `${k}: ${uniqueValues[k].size}`).join(', '))
-  
-  // Обновляем опции в columnSettings
-  columnSettings.value = columnSettings.value.map(col => {
-    const newCol = { ...col, options: [] as { title: string, value: string }[] }
-    const uniqueSet = uniqueValues[col.key]
-    
-    if (uniqueSet && uniqueSet.size > 0) {
-      newCol.options = Array.from(uniqueSet)
-        .sort()
-        .map(value => ({ title: value, value }))
-      console.log(`Options for ${col.key}:`, newCol.options.length)
-    } else if (col.key === 'slaStatus') {
-      // SLA status - фиксированные значения
-      newCol.options = [
-        { title: 'В норме', value: 'В норме' },
-        { title: 'Скоро истекает', value: 'Скоро истекает' },
-        { title: 'Просрочен', value: 'Просрочен' },
-        { title: 'SLA нарушен', value: 'SLA нарушен' },
-        { title: 'Нет SLA', value: 'Нет SLA' },
-      ]
-    }
-    
-    return newCol
-  })
-  
-  console.log('Unique values loaded successfully')
-}
-
 // Инициализация
 onMounted(() => {
-  fetchTickets()
+  fetchSchedules()
   loadSavedPresets(FILTER_PRESETS_KEY)
 })
 </script>
 
 <template>
   <div>
-    <VCard title="Обращения">
+    <VCard title="Расписания тикетов">
 
       <!-- Индикатор загрузки -->
       <div v-if="loading" class="d-flex justify-center pa-6">
@@ -548,7 +394,7 @@ onMounted(() => {
         <div class="d-flex align-center">
           <AppTextField
             v-model="searchQuery"
-            placeholder="Поиск обращения"
+            placeholder="Поиск расписания"
             style="inline-size: 250px;"
             class="me-3"
           />
@@ -579,6 +425,7 @@ onMounted(() => {
           </VBtn>
         </div>
 
+        <!-- Меню массовых действий -->
         <VMenu
           v-model="isBulkActionsMenuOpen"
           :close-on-content-click="false"
@@ -595,21 +442,15 @@ onMounted(() => {
             </VBtn>
           </template>
           <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Удалить</VListItemTitle>
+            <VListItem @click="bulkSetActive(true)">
+              <VListItemTitle>Активировать</VListItemTitle>
             </VListItem>
-            <VListItem
-              @click="() => {
-                bulkClone()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Клонировать</VListItemTitle>
+            <VListItem @click="bulkSetActive(false)">
+              <VListItemTitle>Приостановить</VListItemTitle>
+            </VListItem>
+            <VDivider />
+            <VListItem @click="() => { isBulkDeleteDialogOpen = true; isBulkActionsMenuOpen = false }">
+              <VListItemTitle class="text-error">Удалить</VListItemTitle>
             </VListItem>
           </VList>
         </VMenu>
@@ -632,17 +473,10 @@ onMounted(() => {
           <VBtn
             variant="tonal"
             color="secondary"
-            prepend-icon="bx-export"
+            prepend-icon="bx-refresh"
+            @click="fetchSchedules"
           >
-            Экспорт
-          </VBtn>
-
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="createTicket"
-          >
-            Создать обращение
+            Обновить
           </VBtn>
         </div>
       </div>
@@ -848,7 +682,7 @@ onMounted(() => {
       <VDialog v-model="isBulkDeleteDialogOpen" max-width="500px">
         <VCard title="Подтверждение удаления">
           <VCardText>
-            Вы уверены, что хотите удалить выбранные обращения? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить выбранные расписания? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
@@ -861,137 +695,127 @@ onMounted(() => {
 
       <VDivider />
 
+      <!-- Пустое состояние -->
+      <div v-if="!loading && filteredSchedules.length === 0" class="text-center pa-6">
+        <VIcon icon="bx-calendar" size="48" color="grey" class="mb-2" />
+        <p class="text-body-1 text-medium-emphasis">
+          Нет активных расписаний
+        </p>
+        <p class="text-body-2 text-medium-emphasis">
+          Создайте расписание для тикета в его редакторе
+        </p>
+      </div>
+
       <!-- Таблица -->
       <VDataTable
         v-model="selectedItems"
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
         :headers="headers"
-        :items="filteredTickets"
+        :items="filteredSchedules"
         show-select
         :hide-default-footer="true"
         item-value="id"
-        return-object
         no-data-text="Нет данных"
       >
-        <!-- Номер тикета -->
+        <!-- Тикет -->
         <template #item.ticketNumber="{ item }">
-          <span
-            class="text-body-1 font-weight-medium text-primary cursor-pointer"
-            @click="editTicket(item.id)"
-          >
-            #{{ item.ticketNumber }}
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              variant="text"
+              size="small"
+              @click="goToTicket(item.ticketId)"
+            >
+              #{{ item.ticketNumber || item.ticketId }}
+            </VBtn>
+          </div>
+        </template>
+
+        <!-- Название -->
+        <template #item.title="{ item }">
+          <span class="text-body-2 text-truncate" style="max-width: 200px; display: block;">
+            {{ item.title || '-' }}
           </span>
         </template>
 
-        <!-- Тип -->
-        <template #item.typeName="{ item }">
-          <span class="text-body-2">{{ item.typeName || '-' }}</span>
-        </template>
-
-        <!-- Категория -->
-        <template #item.categoryName="{ item }">
-          <span class="text-body-2">{{ item.categoryName || '-' }}</span>
-        </template>
-
-        <!-- Группы исполнителей -->
-        <template #item.executorGroupIds="{ item }">
-          <span v-if="item.executorGroups && item.executorGroups.length > 0" class="text-body-2">
-            {{ item.executorGroups.map(g => g.name).join(', ') }}
-          </span>
-          <span v-else class="text-body-2 text-medium-emphasis">-</span>
-        </template>
-
-        <!-- Исполнители -->
-        <template #item.executorAgentIds="{ item }">
-          <span v-if="item.executorAgents && item.executorAgents.length > 0" class="text-body-2">
-            {{ item.executorAgents.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') }}
-          </span>
-          <span v-else class="text-body-2 text-medium-emphasis">-</span>
-        </template>
-
-        <!-- Приоритет -->
-        <template #item.priorityName="{ item }">
+        <!-- Тип расписания -->
+        <template #item.scheduleType="{ item }">
           <VChip
-            v-if="item.priorityName"
-            :color="resolvePriorityColor(item.priorityColor)"
-            density="compact"
-            label
             size="small"
+            variant="tonal"
+            color="primary"
           >
-            {{ item.priorityName }}
+            {{ getScheduleTypeText(item.scheduleType) }}
           </VChip>
+        </template>
+
+        <!-- Время -->
+        <template #item.scheduleTime="{ item }">
+          <span class="text-body-2">{{ item.scheduleTime || '-' }}</span>
+        </template>
+
+        <!-- Период -->
+        <template #item.period="{ item }">
+          <span v-if="item.scheduleType === 'weekly'" class="text-body-2">
+            {{ getWeekDaysText(item.scheduleDays) }}
+          </span>
+          <span v-else-if="item.scheduleType === 'monthly'" class="text-body-2">
+            {{ item.scheduleDayOfMonth }} числа
+          </span>
           <span v-else class="text-body-2">-</span>
+        </template>
+
+        <!-- Дата начала -->
+        <template #item.startDate="{ item }">
+          <span class="text-body-2">{{ formatDateOnly(item.startDate) }}</span>
+        </template>
+
+        <!-- Дата окончания -->
+        <template #item.endDate="{ item }">
+          <span class="text-body-2">{{ formatDateOnly(item.endDate) }}</span>
+        </template>
+
+        <!-- Следующий запуск -->
+        <template #item.nextRunAt="{ item }">
+          <span v-if="item.nextRunAt" class="text-body-2" :class="{
+            'text-success': new Date(item.nextRunAt) <= new Date(),
+            'text-medium-emphasis': new Date(item.nextRunAt) > new Date()
+          }">
+            {{ formatDate(item.nextRunAt) }}
+          </span>
+          <span v-else class="text-error">
+            Завершено
+          </span>
+        </template>
+
+        <!-- Последний запуск -->
+        <template #item.lastRunAt="{ item }">
+          <span v-if="item.lastRunAt" class="text-body-2">
+            {{ formatDate(item.lastRunAt) }}
+          </span>
+          <span v-else class="text-body-2 text-medium-emphasis">
+            Ещё не выполнялось
+          </span>
         </template>
 
         <!-- Статус -->
-        <template #item.stateName="{ item }">
+        <template #item.isActive="{ item }">
           <VChip
-            v-if="item.stateName"
-            :color="resolveStateColor(item.stateColor)"
-            density="compact"
-            label
             size="small"
+            :color="getScheduleStatus(item).color"
+            :variant="getScheduleStatus(item).variant"
           >
-            {{ item.stateName }}
+            {{ getScheduleStatus(item).text }}
           </VChip>
-          <span v-else class="text-body-2">-</span>
-        </template>
-
-        <!-- SLA Статус -->
-        <template #item.slaStatus="{ item }">
-          <VChip
-            :color="getSlaStatus(item).color"
-            :variant="getSlaStatus(item).variant as any"
-            density="compact"
-            label
-            size="small"
-          >
-            {{ getSlaStatus(item).text }}
-          </VChip>
-        </template>
-
-        <!-- Срок ответа -->
-        <template #item.responseDeadline="{ item }">
-          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
-            {{ formatDate(item.responseDeadline) }}
-          </span>
-        </template>
-
-        <!-- Срок решения -->
-        <template #item.resolutionDeadline="{ item }">
-          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
-            {{ formatDate(item.resolutionDeadline) }}
-          </span>
-        </template>
-
-        <!-- Автор -->
-        <template #item.ownerLogin="{ item }">
-          <span class="text-body-2">{{ getOwnerName(item) }}</span>
-        </template>
-
-        <!-- Сервис -->
-        <template #item.serviceName="{ item }">
-          <span class="text-body-2">{{ item.serviceName || '-' }}</span>
-        </template>
-
-        <!-- Дата создания -->
-        <template #item.createdAt="{ item }">
-          <span class="text-body-2">{{ formatDate(item.createdAt) }}</span>
-        </template>
-
-        <!-- Дата изменения -->
-        <template #item.updatedAt="{ item }">
-          <span class="text-body-2">{{ formatDate(item.updatedAt) }}</span>
         </template>
 
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="cloneTicket(item)">
-              <VIcon icon="bx-copy" />
+            <IconBtn @click="toggleActiveStatus(item.id, !item.isActive)">
+              <VIcon :icon="item.isActive ? 'bx-pause' : 'bx-play'" />
             </IconBtn>
-            <IconBtn @click="editTicket(item.id)">
+            <IconBtn @click="goToTicket(item.ticketId)">
               <VIcon icon="bx-edit" />
             </IconBtn>
             <IconBtn @click="deleteItem(item)">
@@ -1005,7 +829,7 @@ onMounted(() => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           v-model="currentPage"
-          :length="Math.ceil(filteredTickets.length / itemsPerPage) || 1"
+          :length="Math.ceil(filteredSchedules.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
         />
       </div>
@@ -1013,7 +837,10 @@ onMounted(() => {
 
     <!-- Диалог удаления -->
     <VDialog v-model="deleteDialog" max-width="500px">
-      <VCard title="Вы уверены, что хотите удалить это обращение?">
+      <VCard title="Подтверждение удаления">
+        <VCardText>
+          Вы уверены, что хотите удалить это расписание? Это действие нельзя отменить.
+        </VCardText>
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
@@ -1033,9 +860,5 @@ onMounted(() => {
 <style lang="scss" scoped>
 .v-card {
   margin-block-end: 1rem;
-}
-
-.cursor-pointer {
-  cursor: pointer;
 }
 </style>
