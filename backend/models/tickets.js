@@ -74,9 +74,9 @@ class Tickets {
           s.name as "stateName",
           s.color as "stateColor",
           t.owner_id as "ownerId",
-          ow.login as "ownerLogin",
-          ow.first_name as "ownerFirstname",
-          ow.last_name as "ownerLastname",
+          cu.login as "ownerLogin",
+          cu.first_name as "ownerFirstname",
+          cu.last_name as "ownerLastname",
           t.executor_agent_ids as "executorAgentIds",
           t.executor_group_ids as "executorGroupIds",
           (SELECT COALESCE(json_agg(json_build_object('id', ag.id, 'name', ag.name)), '[]'::json) 
@@ -107,7 +107,7 @@ class Tickets {
         LEFT JOIN priorities p ON t.priority_id = p.id
         LEFT JOIN queues q ON t.queue_id = q.id
         LEFT JOIN states s ON t.state_id = s.id
-        LEFT JOIN agents ow ON t.owner_id = ow.id
+        LEFT JOIN customer_users cu ON t.owner_id = cu.id
         LEFT JOIN customers c ON t.company_id = c.id
         LEFT JOIN services svc ON t.service_id = svc.id
         LEFT JOIN sla ON t.sla_id = sla.id
@@ -155,9 +155,9 @@ class Tickets {
           s.name as "stateName",
           s.color as "stateColor",
           t.owner_id as "ownerId",
-          ow.login as "ownerLogin",
-          ow.first_name as "ownerFirstname",
-          ow.last_name as "ownerLastname",
+          cu.login as "ownerLogin",
+          cu.first_name as "ownerFirstname",
+          cu.last_name as "ownerLastname",
           t.executor_agent_ids as "executorAgentIds",
           t.executor_group_ids as "executorGroupIds",
           (SELECT COALESCE(json_agg(json_build_object('id', ag.id, 'name', ag.name)), '[]'::json) 
@@ -188,7 +188,7 @@ class Tickets {
         LEFT JOIN priorities p ON t.priority_id = p.id
         LEFT JOIN queues q ON t.queue_id = q.id
         LEFT JOIN states s ON t.state_id = s.id
-        LEFT JOIN agents ow ON t.owner_id = ow.id
+        LEFT JOIN customer_users cu ON t.owner_id = cu.id
         LEFT JOIN customers c ON t.company_id = c.id
         LEFT JOIN services svc ON t.service_id = svc.id
         LEFT JOIN sla ON t.sla_id = sla.id

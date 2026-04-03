@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 definePage({
@@ -136,11 +136,15 @@ const fetchSla = async () => {
 
 const fetchCustomerUsers = async () => {
   try {
+    console.log('Fetching customerUsers...')
     const data = await $fetch(`${API_BASE}/customerUsers`)
+    console.log('customerUsers data:', data)
     customerUsers.value = (data as any).customerUsers || []
+    console.log('customerUsers set to:', customerUsers.value.length, 'items')
   }
   catch (err) {
     console.error('Error fetching customerUsers:', err)
+    customerUsers.value = []
   }
 }
 
@@ -186,7 +190,7 @@ const ticket = ref({
   priorityId: undefined as number | undefined,
   queueId: undefined as number | undefined,
   stateId: undefined as number | undefined,
-  ownerId: undefined as number | { value: number; customerId: number; customerName?: string } | undefined,
+  ownerId: undefined as number | string | null | undefined,
   executorAgentIds: [] as number[],
   executorGroupIds: [] as number[],
   companyId: undefined as number | undefined,
@@ -307,13 +311,12 @@ watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
 watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
   // Пропускаем начальную загрузку
   if (oldOwnerId === undefined) return
-  
-  // ownerId может быть объектом (с customerId) или числом
-  const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : newOwnerId
-  if (customerId) {
-    // Автозаполняем компанию если она ещё не выбрана
-    if (!ticket.value.companyId) {
-      ticket.value.companyId = customerId
+
+  // Если выбран сотрудник (число), находим его customerId
+  if (typeof newOwnerId === 'number') {
+    const selectedUser = customerUsers.value.find((u: any) => u.id === newOwnerId)
+    if (selectedUser?.customerId && !ticket.value.companyId) {
+      ticket.value.companyId = selectedUser.customerId
     }
   }
 })
@@ -350,9 +353,10 @@ const agentOptions = computed(() => {
   }))
 })
 
-// Авторы (сотрудники) для выбора - с информацией о компании
+// Авторы (сотрудники) для выбора
 const authorOptions = computed(() => {
-  return customerUsers.value.map((c: any) => {
+  console.log('authorOptions computed, customerUsers.length:', customerUsers.value.length)
+  const options = customerUsers.value.map((c: any) => {
     const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
     const email = c.email ? ` (${c.email})` : ''
     const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
@@ -363,13 +367,19 @@ const authorOptions = computed(() => {
       customerName: c.customerName,
     }
   })
+  console.log('authorOptions returning:', options.length, 'options')
+  return options
 })
 
-// Поиск для поля автор
-const authorSearch = ref('')
+// Отображаемое значение поиска для поля автора (не очищается Vuetify)
+const authorSearchDisplay = ref('')
 
-// Флаг - показывать ли опцию создания нового сотрудника
-const showCreateNewAuthor = ref(false)
+// Watcher для отслеживания изменений поиска
+watch(() => authorSearchDisplay.value, (newVal, oldVal) => {
+  console.log('authorSearchDisplay changed from "' + oldVal + '" to "' + newVal + '"')
+})
+
+
 
 // Временные данные для нового сотрудника
 const newAuthorData = ref({
@@ -377,6 +387,9 @@ const newAuthorData = ref({
   firstName: 'Новый',
   lastName: 'Сотрудник',
 })
+
+// Модальное окно создания сотрудника
+const showCreateAuthorDialog = ref(false)
 
 // Загрузка настроек системы
 const systemConfigs = ref<any[]>([])
@@ -392,18 +405,24 @@ const fetchSystemConfigs = async () => {
 // Проверка - разрешено ли создание сотрудника по email
 const canCreateCustomerUserByEmail = computed(() => {
   const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
-  return config?.value === 'true' && config?.isActive
+  const isEnabled = config?.value === true || config?.value === 'true'
+  const isActive = config?.isActive !== false
+  console.log('Config:', config, 'isEnabled:', isEnabled, 'isActive:', isActive)
+  return isEnabled && isActive
 })
 
 // Фильтрованный список авторов по поиску
 const filteredAuthorOptions = computed(() => {
-  if (!authorSearch.value.trim()) {
+  if (!authorSearchDisplay.value.trim()) {
     return authorOptions.value
   }
-  const search = authorSearch.value.toLowerCase()
-  return authorOptions.value.filter((a: any) => {
+  const search = authorSearchDisplay.value.toLowerCase()
+  const matches = authorOptions.value.filter((a: any) => {
     return a.title.toLowerCase().includes(search)
   })
+
+  console.log('filteredAuthorOptions: search="' + search + '", matches:', matches.length)
+  return matches
 })
 
 // Проверка - является ли введенный текст email
@@ -412,78 +431,61 @@ const isEmail = (text: string) => {
   return emailRegex.test(text)
 }
 
-// Выбор автора из списка
-const handleAuthorSelect = (item: any) => {
-  showCreateNewAuthor.value = false
-  newAuthorData.value.email = ''
+// Вычисляемый - показывать ли иконку создания в no-data
+const showCreateIconInNoData = computed(() => {
+  const shouldShow = authorSearchDisplay.value && isEmail(authorSearchDisplay.value) && !filteredAuthorOptions.value.length && canCreateCustomerUserByEmail.value
+  console.log('showCreateIconInNoData: search="' + authorSearchDisplay.value + '", isEmail=' + isEmail(authorSearchDisplay.value) + ', filteredLength=' + filteredAuthorOptions.value.length + ', canCreate=' + canCreateCustomerUserByEmail.value + ', shouldShow=' + shouldShow)
+  return shouldShow
+})
+
+// Обработка выбора автора (включая кастомный email)
+const handleAuthorSelect = (value: any) => {
+  if (typeof value === 'string' && isEmail(value)) {
+    if (canCreateCustomerUserByEmail.value) {
+      newAuthorData.value.email = value.trim()
+      showCreateAuthorDialog.value = true
+      ticket.value.ownerId = null
+    } else {
+      ticket.value.ownerId = null
+      authorSearchDisplay.value = ''
+      showToast('Создание сотрудника по email отключено в настройках', 'error')
+    }
+  }
 }
 
 // Очистка выбора автора
 const handleAuthorClear = () => {
-  showCreateNewAuthor.value = false
   newAuthorData.value.email = ''
+  authorSearchDisplay.value = ''
+  ticket.value.ownerId = null
 }
 
 // Обработка ввода в поле автора
-const handleAuthorUpdate = (search: string) => {
-  authorSearch.value = search || ''
-  
-  // Если включена опция создания по email и введен email
-  if (canCreateCustomerUserByEmail.value && search && isEmail(search)) {
-    // Проверяем, есть ли сотрудник с таким email
-    const found = authorOptions.value.find((a: any) => 
-      a.title.toLowerCase().includes(search.toLowerCase())
-    )
-    if (!found) {
-      // Показываем опцию создания нового сотрудника
-      showCreateNewAuthor.value = true
-      newAuthorData.value.email = search
-    } else {
-      showCreateNewAuthor.value = false
-    }
-  } else {
-    showCreateNewAuthor.value = false
-  }
-}
+const handleAuthorUpdate = async (search: string) => {
+  console.log('handleAuthorUpdate called with search:', search, 'length:', search?.length)
+  if (!search?.trim()) return
 
-// Создание нового сотрудника
-const createNewAuthor = async () => {
-  if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
-    showToast('Введите корректный email', 'error')
-    return
-  }
-  
-  try {
-    // Создаем сотрудника
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
-      method: 'POST',
-      body: {
-        email: newAuthorData.value.email,
-        firstName: newAuthorData.value.firstName,
-        lastName: newAuthorData.value.lastName,
-        login: newAuthorData.value.email,
-        customerId: ticket.value.companyId || null,
-      },
-    })
-    
-    // Обновляем список сотрудников
-    await fetchCustomerUsers()
-    
-    // Устанавливаем выбранного сотрудника
-    ticket.value.ownerId = {
-      value: (newUser as any).id,
-      customerId: (newUser as any).customerId,
-      customerName: (newUser as any).customerName,
+  if (isEmail(search.trim())) {
+    console.log('Email detected in handleAuthorUpdate')
+    const existingUser = customerUsers.value.find(
+      (u: any) => u.email?.toLowerCase() === search.trim().toLowerCase()
+    )
+    console.log('existingUser in handleAuthorUpdate:', existingUser)
+
+    if (!existingUser && canCreateCustomerUserByEmail.value) {
+      console.log('Setting new user data for email:', search.trim())
+      newAuthorData.value.email = search.trim()
     }
-    
-    showToast('Сотрудник создан', 'success')
-    showCreateNewAuthor.value = false
-    authorSearch.value = ''
-  } catch (err: any) {
-    console.error('Error creating customer user:', err)
-    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
   }
 }
+  
+
+
+
+
+
+
+
 
 // Группы агентов для выбора
 const agentGroupOptions = computed(() => {
@@ -633,47 +635,232 @@ const formatDeadline = (date: Date | null) => {
   })
 }
 
-// Сохранение
-const save = async () => {
-  if (!ticket.value.title?.trim()) {
-    showToast('Заголовок обязателен для заполнения', 'error')
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
 
-    return
-  }
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
 
+// Функция выполнения сохранения
+const performSave = async () => {
   try {
-    saving.value = true
-    
     // Подготавливаем данные для отправки
     const ticketData = {
       ...ticket.value,
-      // ownerId может быть объектом (при использовании VAutocomplete с return-object)
-      ownerId: ticket.value.ownerId?.value ?? ticket.value.ownerId ?? null,
+      // ownerId теперь всегда number или null (строки обрабатываются в save)
+      ownerId: typeof ticket.value.ownerId === 'number' ? ticket.value.ownerId : null,
       description: description.value,
     }
-    
+
     const result = await $fetch(`${API_BASE}/tickets`, {
       method: 'POST',
       body: ticketData,
     })
-    
+
     const newTicketId = (result as any).id || (result as any).ticket?.id
-    
+
     // Загружаем вложения если есть
     if (attachments.value.length > 0 && newTicketId) {
       await uploadAttachments(newTicketId)
     }
-    
+
     showToast('Обращение успешно создан')
     router.push('/apps/tickets')
   }
   catch (err) {
     console.error('Error saving ticket:', err)
     showToast('Ошибка создания обращения', 'error')
-  }
-  finally {
     saving.value = false
   }
+}
+
+// Сохранение
+const save = async () => {
+  if (!ticket.value.title?.trim()) {
+    showToast('Заголовок обязателен для заполнения', 'error')
+    return
+  }
+
+  if (ticket.value.ownerId === '') {
+    ticket.value.ownerId = null
+  }
+
+  try {
+    saving.value = true
+    await performSave()
+  }
+  catch (err) {
+    console.error('Error saving ticket:', err)
+    showToast('Ошибка создания обращения', 'error')
+    saving.value = false
+  }
+}
+
+// Создание сотрудника из модального окна
+const createAuthorFromDialog = async () => {
+  if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
+    showToast('Введите корректный email', 'error')
+    return
+  }
+
+  try {
+    saving.value = true
+
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: newAuthorData.value.email,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: newAuthorData.value.email,
+        customerId: ticket.value.companyId || null,
+      },
+    })
+
+    await fetchCustomerUsers()
+
+    ticket.value.ownerId = (newUser as any).id
+    newAuthorData.value.email = ''
+    authorSearchDisplay.value = ''
+    showCreateAuthorDialog.value = false
+
+    showToast('Сотрудник создан', 'success')
+
+    await performSave()
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+    saving.value = false
+  }
+}
+
+// Создание сотрудника напрямую из no-data
+const createNewUserFromNoData = async () => {
+  console.log('createNewUserFromNoData called, search="' + authorSearchDisplay.value + '"')
+  if (!authorSearchDisplay.value || !isEmail(authorSearchDisplay.value)) {
+    showToast('Введите корректный email', 'error')
+    return
+  }
+
+  try {
+    saving.value = true
+    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
+
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: authorSearchDisplay.value,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: authorSearchDisplay.value,
+        customerId: ticket.value.companyId || null,
+      },
+    })
+
+    console.log('New user created:', newUser)
+    console.log('Fetching updated customerUsers...')
+    await fetchCustomerUsers()
+    console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
+
+    const createdUserId = (newUser as any).id
+    ticket.value.ownerId = createdUserId
+    console.log('ticket.ownerId set to:', ticket.value.ownerId)
+
+    authorSearchDisplay.value = ''
+    console.log('authorSearchDisplay cleared, VAutocomplete should show selected item')
+
+    showToast('Сотрудник создан', 'success')
+    saving.value = false
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+    saving.value = false
+  }
+}
+
+  try {
+    saving.value = true
+    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
+
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: authorSearchDisplay.value,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: authorSearchDisplay.value,
+        customerId: ticket.value.companyId || null,
+      },
+    })
+
+    console.log('New user created:', newUser)
+    console.log('Fetching updated customerUsers...')
+    await fetchCustomerUsers()
+    console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
+
+    const createdUserId = (newUser as any).id
+    ticket.value.ownerId = createdUserId
+    console.log('ticket.ownerId set to:', ticket.value.ownerId)
+
+    authorSearchDisplay.value = ''
+    console.log('authorSearchDisplay cleared, VAutocomplete should show selected item')
+
+    showToast('Сотрудник создан', 'success')
+    saving.value = false
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+    saving.value = false
+  }
+
+
+  try {
+    saving.value = true
+    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
+
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: authorSearchDisplay.value,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: authorSearchDisplay.value,
+        customerId: ticket.value.companyId || null,
+      },
+    })
+
+    console.log('New user created:', newUser)
+    console.log('Fetching updated customerUsers...')
+    await fetchCustomerUsers()
+    console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
+
+    ticket.value.ownerId = (newUser as any).id
+    console.log('ticket.ownerId set to:', ticket.value.ownerId)
+
+    authorSearchDisplay.value = `${newAuthorData.value.firstName} ${newAuthorData.value.lastName} (${authorSearchDisplay.value})`
+    console.log('authorSearchDisplay updated to:', authorSearchDisplay.value)
+
+    showToast('Сотрудник создан', 'success')
+    saving.value = false
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+    saving.value = false
+  }
+
+
+// Отмена создания сотрудника
+const cancelCreateAuthor = () => {
+  showCreateAuthorDialog.value = false
+  newAuthorData.value.email = ''
+  authorSearchDisplay.value = ''
+  ticket.value.ownerId = null
+  saving.value = false
 }
 
 // Загрузка вложений
@@ -706,19 +893,9 @@ const cancel = () => {
   router.push('/apps/tickets')
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
-
 // Инициализация
 onMounted(async () => {
+  console.log('Add.vue mounted - initializing')
   await Promise.all([
     fetchPriorities(),
     fetchQueues(),
@@ -733,6 +910,7 @@ onMounted(async () => {
     fetchCustomerUsers(),
     fetchSystemConfigs(),
   ])
+  console.log('Add.vue initialization complete')
 })
 </script>
 
@@ -999,50 +1177,26 @@ onMounted(async () => {
               <VAutocomplete
                 v-model="ticket.ownerId"
                 :items="filteredAuthorOptions"
+                item-title="title"
+                item-value="value"
                 label="Автор"
                 placeholder="Введите имя или email для поиска..."
-                :search-input="authorSearch"
+                v-model:search="authorSearchDisplay"
                 clearable
-                hide-no-data
-                return-object
+                allow-custom
                 @update:model-value="handleAuthorSelect"
-                @update:search-input="handleAuthorUpdate"
+                @update:search="handleAuthorUpdate"
                 @click:clear="handleAuthorClear"
               >
-                <!-- Если показывать опцию создания -->
-                <template #append-item>
-                  <div v-if="showCreateNewAuthor && canCreateCustomerUserByEmail" class="pa-2">
-                    <VCard variant="tonal" color="primary" class="pa-3">
-                      <div class="text-body-2 mb-2">
-                        <VIcon icon="bx-plus" size="small" class="me-1" />
-                        Создать нового сотрудника: <strong>{{ newAuthorData.email }}</strong>
-                      </div>
-                      <div class="d-flex gap-2">
-                        <AppTextField
-                          v-model="newAuthorData.firstName"
-                          label="Имя"
-                          placeholder="Имя"
-                          density="compact"
-                          hide-details
-                          class="flex-grow-1"
-                        />
-                        <AppTextField
-                          v-model="newAuthorData.lastName"
-                          label="Фамилия"
-                          placeholder="Фамилия"
-                          density="compact"
-                          hide-details
-                          class="flex-grow-1"
-                        />
-                        <VBtn
-                          color="primary"
-                          size="small"
-                          @click="createNewAuthor"
-                        >
-                          Создать
-                        </VBtn>
-                      </div>
-                    </VCard>
+                <template #no-data>
+                  <div>
+                    <div v-if="showCreateIconInNoData" class="px-4 py-2 cursor-pointer" @click="createNewUserFromNoData">
+                      <VIcon icon="bx-magic" class="me-2" />
+                      Создать сотрудника "{{ newAuthorData.firstName }} {{ newAuthorData.lastName }}"
+                    </div>
+                    <div v-else class="px-4 py-2">
+                      Нет данных
+                    </div>
                   </div>
                 </template>
               </VAutocomplete>
@@ -1145,6 +1299,40 @@ onMounted(async () => {
     >
       {{ toastMessage }}
     </VSnackbar>
+
+    <!-- Модальное окно создания сотрудника -->
+    <VDialog v-model="showCreateAuthorDialog" max-width="500px">
+      <VCard title="Создание нового сотрудника">
+        <VCardText>
+          <div class="text-body-1 mb-3">
+            Сотрудника с email <strong>{{ newAuthorData.email || authorSearchDisplay }}</strong> не найдено. Создать нового сотрудника?
+          </div>
+          <div class="d-flex gap-2 mb-3">
+            <AppTextField
+              v-model="newAuthorData.firstName"
+              label="Имя"
+              placeholder="Имя"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+            />
+            <AppTextField
+              v-model="newAuthorData.lastName"
+              label="Фамилия"
+              placeholder="Фамилия"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+            />
+          </div>
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="grey" variant="outlined" @click="cancelCreateAuthor">Отмена</VBtn>
+          <VBtn color="primary" variant="elevated" @click="createAuthorFromDialog">Создать</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -1167,7 +1355,6 @@ onMounted(async () => {
   }
 
   padding: 0.5rem;
-  min-block-size: 150px;
   outline: none;
 
   p.is-editor-empty:first-child::before {
