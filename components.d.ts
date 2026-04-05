@@ -21,6 +21,7 @@ declare module 'vue' {
     AddEditRoleDialog: typeof import('./src/components/dialogs/AddEditRoleDialog.vue')['default']
     AddNewUserDrawer: typeof import('./src/views/apps/user/list/AddNewUserDrawer.vue')['default']
     AddPaymentMethodDialog: typeof import('./src/components/dialogs/AddPaymentMethodDialog.vue')['default']
+    AgentActivityTimeline: typeof import('./src/views/apps/agents/view/AgentActivityTimeline.vue')['default']
     AgentsGroupsCards: typeof import('./src/views/apps/groups/AgentsGroupsCards.vue')['default']
     AgentsGroupsTable: typeof import('./src/views/apps/groups/AgentsGroupsTable.vue')['default']
     AgentsTable: typeof import('./src/views/apps/groups/AgentsTable.vue')['default']

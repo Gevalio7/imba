@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/users');
+const Agents = require('../models/agents');
 
 // Генерация JWT токена
 const generateToken = (userId) => {
@@ -78,39 +79,63 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Email/логин и пароль обязательны' });
     }
 
-    // Поиск пользователя по логину или email
-    let user = await User.getByLogin(loginOrEmail);
-    if (!user) {
-      user = await User.getByEmail(loginOrEmail);
+    // Сначала ищем в agents
+    let agentResult = await Agents.getAll({ q: loginOrEmail });
+    let agent = null;
+    if (agentResult.agents && agentResult.agents.length > 0) {
+      agent = agentResult.agents.find(a => a.email === loginOrEmail || a.login === loginOrEmail);
     }
-    
-    if (!user) {
+
+    let user = null;
+    if (!agent) {
+      // Если не найден в agents, ищем в users
+      user = await User.getByLogin(loginOrEmail);
+      if (!user) {
+        user = await User.getByEmail(loginOrEmail);
+      }
+    }
+
+    let isAgent = !!agent;
+
+    if (!user && !agent) {
       return res.status(401).json({ message: 'Неверный email/логин или пароль' });
     }
 
+    let entity = user || agent;
+    let isActive = user ? user.is_active : agent.isActive;
+    let passwordHash = user ? user.password : agent.password;
+
+    console.log('Login attempt:', { loginOrEmail, user: !!user, agent: !!agent, isActive });
+
     // Проверка активности
-    if (!user.is_active) {
-      return res.status(403).json({ message: 'Учетная запись деактивирована' });
+    if (!isActive) {
+      return res.status(403).json({ message: 'Доступ ограничен, ваша учетная запись не активна' });
     }
 
     // Проверка пароля
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    let isPasswordValid;
+    if (passwordHash.startsWith('$2a$') || passwordHash.startsWith('$2b$') || passwordHash.startsWith('$2y$')) {
+      isPasswordValid = await bcrypt.compare(password, passwordHash);
+    } else {
+      isPasswordValid = password === passwordHash;
+    }
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Неверный логин или пароль' });
     }
 
     // Генерация токена
-    const token = generateToken(user.id);
+    const token = generateToken(entity.id);
 
     res.json({
       accessToken: token,
       userData: {
-        id: user.id,
-        login: user.login,
-        fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.login,
-        email: user.email,
+        id: entity.id,
+        login: entity.login || entity.email,
+        fullName: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.login : `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.login,
+        email: entity.email,
         role: 'admin',
         avatar: null,
+        type: isAgent ? 'agent' : 'user',
       },
       userAbilityRules: [
         {

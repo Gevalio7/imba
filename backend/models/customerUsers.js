@@ -20,7 +20,7 @@ class CustomerUsers {
       // Поиск по тексту - только по текстовым полям (исключаем числовые like customerId, customersGroupId)
       if (q) {
         const searchFields = ['firstName', 'lastName', 'login', 'email', 'mobilePhone', 'telegramAccount'];
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
@@ -28,7 +28,7 @@ class CustomerUsers {
       
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        whereConditions.push(`cu.is_active = ${paramIndex}`);
+        whereConditions.push(`cu.is_active = $${paramIndex}`);
         params.push(isActive);
         paramIndex++;
       }
@@ -66,7 +66,7 @@ class CustomerUsers {
         LEFT JOIN customers c ON cu.customer_id = c.id
         ${whereClause} 
         ${orderClause} 
-        LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 
@@ -95,6 +95,28 @@ class CustomerUsers {
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error in getById:', error);
+      throw error;
+    }
+  }
+
+  // Получить сотрудника по email
+  static async getByEmail(email) {
+    try {
+      const sqlFields = this.fields.split(', ').map(f => {
+        const snake = toSnakeCase(f);
+        return snake === f ? f : `${snake} as "${f}"`;
+      }).join(', ');
+      const result = await pool.query(
+        `SELECT cu.id, ${sqlFields}, cu.created_at as "createdAt", cu.updated_at as "updatedAt", cu.is_active as "isActive", c.name as "customerName" 
+         FROM ${CustomerUsers.tableName} cu 
+         LEFT JOIN customers c ON cu.customer_id = c.id 
+         WHERE cu.email = $1`,
+        [email]
+      );
+
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error in getByEmail:', error);
       throw error;
     }
   }

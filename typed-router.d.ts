@@ -110,8 +110,6 @@ declare module 'vue-router/auto-routes' {
     'apps-settings-ticket-settings-services': RouteRecordInfo<'apps-settings-ticket-settings-services', '/apps/settings/ticket-settings/Services', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-session-management': RouteRecordInfo<'apps-settings-ticket-settings-session-management', '/apps/settings/ticket-settings/SessionManagement', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-signatures': RouteRecordInfo<'apps-settings-ticket-settings-signatures', '/apps/settings/ticket-settings/Signatures', Record<never, never>, Record<never, never>>,
-    'apps-settings-ticket-settings-sla': RouteRecordInfo<'apps-settings-ticket-settings-sla', '/apps/settings/ticket-settings/sLA', Record<never, never>, Record<never, never>>,
-    'apps-settings-ticket-settings-sla': RouteRecordInfo<'apps-settings-ticket-settings-sla', '/apps/settings/ticket-settings/Sla', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-sla': RouteRecordInfo<'apps-settings-ticket-settings-sla', '/apps/settings/ticket-settings/SLA', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-smime-certificates': RouteRecordInfo<'apps-settings-ticket-settings-smime-certificates', '/apps/settings/ticket-settings/SmimeCertificates', Record<never, never>, Record<never, never>>,
     'apps-settings-ticket-settings-sql-box': RouteRecordInfo<'apps-settings-ticket-settings-sql-box', '/apps/settings/ticket-settings/SqlBox', Record<never, never>, Record<never, never>>,

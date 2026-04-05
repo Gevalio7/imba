@@ -2,6 +2,7 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AgentActivityTimeline from '../../../views/apps/agents/view/AgentActivityTimeline.vue'
 
 definePage({
   meta: {
@@ -23,23 +24,11 @@ interface Agent {
   roleId?: number | null
 }
 
-// Типы данных для Роль
-interface Role {
-  id: number
-  name: string
-}
 
-// Типы данных для Группа агентов
-interface AgentGroup {
-  id: number
-  name: string
-}
 
-// Типы данных для Очередь
-interface Queue {
-  id: number
-  name: string
-}
+
+
+
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -72,19 +61,11 @@ const agent = ref<Agent>({
   roleId: null,
 })
 
-// Данные ролей
-const roles = ref<Role[]>([])
-const rolesLoading = ref(false)
 
-// Данные групп агентов
-const agentGroups = ref<AgentGroup[]>([])
-const agentGroupsLoading = ref(false)
-const selectedGroupIds = ref<number[]>([])
 
-// Данные очередей
-const queues = ref<Queue[]>([])
-const queuesLoading = ref(false)
-const selectedQueueIds = ref<number[]>([])
+
+
+
 
 // Вкладки
 const userTab = ref(null)
@@ -93,6 +74,7 @@ const tabs = [
   { icon: 'bx-user', title: 'Основное' },
   { icon: 'bx-lock-alt', title: 'Безопасность' },
   { icon: 'bx-bell', title: 'Уведомления' },
+  { icon: 'bx-time', title: 'Активность' },
 ]
 
 // Пароль
@@ -135,64 +117,15 @@ const notifications = ref([
   },
 ])
 
-// Загрузка ролей
-const fetchRoles = async () => {
-  try {
-    rolesLoading.value = true
-    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
-    roles.value = data.roles
-  } catch (err) {
-    console.error('Error fetching roles:', err)
-  } finally {
-    rolesLoading.value = false
-  }
-}
 
-// Загрузка групп агентов
-const fetchAgentGroups = async () => {
-  try {
-    agentGroupsLoading.value = true
-    const data = await $fetch<{ agentGroups: AgentGroup[], total: number }>(`${API_BASE}/agents-groups`)
-    agentGroups.value = data.agentGroups
-  } catch (err) {
-    console.error('Error fetching agent groups:', err)
-  } finally {
-    agentGroupsLoading.value = false
-  }
-}
 
-// Загрузка очередей
-const fetchQueues = async () => {
-  try {
-    queuesLoading.value = true
-    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
-    queues.value = data.queues
-  } catch (err) {
-    console.error('Error fetching queues:', err)
-  } finally {
-    queuesLoading.value = false
-  }
-}
 
-// Загрузка групп агента
-const fetchAgentGroupsById = async (id: number) => {
-  try {
-    const data = await $fetch<{ agentGroups: AgentGroup[] }>(`${API_BASE}/agents/${id}/groups`)
-    selectedGroupIds.value = data.agentGroups.map(g => g.id)
-  } catch (err) {
-    console.error('Error fetching agent groups:', err)
-  }
-}
 
-// Загрузка очередей агента
-const fetchAgentQueues = async (id: number) => {
-  try {
-    const data = await $fetch<{ agentQueues: Queue[] }>(`${API_BASE}/agents/${id}/queues`)
-    selectedQueueIds.value = data.agentQueues.map(q => q.id)
-  } catch (err) {
-    console.error('Error fetching agent queues:', err)
-  }
-}
+
+
+
+
+
 
 // Загрузка данных агента
 const fetchAgent = async () => {
@@ -206,12 +139,6 @@ const fetchAgent = async () => {
     isLoading.value = true
     const data = await $fetch<Agent>(`${API_BASE}/agents/${agentId.value}`)
     agent.value = data
-    
-    // Загружаем группы и очереди
-    await Promise.all([
-      fetchAgentGroupsById(agentId.value),
-      fetchAgentQueues(agentId.value)
-    ])
   } catch (err: any) {
     error.value = err.message || 'Ошибка загрузки агента'
   } finally {
@@ -230,7 +157,7 @@ const saveAgent = async () => {
     isSaving.value = true
     error.value = null
     
-    await $fetch(`${API_BASE}/agents/${agentId.value}`, {
+    const updatedAgent = await $fetch(`${API_BASE}/agents/${agentId.value}`, {
       method: 'PUT',
       body: {
         firstName: agent.value.firstName,
@@ -240,21 +167,11 @@ const saveAgent = async () => {
         mobilePhone: agent.value.mobilePhone,
         telegramAccount: agent.value.telegramAccount,
         isActive: agent.value.isActive,
-        roleId: agent.value.roleId,
       }
     })
 
-    // Обновляем группы агента
-    await $fetch(`${API_BASE}/agents/${agentId.value}/groups`, {
-      method: 'PUT',
-      body: { groupIds: selectedGroupIds.value }
-    })
-
-    // Обновляем очереди агента
-    await $fetch(`${API_BASE}/agents/${agentId.value}/queues`, {
-      method: 'PUT',
-      body: { queueIds: selectedQueueIds.value }
-    })
+    // Обновляем локальные данные агента
+    agent.value = updatedAgent
 
     successMessage.value = 'Агент успешно сохранён'
     setTimeout(() => {
@@ -324,6 +241,10 @@ const saveNotifications = async () => {
   }
 }
 
+
+
+
+
 // Навигация назад
 const goBack = () => {
   router.push('/apps/Agents')
@@ -331,11 +252,6 @@ const goBack = () => {
 
 // Инициализация
 onMounted(async () => {
-  await Promise.all([
-    fetchRoles(),
-    fetchAgentGroups(),
-    fetchQueues()
-  ])
   await fetchAgent()
 })
 </script>
@@ -599,19 +515,7 @@ onMounted(async () => {
                   />
                 </VCol>
 
-                <!-- Роль -->
-                <VCol
-                  cols="12"
-                  sm="6"
-                >
-                  <AppSelect
-                    v-model="agent.roleId"
-                    :items="roles.map(r => ({ title: r.name, value: r.id }))"
-                    label="Роль"
-                    clearable
-                    :loading="rolesLoading"
-                  />
-                </VCol>
+
 
                 <!-- Активен -->
                 <VCol
@@ -625,37 +529,9 @@ onMounted(async () => {
                   />
                 </VCol>
 
-                <!-- Группы агентов -->
-                <VCol
-                  cols="12"
-                  sm="6"
-                >
-                  <AppSelect
-                    v-model="selectedGroupIds"
-                    :items="agentGroups.map(g => ({ title: g.name, value: g.id }))"
-                    label="Группы агентов"
-                    multiple
-                    chips
-                    closable-chips
-                    :loading="agentGroupsLoading"
-                  />
-                </VCol>
 
-                <!-- Очереди -->
-                <VCol
-                  cols="12"
-                  sm="6"
-                >
-                  <AppSelect
-                    v-model="selectedQueueIds"
-                    :items="queues.map(q => ({ title: q.name, value: q.id }))"
-                    label="Очереди"
-                    multiple
-                    chips
-                    closable-chips
-                    :loading="queuesLoading"
-                  />
-                </VCol>
+
+
               </VRow>
             </VCardText>
           </VCard>
@@ -765,6 +641,15 @@ onMounted(async () => {
               >
                 Сохранить изменения
               </VBtn>
+            </VCardText>
+          </VCard>
+        </VWindowItem>
+
+        <!-- Вкладка: Активность -->
+        <VWindowItem>
+          <VCard title="Активность агента">
+            <VCardText>
+              <AgentActivityTimeline :agent-id="agentId.value" />
             </VCardText>
           </VCard>
         </VWindowItem>

@@ -11,6 +11,7 @@ class SystemConfiguration {
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    console.log('getAll called with options:', options);
 
     try {
       let whereClause = '';
@@ -18,8 +19,11 @@ class SystemConfiguration {
       let paramIndex = 1;
 
       if (q) {
-        const searchFields = this.fields.split(', ');
+        console.log('fields:', this.fields);
+        const searchFields = this.fields.split(', ').filter(f => f !== 'isEditable');
+        console.log('searchFields:', searchFields);
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        console.log('conditions:', conditions);
         whereClause = `WHERE ${conditions}`;
         params.push(`%${q}%`);
         paramIndex++;

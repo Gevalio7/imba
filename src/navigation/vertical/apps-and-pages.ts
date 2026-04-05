@@ -81,6 +81,7 @@ export default [
       { title: 'Подписи', to: 'apps-signatures' },
       { title: 'Автоответы', to: 'apps-auto-responses' },
       { title: 'Вложения', to: 'apps-attachments' },
+      { title: 'Конфигурация системы', to: 'apps-tickets-system-configuration' },
     ],
   },
 

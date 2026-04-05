@@ -8,6 +8,9 @@ const {
   deleteAgents,
   getAgentGroups,
   updateAgentGroups,
+  getAgentQueues,
+  updateAgentQueues,
+  getAgentActivities,
 } = require('../controllers/agentsController');
 
 // GET /agents - список с query params
@@ -30,5 +33,14 @@ router.get('/:id/groups', getAgentGroups);
 
 // PUT /agents/:id/groups - обновить группы агента
 router.put('/:id/groups', updateAgentGroups);
+
+// GET /agents/:id/queues - получить очереди агента
+router.get('/:id/queues', getAgentQueues);
+
+// PUT /agents/:id/queues - обновить очереди агента
+router.put('/:id/queues', updateAgentQueues);
+
+// GET /agents/:id/activities - получить активность агента
+router.get('/:id/activities', getAgentActivities);
 
 module.exports = router;

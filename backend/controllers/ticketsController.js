@@ -151,35 +151,81 @@ const createTicket = asyncHandler(async (req, res) => {
   // =====================================================
   let ownerId = req.body.ownerId || null;
   
-  // Если ownerId передан как объект с email (для создания нового сотрудника)
-  if (ownerId && typeof ownerId === 'object' && ownerId.email) {
-    // Проверяем параметр create_customer_user_by_email
+  // Если ownerId передан как строка (email) - ищем или создаем сотрудника
+  if (ownerId && typeof ownerId === 'string' && ownerId.includes('@')) {
+    try {
+      // Проверяем параметр create_customer_user_by_email
+      const configResult = await SystemConfiguration.getAll({ q: 'create_customer_user_by_email', itemsPerPage: 1 });
+      const config = configResult.systemConfiguration?.[0];
+      const shouldCreateUser = config?.value === 'true';
+      
+      if (shouldCreateUser) {
+        // Ищем существующего сотрудника по email
+        let existingUser = await CustomerUsers.getByEmail(ownerId);
+        
+        if (existingUser) {
+          // Сотрудник найден - используем его ID
+          ownerId = existingUser.id;
+          console.log(`✅ Найден существующий сотрудник по email: ${ownerId}, ID: ${ownerId}`);
+        } else {
+          // Сотрудник не найден - создаём нового
+          const newCustomerUser = await CustomerUsers.create({
+            firstName: 'Новый',
+            lastName: 'Сотрудник',
+            email: ownerId,
+            login: ownerId,
+            customerId: req.body.companyId || null,
+          });
+          
+          ownerId = newCustomerUser.id;
+          console.log(`✅ Создан новый сотрудник по email: ${ownerId}, ID: ${ownerId}`);
+        }
+        
+        // Также устанавливаем companyId если она ещё не установлена
+        if (!data.companyId && existingUser?.customerId) {
+          data.companyId = existingUser.customerId;
+        }
+      } else {
+        // Параметр отключён - не создаём сотрудника
+        ownerId = null;
+      }
+    } catch (configError) {
+      console.error('Ошибка проверки конфигурации:', configError);
+      ownerId = null;
+    }
+  }
+  // Если ownerId передан как объект с email (для создания нового сотрудника с указанием имени)
+  else if (ownerId && typeof ownerId === 'object' && ownerId.email) {
     try {
       const configResult = await SystemConfiguration.getAll({ q: 'create_customer_user_by_email', itemsPerPage: 1 });
       const config = configResult.systemConfiguration?.[0];
       const shouldCreateUser = config?.value === 'true';
       
       if (shouldCreateUser) {
-        // Создаём нового сотрудника
-        const newCustomerUser = await CustomerUsers.create({
-          firstName: ownerId.firstName || 'Новый',
-          lastName: ownerId.lastName || 'Сотрудник',
-          email: ownerId.email,
-          login: ownerId.email, // Используем email как login
-          customerId: ownerId.customerId || req.body.companyId || null,
-        });
+        // Ищем существующего сотрудника по email
+        let existingUser = await CustomerUsers.getByEmail(ownerId.email);
         
-        // Используем ID нового сотрудника
-        ownerId = newCustomerUser.id;
-        
-        // Также устанавливаем companyId если она ещё не установлена
-        if (!data.companyId && ownerId.customerId) {
-          data.companyId = ownerId.customerId;
+        if (existingUser) {
+          ownerId = existingUser.id;
+          console.log(`✅ Найден существующий сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
+        } else {
+          // Создаём нового сотрудника с указанным именем
+          const newCustomerUser = await CustomerUsers.create({
+            firstName: ownerId.firstName || 'Новый',
+            lastName: ownerId.lastName || 'Сотрудник',
+            email: ownerId.email,
+            login: ownerId.email,
+            customerId: ownerId.customerId || req.body.companyId || null,
+          });
+          
+          ownerId = newCustomerUser.id;
+          console.log(`✅ Создан новый сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
         }
         
-        console.log(`✅ Создан новый сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
+        if (!data.companyId && existingUser?.customerId) {
+          data.companyId = existingUser.customerId;
+        }
       } else {
-        // Параметр отключён - не создаём сотрудника
         ownerId = null;
       }
     } catch (configError) {
@@ -227,9 +273,51 @@ const createTicket = asyncHandler(async (req, res) => {
     }
   } else if (req.body.stateId) {
     data.stateId = req.body.stateId;
-  }
+   }
 
-  // Примечание: валидация категории убрана - frontend требует выбор категории если тип имеет связанные
+   // =====================================================
+   // НОВАЯ ЛОГИКА: Автоматическое назначение агента как исполнителя
+   // =====================================================
+   let executorAgentIds = [];
+   let executorGroupIds = [];
+
+   // Проверяем настройку автоматического назначения
+   try {
+     const configResult = await SystemConfiguration.getAll({ q: 'agent_auto_assign_as_executor', itemsPerPage: 1 });
+     const config = configResult.systemConfiguration?.[0];
+     const shouldAutoAssign = config?.value === 'true';
+
+     if (shouldAutoAssign && ownerId) {
+       // Проверяем, является ли создатель агентом
+       const agent = await Agents.getById(ownerId);
+       if (agent) {
+         // Создатель является агентом - добавляем его как исполнителя
+         executorAgentIds.push(ownerId);
+         console.log(`🤖 Автоматически назначен агент ${ownerId} как исполнитель тикета`);
+       }
+     }
+   } catch (configError) {
+     console.error('Ошибка проверки настройки автоматического назначения:', configError);
+   }
+
+   // Поля исполнителей (массивы ID)
+   if (req.body.executorAgentIds !== undefined) {
+     // Убеждаемся что это массив и объединяем с автоматически назначенными
+     const requestedAgentIds = Array.isArray(req.body.executorAgentIds) ? req.body.executorAgentIds : [];
+     data.executorAgentIds = [...new Set([...executorAgentIds, ...requestedAgentIds])];
+   } else {
+     // Если не переданы, используем автоматически назначенных
+     data.executorAgentIds = executorAgentIds;
+   }
+
+   if (req.body.executorGroupIds !== undefined) {
+     // Убеждаемся что это массив
+     data.executorGroupIds = Array.isArray(req.body.executorGroupIds) ? req.body.executorGroupIds : [];
+   } else {
+     data.executorGroupIds = executorGroupIds;
+   }
+
+   // Примечание: валидация категории убрана - frontend требует выбор категории если тип имеет связанные
 
   const newTicket = await Tickets.create(data);
 

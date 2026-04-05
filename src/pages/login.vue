@@ -43,6 +43,9 @@ const login = async () => {
       },
       onResponseError({ response }) {
         errors.value = response._data?.errors || {}
+        if (response._data?.message) {
+          errors.value.general = response._data.message
+        }
       },
     })
 
@@ -165,6 +168,14 @@ const onSubmit = () => {
                     Forgot Password?
                   </RouterLink>
                 </div>
+
+                <VAlert
+                  v-if="errors.general"
+                  type="error"
+                  class="mb-4"
+                >
+                  {{ errors.general }}
+                </VAlert>
 
                 <VBtn
                   block

@@ -2,6 +2,8 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useTicketEdit } from '@/composables/tickets/useTicketEdit'
+import * as ticketData from '@/composables/tickets/useTicketData'
 
 definePage({
   meta: {
@@ -11,37 +13,59 @@ definePage({
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
-
 const router = useRouter()
 const route = useRoute()
 
-const ticketId = computed(() => {
-  const id = route.query.id
-  
-  return id ? Number(id) : null
-})
+// Используем composable для основной логики
+const {
+  ticketId,
+  currentTicket,
+  description: descFromComposable,
+  loading,
+  saving,
+  autoAssignConfig,
+  autoAssigned,
+  allowMultipleExecutorGroups,
+  allowMultipleExecutors,
+  history: histFromComposable,
+  comments: commFromComposable,
+  attachments: attachFromComposable,
+  newAttachments: newAttachFromComposable,
+  existingAttachments: existAttachFromComposable,
+  currentWorkflow,
+  availableStatuses,
+  userData,
+  fetchAutoAssignConfig,
+  fetchExecutorSettings,
+  fetchTicket,
+  performSave,
+  fetchTypeWorkflow,
+  fetchHistory,
+  fetchComments,
+  fetchAttachments,
+  fetchStatusHistory,
+  assignToMe,
+  showToast,
+} = useTicketEdit()
 
-// Данные
-const loading = ref(false)
-const saving = ref(false)
+// Переопределения для совместимости с существующим кодом
+const description = descFromComposable
+const comments = commFromComposable
+const newAttachments = newAttachFromComposable
+const existingAttachments = existAttachFromComposable
 
-// Справочники
-const priorities = ref<any[]>([])
-const queues = ref<any[]>([])
-const states = ref<any[]>([])
-const types = ref<any[]>([])
-const categories = ref<any[]>([])
-const agents = ref<any[]>([])
-const agentGroups = ref<any[]>([])
-const customers = ref<any[]>([])
-const services = ref<any[]>([])
-const slaList = ref<any[]>([])
-const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
-
-// Workflow данные
-const currentWorkflow = ref<any>(null)
-const availableStatuses = ref<any[]>([])
-const loadingWorkflow = ref(false)
+// Справочники из data
+const priorities = ticketData.priorities
+const queues = ticketData.queues
+const states = ticketData.states
+const types = ticketData.types
+const categories = ticketData.categories
+const agents = ticketData.agents
+const agentGroups = ticketData.agentGroups
+const customers = ticketData.customers
+const services = ticketData.services
+const slaList = ticketData.slaList
+const customerUsers = ticketData.customerUsers
 
 // Загрузка справочников
 const fetchPriorities = async () => {
@@ -98,6 +122,26 @@ const fetchAgentGroups = async () => {
     agentGroups.value = (data as any).agentsGroups || []
   }
   catch (err) { console.log('Error fetching agent groups:', err) }
+}
+
+const fetchAutoAssignConfig = async () => {
+  try {
+    const data = await $fetch(`${API_BASE}/systemConfiguration?q=agent_auto_assign_as_executor`)
+    autoAssignConfig.value = (data as any).systemConfiguration?.[0] || null
+  }
+  catch (err) { console.log('Error fetching auto assign config:', err) }
+}
+
+const fetchExecutorSettings = async () => {
+  try {
+    const [groupsData, executorsData] = await Promise.all([
+      $fetch(`${API_BASE}/systemConfiguration?q=allow_multiple_executor_groups`),
+      $fetch(`${API_BASE}/systemConfiguration?q=allow_multiple_executors`)
+    ])
+    allowMultipleExecutorGroups.value = (groupsData as any).systemConfiguration?.[0] || null
+    allowMultipleExecutors.value = (executorsData as any).systemConfiguration?.[0] || null
+  }
+  catch (err) { console.log('Error fetching executor settings:', err) }
 }
 
 const fetchCustomers = async () => {
@@ -269,8 +313,7 @@ const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null
   }
 }
 
-// Форма
-const description = ref('')
+// Форма - description берется из composable
 
 const ticket = reactive({
   id: -1,
@@ -289,6 +332,31 @@ const ticket = reactive({
   slaId: undefined as number | undefined,
   responseDeadline: undefined as string | undefined,
   resolutionDeadline: undefined as string | undefined,
+})
+
+// Watchers для ограничения множественного выбора
+watch(() => allowMultipleExecutorGroups.value, () => {
+  if (allowMultipleExecutorGroups.value?.value === 'false' && ticket.executorGroupIds.length > 1) {
+    ticket.executorGroupIds = [ticket.executorGroupIds[0]]
+  }
+})
+
+watch(() => allowMultipleExecutors.value, () => {
+  if (allowMultipleExecutors.value?.value === 'false' && ticket.executorAgentIds.length > 1) {
+    ticket.executorAgentIds = [ticket.executorAgentIds[0]]
+  }
+})
+
+watch(() => ticket.executorGroupIds, (newVal) => {
+  if (allowMultipleExecutorGroups.value?.value === 'false' && newVal.length > 1) {
+    ticket.executorGroupIds = [newVal[0]]
+  }
+})
+
+watch(() => ticket.executorAgentIds, (newVal) => {
+  if (allowMultipleExecutors.value?.value === 'false' && newVal.length > 1) {
+    ticket.executorAgentIds = [newVal[0]]
+  }
 })
 
 // Watcher для изменения типа
@@ -578,6 +646,9 @@ const newAuthorData = ref({
   lastName: 'Сотрудник',
 })
 
+// Модальное окно создания сотрудника
+const showCreateAuthorDialog = ref(false)
+
 // Загрузка настроек системы
 const systemConfigs = ref<any[]>([])
 const fetchSystemConfigs = async () => {
@@ -592,7 +663,9 @@ const fetchSystemConfigs = async () => {
 // Проверка - разрешено ли создание сотрудника по email
 const canCreateCustomerUserByEmail = computed(() => {
   const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
-  return config?.value === 'true' && config?.isActive
+  const result = config?.value === 'true' && config?.isActive
+  console.log('⚙️ canCreateCustomerUserByEmail computed:', result, 'config:', config)
+  return result
 })
 
 // Фильтрованный список авторов по поиску
@@ -626,24 +699,37 @@ const handleAuthorClear = () => {
 
 // Обработка ввода в поле автора
 const handleAuthorUpdate = (search: string) => {
+  console.log('🔍 handleAuthorUpdate called with:', search)
   authorSearch.value = search || ''
-  
+
+  console.log('📧 canCreateCustomerUserByEmail:', canCreateCustomerUserByEmail.value)
+  console.log('📧 isEmail(search):', isEmail(search))
+  console.log('📧 authorOptions.length:', authorOptions.value.length)
+
   // Если включена опция создания по email и введен email
   if (canCreateCustomerUserByEmail.value && search && isEmail(search)) {
+    console.log('✅ Checking for existing user...')
     // Проверяем, есть ли сотрудник с таким email
-    const found = authorOptions.value.find((a: any) => 
+    const found = authorOptions.value.find((a: any) =>
       a.title.toLowerCase().includes(search.toLowerCase())
     )
+    console.log('🔍 Found user:', found)
+
     if (!found) {
+      console.log('🆕 Showing create option')
       // Показываем опцию создания нового сотрудника
       showCreateNewAuthor.value = true
       newAuthorData.value.email = search
     } else {
+      console.log('👤 User found, hiding create option')
       showCreateNewAuthor.value = false
     }
   } else {
+    console.log('❌ Conditions not met, hiding create option')
     showCreateNewAuthor.value = false
   }
+
+  console.log('📊 Final state - showCreateNewAuthor:', showCreateNewAuthor.value)
 }
 
 // Создание нового сотрудника
@@ -694,7 +780,7 @@ const agentGroupOptions = computed(() => {
 })
 
 // Текущий пользователь
-const userData = useCookie<any>('userData')
+// userData импортируется из composable
 
 // Назначить на себя
 const assignToMe = () => {
@@ -786,7 +872,38 @@ const fetchTicket = async () => {
     if (t.attachments) {
       existingAttachments.value = t.attachments
     }
-    
+
+    // Автоматическое назначение агента как исполнителя при просмотре, если настройка включена, еще не было автоматического назначения и у тикета нет исполнителей
+    if (autoAssignConfig.value?.value === 'true' && !autoAssigned.value && ticket.executorAgentIds.length === 0) {
+      console.log('Проверяем автоматическое назначение:', {
+        config: autoAssignConfig.value?.value,
+        autoAssigned: autoAssigned.value,
+        userLogin: userData.value?.login,
+        agentsCount: agents.value.length,
+        currentExecutorIds: ticket.executorAgentIds
+      })
+      const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+      console.log('Найден агент:', currentAgent)
+      if (currentAgent) {
+        console.log('Добавляем агента как исполнителя')
+        ticket.executorAgentIds = [currentAgent.id]
+        // Добавляем группы агента
+        ticket.executorGroupIds = currentAgent.groups ? currentAgent.groups.map((g: any) => g.id) : []
+        console.log('Автоматически назначен агент как исполнитель при просмотре тикета')
+        showToast('Вы назначены исполнителем')
+        autoAssigned.value = true
+        // Автоматически сохраняем изменения без перенаправления
+        try {
+          await performSave(false)
+        } catch (saveError) {
+          console.error('Ошибка при автоматическом сохранении:', saveError)
+        }
+      } else {
+        console.log('Агент не найден')
+        autoAssigned.value = true // Даже если не добавили, помечаем как выполненное
+      }
+    }
+
     // Загружаем workflow если есть тип
     if (t.typeId) {
       await fetchTypeWorkflow(t.typeId, t.stateId)
@@ -918,26 +1035,12 @@ const formatTimeInStatus = (interval: string | Record<string, number> | null) =>
   if (minutes > 0) parts.push(`${minutes} мин.`)
   if (seconds > 0 && parts.length === 0) parts.push(`${seconds} сек.`)
   
-  return parts.length > 0 ? parts.join(' ') : 'менее 1 мин.'
+   return parts.length > 0 ? parts.join(' ') : 'менее 1 мин.'
 }
 
-// Сохранение
-const save = async () => {
-  if (!ticket.title?.trim()) {
-    showToast('Заголовок обязателен для заполнения', 'error')
-    
-    return
-  }
-
-  // Проверка обязательности категории если тип имеет связанные категории
-  if (hasCategoriesForType.value && !ticket.categoryId) {
-    showToast('Выберите категорию для данного типа', 'error')
-    return
-  }
-
+// Функция выполнения сохранения
+const performSave = async (redirectAfterSave = true) => {
   try {
-    saving.value = true
-    
     // Подготавливаем данные для отправки
     const ticketData = {
       id: ticket.id,
@@ -958,7 +1061,7 @@ const save = async () => {
       responseDeadline: ticket.responseDeadline ?? null,
       resolutionDeadline: ticket.resolutionDeadline ?? null,
     }
-    
+
     await $fetch(`${API_BASE}/tickets/${ticketId.value}`, {
       method: 'PUT',
       body: {
@@ -966,33 +1069,125 @@ const save = async () => {
         description: description.value,
       },
     })
-    
+
     // Загружаем новые вложения
     if (newAttachments.value.length > 0) {
       await uploadNewAttachments()
     }
-    
-    showToast('Тикет успешно обновлён')
-    await fetchTicket() // Обновляем данные включая SLA дедлайны
-    await fetchAttachments()
-    await fetchHistory() // Обновляем историю изменений
-    await fetchStatusHistory() // Обновляем историю переходов
-    newAttachments.value = []
-    
-    // Перенаправляем на список тикетов
-    router.push('/apps/tickets')
+
+    if (redirectAfterSave) {
+      showToast('Тикет успешно обновлён')
+      await fetchTicket() // Обновляем данные включая SLA дедлайны
+      await fetchAttachments()
+      await fetchHistory() // Обновляем историю изменений
+      await fetchStatusHistory() // Обновляем историю переходов
+      newAttachments.value = []
+
+      // Перенаправляем на список тикетов
+      router.push('/apps/tickets')
+    } else {
+      // Тихое сохранение без уведомлений и перенаправления
+      await fetchTicket()
+    }
   }
   catch (err: any) {
+    console.error('Error saving ticket:', err)
+    if (redirectAfterSave) {
+      showToast('Ошибка сохранения обращения', 'error')
+      saving.value = false
+    }
+  }
+}
+
+// Сохранение
+const save = async () => {
+  console.log('💾 Save called')
+  console.log('📝 Title:', ticket.title)
+  console.log('👤 showCreateNewAuthor:', showCreateNewAuthor.value)
+  console.log('📧 authorSearch:', authorSearch.value)
+  console.log('📧 isEmail(authorSearch):', isEmail(authorSearch.value))
+
+  if (!ticket.title?.trim()) {
+    showToast('Заголовок обязателен для заполнения', 'error')
+    return
+  }
+
+  // Проверка обязательности категории если тип имеет связанные категории
+  if (hasCategoriesForType.value && !ticket.categoryId) {
+    showToast('Выберите категорию для данного типа', 'error')
+    return
+  }
+
+  try {
+    saving.value = true
+
+    // Проверяем, нужно ли показать модальное окно для создания сотрудника
+    if (showCreateNewAuthor.value && authorSearch.value && isEmail(authorSearch.value)) {
+      console.log('🪟 Showing create dialog')
+      showCreateAuthorDialog.value = true
+      saving.value = false
+      return
+    }
+
+    console.log('✅ Proceeding with save')
+    // Продолжаем сохранение
+    await performSave()
+  }
+  catch (err) {
+    console.error('Error saving ticket:', err)
     // Показываем более информативное сообщение об ошибке
     if (err.data?.message) {
       showToast(err.data.message, 'error')
     } else {
       showToast('Ошибка сохранения обращения', 'error')
     }
-  }
-  finally {
     saving.value = false
   }
+}
+
+// Создание сотрудника из модального окна
+const createAuthorFromDialog = async () => {
+  try {
+    saving.value = true
+    showCreateAuthorDialog.value = false
+
+    // Создаем сотрудника
+    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+      method: 'POST',
+      body: {
+        email: authorSearch.value,
+        firstName: newAuthorData.value.firstName,
+        lastName: newAuthorData.value.lastName,
+        login: authorSearch.value,
+        customerId: ticket.companyId || null,
+      },
+    })
+
+    // Обновляем список сотрудников
+    await fetchCustomerUsers()
+
+    // Устанавливаем выбранного сотрудника
+    ticket.ownerId = {
+      value: (newUser as any).id,
+      customerId: (newUser as any).customerId,
+      customerName: (newUser as any).customerName,
+    }
+
+    showToast('Сотрудник создан', 'success')
+
+    // Теперь выполняем сохранение тикета
+    await performSave()
+  } catch (err: any) {
+    console.error('Error creating customer user:', err)
+    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
+    saving.value = false
+  }
+}
+
+// Отмена создания сотрудника
+const cancelCreateAuthor = () => {
+  showCreateAuthorDialog.value = false
+  saving.value = false
 }
 
 // Добавление комментария
@@ -1319,6 +1514,8 @@ onMounted(async () => {
     fetchAgents(),
     fetchAgentGroups(),
     fetchCustomers(),
+    fetchAutoAssignConfig(),
+    fetchExecutorSettings(),
     fetchServices(),
     fetchSla(),
     fetchCustomerUsers(),
@@ -2396,7 +2593,7 @@ const formatDateOnly = (dateStr: string | null) => {
                 :items="agentGroupOptions"
                 label="Группы исполнителей"
                 placeholder="Выберите группы исполнителей"
-                multiple
+                :multiple="allowMultipleExecutorGroups?.value === 'true'"
                 chips
                 clearable
               />
@@ -2407,7 +2604,7 @@ const formatDateOnly = (dateStr: string | null) => {
                 :items="agentOptions"
                 label="Исполнители"
                 placeholder="Выберите исполнителей"
-                multiple
+                :multiple="allowMultipleExecutors?.value === 'true'"
                 chips
                 clearable
               >
@@ -2741,6 +2938,40 @@ const formatDateOnly = (dateStr: string | null) => {
           >
             Сохранить
           </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Модальное окно создания сотрудника -->
+    <VDialog v-model="showCreateAuthorDialog" max-width="500px">
+      <VCard title="Создание нового сотрудника">
+        <VCardText>
+          <div class="text-body-1 mb-3">
+            Сотрудника с email <strong>{{ authorSearch }}</strong> не найдено. Создать нового сотрудника?
+          </div>
+          <div class="d-flex gap-2 mb-3">
+            <AppTextField
+              v-model="newAuthorData.firstName"
+              label="Имя"
+              placeholder="Имя"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+            />
+            <AppTextField
+              v-model="newAuthorData.lastName"
+              label="Фамилия"
+              placeholder="Фамилия"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+            />
+          </div>
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="grey" variant="outlined" @click="cancelCreateAuthor">Отмена</VBtn>
+          <VBtn color="primary" variant="elevated" @click="createAuthorFromDialog">Создать</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

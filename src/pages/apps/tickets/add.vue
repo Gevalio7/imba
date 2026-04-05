@@ -1,13 +1,68 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useTicketCreation } from '@/composables/tickets/useTicketCreation'
+import * as ticketUtils from '@/composables/tickets/useTicketUtils'
 
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
   },
 })
+
+const {
+  // Справочники
+  priorities,
+  queues,
+  states,
+  types,
+  categories,
+  agents,
+  agentGroups,
+  customers,
+  services,
+  slaList,
+  customerUsers,
+
+  // Вычисляемые
+  filteredServices,
+  filteredCategories,
+  filteredCustomerUsers,
+
+  // Форма
+  ticket,
+  description,
+
+  // Состояние
+  loading,
+  saving,
+
+  // Вложения
+  attachments,
+  newAttachments,
+  existingAttachments,
+
+  // Workflow
+  currentWorkflow,
+  availableStatuses,
+  initialStatus,
+  loadingWorkflow,
+
+  // Функции
+  fetchTypeWorkflow,
+  calculateSlaDeadlines,
+  assignToMe,
+  createTicket,
+  uploadAttachments,
+} = useTicketCreation()
+
+// Utils
+const {
+  toastMessage,
+  toastColor,
+  isToastVisible,
+  showToast,
+  createCustomerUserFromEmail,
+  createCustomerUser,
+} = ticketUtils
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -782,77 +837,6 @@ const createNewUserFromNoData = async () => {
     saving.value = false
   }
 }
-
-  try {
-    saving.value = true
-    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
-
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
-      method: 'POST',
-      body: {
-        email: authorSearchDisplay.value,
-        firstName: newAuthorData.value.firstName,
-        lastName: newAuthorData.value.lastName,
-        login: authorSearchDisplay.value,
-        customerId: ticket.value.companyId || null,
-      },
-    })
-
-    console.log('New user created:', newUser)
-    console.log('Fetching updated customerUsers...')
-    await fetchCustomerUsers()
-    console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
-
-    const createdUserId = (newUser as any).id
-    ticket.value.ownerId = createdUserId
-    console.log('ticket.ownerId set to:', ticket.value.ownerId)
-
-    authorSearchDisplay.value = ''
-    console.log('authorSearchDisplay cleared, VAutocomplete should show selected item')
-
-    showToast('Сотрудник создан', 'success')
-    saving.value = false
-  } catch (err: any) {
-    console.error('Error creating customer user:', err)
-    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
-    saving.value = false
-  }
-
-
-  try {
-    saving.value = true
-    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
-
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
-      method: 'POST',
-      body: {
-        email: authorSearchDisplay.value,
-        firstName: newAuthorData.value.firstName,
-        lastName: newAuthorData.value.lastName,
-        login: authorSearchDisplay.value,
-        customerId: ticket.value.companyId || null,
-      },
-    })
-
-    console.log('New user created:', newUser)
-    console.log('Fetching updated customerUsers...')
-    await fetchCustomerUsers()
-    console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
-
-    ticket.value.ownerId = (newUser as any).id
-    console.log('ticket.ownerId set to:', ticket.value.ownerId)
-
-    authorSearchDisplay.value = `${newAuthorData.value.firstName} ${newAuthorData.value.lastName} (${authorSearchDisplay.value})`
-    console.log('authorSearchDisplay updated to:', authorSearchDisplay.value)
-
-    showToast('Сотрудник создан', 'success')
-    saving.value = false
-  } catch (err: any) {
-    console.error('Error creating customer user:', err)
-    showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
-    saving.value = false
-  }
-
 
 // Отмена создания сотрудника
 const cancelCreateAuthor = () => {
