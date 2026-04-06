@@ -155,6 +155,9 @@ watch(() => props.modelValue, () => {
   padding: 0.5rem;
   min-block-size: 15vh;
   outline: none;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 
   p {
     margin-block-end: 0;
@@ -166,6 +169,25 @@ watch(() => props.modelValue, () => {
     content: attr(data-placeholder);
     float: inline-start;
     pointer-events: none;
+  }
+
+  // Fix for list items overflowing the container
+  ul, ol {
+    padding-inline-start: 1.5rem;
+    margin-block-start: 0.5rem;
+    margin-block-end: 0.5rem;
+
+    li {
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+  }
+
+  // Ensure all content respects container boundaries
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 </style>
