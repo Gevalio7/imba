@@ -2,8 +2,6 @@
 import { $fetch } from 'ofetch'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useTicketEdit } from '@/composables/tickets/useTicketEdit'
-import * as ticketData from '@/composables/tickets/useTicketData'
 
 definePage({
   meta: {
@@ -13,59 +11,41 @@ definePage({
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 const router = useRouter()
 const route = useRoute()
 
-// Используем composable для основной логики
-const {
-  ticketId,
-  currentTicket,
-  description: descFromComposable,
-  loading,
-  saving,
-  autoAssignConfig,
-  autoAssigned,
-  allowMultipleExecutorGroups,
-  allowMultipleExecutors,
-  history: histFromComposable,
-  comments: commFromComposable,
-  attachments: attachFromComposable,
-  newAttachments: newAttachFromComposable,
-  existingAttachments: existAttachFromComposable,
-  currentWorkflow,
-  availableStatuses,
-  userData,
-  fetchAutoAssignConfig,
-  fetchExecutorSettings,
-  fetchTicket,
-  performSave,
-  fetchTypeWorkflow,
-  fetchHistory,
-  fetchComments,
-  fetchAttachments,
-  fetchStatusHistory,
-  assignToMe,
-  showToast,
-} = useTicketEdit()
+const ticketId = computed(() => {
+  const id = route.query.id
+  
+  return id ? Number(id) : null
+})
 
-// Переопределения для совместимости с существующим кодом
-const description = descFromComposable
-const comments = commFromComposable
-const newAttachments = newAttachFromComposable
-const existingAttachments = existAttachFromComposable
+// Данные
+const loading = ref(false)
+const saving = ref(false)
 
-// Справочники из data
-const priorities = ticketData.priorities
-const queues = ticketData.queues
-const states = ticketData.states
-const types = ticketData.types
-const categories = ticketData.categories
-const agents = ticketData.agents
-const agentGroups = ticketData.agentGroups
-const customers = ticketData.customers
-const services = ticketData.services
-const slaList = ticketData.slaList
-const customerUsers = ticketData.customerUsers
+// Справочники
+const priorities = ref<any[]>([])
+const queues = ref<any[]>([])
+const states = ref<any[]>([])
+const types = ref<any[]>([])
+const categories = ref<any[]>([])
+const agents = ref<any[]>([])
+const agentGroups = ref<any[]>([])
+const customers = ref<any[]>([])
+const services = ref<any[]>([])
+const slaList = ref<any[]>([])
+const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
+const autoAssignConfig = ref<any>(null)
+const autoAssigned = ref(false)
+const allowMultipleExecutorGroups = ref<any>(null)
+const allowMultipleExecutors = ref<any>(null)
+
+// Workflow данные
+const currentWorkflow = ref<any>(null)
+const availableStatuses = ref<any[]>([])
+const loadingWorkflow = ref(false)
 
 // Загрузка справочников
 const fetchPriorities = async () => {
@@ -313,7 +293,8 @@ const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null
   }
 }
 
-// Форма - description берется из composable
+// Форма
+const description = ref('')
 
 const ticket = reactive({
   id: -1,
@@ -780,7 +761,7 @@ const agentGroupOptions = computed(() => {
 })
 
 // Текущий пользователь
-// userData импортируется из composable
+const userData = useCookie<any>('userData')
 
 // Назначить на себя
 const assignToMe = () => {

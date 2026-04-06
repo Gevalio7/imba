@@ -1,68 +1,13 @@
 <script setup lang="ts">
-import { useTicketCreation } from '@/composables/tickets/useTicketCreation'
-import * as ticketUtils from '@/composables/tickets/useTicketUtils'
+import { $fetch } from 'ofetch'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
   },
 })
-
-const {
-  // Справочники
-  priorities,
-  queues,
-  states,
-  types,
-  categories,
-  agents,
-  agentGroups,
-  customers,
-  services,
-  slaList,
-  customerUsers,
-
-  // Вычисляемые
-  filteredServices,
-  filteredCategories,
-  filteredCustomerUsers,
-
-  // Форма
-  ticket,
-  description,
-
-  // Состояние
-  loading,
-  saving,
-
-  // Вложения
-  attachments,
-  newAttachments,
-  existingAttachments,
-
-  // Workflow
-  currentWorkflow,
-  availableStatuses,
-  initialStatus,
-  loadingWorkflow,
-
-  // Функции
-  fetchTypeWorkflow,
-  calculateSlaDeadlines,
-  assignToMe,
-  createTicket,
-  uploadAttachments,
-} = useTicketCreation()
-
-// Utils
-const {
-  toastMessage,
-  toastColor,
-  isToastVisible,
-  showToast,
-  createCustomerUserFromEmail,
-  createCustomerUser,
-} = ticketUtils
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL

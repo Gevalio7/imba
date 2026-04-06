@@ -34,6 +34,7 @@ interface Ticket {
   serviceName: string | null
   slaId: number | null
   slaName: string | null
+  description: string | null
   createdAt: string
   updatedAt: string
   responseDeadline: string | null
@@ -199,7 +200,7 @@ const filterableColumns = computed(() => {
 const searchQuery = ref('')
 
 // Получить специальное значение для фильтрации
-const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string | undefined => {
+const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string => {
   if (columnKey === 'slaStatus') {
     return getSlaStatus(ticket).text
   } else if (columnKey === 'executorGroupIds') {
@@ -209,7 +210,7 @@ const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string | unde
   } else if (columnKey === 'ownerLogin') {
     return getOwnerName(ticket)
   }
-  return undefined
+  return ''
 }
 
 const filteredTickets = computed(() => {
@@ -753,7 +754,7 @@ onMounted(() => {
                 :items="getConditionsForColumn(columnSettings.find(c => c.key === filter.column))"
                 placeholder="Условие"
                 style="width: 150px;"
-                :clearable="filter.condition !== null && filter.condition !== ''"
+                :clearable="filter.condition !== null"
               />
               
               <!-- Для булевых колонок -->
