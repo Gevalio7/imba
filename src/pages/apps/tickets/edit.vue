@@ -521,7 +521,7 @@ const printImage = () => {
 // Проверка - является ли файл изображением по расширению
 const isImageFile = (filename: string) => {
   if (!filename) return false
-  const ext = filename.toLowerCase().split('.').pop()
+  const ext = filename.toLowerCase().split('.').pop() || ''
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
 }
 
@@ -1033,7 +1033,7 @@ const performSave = async (redirectAfterSave = true) => {
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
       // ownerId может быть объектом (при использовании VAutocomplete с return-object)
-      ownerId: ticket.ownerId?.value ?? ticket.ownerId ?? null,
+      ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? ticket.ownerId.value : ticket.ownerId) ?? null,
       executorAgentIds: ticket.executorAgentIds,
       executorGroupIds: ticket.executorGroupIds,
       companyId: ticket.companyId ?? null,
@@ -1043,10 +1043,14 @@ const performSave = async (redirectAfterSave = true) => {
       resolutionDeadline: ticket.resolutionDeadline ?? null,
     }
 
+    // Находим текущего агента для истории изменений
+    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+
     await $fetch(`${API_BASE}/tickets/${ticketId.value}`, {
       method: 'PUT',
       body: {
         ...ticketData,
+        changedBy: currentAgent?.id,
         description: description.value,
       },
     })
@@ -1114,7 +1118,7 @@ const save = async () => {
     // Продолжаем сохранение
     await performSave()
   }
-  catch (err) {
+  catch (err: any) {
     console.error('Error saving ticket:', err)
     // Показываем более информативное сообщение об ошибке
     if (err.data?.message) {
@@ -1177,12 +1181,15 @@ const addComment = async () => {
 
   try {
     savingComment.value = true
+    // Находим текущего агента
+    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
     await $fetch(`${API_BASE}/ticketComments`, {
       method: 'POST',
       body: {
         ticketId: ticketId.value,
         content: newComment.value,
         isInternal: isInternalComment.value,
+        authorId: userData.value?.id || null,
       },
     })
     newComment.value = ''
@@ -2084,7 +2091,8 @@ const formatDateOnly = (dateStr: string | null) => {
                           color="primary"
                           class="me-2"
                         >
-                          <span class="text-caption">{{ (comment.authorName || comment.author || 'U').charAt(0).toUpperCase() }}</span>
+                          <VImg v-if="comment.authorAvatar" :src="comment.authorAvatar" />
+                          <span v-else class="text-caption">{{ (comment.authorName || comment.author || 'U').charAt(0).toUpperCase() }}</span>
                         </VAvatar>
                         <div>
                           <div class="text-body-1 font-weight-medium">

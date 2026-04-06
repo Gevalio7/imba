@@ -39,7 +39,7 @@ const userProfileList = [
     type: 'navItem',
     icon: 'bx-user',
     title: 'Profile',
-    to: { name: 'apps-user-view-id', params: { id: 21 } },
+    to: userData.value?.type === 'agent' ? `/apps/Agents/edit?id=${userData.value.id}` : { name: 'pages-account-settings-tab', params: { tab: 'account' } },
   },
   {
     type: 'navItem',

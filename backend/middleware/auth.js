@@ -9,12 +9,15 @@ const protect = (req, res, next) => {
     try {
       // Получаем токен из заголовка
       token = req.headers.authorization.split(' ')[1];
+      console.log('Token received:', token);
 
       // Верифицируем токен
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      console.log('Decoded token:', decoded);
 
       // Добавляем userId в request
       req.userId = decoded.userId;
+      console.log('Set req.userId:', req.userId);
 
       next();
     } catch (error) {

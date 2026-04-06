@@ -76,6 +76,16 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 // Роутер
 const router = useRouter()
 
+// Маршрут
+const route = useRoute()
+
+// Следим за изменением маршрута для обновления данных при возврате
+watch(() => route.path, (newPath) => {
+  if (newPath === '/apps/Agents') {
+    fetchAgentsGroups()
+  }
+})
+
 // Refs
 const agentsGroupsTable = ref<InstanceType<typeof AgentsGroupsTable> | null>(null)
 const agentsTableRef = ref<InstanceType<typeof AgentsTable> | null>(null)

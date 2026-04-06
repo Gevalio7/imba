@@ -47,22 +47,23 @@ class TicketComments {
 
       // Get paginated data with author info
       const dataQuery = `
-        SELECT 
-          tc.id, 
-          tc.ticket_id as "ticketId", 
-          tc.content, 
+        SELECT
+          tc.id,
+          tc.ticket_id as "ticketId",
+          tc.content,
           tc.author_id as "authorId",
           tc.is_internal as "isInternal",
-          tc.created_at as "createdAt", 
+          tc.created_at as "createdAt",
           tc.updated_at as "updatedAt",
           a.first_name as "authorFirstName",
           a.last_name as "authorLastName",
-          a.login as "authorLogin"
+          a.login as "authorLogin",
+          a.avatar as "authorAvatar"
         FROM ${TicketComments.tableName} tc
         LEFT JOIN agents a ON tc.author_id = a.id
-        ${whereClause} 
-        ${orderClause} 
-        LIMIT $${paramIndex} 
+        ${whereClause}
+        ${orderClause}
+        LIMIT $${paramIndex}
         OFFSET $${paramIndex + 1}
       `;
       params.push(itemsPerPage, offset);
@@ -72,6 +73,7 @@ class TicketComments {
       const comments = dataResult.rows.map(row => ({
         ...row,
         authorName: [row.authorFirstName, row.authorLastName].filter(Boolean).join(' ') || row.authorLogin || 'Неизвестный',
+        authorAvatar: row.authorAvatar,
       }));
 
       return {
@@ -87,17 +89,18 @@ class TicketComments {
   static async getById(id) {
     try {
       const result = await pool.query(
-        `SELECT 
-          tc.id, 
-          tc.ticket_id as "ticketId", 
-          tc.content, 
+        `SELECT
+          tc.id,
+          tc.ticket_id as "ticketId",
+          tc.content,
           tc.author_id as "authorId",
           tc.is_internal as "isInternal",
-          tc.created_at as "createdAt", 
+          tc.created_at as "createdAt",
           tc.updated_at as "updatedAt",
           a.first_name as "authorFirstName",
           a.last_name as "authorLastName",
-          a.login as "authorLogin"
+          a.login as "authorLogin",
+          a.avatar as "authorAvatar"
         FROM ${TicketComments.tableName} tc
         LEFT JOIN agents a ON tc.author_id = a.id
         WHERE tc.id = $1`,
@@ -110,6 +113,7 @@ class TicketComments {
       return {
         ...row,
         authorName: [row.authorFirstName, row.authorLastName].filter(Boolean).join(' ') || row.authorLogin || 'Неизвестный',
+        authorAvatar: row.authorAvatar,
       };
     } catch (error) {
       console.error('Error in getById:', error);

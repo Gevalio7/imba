@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getAgents,
   getAgentById,
@@ -17,30 +18,30 @@ const {
 router.get('/', getAgents);
 
 // GET /agents/:id
-router.get('/:id', getAgentById);
+router.get('/:id', protect, getAgentById);
 
 // POST /agents
-router.post('/', createAgents);
+router.post('/', protect, createAgents);
 
 // PUT /agents/:id
-router.put('/:id', updateAgents);
+router.put('/:id', protect, updateAgents);
 
 // DELETE /agents/:id
-router.delete('/:id', deleteAgents);
+router.delete('/:id', protect, deleteAgents);
 
 // GET /agents/:id/groups - получить группы агента
-router.get('/:id/groups', getAgentGroups);
+router.get('/:id/groups', protect, getAgentGroups);
 
 // PUT /agents/:id/groups - обновить группы агента
-router.put('/:id/groups', updateAgentGroups);
+router.put('/:id/groups', protect, updateAgentGroups);
 
 // GET /agents/:id/queues - получить очереди агента
-router.get('/:id/queues', getAgentQueues);
+router.get('/:id/queues', protect, getAgentQueues);
 
 // PUT /agents/:id/queues - обновить очереди агента
-router.put('/:id/queues', updateAgentQueues);
+router.put('/:id/queues', protect, updateAgentQueues);
 
 // GET /agents/:id/activities - получить активность агента
-router.get('/:id/activities', getAgentActivities);
+router.get('/:id/activities', protect, getAgentActivities);
 
 module.exports = router;

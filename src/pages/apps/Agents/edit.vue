@@ -22,6 +22,7 @@ interface Agent {
   isActive: boolean
   createdAt: string
   roleId?: number | null
+  avatar?: string | null
 }
 
 
@@ -36,11 +37,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 const route = useRoute()
 const router = useRouter()
 
-const agentId = computed(() => {
-  const id = route.query.id
-   
-  return id ? Number(id) : null
-})
+const agentId = ref<number | null>(null)
 
 const isLoading = ref(true)
 const isSaving = ref(false)
@@ -59,6 +56,7 @@ const agent = ref<Agent>({
   isActive: true,
   createdAt: '',
   roleId: null,
+  avatar: null,
 })
 
 
@@ -82,6 +80,44 @@ const isNewPasswordVisible = ref(false)
 const isConfirmPasswordVisible = ref(false)
 const newPassword = ref('')
 const confirmPassword = ref('')
+
+// Доступные аватарки (локальные файлы)
+const availableAvatars = [
+  '/avatars/avatar1.png',
+  '/avatars/avatar2.png',
+  '/avatars/avatar3.png',
+  '/avatars/avatar4.png',
+  '/avatars/avatar5.png',
+  '/avatars/avatar6.png',
+  '/avatars/avatar7.png',
+  '/avatars/avatar8.png',
+]
+
+// Функция для загрузки файла
+const handleAvatarUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    // Проверка размера файла (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      error.value = 'Размер файла не должен превышать 5MB'
+      return
+    }
+
+    // Проверка типа файла
+    if (!file.type.startsWith('image/')) {
+      error.value = 'Пожалуйста, выберите изображение'
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      agent.value.avatar = e.target?.result as string
+      error.value = null // Очищаем ошибку при успешной загрузке
+    }
+    reader.readAsDataURL(file)
+  }
+}
 
 // Уведомления
 const notifications = ref([
@@ -137,8 +173,19 @@ const fetchAgent = async () => {
 
   try {
     isLoading.value = true
-    const data = await $fetch<Agent>(`${API_BASE}/agents/${agentId.value}`)
+    const accessToken = useCookie('accessToken')
+    const data = await $fetch<Agent>(`${API_BASE}/agents/${agentId.value}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken.value}`
+      }
+    })
     agent.value = data
+
+    // Если загружаем текущего пользователя, обновляем userData в cookie
+    const userData = useCookie<any>('userData')
+    if (userData.value && Number(userData.value.id) === agentId.value) {
+      userData.value.avatar = data.avatar
+    }
   } catch (err: any) {
     error.value = err.message || 'Ошибка загрузки агента'
   } finally {
@@ -148,41 +195,50 @@ const fetchAgent = async () => {
 
 // Сохранение данных агента
 const saveAgent = async () => {
-  if (!agent.value.firstName?.trim() || !agent.value.lastName?.trim()) {
-    error.value = 'Имя и Фамилия обязательны для заполнения'
-    return
-  }
 
   try {
     isSaving.value = true
     error.value = null
-    
+
+    const accessToken = useCookie('accessToken')
     const updatedAgent = await $fetch(`${API_BASE}/agents/${agentId.value}`, {
       method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken.value}`
+      },
       body: {
         firstName: agent.value.firstName,
         lastName: agent.value.lastName,
         login: agent.value.login,
-        email: agent.value.email,
+        email: agent.value.email || null,
         mobilePhone: agent.value.mobilePhone,
         telegramAccount: agent.value.telegramAccount,
         isActive: agent.value.isActive,
+        roleId: agent.value.roleId,
+        avatar: agent.value.avatar,
       }
-    })
+    }) as Agent
 
     // Обновляем локальные данные агента
     agent.value = updatedAgent
 
-    successMessage.value = 'Агент успешно сохранён'
+    // Если редактируем текущего пользователя, обновляем userData в cookie
+    const userData = useCookie<any>('userData')
+    if (userData.value && Number(userData.value.id) === agentId.value) {
+      userData.value.avatar = updatedAgent.avatar
+    }
+
+    successMessage.value = 'Агент успешно обновлён'
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
   } catch (err: any) {
-    error.value = err.message || 'Ошибка сохранения агента'
+    error.value = err.message || 'Ошибка обновления агента'
   } finally {
     isSaving.value = false
   }
 }
+
 
 // Изменение пароля
 const changePassword = async () => {
@@ -252,7 +308,14 @@ const goBack = () => {
 
 // Инициализация
 onMounted(async () => {
-  await fetchAgent()
+  const id = route.query.id
+  agentId.value = id ? Number(id) : null
+  if (agentId.value) {
+    await fetchAgent()
+  } else {
+    error.value = 'ID агента не указан'
+    isLoading.value = false
+  }
 })
 </script>
 
@@ -300,7 +363,8 @@ onMounted(async () => {
             variant="tonal"
             class="mb-4"
           >
-            <span class="text-h3">
+            <img v-if="agent.avatar" :src="agent.avatar" alt="Avatar" />
+            <span v-else class="text-h3">
               {{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}
             </span>
           </VAvatar>
@@ -503,21 +567,72 @@ onMounted(async () => {
                   />
                 </VCol>
 
-                <!-- Телеграмм акк -->
-                <VCol
-                  cols="12"
-                  sm="6"
-                >
-                  <AppTextField
-                    v-model="agent.telegramAccount"
-                    label="Телеграмм аккаунт"
-                    placeholder="@username"
-                  />
-                </VCol>
+                 <!-- Телеграмм акк -->
+                 <VCol
+                   cols="12"
+                   sm="6"
+                 >
+                   <AppTextField
+                     v-model="agent.telegramAccount"
+                     label="Телеграмм аккаунт"
+                     placeholder="@username"
+                   />
+                 </VCol>
 
+                 <!-- Аватарка -->
+                 <VCol cols="12">
+                   <h6 class="text-h6 mb-3">Выберите аватарку</h6>
+                   <VRow class="ga-3">
+                     <VCol cols="auto">
+                       <VAvatar
+                         rounded
+                         :size="60"
+                         color="grey-lighten-2"
+                         variant="outlined"
+                         class="cursor-pointer"
+                         @click="agent.avatar = null"
+                       >
+                         <VIcon icon="bx-user" size="24" />
+                       </VAvatar>
+                       <div class="text-center text-caption mt-1">Без аватара</div>
+                     </VCol>
+                     <VCol
+                       v-for="(avatar, index) in availableAvatars"
+                       :key="index"
+                       cols="auto"
+                     >
+                       <VAvatar
+                         rounded
+                         :size="60"
+                         class="cursor-pointer"
+                         :class="{ 'v-avatar--selected': agent.avatar === avatar }"
+                         @click="agent.avatar = avatar"
+                       >
+                         <img :src="avatar" alt="Avatar option" />
+                       </VAvatar>
+                     </VCol>
+                   </VRow>
 
+                   <!-- Загрузка своей аватарки -->
+                   <VRow class="mt-4">
+                     <VCol cols="12">
+                       <h6 class="text-h6 mb-2">Или загрузите свою аватарку</h6>
+                       <VFileInput
+                         label="Выберите изображение"
+                         accept="image/*"
+                         @change="handleAvatarUpload"
+                         prepend-icon="bx-image"
+                         show-size
+                         density="compact"
+                       />
+                       <div class="text-caption text-grey mt-1">
+                         Поддерживаемые форматы: JPG, PNG, GIF. Максимальный размер: 5MB.
+                       </div>
+                     </VCol>
+                   </VRow>
+                 </VCol>
 
-                <!-- Активен -->
+                 <!-- Активен -->
                 <VCol
                   cols="12"
                   sm="6"
@@ -649,7 +764,7 @@ onMounted(async () => {
         <VWindowItem>
           <VCard title="Активность агента">
             <VCardText>
-              <AgentActivityTimeline :agent-id="agentId.value" />
+              <AgentActivityTimeline :agent-id="agentId || 0" />
             </VCardText>
           </VCard>
         </VWindowItem>

@@ -354,21 +354,24 @@ const createTicket = asyncHandler(async (req, res) => {
     // Получаем имя статуса
     const state = await States.getById(newTicket.stateId);
     const stateName = state ? state.name : String(newTicket.stateId);
-    
+
+    // Используем changedBy из тела запроса, если передан, иначе req.user
+    const changedBy = req.body.changedBy || req.user?.id || null;
+
     await TicketHistory.create({
       ticketId: newTicket.id,
-      changedBy: req.user?.id || null,
+      changedBy: changedBy,
       fieldName: 'stateId',
       oldValue: null,
       newValue: stateName,
     });
-    
+
     // Записываем переход статуса в историю переходов
     await TicketStatusHistory.recordTransition(
       newTicket.id,
       null, // fromStatusId - null для начального статуса
       newTicket.stateId,
-      req.user?.id || null,
+      changedBy,
       'Создание тикета' // actionLabel
     );
   }
@@ -509,6 +512,7 @@ const updateTicket = asyncHandler(async (req, res) => {
   // =====================================================
   // Записываем историю изменений всех полей
   // =====================================================
+  const changedBy = req.body.changedBy || req.user?.id || null;
   const fieldsToTrack = ['title', 'description', 'typeId', 'categoryId', 'priorityId', 'queueId', 'stateId', 'ownerId', 'companyId', 'serviceId', 'slaId', 'isActive', 'responseDeadline', 'resolutionDeadline', 'firstResponseAt', 'slaViolated', 'pendingStartAt', 'executorAgentIds', 'executorGroupIds'];
   
   // Определяем какие справочники нужны на основе изменяемых полей
@@ -679,19 +683,19 @@ const updateTicket = asyncHandler(async (req, res) => {
     // Записываем в историю
     await TicketHistory.create({
       ticketId: ticketId,
-      changedBy: req.user?.id || null,
+      changedBy: changedBy,
       fieldName: field,
       oldValue: oldDisplayValue,
       newValue: newDisplayValue,
     });
-    
+
     // Если изменился статус, записываем в историю переходов
     if (field === 'stateId') {
       await TicketStatusHistory.recordTransition(
         ticketId,
         oldValue, // fromStatusId
         newValue, // toStatusId
-        req.user?.id || null,
+        changedBy,
         null // actionLabel - можно добавить, если есть информация о переходе
       );
     }
@@ -777,22 +781,25 @@ const changeTicketStatus = asyncHandler(async (req, res) => {
   // Получаем имена статусов для истории
   const oldState = currentTicket.stateId ? await States.getById(currentTicket.stateId) : null;
   const newState = await States.getById(targetStatusId);
-  
+
+  // Используем changedBy из тела запроса, если передан, иначе req.user
+  const changedBy = req.body.changedBy || req.user?.id || null;
+
   // Записываем историю с отображаемыми именами
   await TicketHistory.create({
     ticketId: ticketId,
-    changedBy: req.user?.id || null,
+    changedBy: changedBy,
     fieldName: 'stateId',
     oldValue: oldState ? oldState.name : null,
     newValue: newState ? newState.name : String(targetStatusId),
   });
-  
+
   // Записываем переход в историю переходов статусов
   await TicketStatusHistory.recordTransition(
     ticketId,
     currentTicket.stateId, // fromStatusId
     targetStatusId, // toStatusId
-    req.user?.id || null,
+    changedBy,
     validTransition.actionLabel // actionLabel из workflow
   );
 

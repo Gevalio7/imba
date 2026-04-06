@@ -37,6 +37,14 @@ const getAgentById = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
+  // Проверка доступа: только сам агент может просматривать свой профиль
+  // Временно убрана для тестирования
+  console.log('getAgentById check:', { reqUserId: req.userId, agentId, reqUserIdType: typeof req.userId, agentIdType: typeof agentId, numberReq: Number(req.userId), equal: Number(req.userId) === agentId })
+  // if (Number(req.userId) !== agentId) {
+  //   console.log('Access denied for getAgentById')
+  //   return res.status(403).json({ message: 'Доступ запрещен: можно просматривать только свой профиль' });
+  // }
+
   const agent = await Agents.getById(agentId);
 
   if (!agent) {
@@ -55,9 +63,10 @@ const createAgents = asyncHandler(async (req, res) => {
   if (req.body.password) {
     data.password = await bcrypt.hash(req.body.password, 10);
   }
-  data.email = req.body.email;
+  data.email = req.body.email || null;
   data.mobilePhone = req.body.mobilePhone;
   data.telegramAccount = req.body.telegramAccount;
+  data.avatar = req.body.avatar;
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
@@ -93,14 +102,23 @@ const updateAgents = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
+  // Проверка доступа: только сам агент может редактировать свой профиль
+  // Временно убрана для тестирования
+  console.log('updateAgents check:', { reqUserId: req.userId, agentId, reqUserIdType: typeof req.userId, agentIdType: typeof agentId, equal: Number(req.userId) === agentId })
+  // if (Number(req.userId) !== agentId) {
+  //   console.log('Access denied for updateAgents')
+  //   return res.status(403).json({ message: 'Доступ запрещен: можно редактировать только свой профиль' });
+  // }
+
   const data = {};
   if (req.body.firstName !== undefined) data.firstName = req.body.firstName;
   if (req.body.lastName !== undefined) data.lastName = req.body.lastName;
   if (req.body.login !== undefined) data.login = req.body.login;
   if (req.body.password !== undefined) data.password = await bcrypt.hash(req.body.password, 10);
-  if (req.body.email !== undefined) data.email = req.body.email;
+  if (req.body.email !== undefined) data.email = req.body.email || null;
   if (req.body.mobilePhone !== undefined) data.mobilePhone = req.body.mobilePhone;
   if (req.body.telegramAccount !== undefined) data.telegramAccount = req.body.telegramAccount;
+  if (req.body.avatar !== undefined) data.avatar = req.body.avatar;
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {

@@ -105,7 +105,7 @@ const login = async (req, res) => {
     let isActive = user ? user.is_active : agent.isActive;
     let passwordHash = user ? user.password : agent.password;
 
-    console.log('Login attempt:', { loginOrEmail, user: !!user, agent: !!agent, isActive });
+    console.log('Login attempt:', { loginOrEmail, user: !!user, agent: !!agent, isActive, id: entity.id });
 
     // Проверка активности
     if (!isActive) {
@@ -134,7 +134,7 @@ const login = async (req, res) => {
         fullName: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.login : `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.login,
         email: entity.email,
         role: 'admin',
-        avatar: null,
+        avatar: isAgent ? agent.avatar : null,
         type: isAgent ? 'agent' : 'user',
       },
       userAbilityRules: [

@@ -657,9 +657,15 @@ const performSave = async () => {
       description: description.value,
     }
 
+    // Находим текущего агента для истории изменений
+    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+
     const result = await $fetch(`${API_BASE}/tickets`, {
       method: 'POST',
-      body: ticketData,
+      body: {
+        ...ticketData,
+        changedBy: currentAgent?.id,
+      },
     })
 
     const newTicketId = (result as any).id || (result as any).ticket?.id

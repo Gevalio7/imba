@@ -24,6 +24,7 @@ interface Agent {
   login: string
   email: string
   isActive: boolean
+  avatar?: string | null
 }
 
 // Тип для роли
@@ -126,18 +127,20 @@ const getGroupRoles = (group: AgentsGroups): Role[] => {
             >
               <VAvatar
                 v-if="group.agents.length > 4 && group.agents.length !== 4 && index < 3"
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                :color="agent.avatar ? undefined : ($vuetify.theme.current.dark ? '#373B50' : '#EEEDF0')"
                 size="default"
               >
-                <span class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
+                <VImg v-if="agent.avatar" :src="agent.avatar" />
+                <span v-else class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
               </VAvatar>
 
               <VAvatar
                 v-if="group.agents.length === 4"
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                :color="agent.avatar ? undefined : ($vuetify.theme.current.dark ? '#373B50' : '#EEEDF0')"
                 size="default"
               >
-                <span class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
+                <VImg v-if="agent.avatar" :src="agent.avatar" />
+                <span v-else class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
               </VAvatar>
             </template>
             <VAvatar

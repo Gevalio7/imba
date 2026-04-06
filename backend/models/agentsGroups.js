@@ -84,8 +84,8 @@ class AgentsGroups {
         if (includeAgents && groups.length > 0) {
           const groupIds = groups.map(g => g.id);
           const agentsResult = await pool.query(
-            `SELECT aga.agents_group_id as "groupId", a.id, a.first_name as "firstName", a.last_name as "lastName", 
-                    a.login, a.email, a.is_active as "isActive", a.created_at as "createdAt", a.updated_at as "updatedAt"
+            `SELECT aga.agents_group_id as "groupId", a.id, a.first_name as "firstName", a.last_name as "lastName",
+                    a.login, a.email, a.is_active as "isActive", a.created_at as "createdAt", a.updated_at as "updatedAt", a.avatar
              FROM agents_groups_agents aga
              JOIN agents a ON a.id = aga.agent_id
              WHERE aga.agents_group_id = ANY($1)`,

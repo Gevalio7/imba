@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Agents {
   static tableName = 'agents';
-  static fields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount';
+  static fields = 'firstName, lastName, login, password, email, mobilePhone, telegramAccount, avatar';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
@@ -107,7 +107,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId" FROM ${Agents.tableName} a WHERE a.id = $1`,
+        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId", avatar FROM ${Agents.tableName} a WHERE a.id = $1`,
         [id]
       );
 

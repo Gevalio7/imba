@@ -16,6 +16,7 @@ interface Agents {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  avatar?: string | null
   groups?: Array<{id: number, roleId?: number}>
 }
 
@@ -47,6 +48,7 @@ interface Agent {
   login: string
   email: string
   isActive: boolean
+  avatar?: string | null
 }
 
 // API base URL
@@ -284,6 +286,7 @@ onMounted(async () => {
 })
 
 const headers = [
+  { title: 'Аватар', key: 'avatar', sortable: false },
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Имя', key: 'firstName', sortable: true },
   { title: 'Фамилия', key: 'lastName', sortable: true },
@@ -1040,6 +1043,24 @@ defineExpose({
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Аватар -->
+        <template #item.avatar="{ item }">
+          <VAvatar
+            size="38"
+            :color="!(item.avatar) ? 'primary' : undefined"
+            :variant="!(item.avatar) ? 'tonal' : undefined"
+          >
+            <VImg
+              v-if="item.avatar"
+              :src="item.avatar"
+            />
+            <VIcon
+              v-else
+              icon="bx-user"
+            />
+          </VAvatar>
+        </template>
+
         <!-- Роль (из групп агента) -->
         <template #item.role="{ item }">
           <template v-if="getAgentRoles(item.groups).length > 0">
