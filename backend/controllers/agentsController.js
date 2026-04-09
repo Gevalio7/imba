@@ -73,11 +73,6 @@ const createAgents = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
-  // Добавляем roleId если передан
-  if (req.body.roleId !== undefined) {
-    data.roleId = req.body.roleId;
-  }
-
   // Валидация обязательных полей
   if (!data.firstName || !data.lastName) {
     return res.status(400).json({ message: 'firstName and lastName are required' });
@@ -123,11 +118,6 @@ const updateAgents = asyncHandler(async (req, res) => {
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
-  }
-
-  // Добавляем roleId если передан
-  if (req.body.roleId !== undefined) {
-    data.roleId = req.body.roleId;
   }
 
   try {

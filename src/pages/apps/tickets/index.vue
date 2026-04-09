@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных
@@ -85,7 +85,7 @@ const fetchTickets = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ tickets: Ticket[], total: number }>(`${API_BASE}/tickets`)
+    const data = await $api<{ tickets: Ticket[], total: number }>(`/tickets`)
     tickets.value = data.tickets
     total.value = data.total
     

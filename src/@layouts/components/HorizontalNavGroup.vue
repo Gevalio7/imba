@@ -73,7 +73,7 @@ watch(
         "
       />
       <Component
-        :is="layoutConfig.app.i18n.enable ? 'i18n-t' : 'span'"
+        :is="layoutConfig.app.i18n.enable && item.title ? 'i18n-t' : 'span'"
         v-bind="getDynamicI18nProps(item.title, 'span')"
         class="nav-item-title"
       >

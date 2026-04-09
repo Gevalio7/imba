@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -80,7 +80,7 @@ const fetchSchedules = async () => {
 // Удаление расписания
 const deleteScheduleById = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/ticketSchedules/${id}`, { method: 'DELETE' })
+    await $api(`/ticketSchedules/${id}`, { method: 'DELETE' })
     const index = schedules.value.findIndex(s => s.id === id)
     if (index !== -1) schedules.value.splice(index, 1)
   } catch (err) {
@@ -231,7 +231,7 @@ const confirmBulkDelete = async () => {
 // Сделать активным/неактивным
 const toggleActiveStatus = async (scheduleId: number, makeActive: boolean) => {
   try {
-    await $fetch(`${API_BASE}/ticketSchedules/${scheduleId}`, {
+    await $api(`/ticketSchedules/${scheduleId}`, {
       method: 'PUT',
       body: { isActive: makeActive }
     })
@@ -247,7 +247,7 @@ const bulkSetActive = async (makeActive: boolean) => {
   try {
     const count = selectedItems.value.length
     for (const id of selectedItems.value) {
-      await $fetch(`${API_BASE}/ticketSchedules/${id}`, {
+      await $api(`/ticketSchedules/${id}`, {
         method: 'PUT',
         body: { isActive: makeActive }
       })

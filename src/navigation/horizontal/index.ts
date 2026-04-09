@@ -1,11 +1,13 @@
-import apps from './apps'
-import charts from './charts'
-import dashboard from './dashboard'
-import forms from './forms'
-import misc from './misc'
-import pages from './pages'
-import tables from './tables'
-import uiElements from './ui-elements'
+import { computed } from 'vue'
+import appsAndPages from '../vertical/apps-and-pages'
+import dashboard from '../vertical/dashboard'
+
 import type { HorizontalNavItems } from '@layouts/types'
 
-export default [...dashboard, ...apps, ...pages, ...uiElements, ...forms, ...tables, ...charts, ...misc] as HorizontalNavItems
+// Filter out 'heading' items as they are not supported in horizontal navigation
+const filteredAppsAndPages = appsAndPages.filter((item: any) => !('heading' in item))
+const filteredDashboard = dashboard.filter((item: any) => !('heading' in item))
+
+const horizontalMenu = [...filteredDashboard, ...filteredAppsAndPages] as HorizontalNavItems
+
+export default computed(() => horizontalMenu)

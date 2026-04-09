@@ -1,4 +1,5 @@
 <script setup lang="tsx">
+import { onMounted } from 'vue'
 import { useStorage } from '@vueuse/core'
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useTheme } from 'vuetify'
@@ -21,6 +22,8 @@ import wideSvg from '@images/customizer-icons/wide-light.svg'
 const isNavDrawerOpen = ref(false)
 
 const configStore = useConfigStore()
+
+const isI18nReady = ref(false)
 
 // 👉 Primary Color
 const vuetifyTheme = useTheme()
@@ -185,18 +188,24 @@ watch(currentDir, () => {
 // check if any value set in cookie
 const isCookieHasAnyValue = ref(false)
 
-const { locale } = useI18n({ useScope: 'global' })
+let locale: any = null
 
 const isActiveLangRTL = computed(() => {
+  if (!locale) return false
   const lang = themeConfig.app.i18n.langConfig.find(l => l.i18nLang === locale.value)
 
   return lang?.isRTL ?? false
 })
 
+onMounted(() => {
+  const { locale: localeRef } = useI18n({ useScope: 'global' })
+  locale = localeRef
+  isI18nReady.value = true
+})
+
 watch([
   () => vuetifyTheme.current.value.colors.primary,
   configStore.$state,
-  locale,
 ], () => {
   const initialConfigValue = [
     staticPrimaryColor,

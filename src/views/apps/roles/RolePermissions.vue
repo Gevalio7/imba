@@ -34,6 +34,7 @@ const error = ref<string | null>(null)
 
 // Категории
 const categories = [
+  { key: 'admin', name: 'Администратор', icon: 'bx-shield' },
   { key: 'tickets', name: 'Тикеты', icon: 'bx-ticket' },
   { key: 'knowledge_base', name: 'База знаний', icon: 'bx-book' },
   { key: 'reports', name: 'Отчёты', icon: 'bx-chart' },

@@ -10,8 +10,9 @@ const {
   deleteTicket,
 } = require('../controllers/ticketsController');
 
-// Импорт middleware проверки разрешений
+// Импорт middleware проверки разрешений и аутентификации
 const { checkPermission } = require('../middleware/permissions');
+const { protect } = require('../middleware/auth');
 
 // GET /tickets - получить все тикеты (с фильтрацией по разрешениям)
 router.get('/', getTickets);
@@ -23,15 +24,15 @@ router.get('/:id/actions', getTicketActions);
 router.get('/:id', getTicketById);
 
 // POST /tickets - создать тикет (требуется разрешение create_ticket)
-router.post('/', checkPermission('create_ticket'), createTicket);
+router.post('/', protect, checkPermission('create_ticket'), createTicket);
 
 // POST /tickets/:id/change-status - сменить статус (требуется change_status)
-router.post('/:id/change-status', checkPermission('change_status'), changeTicketStatus);
+router.post('/:id/change-status', protect, checkPermission('change_status'), changeTicketStatus);
 
 // PUT /tickets/:id - обновить тикет (требуется reply_to_tickets)
-router.put('/:id', checkPermission('reply_to_tickets'), updateTicket);
+router.put('/:id', protect, checkPermission('reply_to_tickets'), updateTicket);
 
 // DELETE /tickets/:id - удалить тикет (только для админов)
-router.delete('/:id', deleteTicket);
+router.delete('/:id', protect, deleteTicket);
 
 module.exports = router;

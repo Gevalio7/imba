@@ -160,6 +160,34 @@ class TicketHistory {
     }
   }
 
+  static async batchCreate(entries) {
+    if (!entries || entries.length === 0) return [];
+    
+    try {
+      const values = [];
+      const placeholders = [];
+      let paramIndex = 1;
+      
+      for (const entry of entries) {
+        placeholders.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4})`);
+        values.push(entry.ticketId, entry.changedBy || null, entry.fieldName, entry.oldValue || null, entry.newValue || null);
+        paramIndex += 5;
+      }
+      
+      const query = `
+        INSERT INTO ${TicketHistory.tableName} (ticket_id, changed_by, field_name, old_value, new_value) 
+        VALUES ${placeholders.join(', ')}
+        RETURNING id, ticket_id as "ticketId", changed_by as "changedBy", field_name as "fieldName", old_value as "oldValue", new_value as "newValue", created_at as "createdAt"
+      `;
+      
+      const result = await pool.query(query, values);
+      return result.rows;
+    } catch (error) {
+      console.error('Error in batchCreate:', error);
+      throw error;
+    }
+  }
+
   // Получить историю согласования (можно расширить при наличии отдельной таблицы)
   static async getApprovalHistory(ticketId) {
     try {

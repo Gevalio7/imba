@@ -107,7 +107,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       const result = await pool.query(
-        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId", avatar FROM ${Agents.tableName} a WHERE a.id = $1`,
+        `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", avatar FROM ${Agents.tableName} a WHERE a.id = $1`,
         [id]
       );
 
@@ -160,7 +160,7 @@ class Agents {
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
       
-      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
+      const query = `INSERT INTO ${Agents.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0];
@@ -233,7 +233,7 @@ class Agents {
 
       // Роли больше не назначаются напрямую агентам, а только через группы
 
-      const query = `UPDATE ${Agents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", role_id as "roleId"`;
+      const query = `UPDATE ${Agents.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
       return result.rows[0] || null;

@@ -282,25 +282,7 @@ class Roles {
     }
   }
 
-  // Получить разрешения агента по ID
-  static async getAgentPermissions(agentId) {
-    try {
-      // Сначала получаем role_id агента
-      const agentResult = await pool.query(
-        `SELECT role_id FROM agents WHERE id = $1`,
-        [agentId]
-      );
-      
-      if (agentResult.rows.length === 0 || !agentResult.rows[0].role_id) {
-        return {};
-      }
-      
-      return await this.getPermissions(agentResult.rows[0].role_id);
-    } catch (error) {
-      console.error('Error in getAgentPermissions:', error);
-      throw error;
-    }
-  }
+
 }
 
 module.exports = Roles;

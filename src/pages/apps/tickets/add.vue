@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useReferenceData } from '@/composables/useReferenceData'
 
 definePage({
   meta: {
@@ -9,23 +10,23 @@ definePage({
   },
 })
 
-// API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
-
 const router = useRouter()
 
-// Справочники
-const priorities = ref<any[]>([])
-const queues = ref<any[]>([])
-const states = ref<any[]>([])
-const types = ref<any[]>([])
-const categories = ref<any[]>([])
-const agents = ref<any[]>([])
-const agentGroups = ref<any[]>([])
-const customers = ref<any[]>([])
-const services = ref<any[]>([])
-const slaList = ref<any[]>([])
-const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
+const { data: refData, fetchAll: loadReferenceData, isLoading: refLoading } = useReferenceData()
+
+const priorities = computed(() => refData.priorities)
+const queues = computed(() => refData.queues)
+const states = computed(() => refData.states)
+const types = computed(() => refData.types)
+const categories = computed(() => refData.typeCategories)
+const agents = computed(() => refData.agents)
+const agentGroups = computed(() => refData.agentGroups)
+const customers = computed(() => refData.customers)
+const services = computed(() => refData.services)
+const slaList = computed(() => refData.sla)
+const customerUsers = computed(() => refData.customerUsers)
+const systemConfigs = computed(() => refData.systemConfiguration)
 
 // Workflow данные
 const currentWorkflow = ref<any>(null)
@@ -33,120 +34,7 @@ const availableStatuses = ref<any[]>([])
 const initialStatus = ref<any>(null)
 const loadingWorkflow = ref(false)
 
-// Загрузка справочников
-const fetchPriorities = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/priorities`)
-    priorities.value = (data as any).priorities || []
-  }
-  catch (err) {
-    console.error('Error fetching priorities:', err)
-  }
-}
-
-const fetchQueues = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/queues`)
-    queues.value = (data as any).queues || []
-  }
-  catch (err) {
-    console.error('Error fetching queues:', err)
-  }
-}
-
-const fetchStates = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/states`)
-    states.value = (data as any).states || []
-  }
-  catch (err) {
-    console.error('Error fetching states:', err)
-  }
-}
-
-const fetchTypes = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/types`)
-    types.value = (data as any).types || []
-  }
-  catch (err) {
-    console.error('Error fetching types:', err)
-  }
-}
-
-const fetchCategories = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/typeCategories`)
-    categories.value = (data as any).typeCategories || []
-  }
-  catch (err) {
-    console.error('Error fetching categories:', err)
-  }
-}
-
-const fetchAgents = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/agents`)
-    agents.value = (data as any).agents || []
-  }
-  catch (err) {
-    console.error('Error fetching agents:', err)
-  }
-}
-
-const fetchAgentGroups = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/agentsGroups`)
-    agentGroups.value = (data as any).agentsGroups || []
-  }
-  catch (err) {
-    console.error('Error fetching agent groups:', err)
-  }
-}
-
-const fetchCustomers = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/customers`)
-    customers.value = (data as any).customers || []
-  }
-  catch (err) {
-    console.error('Error fetching customers:', err)
-  }
-}
-
-const fetchServices = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/services`)
-    services.value = (data as any).services || []
-  }
-  catch (err) {
-    console.error('Error fetching services:', err)
-  }
-}
-
-const fetchSla = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/sla`)
-    slaList.value = (data as any).sla || []
-  }
-  catch (err) {
-    console.error('Error fetching SLA:', err)
-  }
-}
-
-const fetchCustomerUsers = async () => {
-  try {
-    console.log('Fetching customerUsers...')
-    const data = await $fetch(`${API_BASE}/customerUsers`)
-    console.log('customerUsers data:', data)
-    customerUsers.value = (data as any).customerUsers || []
-    console.log('customerUsers set to:', customerUsers.value.length, 'items')
-  }
-  catch (err) {
-    console.error('Error fetching customerUsers:', err)
-    customerUsers.value = []
-  }
-}
+// Загрузка справочников - используется useReferenceData composable
 
 // Получение очереди по ID
 const getQueueById = (queueId: number) => {
@@ -157,7 +45,7 @@ const getQueueById = (queueId: number) => {
 const fetchTypeWorkflow = async (typeId: number) => {
   try {
     loadingWorkflow.value = true
-    const data = await $fetch(`${API_BASE}/types/${typeId}/workflow`)
+    const data = await $api(`/types/${typeId}/workflow`)
     
     currentWorkflow.value = (data as any).workflow
     initialStatus.value = (data as any).initialStatus
@@ -258,7 +146,7 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
       // Если у очереди есть workflow - ищем тип с этим workflow
       if (queue.workflowId && !ticket.value.typeId) {
         try {
-          const typesData = await $fetch(`${API_BASE}/types`)
+          const typesData = await $api('/types')
           const typesList = (typesData as any).types || []
           const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
           if (typeWithWorkflow) {
@@ -391,16 +279,7 @@ const newAuthorData = ref({
 // Модальное окно создания сотрудника
 const showCreateAuthorDialog = ref(false)
 
-// Загрузка настроек системы
-const systemConfigs = ref<any[]>([])
-const fetchSystemConfigs = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/systemConfiguration`)
-    systemConfigs.value = (data as any).systemConfiguration || []
-  } catch (err) {
-    console.error('Error fetching system configs:', err)
-  }
-}
+// systemConfigs теперь получается через useReferenceData composable (systemConfigs computed)
 
 // Проверка - разрешено ли создание сотрудника по email
 const canCreateCustomerUserByEmail = computed(() => {
@@ -660,7 +539,7 @@ const performSave = async () => {
     // Находим текущего агента для истории изменений
     const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
 
-    const result = await $fetch(`${API_BASE}/tickets`, {
+    const result = await $api('/tickets', {
       method: 'POST',
       body: {
         ...ticketData,
@@ -717,7 +596,7 @@ const createAuthorFromDialog = async () => {
   try {
     saving.value = true
 
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+    const newUser = await $api('/customerUsers', {
       method: 'POST',
       body: {
         email: newAuthorData.value.email,
@@ -757,7 +636,7 @@ const createNewUserFromNoData = async () => {
     saving.value = true
     console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
 
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+    const newUser = await $api('/customerUsers', {
       method: 'POST',
       body: {
         email: authorSearchDisplay.value,
@@ -808,7 +687,7 @@ const uploadAttachments = async (ticketId: number) => {
       formData.append('file', file)
       formData.append('ticketId', ticketId.toString())
       
-      await $fetch(`${API_BASE}/ticketAttachments`, {
+      await $api('/ticketAttachments', {
         method: 'POST',
         body: formData,
       })
@@ -831,20 +710,7 @@ const cancel = () => {
 // Инициализация
 onMounted(async () => {
   console.log('Add.vue mounted - initializing')
-  await Promise.all([
-    fetchPriorities(),
-    fetchQueues(),
-    fetchStates(),
-    fetchTypes(),
-    fetchCategories(),
-    fetchAgents(),
-    fetchAgentGroups(),
-    fetchCustomers(),
-    fetchServices(),
-    fetchSla(),
-    fetchCustomerUsers(),
-    fetchSystemConfigs(),
-  ])
+  await loadReferenceData()
   console.log('Add.vue initialization complete')
 })
 </script>

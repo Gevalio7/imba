@@ -1,10 +1,6 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import type { I18nLanguage } from '@layouts/types'
-
-interface Props {
-  languages: I18nLanguage[]
-  location?: any
-}
 
 interface Props {
   languages: I18nLanguage[]
@@ -15,7 +11,12 @@ const props = withDefaults(defineProps<Props>(), {
   location: 'bottom end',
 })
 
-const { locale } = useI18n({ useScope: 'global' })
+let locale: any = null
+
+onMounted(() => {
+  const { locale: localeRef } = useI18n({ useScope: 'global' })
+  locale = localeRef
+})
 </script>
 
 <template>
@@ -27,6 +28,7 @@ const { locale } = useI18n({ useScope: 'global' })
 
     <!-- Menu -->
     <VMenu
+      v-if="locale"
       activator="parent"
       :location="props.location"
       offset="21px"

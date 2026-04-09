@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useReferenceData } from '@/composables/useReferenceData'
 
 definePage({
   meta: {
@@ -9,11 +10,25 @@ definePage({
   },
 })
 
-// API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 const router = useRouter()
 const route = useRoute()
+
+const { data: refData, fetchAll: loadReferenceData, isLoading: refLoading } = useReferenceData()
+
+const priorities = computed(() => refData.priorities)
+const queues = computed(() => refData.queues)
+const states = computed(() => refData.states)
+const types = computed(() => refData.types)
+const categories = computed(() => refData.typeCategories)
+const agents = computed(() => refData.agents)
+const agentGroups = computed(() => refData.agentGroups)
+const customers = computed(() => refData.customers)
+const services = computed(() => refData.services)
+const slaList = computed(() => refData.sla)
+const customerUsers = computed(() => refData.customerUsers)
+const systemConfigs = computed(() => refData.systemConfiguration)
 
 const ticketId = computed(() => {
   const id = route.query.id
@@ -25,18 +40,7 @@ const ticketId = computed(() => {
 const loading = ref(false)
 const saving = ref(false)
 
-// Справочники
-const priorities = ref<any[]>([])
-const queues = ref<any[]>([])
-const states = ref<any[]>([])
-const types = ref<any[]>([])
-const categories = ref<any[]>([])
-const agents = ref<any[]>([])
-const agentGroups = ref<any[]>([])
-const customers = ref<any[]>([])
-const services = ref<any[]>([])
-const slaList = ref<any[]>([])
-const customerUsers = ref<any[]>([]) // Сотрудники для выбора автора
+// Настройки автоматического назначения
 const autoAssignConfig = ref<any>(null)
 const autoAssigned = ref(false)
 const allowMultipleExecutorGroups = ref<any>(null)
@@ -47,114 +51,9 @@ const currentWorkflow = ref<any>(null)
 const availableStatuses = ref<any[]>([])
 const loadingWorkflow = ref(false)
 
-// Загрузка справочников
-const fetchPriorities = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/priorities`)
-    priorities.value = (data as any).priorities || []
-  }
-  catch (err) { console.log('Error fetching priorities:', err) }
-}
+// Загрузка справочников - используется useReferenceData composable
 
-const fetchQueues = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/queues`)
-    queues.value = (data as any).queues || []
-  }
-  catch (err) { console.log('Error fetching queues:', err) }
-}
-
-const fetchStates = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/states`)
-    states.value = (data as any).states || []
-  }
-  catch (err) { console.log('Error fetching states:', err) }
-}
-
-const fetchTypes = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/types`)
-    types.value = (data as any).types || []
-  }
-  catch (err) { console.log('Error fetching types:', err) }
-}
-
-const fetchCategories = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/typeCategories`)
-    categories.value = (data as any).typeCategories || []
-  }
-  catch (err) { console.log('Error fetching categories:', err) }
-}
-
-const fetchAgents = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/agents`)
-    agents.value = (data as any).agents || []
-  }
-  catch (err) { console.log('Error fetching agents:', err) }
-}
-
-const fetchAgentGroups = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/agentsGroups`)
-    agentGroups.value = (data as any).agentsGroups || []
-  }
-  catch (err) { console.log('Error fetching agent groups:', err) }
-}
-
-const fetchAutoAssignConfig = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/systemConfiguration?q=agent_auto_assign_as_executor`)
-    autoAssignConfig.value = (data as any).systemConfiguration?.[0] || null
-  }
-  catch (err) { console.log('Error fetching auto assign config:', err) }
-}
-
-const fetchExecutorSettings = async () => {
-  try {
-    const [groupsData, executorsData] = await Promise.all([
-      $fetch(`${API_BASE}/systemConfiguration?q=allow_multiple_executor_groups`),
-      $fetch(`${API_BASE}/systemConfiguration?q=allow_multiple_executors`)
-    ])
-    allowMultipleExecutorGroups.value = (groupsData as any).systemConfiguration?.[0] || null
-    allowMultipleExecutors.value = (executorsData as any).systemConfiguration?.[0] || null
-  }
-  catch (err) { console.log('Error fetching executor settings:', err) }
-}
-
-const fetchCustomers = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/customers`)
-    customers.value = (data as any).customers || []
-  }
-  catch (err) { console.log('Error fetching customers:', err) }
-}
-
-const fetchSla = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/sla`)
-    slaList.value = (data as any).sla || []
-  }
-  catch (err) { console.log('Error fetching sla:', err) }
-}
-
-const fetchCustomerUsers = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/customerUsers`)
-    customerUsers.value = (data as any).customerUsers || []
-  }
-  catch (err) { console.log('Error fetching customerUsers:', err) }
-}
-
-const fetchServices = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/services`)
-    services.value = (data as any).services || []
-  }
-  catch (err) { console.log('Error fetching services:', err) }
-}
+// Вычисляемый выбранный SLA для отображения дедлайнов
 
 // Вычисляемый выбранный SLA для отображения дедлайнов
 const selectedSla = computed(() => {
@@ -270,7 +169,7 @@ const fetchTypeWorkflow = async (typeId: number, currentStatusId?: number | null
       url += `?currentStatusId=${currentStatusId}`
     }
     
-    const data = await $fetch(url)
+    const data = await $api(url.replace(API_BASE, ''))
     
     currentWorkflow.value = (data as any).workflow
     
@@ -688,16 +587,7 @@ const newAuthorData = ref({
 // Модальное окно создания сотрудника
 const showCreateAuthorDialog = ref(false)
 
-// Загрузка настроек системы
-const systemConfigs = ref<any[]>([])
-const fetchSystemConfigs = async () => {
-  try {
-    const data = await $fetch(`${API_BASE}/systemConfiguration`)
-    systemConfigs.value = (data as any).systemConfiguration || []
-  } catch (err) {
-    console.error('Error fetching system configs:', err)
-  }
-}
+// systemConfigs теперь получается через useReferenceData composable (systemConfigs computed)
 
 // Проверка - разрешено ли создание сотрудника по email
 const canCreateCustomerUserByEmail = computed(() => {
@@ -780,7 +670,7 @@ const createNewAuthor = async () => {
   
   try {
     // Создаем сотрудника
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+    const newUser = await $api('/customerUsers', {
       method: 'POST',
       body: {
         email: newAuthorData.value.email,
@@ -881,7 +771,7 @@ const fetchTicket = async () => {
 
   try {
     loading.value = true
-    const data = await $fetch(`${API_BASE}/tickets/${ticketId.value}`)
+    const data = await $api(`/tickets/${ticketId.value}`)
     const t = data as any
     ticket.id = t.id
     ticket.ticketNumber = t.ticketNumber || ''
@@ -971,7 +861,7 @@ const fetchComments = async () => {
   if (!ticketId.value) return
 
   try {
-    const data = await $fetch(`${API_BASE}/ticketComments?ticketId=${ticketId.value}`)
+    const data = await $api(`/ticketComments?ticketId=${ticketId.value}`)
     comments.value = (data as any).comments || []
   }
   catch (err) {
@@ -984,7 +874,7 @@ const fetchAttachments = async () => {
   if (!ticketId.value) return
 
   try {
-    const data = await $fetch(`${API_BASE}/ticketAttachments?ticketId=${ticketId.value}`)
+    const data = await $api(`/ticketAttachments?ticketId=${ticketId.value}`)
     existingAttachments.value = (data as any).attachments || []
   }
   catch (err) {
@@ -998,7 +888,7 @@ const fetchHistory = async () => {
 
   try {
     loadingHistory.value = true
-    const data = await $fetch(`${API_BASE}/ticketHistory?ticketId=${ticketId.value}`)
+    const data = await $api(`/ticketHistory?ticketId=${ticketId.value}`)
     historyChanges.value = (data as any).history || []
   }
   catch (err) {
@@ -1015,7 +905,7 @@ const fetchApprovalHistory = async () => {
 
   try {
     loadingApproval.value = true
-    const data = await $fetch(`${API_BASE}/ticketHistory/approval/${ticketId.value}`)
+    const data = await $api(`/ticketHistory/approval/${ticketId.value}`)
     approvalHistory.value = (data as any).approvals || []
   }
   catch (err) {
@@ -1032,7 +922,7 @@ const fetchStatusHistory = async () => {
 
   try {
     loadingStatusHistory.value = true
-    const data = await $fetch(`${API_BASE}/ticketStatusHistory/${ticketId.value}`)
+    const data = await $api(`/ticketStatusHistory/${ticketId.value}`)
     statusHistory.value = (data as any).history || []
   }
   catch (err) {
@@ -1121,9 +1011,9 @@ const performSave = async (redirectAfterSave = true) => {
 
     // Для нового тикета используем POST, для существующего - PUT
     const method = isCreating ? 'POST' : 'PUT'
-    const url = isCreating ? `${API_BASE}/tickets` : `${API_BASE}/tickets/${ticketId.value}`
+    const endpoint = isCreating ? '/tickets' : `/tickets/${ticketId.value}`
 
-    const response = await $fetch(url, {
+    const response = await $api(endpoint, {
       method,
       body: {
         ...ticketData,
@@ -1230,7 +1120,7 @@ const createAuthorFromDialog = async () => {
     showCreateAuthorDialog.value = false
 
     // Создаем сотрудника
-    const newUser = await $fetch(`${API_BASE}/customerUsers`, {
+    const newUser = await $api('/customerUsers', {
       method: 'POST',
       body: {
         email: authorSearch.value,
@@ -1276,7 +1166,7 @@ const addComment = async () => {
     savingComment.value = true
     // Находим текущего агента
     const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
-    await $fetch(`${API_BASE}/ticketComments`, {
+    await $api('/ticketComments', {
       method: 'POST',
       body: {
         ticketId: ticketId.value,
@@ -1313,11 +1203,9 @@ const saveEditComment = async (commentId: number) => {
   if (!editingCommentContent.value.trim()) return
 
   try {
-    await $fetch(`${API_BASE}/ticketComments/${commentId}`, {
+    await $api(`/ticketComments/${commentId}`, {
       method: 'PUT',
-      body: {
-        content: editingCommentContent.value,
-      },
+      body: { content: editingCommentContent.value }
     })
     editingCommentId.value = null
     editingCommentContent.value = ''
@@ -1340,8 +1228,8 @@ const deleteComment = async () => {
   if (!deletingCommentId.value) return
 
   try {
-    await $fetch(`${API_BASE}/ticketComments/${deletingCommentId.value}`, {
-      method: 'DELETE',
+    await $api(`/ticketComments/${deletingCommentId.value}`, {
+      method: 'DELETE'
     })
     showDeleteDialog.value = false
     deletingCommentId.value = null
@@ -1368,8 +1256,8 @@ const removeNewAttachment = (index: number) => {
 
 const deleteExistingAttachment = async (attachmentId: number) => {
   try {
-    await $fetch(`${API_BASE}/ticketAttachments/${attachmentId}`, {
-      method: 'DELETE',
+    await $api(`/ticketAttachments/${attachmentId}`, {
+      method: 'DELETE'
     })
     await fetchAttachments()
     showToast('Вложение удалено')
@@ -1561,8 +1449,8 @@ const uploadNewAttachments = async () => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('ticketId', ticketId.value!.toString())
-    
-    await $fetch(`${API_BASE}/ticketAttachments`, {
+
+    await $api('/ticketAttachments', {
       method: 'POST',
       body: formData,
     })
@@ -1586,22 +1474,7 @@ const cancel = () => {
 
 // Инициализация
 onMounted(async () => {
-  await Promise.all([
-    fetchPriorities(),
-    fetchQueues(),
-    fetchStates(),
-    fetchTypes(),
-    fetchCategories(),
-    fetchAgents(),
-    fetchAgentGroups(),
-    fetchCustomers(),
-    fetchAutoAssignConfig(),
-    fetchExecutorSettings(),
-    fetchServices(),
-    fetchSla(),
-    fetchCustomerUsers(),
-    fetchSystemConfigs(),
-  ])
+  await loadReferenceData()
   await fetchTicket()
   await fetchComments()
   await fetchAttachments()
@@ -1665,10 +1538,10 @@ const monthDays = Array.from({ length: 31 }, (_, i) => ({
 // Загрузка расписания для тикета
 const fetchTicketSchedule = async () => {
   if (!ticketId.value) return
-  
+
   try {
     loadingSchedule.value = true
-    const data = await $fetch(`${API_BASE}/ticketSchedules/ticket/${ticketId.value}`)
+    const data = await $api(`/ticketSchedules/ticket/${ticketId.value}`)
     ticketSchedule.value = (data as any).schedule || null
   }
   catch (err) {
@@ -1718,14 +1591,14 @@ const saveSchedule = async () => {
     
     if (ticketSchedule.value?.id) {
       // Обновляем
-      await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}`, {
+      await $api(`/ticketSchedules/${ticketSchedule.value.id}`, {
         method: 'PUT',
-        body: scheduleData,
+        body: scheduleData
       })
       showToast('Расписание обновлено')
     } else {
       // Создаём
-      await $fetch(`${API_BASE}/ticketSchedules`, {
+      await $api('/ticketSchedules', {
         method: 'POST',
         body: scheduleData,
       })
@@ -1751,10 +1624,10 @@ const saveSchedule = async () => {
 // Удалить расписание
 const deleteSchedule = async () => {
   if (!ticketSchedule.value?.id) return
-  
+
   try {
-    await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}`, {
-      method: 'DELETE',
+    await $api(`/ticketSchedules/${ticketSchedule.value.id}`, {
+      method: 'DELETE'
     })
     showToast('Расписание удалено')
     ticketSchedule.value = null
@@ -1771,7 +1644,7 @@ const runScheduleNow = async () => {
   
   try {
     saving.value = true
-    const data = await $fetch(`${API_BASE}/ticketSchedules/${ticketSchedule.value.id}/run`, {
+    const data = await $api(`/ticketSchedules/${ticketSchedule.value.id}/run`, {
       method: 'POST',
     })
     showToast((data as any).message || 'Тикет создан')

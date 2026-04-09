@@ -1,7 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router/auto'
 
-const emailRouteComponent = () => import('@/pages/apps/email/index.vue')
-
 // 👉 Redirects
 export const redirects: RouteRecordRaw[] = [
   // ℹ️ We are redirecting to different pages based on role.
@@ -15,7 +13,7 @@ export const redirects: RouteRecordRaw[] = [
       const userRole = userData.value?.role
 
       if (userRole === 'admin')
-        return { name: 'dashboards-crm' }
+        return { name: 'dashboards-analytics' }
       if (userRole === 'client')
         return { name: 'access-control' }
 
@@ -35,55 +33,17 @@ export const redirects: RouteRecordRaw[] = [
 ]
 
 export const routes: RouteRecordRaw[] = [
-  // Email filter
-  {
-    path: '/apps/email/filter/:filter',
-    name: 'apps-email-filter',
-    component: emailRouteComponent,
-    meta: {
-      navActiveLink: 'apps-email',
-      layoutWrapperClasses: 'layout-content-height-fixed',
-    },
-  },
-
-  // Email label
-  {
-    path: '/apps/email/label/:label',
-    name: 'apps-email-label',
-    component: emailRouteComponent,
-    meta: {
-      // contentClass: 'email-application',
-      navActiveLink: 'apps-email',
-      layoutWrapperClasses: 'layout-content-height-fixed',
-    },
-  },
-
-  {
-    path: '/dashboards/logistics',
-    name: 'dashboards-logistics',
-    component: () => import('@/pages/apps/logistics/dashboard.vue'),
-  },
-  {
-    path: '/dashboards/academy',
-    name: 'dashboards-academy',
-    component: () => import('@/pages/apps/academy/dashboard.vue'),
-  },
-  {
-    path: '/apps/ecommerce/dashboard',
-    name: 'apps-ecommerce-dashboard',
-    component: () => import('@/pages/dashboards/ecommerce.vue'),
-  },
-  // RoleCards - моковая страница
+  // RoleCards - страница списка ролей
   {
     path: '/apps/roles/cards',
     name: 'apps-roles-cards',
     component: () => import('@/views/apps/roles/RoleCards.vue'),
   },
-  // UserList - моковая страница пользователей
+  // SystemConfiguration - страница Конфигурация системы
   {
-    path: '/apps/roles/users',
-    name: 'apps-roles-users',
-    component: () => import('@/views/apps/roles/UserList.vue'),
+    path: '/apps/tickets/system-configuration',
+    name: 'apps-tickets-system-configuration',
+    component: () => import('@/pages/apps/settings/ticket-settings/SystemConfiguration.vue'),
   },
   // Backup - страница резервного копирования
   {
@@ -96,11 +56,5 @@ export const routes: RouteRecordRaw[] = [
     path: '/apps/integrity-check',
     name: 'apps-integrity-check',
     component: () => import('@/pages/apps/IntegrityCheck.vue'),
-  },
-  // SystemConfiguration - страница Конфигурация системы
-  {
-    path: '/apps/tickets/system-configuration',
-    name: 'apps-tickets-system-configuration',
-    component: () => import('@/pages/apps/settings/ticket-settings/SystemConfiguration.vue'),
   },
 ]

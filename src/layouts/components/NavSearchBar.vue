@@ -33,36 +33,18 @@ const suggestionGroups: SuggestionGroup[] = [
     title: 'Popular Searches',
     content: [
       { icon: 'bx-bar-chart', title: 'Analytics', url: { name: 'dashboards-analytics' } },
-      { icon: 'bx-doughnut-chart', title: 'CRM', url: { name: 'dashboards-crm' } },
-      { icon: 'bx-cart', title: 'eCommerce', url: { name: 'dashboards-ecommerce' } },
-      { icon: 'bx-car', title: 'Logistics', url: { name: 'dashboards-logistics' } },
+      { icon: 'bx-ticket', title: 'Tickets', url: { name: 'apps-tickets' } },
+      { icon: 'bx-chat', title: 'Chat', url: { name: 'apps-chat' } },
+      { icon: 'bx-grid', title: 'Kanban', url: { name: 'apps-kanban' } },
     ],
   },
   {
     title: 'Apps & Pages',
     content: [
-      { icon: 'bx-calendar', title: 'Calendar', url: { name: 'apps-calendar' } },
+      { icon: 'bx-user', title: 'Agents', url: { name: 'apps-agents-groups' } },
       { icon: 'bx-lock-alt', title: 'Roles & Permissions', url: { name: 'apps-roles' } },
-      { icon: 'bx-cog', title: 'Account Settings', url: { name: 'pages-account-settings-tab', params: { tab: 'account' } } },
-      { icon: 'bx-copy', title: 'Dialog Examples', url: { name: 'pages-dialog-examples' } },
-    ],
-  },
-  {
-    title: 'User Interface',
-    content: [
-      { icon: 'bx-text', title: 'Typography', url: { name: 'pages-typography' } },
-      { icon: 'bx-menu', title: 'Accordion', url: { name: 'components-expansion-panel' } },
-      { icon: 'bx-error', title: 'Alert', url: { name: 'components-alert' } },
-      { icon: 'bx-check-square', title: 'Cards', url: { name: 'pages-cards-card-basic' } },
-    ],
-  },
-  {
-    title: 'Forms & Tables',
-    content: [
-      { icon: 'bx-radio-circle-marked', title: 'Radio', url: { name: 'forms-radio' } },
-      { icon: 'bx-file', title: 'Form Layouts', url: { name: 'forms-form-layouts' } },
-      { icon: 'bx-table', title: 'Table', url: { name: 'tables-data-table' } },
-      { icon: 'bx-edit', title: 'Editor', url: { name: 'forms-editors' } },
+      { icon: 'bx-book', title: 'Knowledge Base', url: { name: 'apps-knowledge-base' } },
+      { icon: 'bx-package', title: 'Services', url: { name: 'apps-services' } },
     ],
   },
 ]
@@ -75,14 +57,14 @@ const noDataSuggestions: Suggestion[] = [
     url: { name: 'dashboards-analytics' },
   },
   {
-    title: 'CRM',
-    icon: 'bx-doughnut-chart',
-    url: { name: 'dashboards-crm' },
+    title: 'Tickets',
+    icon: 'bx-ticket',
+    url: { name: 'apps-tickets' },
   },
   {
-    title: 'eCommerce',
-    icon: 'bx-cart',
-    url: { name: 'dashboards-ecommerce' },
+    title: 'Agents',
+    icon: 'bx-user',
+    url: { name: 'apps-agents-groups' },
   },
 ]
 

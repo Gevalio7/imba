@@ -58,7 +58,6 @@ export default [
     children: [
       { title: 'Роли', to: 'apps-roles' },
       { title: 'Список ролей', to: 'apps-roles-cards' },
-      { title: 'Пользователи', to: 'apps-roles-users' },
       { title: 'Разрешения', to: 'apps-permissions' },
     ],
   },

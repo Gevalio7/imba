@@ -51,7 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
         "
       />
       <Component
-        :is="layoutConfig.app.i18n.enable ? 'i18n-t' : 'span'"
+        :is="layoutConfig.app.i18n.enable && item.title ? 'i18n-t' : 'span'"
         class="nav-item-title"
         v-bind="getDynamicI18nProps(item.title, 'span')"
       >

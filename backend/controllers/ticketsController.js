@@ -15,6 +15,17 @@ const CustomerUsers = require('../models/customerUsers');
 const SystemConfiguration = require('../models/systemConfiguration');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+let configCache = null;
+
+async function getConfigValue(key, defaultValue = null) {
+  if (!configCache) {
+    const result = await SystemConfiguration.getAll({ itemsPerPage: 50 });
+    configCache = result.systemConfiguration || [];
+  }
+  const found = configCache.find(c => c.key === key || c.name === key);
+  return found?.value === 'true' ? true : found?.value === 'false' ? false : found?.value || defaultValue;
+}
+
 // Маппинг названий полей для отображения
 const fieldDisplayNames = {
   title: 'Заголовок',
@@ -147,97 +158,64 @@ const createTicket = asyncHandler(async (req, res) => {
   data.slaId = req.body.slaId || null;
   
   // =====================================================
-  // НОВАЯ ЛОГИКА: Обработка ownerId - создание сотрудника по email
+  // ЛОГИКА: Обработка ownerId - создание сотрудника по email
   // =====================================================
   let ownerId = req.body.ownerId || null;
   
-  // Если ownerId передан как строка (email) - ищем или создаем сотрудника
   if (ownerId && typeof ownerId === 'string' && ownerId.includes('@')) {
-    try {
-      // Проверяем параметр create_customer_user_by_email
-      const configResult = await SystemConfiguration.getAll({ q: 'create_customer_user_by_email', itemsPerPage: 1 });
-      const config = configResult.systemConfiguration?.[0];
-      const shouldCreateUser = config?.value === 'true';
+    const shouldCreateUser = await getConfigValue('create_customer_user_by_email', false);
+    
+    if (shouldCreateUser) {
+      let existingUser = await CustomerUsers.getByEmail(ownerId);
       
-      if (shouldCreateUser) {
-        // Ищем существующего сотрудника по email
-        let existingUser = await CustomerUsers.getByEmail(ownerId);
-        
-        if (existingUser) {
-          // Сотрудник найден - используем его ID
-          ownerId = existingUser.id;
-          console.log(`✅ Найден существующий сотрудник по email: ${ownerId}, ID: ${ownerId}`);
-        } else {
-          // Сотрудник не найден - создаём нового
-          const newCustomerUser = await CustomerUsers.create({
-            firstName: 'Новый',
-            lastName: 'Сотрудник',
-            email: ownerId,
-            login: ownerId,
-            customerId: req.body.companyId || null,
-          });
-          
-          ownerId = newCustomerUser.id;
-          console.log(`✅ Создан новый сотрудник по email: ${ownerId}, ID: ${ownerId}`);
-        }
-        
-        // Также устанавливаем companyId если она ещё не установлена
+      if (existingUser) {
+        ownerId = existingUser.id;
         if (!data.companyId && existingUser?.customerId) {
           data.companyId = existingUser.customerId;
         }
       } else {
-        // Параметр отключён - не создаём сотрудника
-        ownerId = null;
+        const newCustomerUser = await CustomerUsers.create({
+          firstName: 'Новый',
+          lastName: 'Сотрудник',
+          email: ownerId,
+          login: ownerId,
+          customerId: req.body.companyId || null,
+        });
+        
+        ownerId = newCustomerUser.id;
       }
-    } catch (configError) {
-      console.error('Ошибка проверки конфигурации:', configError);
+    } else {
       ownerId = null;
     }
   }
-  // Если ownerId передан как объект с email (для создания нового сотрудника с указанием имени)
   else if (ownerId && typeof ownerId === 'object' && ownerId.email) {
-    try {
-      const configResult = await SystemConfiguration.getAll({ q: 'create_customer_user_by_email', itemsPerPage: 1 });
-      const config = configResult.systemConfiguration?.[0];
-      const shouldCreateUser = config?.value === 'true';
+    const shouldCreateUser = await getConfigValue('create_customer_user_by_email', false);
+    
+    if (shouldCreateUser) {
+      let existingUser = await CustomerUsers.getByEmail(ownerId.email);
       
-      if (shouldCreateUser) {
-        // Ищем существующего сотрудника по email
-        let existingUser = await CustomerUsers.getByEmail(ownerId.email);
-        
-        if (existingUser) {
-          ownerId = existingUser.id;
-          console.log(`✅ Найден существующий сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
-        } else {
-          // Создаём нового сотрудника с указанным именем
-          const newCustomerUser = await CustomerUsers.create({
-            firstName: ownerId.firstName || 'Новый',
-            lastName: ownerId.lastName || 'Сотрудник',
-            email: ownerId.email,
-            login: ownerId.email,
-            customerId: ownerId.customerId || req.body.companyId || null,
-          });
-          
-          ownerId = newCustomerUser.id;
-          console.log(`✅ Создан новый сотрудник по email: ${ownerId.email}, ID: ${ownerId}`);
-        }
-        
+      if (existingUser) {
+        ownerId = existingUser.id;
         if (!data.companyId && existingUser?.customerId) {
           data.companyId = existingUser.customerId;
         }
       } else {
-        ownerId = null;
+        const newCustomerUser = await CustomerUsers.create({
+          firstName: ownerId.firstName || 'Новый',
+          lastName: ownerId.lastName || 'Сотрудник',
+          email: ownerId.email,
+          login: ownerId.email,
+          customerId: ownerId.customerId || req.body.companyId || null,
+        });
+        
+        ownerId = newCustomerUser.id;
       }
-    } catch (configError) {
-      console.error('Ошибка проверки конфигурации:', configError);
+    } else {
       ownerId = null;
     }
   }
   
   data.ownerId = ownerId;
-  // =====================================================
-  // КОНЕЦ НОВОЙ ЛОГИКИ
-  // =====================================================
   
   // SLA поля
   if (req.body.responseDeadline) data.responseDeadline = req.body.responseDeadline;
@@ -255,49 +233,29 @@ const createTicket = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'title is required' });
   }
 
-  // =====================================================
-  // НОВАЯ ЛОГИКА: Автоматическое определение начального статуса
-  // =====================================================
   if (!req.body.stateId && data.typeId) {
-    // Получаем тип с workflow_id
     const type = await Types.getById(data.typeId);
     
     if (type && type.workflowId) {
-      // Получаем начальный переход (source_status_id IS NULL)
       const initialTransition = await WorkflowTransitions.getInitialTransition(type.workflowId);
       
       if (initialTransition) {
         data.stateId = initialTransition.targetStatusId;
-        console.log(`📌 Auto-setting initial status: ${initialTransition.statusName} (ID: ${initialTransition.targetStatusId})`);
       }
     }
   } else if (req.body.stateId) {
     data.stateId = req.body.stateId;
    }
 
-   // =====================================================
-   // НОВАЯ ЛОГИКА: Автоматическое назначение агента как исполнителя
-   // =====================================================
    let executorAgentIds = [];
-   let executorGroupIds = [];
 
-   // Проверяем настройку автоматического назначения
-   try {
-     const configResult = await SystemConfiguration.getAll({ q: 'agent_auto_assign_as_executor', itemsPerPage: 1 });
-     const config = configResult.systemConfiguration?.[0];
-     const shouldAutoAssign = config?.value === 'true';
+   const shouldAutoAssign = await getConfigValue('agent_auto_assign_as_executor', false);
 
-     if (shouldAutoAssign && ownerId) {
-       // Проверяем, является ли создатель агентом
-       const agent = await Agents.getById(ownerId);
-       if (agent) {
-         // Создатель является агентом - добавляем его как исполнителя
-         executorAgentIds.push(ownerId);
-         console.log(`🤖 Автоматически назначен агент ${ownerId} как исполнитель тикета`);
-       }
+   if (shouldAutoAssign && ownerId) {
+     const agent = await Agents.getById(ownerId);
+     if (agent) {
+       executorAgentIds.push(ownerId);
      }
-   } catch (configError) {
-     console.error('Ошибка проверки настройки автоматического назначения:', configError);
    }
 
    // Поля исполнителей (массивы ID)
@@ -332,28 +290,25 @@ const createTicket = asyncHandler(async (req, res) => {
   const newTicket = await Tickets.create(data);
 
   // =====================================================
-  // НОВАЯ ЛОГИКА: Автоматический расчет SLA дедлайнов при создании
+  // SLA дедлайны при создании
   // =====================================================
   if (newTicket.slaId && !data.responseDeadline && !data.resolutionDeadline) {
     try {
       const sla = await Sla.getById(newTicket.slaId);
       if (sla) {
         const now = new Date();
-        // responseTime - в часах (умножаем на 60*60*1000), solutionTime - в минутах (умножаем на 60*1000)
         const responseDeadline = sla.responseTime ? new Date(now.getTime() + sla.responseTime * 60 * 60 * 1000) : null;
         const resolutionDeadline = sla.solutionTime ? new Date(now.getTime() + sla.solutionTime * 60 * 1000) : null;
 
-        // Обновляем тикет с дедлайнами
         const updatedWithDeadlines = await Tickets.update(newTicket.id, {
           responseDeadline,
           resolutionDeadline,
         });
 
-        console.log(`📊 SLA дедлайны установлены: response=${responseDeadline}, resolution=${resolutionDeadline}`);
         Object.assign(newTicket, updatedWithDeadlines);
       }
     } catch (slaError) {
-      console.error('Ошибка расчета SLA дедлайнов:', slaError);
+      // silent fail
     }
   }
 
@@ -463,7 +418,7 @@ const updateTicket = asyncHandler(async (req, res) => {
         currentTicket.stateId,
         newStatusId
       );
-      
+       
       if (!validTransition) {
         return res.status(403).json({ 
           message: 'Invalid transition',
@@ -476,11 +431,8 @@ const updateTicket = asyncHandler(async (req, res) => {
           workflowId: type.workflowId,
         });
       }
-      
-      console.log(`✅ Valid transition: ${validTransition.actionLabel} (ID: ${validTransition.id})`);
     } else {
       // Если нет воркфлоу - разрешаем любой переход (для обратной совместимости)
-      console.log(`⚠️ No workflow configured for type ${currentTicket.typeId}, allowing transition`);
     }
     
     data.stateId = newStatusId;
@@ -496,29 +448,24 @@ const updateTicket = asyncHandler(async (req, res) => {
   }
 
   // =====================================================
-  // НОВАЯ ЛОГИКА: Пересчет SLA дедлайнов при изменении SLA
+  // Пересчет SLA дедлайнов при изменении SLA
   // =====================================================
   if (req.body.slaId !== undefined && req.body.slaId !== currentTicket.slaId) {
-    // Если SLA изменился - пересчитываем дедлайны
     if (req.body.slaId) {
       try {
         const sla = await Sla.getById(req.body.slaId);
         if (sla) {
           const now = new Date();
-          // responseTime - в часах (умножаем на 60*60*1000), solutionTime - в минутах (умножаем на 60*1000)
           const responseDeadline = sla.responseTime ? new Date(now.getTime() + sla.responseTime * 60 * 60 * 1000) : null;
           const resolutionDeadline = sla.solutionTime ? new Date(now.getTime() + sla.solutionTime * 60 * 1000) : null;
 
-          // Обновляем дедлайны
           await Tickets.update(ticketId, {
             responseDeadline,
             resolutionDeadline,
           });
-
-          console.log(`📊 SLA дедлайны пересчитаны: response=${responseDeadline}, resolution=${resolutionDeadline}`);
         }
       } catch (slaError) {
-        console.error('Ошибка пересчета SLA дедлайнов:', slaError);
+        // silent fail
       }
     } else {
       // Если SLA убран - очищаем дедлайны
@@ -548,6 +495,7 @@ const updateTicket = asyncHandler(async (req, res) => {
       else if (field === 'companyId') neededLookups.add('customers');
       else if (field === 'serviceId') neededLookups.add('services');
       else if (field === 'slaId') neededLookups.add('sla');
+      else if (field === 'executorGroupIds') neededLookups.add('agentsGroups');
     }
   }
   
@@ -563,6 +511,11 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (neededLookups.has('customers')) { lookupPromises.push(Customers.getAll({ itemsPerPage: 1000 })); lookupOrder.push('customers'); }
   if (neededLookups.has('services')) { lookupPromises.push(Services.getAll({ itemsPerPage: 1000 })); lookupOrder.push('services'); }
   if (neededLookups.has('sla')) { lookupPromises.push(Sla.getAll({ itemsPerPage: 1000 })); lookupOrder.push('sla'); }
+  if (neededLookups.has('agentsGroups')) { 
+    const AgentsGroups = require('../models/agentsGroups');
+    lookupPromises.push(AgentsGroups.getAll({ itemsPerPage: 1000 })); 
+    lookupOrder.push('agentsGroups'); 
+  }
   
   const lookupResults = await Promise.all(lookupPromises);
   
@@ -579,21 +532,22 @@ const updateTicket = asyncHandler(async (req, res) => {
     else if (key === 'customers') lookupData.customersList = result.customers || [];
     else if (key === 'services') lookupData.servicesList = result.services || [];
     else if (key === 'sla') lookupData.slaList = result.sla || [];
+    else if (key === 'agentsGroups') lookupData.agentsGroupsList = result.agentsGroups || [];
   });
   
-  const { typesList = [], typeCategoriesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], servicesList = [], slaList = [] } = lookupData;
+  const { typesList = [], typeCategoriesList = [], prioritiesList = [], queuesList = [], statesList = [], agentsList = [], customersList = [], servicesList = [], slaList = [], agentsGroupsList = [] } = lookupData;
+  
+  const historyEntries = [];
   
   for (const field of fieldsToTrack) {
     const oldValue = currentTicket[field];
     const newValue = data[field];
     
-    // Пропускаем если поле не было изменено или не было передано
     if (newValue === undefined || oldValue === newValue) continue;
     
     let oldDisplayValue = String(oldValue ?? '');
     let newDisplayValue = String(newValue ?? '');
     
-    // Для полей с внешними ключами получаем отображаемые имена
     if (field === 'typeId') {
       const oldType = typesList.find(t => t.id === oldValue);
       const newType = typesList.find(t => t.id === newValue);
@@ -657,7 +611,6 @@ const updateTicket = asyncHandler(async (req, res) => {
       newDisplayValue = String(newValue ?? '');
     }
     else if (field === 'description') {
-      // Для описания показываем краткую версию
       const truncate = (str, len = 50) => {
         if (!str) return '';
         return str.length > len ? str.substring(0, len) + '...' : str;
@@ -666,7 +619,6 @@ const updateTicket = asyncHandler(async (req, res) => {
       newDisplayValue = truncate(String(newValue ?? ''));
     }
     else if (field === 'executorAgentIds') {
-      // Для исполнителей-агентов показываем имена
       const oldIds = Array.isArray(oldValue) ? oldValue : [];
       const newIds = Array.isArray(newValue) ? newValue : [];
       const oldAgents = agentsList.filter(a => oldIds.includes(a.id));
@@ -675,50 +627,35 @@ const updateTicket = asyncHandler(async (req, res) => {
       newDisplayValue = newAgents.length > 0 ? newAgents.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') : '-';
     }
     else if (field === 'executorGroupIds') {
-      // Для групп исполнителей показываем названия
       const oldIds = Array.isArray(oldValue) ? oldValue : [];
       const newIds = Array.isArray(newValue) ? newValue : [];
-      // Загружаем группы агентов если изменяются executorGroupIds
-      if (!neededLookups.has('agentsGroups')) {
-        const AgentsGroups = require('../models/agentsGroups');
-        try {
-          const groupsResult = await AgentsGroups.getAll({ itemsPerPage: 1000 });
-          const groupsList = groupsResult.agentsGroups || [];
-          const oldGroups = groupsList.filter(g => oldIds.includes(g.id));
-          const newGroups = groupsList.filter(g => newIds.includes(g.id));
-          oldDisplayValue = oldGroups.length > 0 ? oldGroups.map(g => g.name).join(', ') : '-';
-          newDisplayValue = newGroups.length > 0 ? newGroups.map(g => g.name).join(', ') : '-';
-        } catch (err) {
-          console.error('Error loading agent groups for history:', err);
-          oldDisplayValue = oldIds.join(', ');
-          newDisplayValue = newIds.join(', ');
-        }
-      } else {
-        // Если группы уже загружены, используем их
-        oldDisplayValue = oldIds.length > 0 ? oldIds.join(', ') : '-';
-        newDisplayValue = newIds.length > 0 ? newIds.join(', ') : '-';
-      }
+      const oldGroups = agentsGroupsList.filter(g => oldIds.includes(g.id));
+      const newGroups = agentsGroupsList.filter(g => newIds.includes(g.id));
+      oldDisplayValue = oldGroups.length > 0 ? oldGroups.map(g => g.name).join(', ') : '-';
+      newDisplayValue = newGroups.length > 0 ? newGroups.map(g => g.name).join(', ') : '-';
     }
     
-    // Записываем в историю
-    await TicketHistory.create({
-      ticketId: ticketId,
-      changedBy: changedBy,
+    historyEntries.push({
+      ticketId,
+      changedBy,
       fieldName: field,
       oldValue: oldDisplayValue,
       newValue: newDisplayValue,
     });
 
-    // Если изменился статус, записываем в историю переходов
     if (field === 'stateId') {
       await TicketStatusHistory.recordTransition(
         ticketId,
-        oldValue, // fromStatusId
-        newValue, // toStatusId
+        oldValue,
+        newValue,
         changedBy,
-        null // actionLabel - можно добавить, если есть информация о переходе
+        null
       );
     }
+  }
+  
+  if (historyEntries.length > 0) {
+    await TicketHistory.batchCreate(historyEntries);
   }
   
   res.json(updatedTicket);

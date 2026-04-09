@@ -15,9 +15,9 @@ const protect = (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       console.log('Decoded token:', decoded);
 
-      // Добавляем userId в request
-      req.userId = decoded.userId;
-      console.log('Set req.userId:', req.userId);
+      // Добавляем user в request
+      req.user = { id: decoded.userId };
+      console.log('Set req.user.id:', req.user.id);
 
       next();
     } catch (error) {
