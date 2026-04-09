@@ -313,6 +313,14 @@ const ticket = reactive({
   slaId: undefined as number | undefined,
   responseDeadline: undefined as string | undefined,
   resolutionDeadline: undefined as string | undefined,
+  // Эскалация
+  observerAgentIds: [] as number[],
+  observerGroupIds: [] as number[],
+  escalationCount: 0,
+  isEscalated: false,
+  // Начальные значения для отслеживания изменений
+  initialExecutorAgentIds: [] as number[],
+  initialExecutorGroupIds: [] as number[],
 })
 
 // Watchers для ограничения множественного выбора
@@ -337,6 +345,56 @@ watch(() => ticket.executorGroupIds, (newVal) => {
 watch(() => ticket.executorAgentIds, (newVal) => {
   if (allowMultipleExecutors.value?.value === 'false' && newVal.length > 1) {
     ticket.executorAgentIds = [newVal[0]]
+  }
+})
+
+// Эскалация
+const ESCALATION_STATUS_TYPE = 'Эскалирована'
+
+const performEscalation = () => {
+  console.log('🚀 Выполняем эскалацию...')
+
+  // a) Добавляем старых исполнителей в наблюдатели
+  const previousExecutorAgentIds = ticket.initialExecutorAgentIds || ticket.executorAgentIds
+  const previousExecutorGroupIds = ticket.initialExecutorGroupIds || ticket.executorGroupIds
+
+  ticket.observerAgentIds = [...ticket.observerAgentIds, ...previousExecutorAgentIds.filter((id: number) => !ticket.observerAgentIds.includes(id))]
+  ticket.observerGroupIds = [...ticket.observerGroupIds, ...previousExecutorGroupIds.filter((id: number) => !ticket.observerGroupIds.includes(id))]
+
+  console.log('🚀 Добавлены наблюдатели:', {
+    addedAgents: previousExecutorAgentIds,
+    addedGroups: previousExecutorGroupIds,
+  })
+
+  // b) Увеличиваем счётчик эскалаций
+  ticket.escalationCount += 1
+
+  // c) Устанавливаем флаг эскалирования
+  ticket.isEscalated = true
+
+  console.log('🚀 Установлены флаги эскалации:', {
+    escalationCount: ticket.escalationCount,
+    isEscalated: ticket.isEscalated,
+  })
+}
+
+// Watcher для эскалации при изменении статуса
+watch(() => ticket.stateId, async (newStateId, oldStateId) => {
+  console.log('🔍 Watcher stateId:', { newStateId, oldStateId })
+  if (!newStateId || newStateId === oldStateId) return
+  const newStatus = states.value.find((s: any) => s.id === newStateId)
+  console.log('🔍 New status:', newStatus?.name, 'type:', newStatus?.type)
+  if (newStatus?.type === ESCALATION_STATUS_TYPE) {
+    console.log('🚀 Status changed to escalation type')
+    // Валидация: при эскалации должны быть выбраны исполнители или группы
+    if (ticket.executorAgentIds.length === 0 && ticket.executorGroupIds.length === 0) {
+      console.log('🚫 Эскалация заблокирована: не выбраны исполнители/группы')
+      showToast('При эскалации укажите группу исполнителей и/или исполнителя', 'error')
+      return
+    }
+    performEscalation()
+    // Save silently
+    await performSave(false)
   }
 })
 
@@ -847,6 +905,14 @@ const fetchTicket = async () => {
     ticket.serviceId = t.serviceId || undefined
     ticket.responseDeadline = t.responseDeadline || undefined
     ticket.resolutionDeadline = t.resolutionDeadline || undefined
+    // Эскалация
+    ticket.observerAgentIds = t.observerAgentIds || []
+    ticket.observerGroupIds = t.observerGroupIds || [] // TODO: типизировать - добавить поле в API/бэкенд
+    ticket.escalationCount = t.escalationCount || 0
+    ticket.isEscalated = t.isEscalated || false
+    // Сохраняем начальные значения исполнителей для определения изменений при эскалации
+    ticket.initialExecutorAgentIds = t.executorAgentIds || []
+    ticket.initialExecutorGroupIds = t.executorGroupIds || []
     description.value = t.description || ''
     
     // Загружаем вложения
@@ -1022,9 +1088,14 @@ const formatTimeInStatus = (interval: string | Record<string, number> | null) =>
 // Функция выполнения сохранения
 const performSave = async (redirectAfterSave = true) => {
   try {
+    // Находим текущего агента
+    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+
+    // Определяем, создаем ли новый тикет
+    const isCreating = ticketId.value === null
+
     // Подготавливаем данные для отправки
     const ticketData = {
-      id: ticket.id,
       ticketNumber: ticket.ticketNumber,
       title: ticket.title,
       typeId: ticket.typeId ?? null,
@@ -1041,19 +1112,33 @@ const performSave = async (redirectAfterSave = true) => {
       slaId: ticket.slaId ?? null,
       responseDeadline: ticket.responseDeadline ?? null,
       resolutionDeadline: ticket.resolutionDeadline ?? null,
+      // Эскалирование
+      isEscalated: ticket.isEscalated,
+      escalationCount: ticket.escalationCount,
+      observerAgentIds: ticket.observerAgentIds,
+      observerGroupIds: ticket.observerGroupIds,
     }
 
-    // Находим текущего агента для истории изменений
-    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+    // Для нового тикета используем POST, для существующего - PUT
+    const method = isCreating ? 'POST' : 'PUT'
+    const url = isCreating ? `${API_BASE}/tickets` : `${API_BASE}/tickets/${ticketId.value}`
 
-    await $fetch(`${API_BASE}/tickets/${ticketId.value}`, {
-      method: 'PUT',
+    const response = await $fetch(url, {
+      method,
       body: {
         ...ticketData,
+        ...(isCreating ? {} : { id: ticket.id }), // Для обновления передаем id
         changedBy: currentAgent?.id,
         description: description.value,
       },
     })
+
+    // Для нового тикета обновляем ticket.id
+    if (isCreating && response.id) {
+      ticket.id = response.id
+    }
+
+
 
     // Загружаем новые вложения
     if (newAttachments.value.length > 0) {
@@ -1061,18 +1146,26 @@ const performSave = async (redirectAfterSave = true) => {
     }
 
     if (redirectAfterSave) {
-      showToast('Тикет успешно обновлён')
-      await fetchTicket() // Обновляем данные включая SLA дедлайны
-      await fetchAttachments()
-      await fetchHistory() // Обновляем историю изменений
-      await fetchStatusHistory() // Обновляем историю переходов
-      newAttachments.value = []
+      if (isCreating) {
+        showToast('Тикет успешно создан')
+        // Перенаправляем на список тикетов
+        router.push('/apps/tickets')
+      } else {
+        showToast('Тикет успешно обновлён')
+        await fetchTicket() // Обновляем данные включая SLA дедлайны
+        await fetchAttachments()
+        await fetchHistory() // Обновляем историю изменений
+        await fetchStatusHistory() // Обновляем историю переходов
+        newAttachments.value = []
 
-      // Перенаправляем на список тикетов
-      router.push('/apps/tickets')
+        // Перенаправляем на список тикетов
+        router.push('/apps/tickets')
+      }
     } else {
       // Тихое сохранение без уведомлений и перенаправления
-      await fetchTicket()
+      if (!isCreating) {
+        await fetchTicket()
+      }
     }
   }
   catch (err: any) {
@@ -2608,6 +2701,35 @@ const formatDateOnly = (dateStr: string | null) => {
                   </VBtn>
                 </template>
               </AppSelect>
+
+              <!-- Группы наблюдателей -->
+              <AppSelect
+                v-model="ticket.observerGroupIds"
+                :items="agentGroupOptions"
+                label="Группы наблюдателей"
+                placeholder="Наблюдатели добавляются автоматически при эскалации"
+                multiple
+                chips
+                readonly
+              />
+
+              <!-- Наблюдатели -->
+              <AppSelect
+                v-model="ticket.observerAgentIds"
+                :items="agentOptions"
+                label="Наблюдатели"
+                placeholder="Наблюдатели добавляются автоматически при эскалации"
+                multiple
+                chips
+                readonly
+              />
+
+              <!-- Счётчик эскалаций -->
+              <AppTextField
+                :model-value="ticket.escalationCount"
+                label="Количество эскалаций"
+                readonly
+              />
 
               <AppSelect
                 v-model="ticket.companyId"

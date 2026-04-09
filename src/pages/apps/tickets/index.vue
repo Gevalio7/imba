@@ -28,6 +28,7 @@ interface Ticket {
   executorGroupIds: number[] | null
   executorAgents: { id: number; login: string; firstName: string | null; lastName: string | null }[] | null
   executorGroups: { id: number; name: string }[] | null
+  observerAgents?: { id: number; login: string; firstName: string | null; lastName: string | null }[] | null
   companyId: number | null
   companyName: string | null
   serviceId: number | null
@@ -42,6 +43,9 @@ interface Ticket {
   firstResponseAt: string | null
   slaViolated: boolean | null
   pendingStartAt: string | null
+  isEscalated?: boolean
+  escalationCount?: number
+  observerAgentIds?: number[]
 }
 
 // API base URL
@@ -124,6 +128,7 @@ const availableColumns: ColumnSetting[] = [
   { key: 'ownerLogin', title: 'Автор', visible: true, sortable: false, type: 'select' },
   { key: 'executorGroupIds', title: 'Группы', visible: true, sortable: false, type: 'select' },
   { key: 'executorAgentIds', title: 'Исполнители', visible: true, sortable: false, type: 'select' },
+  { key: 'observerAgentIds', title: 'Наблюдатели', visible: true, sortable: false, type: 'select' },
   { key: 'companyName', title: 'Компания', visible: true, sortable: false, type: 'select' },
   { key: 'serviceName', title: 'Сервис', visible: true, sortable: false, type: 'select' },
   { key: 'createdAt', title: 'Дата создания', visible: true, sortable: true, type: 'date' },
@@ -207,6 +212,8 @@ const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string => {
     return ticket.executorGroups?.map(g => g.name).join(', ') || ''
   } else if (columnKey === 'executorAgentIds') {
     return ticket.executorAgents?.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') || ''
+  } else if (columnKey === 'observerAgentIds') {
+    return ticket.observerAgents?.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') || ''
   } else if (columnKey === 'ownerLogin') {
     return getOwnerName(ticket)
   }
@@ -489,6 +496,14 @@ const loadUniqueValuesFromTickets = () => {
       ticket.executorAgents.forEach(a => {
         const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login
         if (name) uniqueValues.executorAgentIds!.add(name)
+      })
+    }
+    // Наблюдатели
+    if (ticket.observerAgents && ticket.observerAgents.length > 0) {
+      if (!uniqueValues.observerAgentIds) uniqueValues.observerAgentIds = new Set()
+      ticket.observerAgents.forEach(a => {
+        const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login
+        if (name) uniqueValues.observerAgentIds!.add(name)
       })
     }
   })
@@ -911,6 +926,14 @@ onMounted(() => {
           <span v-else class="text-body-2 text-medium-emphasis">-</span>
         </template>
 
+        <!-- Наблюдатели -->
+        <template #item.observerAgentIds="{ item }">
+          <span v-if="item.observerAgentIds && item.observerAgentIds.length > 0" class="text-body-2">
+            {{ item.observerAgentIds.length }} наблюдатель{{ item.observerAgentIds.length === 1 ? '' : 'ей' }}
+          </span>
+          <span v-else class="text-body-2 text-medium-emphasis">-</span>
+        </template>
+
         <!-- Приоритет -->
         <template #item.priorityName="{ item }">
           <VChip
@@ -927,15 +950,26 @@ onMounted(() => {
 
         <!-- Статус -->
         <template #item.stateName="{ item }">
-          <VChip
-            v-if="item.stateName"
-            :color="resolveStateColor(item.stateColor)"
-            density="compact"
-            label
-            size="small"
-          >
-            {{ item.stateName }}
-          </VChip>
+          <div v-if="item.stateName" class="d-flex align-center gap-1">
+            <VChip
+              :color="resolveStateColor(item.stateColor)"
+              density="compact"
+              label
+              size="small"
+            >
+              {{ item.stateName }}
+            </VChip>
+            <VChip
+              v-if="item.isEscalated"
+              color="warning"
+              density="compact"
+              label
+              size="small"
+              variant="outlined"
+            >
+              Эскалирован
+            </VChip>
+          </div>
           <span v-else class="text-body-2">-</span>
         </template>
 

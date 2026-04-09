@@ -139,7 +139,23 @@ class TicketComments {
       `;
       const result = await pool.query(query, [ticketId, content, authorId || null, isInternal]);
 
-      return result.rows[0];
+      if (!result.rows[0]) return null;
+
+      const row = result.rows[0];
+      const authorQuery = await pool.query(
+        `SELECT first_name as "authorFirstName", last_name as "authorLastName", login as "authorLogin", avatar as "authorAvatar" FROM agents WHERE id = $1`,
+        [row.authorId]
+      );
+
+      const author = authorQuery.rows[0];
+      return {
+        ...row,
+        authorFirstName: author?.authorFirstName || null,
+        authorLastName: author?.authorLastName || null,
+        authorLogin: author?.authorLogin || null,
+        authorAvatar: author?.authorAvatar || null,
+        authorName: [author?.authorFirstName, author?.authorLastName].filter(Boolean).join(' ') || author?.authorLogin || 'Неизвестный',
+      };
     } catch (error) {
       console.error('Error in create:', error);
       throw error;

@@ -33,6 +33,9 @@ export interface Ticket {
   createdAt?: string
   updatedAt?: string
   isActive?: boolean
+  isEscalated?: boolean
+  escalationCount?: number
+  observerAgentIds?: number[]
 }
 
 // Ticket creation payload
@@ -47,6 +50,9 @@ export interface TicketCreate {
   companyId?: number | null
   slaId?: number | null
   isActive?: boolean
+  isEscalated?: boolean
+  escalationCount?: number
+  observerAgentIds?: number[]
 }
 
 // Ticket update payload
@@ -61,4 +67,7 @@ export interface TicketUpdate {
   companyId?: number | null
   slaId?: number | null
   isActive?: boolean
+  isEscalated?: boolean
+  escalationCount?: number
+  observerAgentIds?: number[]
 }

@@ -3,10 +3,10 @@ const path = require('path');
 const { pool } = require('./config/db');
 
 async function runMigration() {
-  const migrationPath = path.join(__dirname, 'migrations', 'add-agent-auto-assign-setting.sql');
+  const migrationPath = path.join(__dirname, 'migrations', 'add-escalation-fields-to-tickets.sql');
 
   try {
-    console.log('🚀 Запуск миграции: add-agent-auto-assign-setting.sql');
+    console.log('🚀 Запуск миграции: add-escalation-fields-to-tickets.sql');
 
     const sql = fs.readFileSync(migrationPath, 'utf8');
     console.log('📄 SQL для выполнения:', sql);
