@@ -310,14 +310,24 @@ const createTicket = asyncHandler(async (req, res) => {
      data.executorAgentIds = executorAgentIds;
    }
 
-   if (req.body.executorGroupIds !== undefined) {
-     // Убеждаемся что это массив
-     data.executorGroupIds = Array.isArray(req.body.executorGroupIds) ? req.body.executorGroupIds : [];
-   } else {
-     data.executorGroupIds = executorGroupIds;
-   }
+    if (req.body.executorGroupIds !== undefined) {
+      // Убеждаемся что это массив
+      data.executorGroupIds = Array.isArray(req.body.executorGroupIds) ? req.body.executorGroupIds : [];
+    } else {
+      data.executorGroupIds = executorGroupIds;
+    }
 
-   // Примечание: валидация категории убрана - frontend требует выбор категории если тип имеет связанные
+    // Поля эскалации
+    if (req.body.observerAgentIds !== undefined) {
+      data.observerAgentIds = Array.isArray(req.body.observerAgentIds) ? req.body.observerAgentIds : [];
+    }
+    if (req.body.observerGroupIds !== undefined) {
+      data.observerGroupIds = Array.isArray(req.body.observerGroupIds) ? req.body.observerGroupIds : [];
+    }
+    if (req.body.escalationCount !== undefined) data.escalationCount = req.body.escalationCount;
+    if (req.body.isEscalated !== undefined) data.isEscalated = req.body.isEscalated;
+
+    // Примечание: валидация категории убрана - frontend требует выбор категории если тип имеет связанные
 
   const newTicket = await Tickets.create(data);
 
@@ -422,7 +432,17 @@ const updateTicket = asyncHandler(async (req, res) => {
   if (req.body.firstResponseAt !== undefined) data.firstResponseAt = req.body.firstResponseAt;
   if (req.body.slaViolated !== undefined) data.slaViolated = req.body.slaViolated;
   if (req.body.pendingStartAt !== undefined) data.pendingStartAt = req.body.pendingStartAt;
-  
+
+  // Поля эскалации
+  if (req.body.observerAgentIds !== undefined) {
+    data.observerAgentIds = Array.isArray(req.body.observerAgentIds) ? req.body.observerAgentIds : [];
+  }
+  if (req.body.observerGroupIds !== undefined) {
+    data.observerGroupIds = Array.isArray(req.body.observerGroupIds) ? req.body.observerGroupIds : [];
+  }
+  if (req.body.escalationCount !== undefined) data.escalationCount = req.body.escalationCount;
+  if (req.body.isEscalated !== undefined) data.isEscalated = req.body.isEscalated;
+
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
   }
