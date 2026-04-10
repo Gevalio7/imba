@@ -41,35 +41,7 @@ const userProfileList = [
     title: 'Profile',
     to: userData.value?.type === 'agent' ? `/apps/Agents/edit?id=${userData.value.id}` : { name: 'pages-account-settings-tab', params: { tab: 'account' } },
   },
-  {
-    type: 'navItem',
-    icon: 'bx-cog',
-    title: 'Settings',
-    to: { name: 'pages-account-settings-tab', params: { tab: 'account' } },
-  },
-  {
-    type: 'navItem',
-    icon: 'bx-credit-card',
-    title: 'Billing Plan',
-    to: {
-      name: 'pages-account-settings-tab',
-      params: { tab: 'account' },
-    },
-    badgeProps: { color: 'error', content: '4' },
-  },
   { type: 'divider' },
-  {
-    type: 'navItem',
-    icon: 'bx-dollar',
-    title: 'Pricing',
-    to: { name: 'pages-pricing' },
-  },
-  {
-    type: 'navItem',
-    icon: 'bx-help-circle',
-    title: 'FAQ',
-    to: { name: 'pages-faq' },
-  },
 ]
 </script>
 
