@@ -34,7 +34,7 @@ class TicketSchedules {
       }
 
       const query = `
-        SELECT 
+        SELECT
           ts.id,
           ts.ticket_id as "ticketId",
           ts.schedule_type as "scheduleType",
@@ -46,6 +46,7 @@ class TicketSchedules {
           ts.is_active as "isActive",
           ts.last_run_at as "lastRunAt",
           ts.next_run_at as "nextRunAt",
+          ts.title_prefix as "titlePrefix",
           ts.title,
           ts.description,
           ts.type_id as "typeId",
@@ -80,7 +81,7 @@ class TicketSchedules {
   static async getById(id) {
     try {
       const result = await pool.query(
-        `SELECT 
+        `SELECT
           ts.id,
           ts.ticket_id as "ticketId",
           ts.schedule_type as "scheduleType",
@@ -92,6 +93,7 @@ class TicketSchedules {
           ts.is_active as "isActive",
           ts.last_run_at as "lastRunAt",
           ts.next_run_at as "nextRunAt",
+          ts.title_prefix as "titlePrefix",
           ts.title,
           ts.description,
           ts.type_id as "typeId",
@@ -124,7 +126,7 @@ class TicketSchedules {
   static async getByTicketId(ticketId) {
     try {
       const result = await pool.query(
-        `SELECT 
+        `SELECT
           ts.id,
           ts.ticket_id as "ticketId",
           ts.schedule_type as "scheduleType",
@@ -136,6 +138,7 @@ class TicketSchedules {
           ts.is_active as "isActive",
           ts.last_run_at as "lastRunAt",
           ts.next_run_at as "nextRunAt",
+          ts.title_prefix as "titlePrefix",
           ts.title,
           ts.description,
           ts.type_id as "typeId",
@@ -165,37 +168,33 @@ class TicketSchedules {
   // Получить активные расписания для выполнения (с истёкшим временем next_run_at)
   static async getDueSchedules() {
     try {
+      console.log('🔍 Выполняем запрос getDueSchedules...');
       const result = await pool.query(
         `SELECT 
-          ts.id,
-          ts.ticket_id as "ticketId",
-          ts.schedule_type as "scheduleType",
-          ts.schedule_time as "scheduleTime",
-          ts.schedule_days as "scheduleDays",
-          ts.schedule_day_of_month as "scheduleDayOfMonth",
-          ts.start_date as "startDate",
-          ts.end_date as "endDate",
-          ts.title,
-          ts.description,
-          ts.type_id as "typeId",
-          ts.category_id as "categoryId",
-          ts.priority_id as "priorityId",
-          ts.queue_id as "queueId",
-          ts.state_id as "stateId",
-          ts.owner_id as "ownerId",
-          ts.executor_agent_ids as "executorAgentIds",
-          ts.executor_group_ids as "executorGroupIds",
-          ts.company_id as "companyId",
-          ts.service_id as "serviceId",
-          ts.sla_id as "slaId",
-          ts.next_run_at as "nextRunAt"
-        FROM ${TicketSchedules.tableName} ts
-        WHERE ts.is_active = true
-          AND ts.next_run_at IS NOT NULL
-          AND ts.next_run_at <= CURRENT_TIMESTAMP
-          AND (ts.end_date IS NULL OR ts.end_date >= CURRENT_DATE)
-        ORDER BY ts.next_run_at ASC
-      `);
+          id,
+          ticket_id as "ticketId",
+          schedule_type as "scheduleType",
+          schedule_time as "scheduleTime",
+          schedule_days as "scheduleDays",
+          schedule_day_of_month as "scheduleDayOfMonth",
+          start_date as "startDate",
+          end_date as "endDate",
+          is_active as "isActive",
+          last_run_at as "lastRunAt",
+          next_run_at as "nextRunAt",
+          title_prefix as "titlePrefix",
+          title,
+          description
+        FROM ${TicketSchedules.tableName}
+        WHERE is_active = true
+          AND next_run_at IS NOT NULL
+          AND next_run_at <= CURRENT_TIMESTAMP
+          AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+        ORDER BY next_run_at ASC`);
+      console.log(`📊 getDueSchedules нашел ${result.rows.length} расписаний`);
+      if (result.rows.length > 0) {
+        console.log(`🎯 Найденные расписания:`, result.rows.map(r => ({ id: r.id, ticketId: r.ticketId, next_run_at: r.nextRunAt })));
+      }
       return result.rows;
     } catch (error) {
       console.error('Error in getDueSchedules:', error);
@@ -212,14 +211,14 @@ class TicketSchedules {
       const query = `
         INSERT INTO ${TicketSchedules.tableName} (
           ticket_id, schedule_type, schedule_time, schedule_days, schedule_day_of_month,
-          start_date, end_date, is_active, next_run_at,
+          start_date, end_date, is_active, next_run_at, title_prefix,
           title, description, type_id, category_id, priority_id, queue_id, state_id,
           owner_id, executor_agent_ids, executor_group_ids, company_id, service_id, sla_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
-        RETURNING id, ticket_id as "ticketId", schedule_type as "scheduleType", 
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        RETURNING id, ticket_id as "ticketId", schedule_type as "scheduleType",
           schedule_time as "scheduleTime", schedule_days as "scheduleDays",
           schedule_day_of_month as "scheduleDayOfMonth", start_date as "startDate",
-          end_date as "endDate", is_active as "isActive", next_run_at as "nextRunAt",
+          end_date as "endDate", is_active as "isActive", title_prefix as "titlePrefix", next_run_at as "nextRunAt",
           created_at as "createdAt", updated_at as "updatedAt"
       `;
 
@@ -233,6 +232,7 @@ class TicketSchedules {
         schedule.endDate || null,
         schedule.isActive !== undefined ? schedule.isActive : true,
         nextRunAt,
+        schedule.titlePrefix || 'Расписание (Р) ',
         schedule.title || null,
         schedule.description || null,
         schedule.typeId || null,
@@ -272,6 +272,7 @@ class TicketSchedules {
         startDate: 'start_date',
         endDate: 'end_date',
         isActive: 'is_active',
+        titlePrefix: 'title_prefix',
         title: 'title',
         description: 'description',
         typeId: 'type_id',
@@ -315,10 +316,10 @@ class TicketSchedules {
         UPDATE ${TicketSchedules.tableName} 
         SET ${updates.join(', ')} 
         WHERE id = $1
-        RETURNING id, ticket_id as "ticketId", schedule_type as "scheduleType", 
+        RETURNING id, ticket_id as "ticketId", schedule_type as "scheduleType",
           schedule_time as "scheduleTime", schedule_days as "scheduleDays",
           schedule_day_of_month as "scheduleDayOfMonth", start_date as "startDate",
-          end_date as "endDate", is_active as "isActive", next_run_at as "nextRunAt",
+          end_date as "endDate", is_active as "isActive", title_prefix as "titlePrefix", next_run_at as "nextRunAt",
           updated_at as "updatedAt"
       `;
 
@@ -333,16 +334,22 @@ class TicketSchedules {
   // Обновить время последнего и следующего запуска
   static async updateRunTime(id, lastRunAt, nextRunAt) {
     try {
+      console.log(`⏰ updateRunTime: id=${id}, lastRunAt=${lastRunAt}, nextRunAt=${nextRunAt}`);
+      console.log(`🔧 SQL params: [${id}, ${lastRunAt}, ${nextRunAt}]`);
+
       const result = await pool.query(
-        `UPDATE ${TicketSchedules.tableName} 
+        `UPDATE ${TicketSchedules.tableName}
          SET last_run_at = $2, next_run_at = $3, updated_at = CURRENT_TIMESTAMP
          WHERE id = $1
          RETURNING id, last_run_at as "lastRunAt", next_run_at as "nextRunAt"`,
         [id, lastRunAt, nextRunAt]
       );
+      console.log(`✅ updateRunTime result: ${JSON.stringify(result.rows[0])}`);
+      console.log(`🔍 Raw result:`, result.rows[0]);
       return result.rows[0] || null;
     } catch (error) {
-      console.error('Error in updateRunTime:', error);
+      console.error('❌ Error in updateRunTime:', error);
+      console.error('❌ SQL Error details:', error);
       throw error;
     }
   }
@@ -469,3 +476,66 @@ function calculateNextRunAt(schedule) {
 
 module.exports = TicketSchedules;
 module.exports.calculateNextRunAt = calculateNextRunAt;
+
+// ========== Логи расписаний ==========
+
+class TicketScheduleLogs {
+  static tableName = 'ticket_schedule_logs';
+
+  // Получить логи для расписания
+  static async getByScheduleId(scheduleId, limit = 50) {
+    try {
+      const result = await pool.query(
+        `SELECT 
+          id,
+          schedule_id as "scheduleId",
+          executed_at as "executedAt",
+          created_ticket_id as "createdTicketId",
+          created_ticket_number as "createdTicketNumber",
+          status,
+          error_message as "errorMessage",
+          details,
+          created_at as "createdAt"
+        FROM ${TicketScheduleLogs.tableName}
+        WHERE schedule_id = $1
+        ORDER BY executed_at DESC
+        LIMIT $2`,
+        [scheduleId, limit]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getByScheduleId logs:', error);
+      throw error;
+    }
+  }
+
+  // Создать лог
+  static async create(log) {
+    try {
+      const query = `
+        INSERT INTO ${TicketScheduleLogs.tableName} (
+          schedule_id, executed_at, created_ticket_id, created_ticket_number, status, error_message, details
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, schedule_id as "scheduleId", executed_at as "executedAt", 
+          created_ticket_id as "createdTicketId", created_ticket_number as "createdTicketNumber",
+          status, error_message as "errorMessage", details, created_at as "createdAt"
+      `;
+      const values = [
+        log.scheduleId || null,
+        log.executedAt || new Date(),
+        log.createdTicketId || null,
+        log.createdTicketNumber || null,
+        log.status || 'success',
+        log.errorMessage || null,
+        log.details || null,
+      ];
+      const result = await pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error in create log:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports.TicketScheduleLogs = TicketScheduleLogs;

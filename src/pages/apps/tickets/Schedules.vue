@@ -27,6 +27,7 @@ interface TicketSchedule {
   isActive: boolean
   lastRunAt: string | null
   nextRunAt: string | null
+  titlePrefix: string | null
   title: string
   description: string | null
   createdAt: string
@@ -334,6 +335,51 @@ const goToTicket = (ticketId: number | null) => {
 // Диалог удаления
 const deleteDialog = ref(false)
 const deletingItem = ref<TicketSchedule | null>(null)
+
+// Диалог логов
+const logsDialog = ref(false)
+const logsLoading = ref(false)
+const scheduleLogs = ref<any[]>([])
+const logsScheduleId = ref<number | null>(null)
+
+// Открыть логи расписания
+const openLogsDialog = async (schedule: TicketSchedule) => {
+  logsScheduleId.value = schedule.id
+  logsDialog.value = true
+  logsLoading.value = true
+  try {
+    const data = await $api(`${API_BASE}/ticketSchedules/${schedule.id}/logs`)
+    scheduleLogs.value = data.logs || []
+  } catch (err) {
+    console.error('Error fetching logs:', err)
+    scheduleLogs.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+// Формат даты для логов
+const formatLogDate = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// Получить цвет статуса для лога
+const getLogStatusColor = (status: string) => {
+  switch (status) {
+    case 'success': return 'success'
+    case 'error': return 'error'
+    case 'skipped': return 'warning'
+    default: return 'grey'
+  }
+}
 
 const deleteItem = (item: TicketSchedule) => {
   deletingItem.value = item
@@ -812,6 +858,9 @@ onMounted(() => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
+            <IconBtn @click="openLogsDialog(item)">
+              <VIcon icon="bx-history" />
+            </IconBtn>
             <IconBtn @click="toggleActiveStatus(item.id, !item.isActive)">
               <VIcon :icon="item.isActive ? 'bx-pause' : 'bx-play'" />
             </IconBtn>
@@ -845,6 +894,55 @@ onMounted(() => {
           <div class="d-flex justify-center gap-4">
             <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
             <VBtn color="success" variant="elevated" @click="deleteItemConfirm">Удалить</VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Диалог логов расписания -->
+    <VDialog v-model="logsDialog" max-width="700px">
+      <VCard title="История выполнения расписания">
+        <VCardText>
+          <div v-if="logsLoading" class="d-flex justify-center pa-4">
+            <VProgressCircular indeterminate color="primary" />
+          </div>
+          <div v-else-if="scheduleLogs.length === 0" class="text-center pa-4 text-medium-emphasis">
+            Нет записей в истории выполнения
+          </div>
+          <VTable v-else density="compact">
+            <thead>
+              <tr>
+                <th>Время</th>
+                <th>Статус</th>
+                <th>Созданный тикет</th>
+                <th>Ошибка</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in scheduleLogs" :key="log.id">
+                <td>{{ formatLogDate(log.executedAt) }}</td>
+                <td>
+                  <VChip size="small" :color="getLogStatusColor(log.status)">
+                    {{ log.status === 'success' ? 'Успешно' : log.status === 'error' ? 'Ошибка' : 'Пропущено' }}
+                  </VChip>
+                </td>
+                <td>
+                  <a v-if="log.createdTicketNumber" :href="`/apps/tickets/edit?id=${log.createdTicketId}`" target="_blank" class="text-primary">
+                    #{{ log.createdTicketNumber }}
+                  </a>
+                  <span v-else>-</span>
+                </td>
+                <td>
+                  <span v-if="log.errorMessage" class="text-error">{{ log.errorMessage }}</span>
+                  <span v-else>-</span>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
+        </VCardText>
+        <VCardText>
+          <div class="d-flex justify-end">
+            <VBtn color="primary" variant="elevated" @click="logsDialog = false">Закрыть</VBtn>
           </div>
         </VCardText>
       </VCard>

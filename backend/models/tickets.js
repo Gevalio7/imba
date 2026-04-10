@@ -139,7 +139,13 @@ class Tickets {
 
   static async getById(id, includeInactive = false) {
     try {
+      console.log(`🔍 Tickets.getById called with id=${id}, includeInactive=${includeInactive}, typeof id=${typeof id}`);
       const activeFilter = includeInactive ? '' : 'AND t.is_active = true';
+      
+      // Проверим, что id - число
+      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+      console.log(`🔍 Tickets.getById using numericId=${numericId}`);
+      
       const result = await pool.query(
         `SELECT 
           t.id,
@@ -190,20 +196,21 @@ class Tickets {
            t.created_at as "createdAt",
            t.updated_at as "updatedAt",
            t.is_active as "isActive"
-         FROM ${Tickets.tableName} t
-         LEFT JOIN types typ ON t.type_id = typ.id
-         LEFT JOIN type_categories tc ON t.category_id = tc.id
-         LEFT JOIN priorities p ON t.priority_id = p.id
-         LEFT JOIN queues q ON t.queue_id = q.id
-         LEFT JOIN states s ON t.state_id = s.id
-         LEFT JOIN customer_users cu ON t.owner_id = cu.id
-         LEFT JOIN customers c ON t.company_id = c.id
-         LEFT JOIN services svc ON t.service_id = svc.id
-         LEFT JOIN sla ON t.sla_id = sla.id
-         WHERE t.id = $1 ${activeFilter}`,
-        [id]
+        FROM ${Tickets.tableName} t
+        LEFT JOIN types typ ON t.type_id = typ.id
+        LEFT JOIN type_categories tc ON t.category_id = tc.id
+        LEFT JOIN priorities p ON t.priority_id = p.id
+        LEFT JOIN queues q ON t.queue_id = q.id
+        LEFT JOIN states s ON t.state_id = s.id
+        LEFT JOIN customer_users cu ON t.owner_id = cu.id
+        LEFT JOIN customers c ON t.company_id = c.id
+        LEFT JOIN services svc ON t.service_id = svc.id
+        LEFT JOIN sla ON t.sla_id = sla.id
+        WHERE t.id = $1 ${activeFilter}`,
+        [numericId]
       );
 
+      console.log(`🔍 Tickets.getById result rows: ${result.rows.length}`);
       const ticket = result.rows[0];
       if (ticket) {
         ticket.age = calculateAge(ticket.createdAt);

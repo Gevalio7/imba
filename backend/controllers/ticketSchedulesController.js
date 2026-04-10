@@ -1,4 +1,5 @@
 const TicketSchedules = require('../models/ticketSchedules');
+const { TicketScheduleLogs } = require('../models/ticketSchedules');
 const Tickets = require('../models/tickets');
 const { calculateNextRunAt } = require('../models/ticketSchedules');
 
@@ -64,9 +65,16 @@ exports.create = async (req, res) => {
     }
     
     // Если создаём расписание на основе тикета - копируем данные
-    if (scheduleData.copyFromTicket && !scheduleData.title) {
-      scheduleData.title = ticket.title;
-      scheduleData.description = ticket.description;
+    if (scheduleData.copyFromTicket) {
+      if (!scheduleData.titlePrefix) {
+        scheduleData.titlePrefix = 'Расписание (Р) ';
+      }
+      if (!scheduleData.title) {
+        scheduleData.title = ticket.title;
+      }
+      if (!scheduleData.description) {
+        scheduleData.description = ticket.description;
+      }
       scheduleData.typeId = ticket.typeId;
       scheduleData.categoryId = ticket.categoryId;
       scheduleData.priorityId = ticket.priorityId;
@@ -165,23 +173,29 @@ exports.runSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Расписание завершено' });
     }
     
-    // Создаём новый тикет на основе данных расписания
+    // Получаем актуальный тикет для клонирования
+    const originalTicket = await Tickets.getById(schedule.ticketId);
+    if (!originalTicket) {
+      return res.status(404).json({ message: 'Оригинальный тикет не найден' });
+    }
+
+    // Создаём новый тикет - клонируем актуальный с префиксом
     const ticketNumber = await Tickets.generateTicketNumber();
     const newTicket = await Tickets.create({
       ticketNumber,
-      title: schedule.title,
-      description: schedule.description,
-      typeId: schedule.typeId,
-      categoryId: schedule.categoryId,
-      priorityId: schedule.priorityId,
-      queueId: schedule.queueId,
-      stateId: schedule.stateId,
-      ownerId: schedule.ownerId,
-      executorAgentIds: schedule.executorAgentIds,
-      executorGroupIds: schedule.executorGroupIds,
-      companyId: schedule.companyId,
-      serviceId: schedule.serviceId,
-      slaId: schedule.slaId,
+      title: `${schedule.titlePrefix || 'Расписание (Р) '}${originalTicket.title}`,
+      description: originalTicket.description,
+      typeId: originalTicket.typeId,
+      categoryId: originalTicket.categoryId,
+      priorityId: originalTicket.priorityId,
+      queueId: originalTicket.queueId,
+      stateId: originalTicket.stateId,
+      ownerId: originalTicket.ownerId,
+      executorAgentIds: originalTicket.executorAgentIds,
+      executorGroupIds: originalTicket.executorGroupIds,
+      companyId: originalTicket.companyId,
+      serviceId: originalTicket.serviceId,
+      slaId: originalTicket.slaId,
     });
     
     // Обновляем время последнего и следующего запуска
@@ -199,6 +213,16 @@ exports.runSchedule = async (req, res) => {
     
     await TicketSchedules.updateRunTime(parseInt(id, 10), lastRunAt, nextRunAt);
     
+    // Записываем лог
+    await TicketScheduleLogs.create({
+      scheduleId: parseInt(id, 10),
+      executedAt: lastRunAt.toISOString(),
+      createdTicketId: newTicket.id,
+      createdTicketNumber: ticketNumber,
+      status: 'success',
+      details: { originalTicketId: schedule.ticketId }
+    });
+    
     res.json({ 
       success: true, 
       ticket: newTicket,
@@ -207,5 +231,17 @@ exports.runSchedule = async (req, res) => {
   } catch (error) {
     console.error('Error in runSchedule:', error);
     res.status(500).json({ message: 'Ошибка выполнения расписания' });
+  }
+};
+
+// Получить логи расписания
+exports.getLogs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = await TicketScheduleLogs.getByScheduleId(parseInt(id, 10));
+    res.json({ logs });
+  } catch (error) {
+    console.error('Error in getLogs:', error);
+    res.status(500).json({ message: 'Ошибка получения логов' });
   }
 };

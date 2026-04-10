@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router/auto'
+import { useCookie } from '@/@core/composable/useCookie'
 
 // 👉 Redirects
 export const redirects: RouteRecordRaw[] = [
@@ -21,15 +22,11 @@ export const redirects: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/pages/user-profile',
-    name: 'pages-user-profile',
-    redirect: () => ({ name: 'pages-user-profile-tab', params: { tab: 'profile' } }),
-  },
-  {
     path: '/pages/account-settings',
     name: 'pages-account-settings',
     redirect: () => ({ name: 'pages-account-settings-tab', params: { tab: 'account' } }),
   },
+
 ]
 
 export const routes: RouteRecordRaw[] = [

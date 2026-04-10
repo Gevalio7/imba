@@ -6,6 +6,7 @@ const ticketSchedulesController = require('../controllers/ticketSchedulesControl
 router.get('/', ticketSchedulesController.getAll);
 router.get('/ticket/:ticketId', ticketSchedulesController.getByTicketId);
 router.get('/:id', ticketSchedulesController.getById);
+router.get('/:id/logs', ticketSchedulesController.getLogs);
 router.post('/', ticketSchedulesController.create);
 router.put('/:id', ticketSchedulesController.update);
 router.delete('/:id', ticketSchedulesController.delete);

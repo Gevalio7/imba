@@ -1509,6 +1509,7 @@ const scheduleForm = reactive({
   startDate: null as string | null,
   endDate: null as string | null,
   isActive: true,
+  titlePrefix: 'Расписание (Р) ',
 })
 
 // Варианты типов расписания
@@ -1563,6 +1564,7 @@ const openScheduleDialog = () => {
     scheduleForm.startDate = ticketSchedule.value.startDate || null
     scheduleForm.endDate = ticketSchedule.value.endDate || null
     scheduleForm.isActive = ticketSchedule.value.isActive !== false
+    scheduleForm.titlePrefix = ticketSchedule.value.titlePrefix || 'Расписание (Р) '
   } else {
     // Создание - сбрасываем форму
     scheduleForm.scheduleType = 'daily'
@@ -1572,6 +1574,7 @@ const openScheduleDialog = () => {
     scheduleForm.startDate = null
     scheduleForm.endDate = null
     scheduleForm.isActive = true
+    scheduleForm.titlePrefix = 'Расписание (Р) '
   }
   showScheduleDialog.value = true
 }
@@ -2832,6 +2835,13 @@ const formatDateOnly = (dateStr: string | null) => {
             v-model="scheduleForm.scheduleTime"
             label="Время выполнения (HH:MM)"
             type="time"
+            class="mb-4"
+          />
+
+          <AppTextField
+            v-model="scheduleForm.titlePrefix"
+            label="Префикс названия тикета"
+            placeholder="Расписание (Р) "
             class="mb-4"
           />
 

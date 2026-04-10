@@ -1,3 +1,4 @@
+console.log('🚀 Запуск server.js...');
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -6,6 +7,9 @@ require('dotenv').config();
 
 // Импорт функции очистки бэкапов
 const { cleanupOldBackups } = require('./controllers/backupController');
+
+// Импорт БД
+const { pool } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,37 +56,75 @@ const Tickets = require('./models/tickets');
 // Функция для выполнения просроченных расписаний
 const processDueSchedules = async () => {
   try {
-    console.log('🔄 Проверка расписаний тикетов...');
+    console.log('🔄 Проверка расписаний тикетов...', new Date().toISOString());
+
+    // Сначала деактивируем истекшие расписания
+    console.log('📅 Проверяем истекшие расписания...');
+    const deactivatedResult = await pool.query(`
+      UPDATE ticket_schedules
+      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      WHERE is_active = true AND end_date IS NOT NULL AND end_date < CURRENT_DATE
+    `);
+    if (deactivatedResult.rowCount > 0) {
+      console.log(`📅 Деактивировано ${deactivatedResult.rowCount} истекших расписаний`);
+    }
+
+    console.log('📋 Получаем просроченные расписания...');
     const dueSchedules = await TicketSchedules.getDueSchedules();
+    console.log(`📋 Найдено ${dueSchedules.length} расписаний для выполнения`);
+    console.log(`📋 Найдено ${dueSchedules.length} расписаний для выполнения`);
     
     if (dueSchedules.length > 0) {
       console.log(`📋 Найдено ${dueSchedules.length} расписаний для выполнения`);
       
       for (const schedule of dueSchedules) {
         try {
-          // Создаём новый тикет
+          console.log(`🔍 Обрабатываем расписание ID ${schedule.id}, next_run_at: ${schedule.nextRunAt}`);
+
+          // Проверяем, что расписание действительно просрочено (максимум на 5 минут)
+          const now = new Date();
+          const scheduleNextRunAt = new Date(schedule.nextRunAt);
+          const timeDiff = now.getTime() - scheduleNextRunAt.getTime();
+
+          if (timeDiff < -300000) { // Если next_run_at больше чем на 5 минут в будущем
+            console.log(`⏰ Пропускаем расписание ID ${schedule.id} - next_run_at в будущем (${Math.round(timeDiff / 1000)} сек)`);
+            continue;
+          }
+
+          // Временно убрана блокировка для тестирования
+
+          // Получаем актуальный тикет для клонирования
+          const originalTicket = await Tickets.getById(schedule.ticketId);
+          if (!originalTicket) {
+            console.error(`❌ Оригинальный тикет для расписания ID ${schedule.id} не найден`);
+            continue;
+          }
+
+          console.log(`📝 Создаём тикет для расписания ID ${schedule.id}...`);
+
+          // Создаём новый тикет - клонируем актуальный с префиксом
           const ticketNumber = await Tickets.generateTicketNumber();
           const newTicket = await Tickets.create({
             ticketNumber,
-            title: schedule.title,
-            description: schedule.description,
-            typeId: schedule.typeId,
-            categoryId: schedule.categoryId,
-            priorityId: schedule.priorityId,
-            queueId: schedule.queueId,
-            stateId: schedule.stateId,
-            ownerId: schedule.ownerId,
-            executorAgentIds: schedule.executorAgentIds,
-            executorGroupIds: schedule.executorGroupIds,
-            companyId: schedule.companyId,
-            serviceId: schedule.serviceId,
-            slaId: schedule.slaId,
+            title: `${schedule.titlePrefix || 'Расписание (Р) '}${originalTicket.title}`,
+            description: originalTicket.description,
+            typeId: originalTicket.typeId,
+            categoryId: originalTicket.categoryId,
+            priorityId: originalTicket.priorityId,
+            queueId: originalTicket.queueId,
+            stateId: originalTicket.stateId,
+            ownerId: originalTicket.ownerId,
+            executorAgentIds: originalTicket.executorAgentIds,
+            executorGroupIds: originalTicket.executorGroupIds,
+            companyId: originalTicket.companyId,
+            serviceId: originalTicket.serviceId,
+            slaId: originalTicket.slaId,
           });
-          
-          console.log(`✅ Создан тикет #${ticketNumber} по расписанию ID ${schedule.id}`);
-          
+
+          console.log(`✅ Создан тикет #${ticketNumber} по расписанию ID ${schedule.id} (клонирован из #${originalTicket.ticketNumber})`);
+
           // Обновляем время последнего и следующего запуска
-          const lastRunAt = new Date();
+          const executionTime = new Date();
           const { calculateNextRunAt } = require('./models/ticketSchedules');
           const nextScheduleData = {
             scheduleType: schedule.scheduleType,
@@ -92,11 +134,25 @@ const processDueSchedules = async () => {
             startDate: schedule.startDate,
             endDate: schedule.endDate,
           };
-          const nextRunAt = calculateNextRunAt(nextScheduleData);
-          
-          await TicketSchedules.updateRunTime(schedule.id, lastRunAt, nextRunAt);
+          let nextRunAt = calculateNextRunAt(nextScheduleData);
+
+          // Если следующее время выполнения в прошлом или null - исправляем
+          if (!nextRunAt || nextRunAt <= executionTime) {
+            console.log(`⚠️ Исправляем next_run_at для расписания ID ${schedule.id}`);
+            // Для ежедневного расписания устанавливаем завтра в то же время
+            const tomorrow = new Date(executionTime);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const [hours, minutes] = (schedule.scheduleTime || '09:00').split(':').map(Number);
+            tomorrow.setHours(hours, minutes, 0, 0);
+            nextRunAt = tomorrow;
+          }
+
+          console.log(`⏰ Обновляем время для расписания ID ${schedule.id}: last_run_at=${executionTime}, next_run_at=${nextRunAt}`);
+          await TicketSchedules.updateRunTime(schedule.id, executionTime, nextRunAt);
         } catch (err) {
           console.error(`❌ Ошибка при выполнении расписания ID ${schedule.id}:`, err);
+          // В случае ошибки снимаем блокировку
+          await pool.query(`UPDATE ticket_schedules SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [schedule.id]);
         }
       }
     } else {
@@ -107,20 +163,28 @@ const processDueSchedules = async () => {
   }
 }
 
-// Запускаем cron каждую минуту
-setInterval(processDueSchedules, 60 * 1000);
 
-// Также запускаем при старте сервера (с небольшой задержкой)
-setTimeout(processDueSchedules, 5000);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Server is running',
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
   });
+});
+
+// Временный маршрут для тестирования расписаний
+app.post('/test-schedules', async (req, res) => {
+  try {
+    console.log('🧪 Ручной запуск processDueSchedules...');
+    await processDueSchedules();
+    res.json({ message: 'Функция processDueSchedules выполнена' });
+  } catch (error) {
+    console.error('❌ Ошибка в тестовом маршруте:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // API info endpoint
@@ -150,9 +214,21 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Database: ${process.env.DB_NAME || 'test_entities_db'}`);
-  
+
   // Запускаем очистку старых бэкапов при старте сервера
   console.log('🧹 Запуск очистки старых бэкапов...');
   await cleanupOldBackups();
   console.log('✅ Очистка бэкапов завершена');
+
+  // Запускаем cron для расписаний
+  console.log('⏰ Запуск планировщика расписаний...');
+  setInterval(processDueSchedules, 60 * 1000); // Каждую минуту
+  setTimeout(processDueSchedules, 5000); // Через 5 секунд после запуска
+
+  // Для тестирования - запускаем сразу
+  console.log('🧪 Тестируем расписания сразу...');
+  setTimeout(() => {
+    console.log('🔥 Вызываем processDueSchedules...');
+    processDueSchedules().catch(err => console.error('❌ Ошибка в processDueSchedules:', err));
+  }, 1000);
 });

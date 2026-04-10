@@ -53,7 +53,7 @@ const userProfileList = [
     title: 'Billing Plan',
     to: {
       name: 'pages-account-settings-tab',
-      params: { tab: 'billing-plans' },
+      params: { tab: 'account' },
     },
     badgeProps: { color: 'error', content: '4' },
   },
