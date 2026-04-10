@@ -104,7 +104,7 @@ const fetchTickets = async () => {
 // Удаление тикета
 const deleteTicketById = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/tickets/${id}`, { method: 'DELETE' })
+    await $api(`${API_BASE}/tickets/${id}`, { method: 'DELETE' })
     const index = tickets.value.findIndex(t => t.id === id)
     if (index !== -1) tickets.value.splice(index, 1)
   } catch (err) {
@@ -288,7 +288,7 @@ const cloneTicketById = async (id: number) => {
       executorGroupIds: ticket.executorGroupIds || [],
     }
     
-    const newTicket = await $fetch(`${API_BASE}/tickets`, {
+    const newTicket = await $api(`${API_BASE}/tickets`, {
       method: 'POST',
       body: cloneData
     })

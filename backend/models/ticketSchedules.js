@@ -350,6 +350,13 @@ class TicketSchedules {
   // Удалить расписание
   static async delete(id) {
     try {
+      // Сначала отвязываем все тикеты от этого расписания
+      await pool.query(
+        `UPDATE tickets SET created_by_schedule_id = NULL WHERE created_by_schedule_id = $1`,
+        [id]
+      );
+
+      // Теперь удаляем само расписание
       const result = await pool.query(
         `DELETE FROM ${TicketSchedules.tableName} WHERE id = $1 RETURNING id`,
         [id]

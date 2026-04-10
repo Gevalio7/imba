@@ -66,7 +66,7 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ schedules: TicketSchedule[], total: number }>(`${API_BASE}/ticketSchedules`)
+    const data = await $api(`${API_BASE}/ticketSchedules`)
     schedules.value = data.schedules
     total.value = data.total
   } catch (err) {
