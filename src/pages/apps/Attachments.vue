@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Вложение
@@ -30,7 +30,7 @@ const fetchAttachments = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching attachments from:', `${API_BASE}/attachments`)
-    const data = await $fetch<{ attachments: Attachments[], total: number }>(`${API_BASE}/attachments`)
+    const data = await $api<{ attachments: Attachments[], total: number }>(`${API_BASE}/attachments`)
     console.log('Fetched attachments data:', data)
     attachments.value = data.attachments
     total.value = data.total
@@ -53,14 +53,14 @@ const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'u
       formData.append('comment', item.comment)
       formData.append('isActive', item.isActive.toString())
       formData.append('file', file)
-      const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
+      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
         method: 'POST',
         body: formData
       })
       attachments.value.push(data)
       return data
     } else {
-      const data = await $fetch<Attachments>(`${API_BASE}/attachments`, {
+      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
         method: 'POST',
         body: item
       })
@@ -76,7 +76,7 @@ const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'u
 // Обновление вложение
 const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Attachments>(`${API_BASE}/attachments/${id}`, {
+    const data = await $api<Attachments>(`${API_BASE}/attachments/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -94,7 +94,7 @@ const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'cre
 // Удаление вложение
 const deleteAttachments = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/attachments/${id}`, {
+    await $api(`${API_BASE}/attachments/${id}`, {
       method: 'DELETE'
     })
     const index = attachments.value.findIndex(p => p.id === id)

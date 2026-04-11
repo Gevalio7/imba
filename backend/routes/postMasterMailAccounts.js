@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getPostMasterMailAccounts,
   getPostMasterMailAccountById,
@@ -15,12 +16,12 @@ router.get('/', getPostMasterMailAccounts);
 router.get('/:id', getPostMasterMailAccountById);
 
 // POST /postMasterMailAccounts
-router.post('/', createPostMasterMailAccount);
+router.post('/', protect, createPostMasterMailAccount);
 
 // PUT /postMasterMailAccounts/:id
-router.put('/:id', updatePostMasterMailAccount);
+router.put('/:id', protect, updatePostMasterMailAccount);
 
 // DELETE /postMasterMailAccounts/:id
-router.delete('/:id', deletePostMasterMailAccount);
+router.delete('/:id', protect, deletePostMasterMailAccount);
 
 module.exports = router;

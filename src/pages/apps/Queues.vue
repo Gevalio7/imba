@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Очередь
@@ -46,7 +46,7 @@ const referenceData = ref<ReferenceData>({
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $fetch<ReferenceData>(`${API_BASE}/reference-data`)
+    const data = await $api<ReferenceData>(`${API_BASE}/reference-data`)
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -104,7 +104,7 @@ const fetchQueues = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $fetch<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
+    const data = await $api<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
     console.log('Fetched queues data:', data)
     queues.value = data.queues
     total.value = data.total
@@ -119,7 +119,7 @@ const fetchQueues = async () => {
 // Создание очередь
 const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Queues>(`${API_BASE}/queues`, {
+    const data = await $api<Queues>(`${API_BASE}/queues`, {
       method: 'POST',
       body: item
     })
@@ -134,7 +134,7 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
 // Обновление очередь
 const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Queues>(`${API_BASE}/queues/${id}`, {
+    const data = await $api<Queues>(`${API_BASE}/queues/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -152,7 +152,7 @@ const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 
 // Удаление очередь
 const deleteQueues = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/queues/${id}`, {
+    await $api(`${API_BASE}/queues/${id}`, {
       method: 'DELETE'
     })
     const index = queues.value.findIndex(p => p.id === id)

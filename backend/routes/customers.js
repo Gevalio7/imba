@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getCustomers,
   getCustomerById,
@@ -21,18 +22,18 @@ router.get('/:id', getCustomerById);
 router.get('/:id/services', getCustomerServices);
 
 // POST /customers
-router.post('/', createCustomers);
+router.post('/', protect, createCustomers);
 
 // POST /customers/:id/services/:serviceId - добавить сервис к компании
-router.post('/:id/services/:serviceId', addCustomerService);
+router.post('/:id/services/:serviceId', protect, addCustomerService);
 
 // PUT /customers/:id
-router.put('/:id', updateCustomers);
+router.put('/:id', protect, updateCustomers);
 
 // DELETE /customers/:id
-router.delete('/:id', deleteCustomers);
+router.delete('/:id', protect, deleteCustomers);
 
 // DELETE /customers/:id/services/:serviceId - удалить сервис от компании
-router.delete('/:id/services/:serviceId', removeCustomerService);
+router.delete('/:id/services/:serviceId', protect, removeCustomerService);
 
 module.exports = router;

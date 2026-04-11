@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Email адрес
@@ -46,7 +46,7 @@ const fetchEmailAddresses = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching emailAddresses from:', `${API_BASE}/emailAddresses`)
-    const data = await $fetch<{ emailAddresses: EmailAddresses[], total: number }>(`${API_BASE}/emailAddresses`)
+    const data = await $api<{ emailAddresses: EmailAddresses[], total: number }>(`${API_BASE}/emailAddresses`)
     console.log('Fetched emailAddresses data:', data)
     emailAddresses.value = data.emailAddresses
     total.value = data.total
@@ -64,7 +64,7 @@ const fetchQueues = async () => {
     queuesLoading.value = true
     queuesError.value = null
     console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    const data = await $api<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
     console.log('Fetched queues data:', data)
     queues.value = data.queues
   } catch (err) {
@@ -78,7 +78,7 @@ const fetchQueues = async () => {
 // Создание email адрес
 const createEmailAddresses = async (item: Omit<EmailAddresses, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<EmailAddresses>(`${API_BASE}/emailAddresses`, {
+    const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses`, {
       method: 'POST',
       body: item
     })
@@ -93,7 +93,7 @@ const createEmailAddresses = async (item: Omit<EmailAddresses, 'id' | 'createdAt
 // Обновление email адрес
 const updateEmailAddresses = async (id: number, item: Omit<EmailAddresses, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<EmailAddresses>(`${API_BASE}/emailAddresses/${id}`, {
+    const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -111,7 +111,7 @@ const updateEmailAddresses = async (id: number, item: Omit<EmailAddresses, 'id' 
 // Удаление email адрес
 const deleteEmailAddresses = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/emailAddresses/${id}`, {
+    await $api(`${API_BASE}/emailAddresses/${id}`, {
       method: 'DELETE'
     })
     const index = emailAddresses.value.findIndex(p => p.id === id)

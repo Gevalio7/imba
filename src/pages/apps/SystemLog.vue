@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Системный журнал
@@ -28,7 +28,7 @@ const fetchSystemLog = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching systemLog from:', `${API_BASE}/systemLog`)
-    const data = await $fetch<{ systemLog: SystemLog[], total: number }>(`${API_BASE}/systemLog`)
+    const data = await $api<{ systemLog: SystemLog[], total: number }>(`${API_BASE}/systemLog`)
     console.log('Fetched systemLog data:', data)
     systemLog.value = data.systemLog
     total.value = data.total
@@ -43,7 +43,7 @@ const fetchSystemLog = async () => {
 // Создание системный журнал
 const createSystemLog = async (item: Omit<SystemLog, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SystemLog>(`${API_BASE}/systemLog`, {
+    const data = await $api<SystemLog>(`${API_BASE}/systemLog`, {
       method: 'POST',
       body: item
     })
@@ -58,7 +58,7 @@ const createSystemLog = async (item: Omit<SystemLog, 'id' | 'createdAt' | 'updat
 // Обновление системный журнал
 const updateSystemLog = async (id: number, item: Omit<SystemLog, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SystemLog>(`${API_BASE}/systemLog/${id}`, {
+    const data = await $api<SystemLog>(`${API_BASE}/systemLog/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -76,7 +76,7 @@ const updateSystemLog = async (id: number, item: Omit<SystemLog, 'id' | 'created
 // Удаление системный журнал
 const deleteSystemLog = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/systemLog/${id}`, {
+    await $api(`${API_BASE}/systemLog/${id}`, {
       method: 'DELETE'
     })
     const index = systemLog.value.findIndex(p => p.id === id)

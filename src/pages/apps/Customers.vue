@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Компания
@@ -78,7 +78,7 @@ const fetchCustomers = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
     customers.value = data.customers
     total.value = data.total
   } catch (err) {
@@ -92,7 +92,7 @@ const fetchCustomers = async () => {
 // Создание компании
 const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Customers>(`${API_BASE}/customers`, {
+    const data = await $api<Customers>(`${API_BASE}/customers`, {
       method: 'POST',
       body: item
     })
@@ -107,7 +107,7 @@ const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updat
 // Обновление компании
 const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Customers>(`${API_BASE}/customers/${id}`, {
+    const data = await $api<Customers>(`${API_BASE}/customers/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -125,7 +125,7 @@ const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'created
 // Удаление компании
 const deleteCustomers = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/customers/${id}`, {
+    await $api(`${API_BASE}/customers/${id}`, {
       method: 'DELETE'
     })
     const index = customers.value.findIndex(p => p.id === id)

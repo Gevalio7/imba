@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getSessionManagement,
   getSessionManagementById,
@@ -15,12 +16,12 @@ router.get('/', getSessionManagement);
 router.get('/:id', getSessionManagementById);
 
 // POST /sessionManagement
-router.post('/', createSessionManagement);
+router.post('/', protect, createSessionManagement);
 
 // PUT /sessionManagement/:id
-router.put('/:id', updateSessionManagement);
+router.put('/:id', protect, updateSessionManagement);
 
 // DELETE /sessionManagement/:id
-router.delete('/:id', deleteSessionManagement);
+router.delete('/:id', protect, deleteSessionManagement);
 
 module.exports = router;

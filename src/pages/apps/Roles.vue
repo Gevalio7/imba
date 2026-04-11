@@ -2,7 +2,7 @@
 import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import RoleCards from '@/views/apps/roles/RoleCards.vue'
 import RolePermissions from '@/views/apps/roles/RolePermissions.vue'
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Переключатель вида ролей (карточки/таблица)
@@ -41,7 +41,7 @@ const fetchRoles = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching roles from:', `${API_BASE}/roles`)
-    const data = await $fetch<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
     console.log('Fetched roles data:', data)
     roles.value = data.roles
     total.value = data.total
@@ -56,7 +56,7 @@ const fetchRoles = async () => {
 // Создание роль
 const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Roles>(`${API_BASE}/roles`, {
+    const data = await $api<Roles>(`${API_BASE}/roles`, {
       method: 'POST',
       body: item
     })
@@ -71,7 +71,7 @@ const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) 
 // Обновление роль
 const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Roles>(`${API_BASE}/roles/${id}`, {
+    const data = await $api<Roles>(`${API_BASE}/roles/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -89,7 +89,7 @@ const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'u
 // Удаление роль
 const deleteRoles = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/roles/${id}`, {
+    await $api(`${API_BASE}/roles/${id}`, {
       method: 'DELETE'
     })
     const index = roles.value.findIndex(p => p.id === id)

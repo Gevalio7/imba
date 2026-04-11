@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getSignatures,
   getSignatureById,
@@ -15,12 +16,12 @@ router.get('/', getSignatures);
 router.get('/:id', getSignatureById);
 
 // POST /signatures
-router.post('/', createSignatures);
+router.post('/', protect, createSignatures);
 
 // PUT /signatures/:id
-router.put('/:id', updateSignatures);
+router.put('/:id', protect, updateSignatures);
 
 // DELETE /signatures/:id
-router.delete('/:id', deleteSignatures);
+router.delete('/:id', protect, deleteSignatures);
 
 module.exports = router;

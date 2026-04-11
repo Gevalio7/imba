@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Календарь
@@ -35,7 +35,7 @@ const fetchCalendars = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching calendars from:', `${API_BASE}/calendars`)
-    const data = await $fetch<{ calendars: Calendars[], total: number }>(`${API_BASE}/calendars`)
+    const data = await $api<{ calendars: Calendars[], total: number }>(`${API_BASE}/calendars`)
     console.log('Fetched calendars data:', data)
     calendars.value = data.calendars
     total.value = data.total
@@ -50,7 +50,7 @@ const fetchCalendars = async () => {
 // Создание календарь
 const createCalendars = async (item: Omit<Calendars, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Calendars>(`${API_BASE}/calendars`, {
+    const data = await $api<Calendars>(`${API_BASE}/calendars`, {
       method: 'POST',
       body: item
     })
@@ -65,7 +65,7 @@ const createCalendars = async (item: Omit<Calendars, 'id' | 'createdAt' | 'updat
 // Обновление календарь
 const updateCalendars = async (id: number, item: Omit<Calendars, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Calendars>(`${API_BASE}/calendars/${id}`, {
+    const data = await $api<Calendars>(`${API_BASE}/calendars/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -83,7 +83,7 @@ const updateCalendars = async (id: number, item: Omit<Calendars, 'id' | 'created
 // Удаление календарь
 const deleteCalendars = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/calendars/${id}`, {
+    await $api(`${API_BASE}/calendars/${id}`, {
       method: 'DELETE'
     })
     const index = calendars.value.findIndex(p => p.id === id)

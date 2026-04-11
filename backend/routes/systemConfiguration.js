@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getSystemConfiguration,
   getSystemConfigurationById,
@@ -15,12 +16,12 @@ router.get('/', getSystemConfiguration);
 router.get('/:id', getSystemConfigurationById);
 
 // POST /systemConfiguration
-router.post('/', createSystemConfiguration);
+router.post('/', protect, createSystemConfiguration);
 
 // PUT /systemConfiguration/:id
-router.put('/:id', updateSystemConfiguration);
+router.put('/:id', protect, updateSystemConfiguration);
 
 // DELETE /systemConfiguration/:id
-router.delete('/:id', deleteSystemConfiguration);
+router.delete('/:id', protect, deleteSystemConfiguration);
 
 module.exports = router;

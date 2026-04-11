@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getTemplates,
   getTemplateById,
@@ -15,12 +16,12 @@ router.get('/', getTemplates);
 router.get('/:id', getTemplateById);
 
 // POST /templates
-router.post('/', createTemplates);
+router.post('/', protect, createTemplates);
 
 // PUT /templates/:id
-router.put('/:id', updateTemplates);
+router.put('/:id', protect, updateTemplates);
 
 // DELETE /templates/:id
-router.delete('/:id', deleteTemplates);
+router.delete('/:id', protect, deleteTemplates);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getTypes,
   getTypeById,
@@ -20,19 +21,19 @@ router.get('/:id/workflow', getTypeWithWorkflow);
 router.get('/:id', getTypeById);
 
 // POST /types
-router.post('/', createTypes);
+router.post('/', protect, createTypes);
 
 // PUT /types/:id
-router.put('/:id', updateTypes);
+router.put('/:id', protect, updateTypes);
 
 // DELETE /types/:id
-router.delete('/:id', deleteTypes);
+router.delete('/:id', protect, deleteTypes);
 
 // Маршруты для связи типов и категорий
 // POST /types/:id/categories - добавить категорию к типу
-router.post('/:id/categories', typeCategoriesController.addCategoryToType);
+router.post('/:id/categories', protect, typeCategoriesController.addCategoryToType);
 
 // DELETE /types/:id/categories/:categoryId - удалить категорию из типа
-router.delete('/:id/categories/:categoryId', typeCategoriesController.removeCategoryFromType);
+router.delete('/:id/categories/:categoryId', protect, typeCategoriesController.removeCategoryFromType);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getSystemLog,
   getSystemLogById,
@@ -15,12 +16,12 @@ router.get('/', getSystemLog);
 router.get('/:id', getSystemLogById);
 
 // POST /systemLog
-router.post('/', createSystemLog);
+router.post('/', protect, createSystemLog);
 
 // PUT /systemLog/:id
-router.put('/:id', updateSystemLog);
+router.put('/:id', protect, updateSystemLog);
 
 // DELETE /systemLog/:id
-router.delete('/:id', deleteSystemLog);
+router.delete('/:id', protect, deleteSystemLog);
 
 module.exports = router;

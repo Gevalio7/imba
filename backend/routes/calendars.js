@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getCalendars,
   getCalendarById,
@@ -15,12 +16,12 @@ router.get('/', getCalendars);
 router.get('/:id', getCalendarById);
 
 // POST /calendars
-router.post('/', createCalendars);
+router.post('/', protect, createCalendars);
 
 // PUT /calendars/:id
-router.put('/:id', updateCalendars);
+router.put('/', protect, updateCalendars);
 
 // DELETE /calendars/:id
-router.delete('/:id', deleteCalendars);
+router.delete('/:id', protect, deleteCalendars);
 
 module.exports = router;

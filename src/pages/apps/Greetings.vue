@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Приветствие
@@ -29,7 +29,7 @@ const fetchGreetings = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching greetings from:', `${API_BASE}/greetings`)
-    const data = await $fetch<{ greetings: Greetings[], total: number }>(`${API_BASE}/greetings`)
+    const data = await $api<{ greetings: Greetings[], total: number }>(`${API_BASE}/greetings`)
     console.log('Fetched greetings data:', data)
     greetings.value = data.greetings
     total.value = data.total
@@ -44,7 +44,7 @@ const fetchGreetings = async () => {
 // Создание приветствие
 const createGreetings = async (item: Omit<Greetings, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Greetings>(`${API_BASE}/greetings`, {
+    const data = await $api<Greetings>(`${API_BASE}/greetings`, {
       method: 'POST',
       body: item
     })
@@ -59,7 +59,7 @@ const createGreetings = async (item: Omit<Greetings, 'id' | 'createdAt' | 'updat
 // Обновление приветствие
 const updateGreetings = async (id: number, item: Omit<Greetings, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Greetings>(`${API_BASE}/greetings/${id}`, {
+    const data = await $api<Greetings>(`${API_BASE}/greetings/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -77,7 +77,7 @@ const updateGreetings = async (id: number, item: Omit<Greetings, 'id' | 'created
 // Удаление приветствие
 const deleteGreetings = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/greetings/${id}`, {
+    await $api(`${API_BASE}/greetings/${id}`, {
       method: 'DELETE'
     })
     const index = greetings.value.findIndex(p => p.id === id)

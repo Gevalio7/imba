@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Подпись
@@ -36,7 +36,7 @@ const fetchSignatures = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching signatures from:', `${API_BASE}/signatures`)
-    const data = await $fetch<{ signatures: Signatures[], total: number }>(`${API_BASE}/signatures`)
+    const data = await $api<{ signatures: Signatures[], total: number }>(`${API_BASE}/signatures`)
     console.log('Fetched signatures data:', data)
     signatures.value = data.signatures
     total.value = data.total
@@ -51,7 +51,7 @@ const fetchSignatures = async () => {
 // Создание подпись
 const createSignatures = async (item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Signatures>(`${API_BASE}/signatures`, {
+    const data = await $api<Signatures>(`${API_BASE}/signatures`, {
       method: 'POST',
       body: item
     })
@@ -66,7 +66,7 @@ const createSignatures = async (item: Omit<Signatures, 'id' | 'createdAt' | 'upd
 // Обновление подпись
 const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Signatures>(`${API_BASE}/signatures/${id}`, {
+    const data = await $api<Signatures>(`${API_BASE}/signatures/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -84,7 +84,7 @@ const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'creat
 // Удаление подпись
 const deleteSignatures = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/signatures/${id}`, {
+    await $api(`${API_BASE}/signatures/${id}`, {
       method: 'DELETE'
     })
     const index = signatures.value.findIndex(p => p.id === id)

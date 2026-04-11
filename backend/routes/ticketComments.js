@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const TicketComments = require('../models/ticketComments');
 
 // GET /ticket-comments - список с query params
@@ -34,7 +35,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /ticket-comments
-router.post('/', async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
     const comment = await TicketComments.create(req.body);
     res.status(201).json(comment);
@@ -44,7 +45,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /ticket-comments/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   try {
     const comment = await TicketComments.update(req.params.id, req.body);
     if (!comment) {
@@ -57,7 +58,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /ticket-comments/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
     const deleted = await TicketComments.delete(req.params.id);
     if (!deleted) {

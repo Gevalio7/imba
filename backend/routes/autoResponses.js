@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getAutoResponses,
   getAutoResponseById,
@@ -15,12 +16,12 @@ router.get('/', getAutoResponses);
 router.get('/:id', getAutoResponseById);
 
 // POST /autoResponses
-router.post('/', createAutoResponses);
+router.post('/', protect, createAutoResponses);
 
 // PUT /autoResponses/:id
-router.put('/:id', updateAutoResponses);
+router.put('/:id', protect, updateAutoResponses);
 
 // DELETE /autoResponses/:id
-router.delete('/:id', deleteAutoResponses);
+router.delete('/:id', protect, deleteAutoResponses);
 
 module.exports = router;

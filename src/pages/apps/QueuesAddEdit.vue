@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { onMounted, ref, computed } from 'vue'
 
 interface Queue {
@@ -136,7 +136,7 @@ const searchArticles = async () => {
     if (quickAnswerFilter.value.categoryId) params.categoryId = quickAnswerFilter.value.categoryId
     if (quickAnswerFilter.value.serviceId) params.serviceId = quickAnswerFilter.value.serviceId
     
-    const data = await $fetch<{ articles: Article[] }>(`${API_BASE}/knowledge-base/by-filters`, {
+    const data = await $api<{ articles: Article[] }>(`${API_BASE}/knowledge-base/by-filters`, {
       params
     })
     foundArticles.value = data.articles || []
@@ -151,8 +151,8 @@ const searchArticles = async () => {
 const fetchCategoriesAndServices = async () => {
   try {
     const [typesData, servicesData] = await Promise.all([
-      $fetch<{ types: any[] }>(`${API_BASE}/types`),
-      $fetch<{ services: any[] }>(`${API_BASE}/services`)
+      $api<{ types: any[] }>(`${API_BASE}/types`),
+      $api<{ services: any[] }>(`${API_BASE}/services`)
     ])
     typesList.value = typesData.types || []
     servicesList.value = servicesData.services || []
@@ -199,7 +199,7 @@ const openQuickAnswersDialog = () => {
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $fetch<ReferenceData>(`${API_BASE}/reference-data`)
+    const data = await $api<ReferenceData>(`${API_BASE}/reference-data`)
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -217,7 +217,7 @@ const fetchQueue = async () => {
   
   try {
     loading.value = true
-    const data = await $fetch(`${API_BASE}/queues/${queueId.value}`)
+    const data = await $api(`${API_BASE}/queues/${queueId.value}`)
     // Convert emailConfig from object to JSON string for textarea
     if (data.emailConfig && typeof data.emailConfig === 'object') {
       data.emailConfig = JSON.stringify(data.emailConfig, null, 2)
@@ -262,13 +262,13 @@ const saveQueue = async () => {
     if (selectedArticleIds.value.length > 0) queueData.quickAnswerArticleIds = selectedArticleIds.value
 
     if (isEdit.value) {
-      await $fetch(`${API_BASE}/queues/${queueId.value}`, {
+      await $api(`${API_BASE}/queues/${queueId.value}`, {
         method: 'PUT',
         body: queueData
       })
       showToast('Очередь успешно обновлена')
     } else {
-      await $fetch(`${API_BASE}/queues`, {
+      await $api(`${API_BASE}/queues`, {
         method: 'POST',
         body: queueData
       })

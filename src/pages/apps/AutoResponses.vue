@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Автоответ
@@ -30,7 +30,7 @@ const fetchAutoResponses = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching autoResponses from:', `${API_BASE}/autoResponses`)
-    const data = await $fetch<{ autoResponses: AutoResponses[], total: number }>(`${API_BASE}/autoResponses`)
+    const data = await $api<{ autoResponses: AutoResponses[], total: number }>(`${API_BASE}/autoResponses`)
     console.log('Fetched autoResponses data:', data)
     autoResponses.value = data.autoResponses
     total.value = data.total
@@ -45,7 +45,7 @@ const fetchAutoResponses = async () => {
 // Создание автоответ
 const createAutoResponses = async (item: Omit<AutoResponses, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<AutoResponses>(`${API_BASE}/autoResponses`, {
+    const data = await $api<AutoResponses>(`${API_BASE}/autoResponses`, {
       method: 'POST',
       body: item
     })
@@ -60,7 +60,7 @@ const createAutoResponses = async (item: Omit<AutoResponses, 'id' | 'createdAt' 
 // Обновление автоответ
 const updateAutoResponses = async (id: number, item: Omit<AutoResponses, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<AutoResponses>(`${API_BASE}/autoResponses/${id}`, {
+    const data = await $api<AutoResponses>(`${API_BASE}/autoResponses/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -78,7 +78,7 @@ const updateAutoResponses = async (id: number, item: Omit<AutoResponses, 'id' | 
 // Удаление автоответ
 const deleteAutoResponses = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/autoResponses/${id}`, {
+    await $api(`${API_BASE}/autoResponses/${id}`, {
       method: 'DELETE'
     })
     const index = autoResponses.value.findIndex(p => p.id === id)

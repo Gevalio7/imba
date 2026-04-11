@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getArticles,
   getArticleById,
@@ -24,15 +25,15 @@ router.get('/by-filters', getArticlesByFilters);
 router.get('/:id', getArticleById);
 
 // POST /knowledge-base
-router.post('/', createArticle);
+router.post('/', protect, createArticle);
 
 // PUT /knowledge-base/:id
-router.put('/:id', updateArticle);
+router.put('/:id', protect, updateArticle);
 
 // DELETE /knowledge-base/:id
-router.delete('/:id', deleteArticle);
+router.delete('/:id', protect, deleteArticle);
 
 // POST /knowledge-base/:id/view - увеличить счетчик просмотров
-router.post('/:id/view', incrementViews);
+router.post('/:id/view', protect, incrementViews);
 
 module.exports = router;

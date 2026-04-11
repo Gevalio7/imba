@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getWorkflows,
   getWorkflowById,
@@ -28,13 +29,13 @@ router.get('/:id', getWorkflowById);
 router.get('/:id/full', getWorkflowWithTransitions);
 
 // POST /api/workflows - Создать воркфлоу
-router.post('/', createWorkflow);
+router.post('/', protect, createWorkflow);
 
 // PUT /api/workflows/:id - Обновить воркфлоу
-router.put('/:id', updateWorkflow);
+router.put('/:id', protect, updateWorkflow);
 
 // DELETE /api/workflows/:id - Удалить воркфлоу
-router.delete('/:id', deleteWorkflow);
+router.delete('/:id', protect, deleteWorkflow);
 
 // =====================================================
 // TRANSITIONS (Переходы воркфлоу)
@@ -44,15 +45,15 @@ router.delete('/:id', deleteWorkflow);
 router.get('/:id/transitions', getTransitions);
 
 // POST /api/workflows/:id/transitions - Создать переход
-router.post('/:id/transitions', createTransition);
+router.post('/:id/transitions', protect, createTransition);
 
 // POST /api/workflows/:id/transitions/bulk - Массовое создание переходов
-router.post('/:id/transitions/bulk', bulkCreateTransitions);
+router.post('/:id/transitions/bulk', protect, bulkCreateTransitions);
 
 // PUT /api/workflows/:workflowId/transitions/:transitionId - Обновить переход
-router.put('/:workflowId/transitions/:transitionId', updateTransition);
+router.put('/:workflowId/transitions/:transitionId', protect, updateTransition);
 
 // DELETE /api/workflows/:workflowId/transitions/:transitionId - Удалить переход
-router.delete('/:workflowId/transitions/:transitionId', deleteTransition);
+router.delete('/:workflowId/transitions/:transitionId', protect, deleteTransition);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
 
@@ -149,7 +149,7 @@ const showToast = (message: string, color: string = 'success') => {
 const fetchWorkflows = async () => {
   try {
     loading.value = true
-    const data = await $fetch<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
+    const data = await $api<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
     workflows.value = data.workflows || []
   } catch (err) {
     error.value = 'Ошибка загрузки воркфлоу'
@@ -161,7 +161,7 @@ const fetchWorkflows = async () => {
 
 const fetchStates = async () => {
   try {
-    const data = await $fetch<{ states: State[] }>(`${API_BASE}/states`)
+    const data = await $api<{ states: State[] }>(`${API_BASE}/states`)
     states.value = data.states || []
   } catch (err) {
     console.error('Error fetching states:', err)
@@ -171,7 +171,7 @@ const fetchStates = async () => {
 const fetchWorkflowDetails = async (id: number) => {
   try {
     loading.value = true
-    const data = await $fetch<Workflow>(`${API_BASE}/workflows/${id}/full`)
+    const data = await $api<Workflow>(`${API_BASE}/workflows/${id}/full`)
     selectedWorkflow.value = data
     buildVisualization()
   } catch (err) {
@@ -212,13 +212,13 @@ const saveWorkflow = async () => {
 
   try {
     if (workflowForm.value.id) {
-      await $fetch(`${API_BASE}/workflows/${workflowForm.value.id}`, {
+      await $api(`${API_BASE}/workflows/${workflowForm.value.id}`, {
         method: 'PUT',
         body: workflowForm.value
       })
       showToast('Воркфлоу обновлен')
     } else {
-      await $fetch(`${API_BASE}/workflows`, {
+      await $api(`${API_BASE}/workflows`, {
         method: 'POST',
         body: workflowForm.value
       })
@@ -238,7 +238,7 @@ const confirmDeleteWorkflow = (workflow: Workflow) => {
 
 const deleteWorkflow = async () => {
   try {
-    await $fetch(`${API_BASE}/workflows/${workflowForm.value.id}`, {
+    await $api(`${API_BASE}/workflows/${workflowForm.value.id}`, {
       method: 'DELETE'
     })
     showToast('Воркфлоу удален')
@@ -285,13 +285,13 @@ const saveTransition = async () => {
 
   try {
     if (transitionForm.value.id) {
-      await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
+      await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
         method: 'PUT',
         body: transitionForm.value
       })
       showToast('Переход обновлен')
     } else {
-      await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions`, {
+      await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions`, {
         method: 'POST',
         body: transitionForm.value
       })
@@ -314,7 +314,7 @@ const confirmDeleteTransition = (transition: WorkflowTransition, index: number) 
 
 const deleteTransition = async () => {
   try {
-    await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
+    await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
       method: 'DELETE'
     })
     showToast('Переход удален')
@@ -334,11 +334,11 @@ const moveTransitionUp = async (transition: WorkflowTransition, index: number) =
   const prevTransition = selectedWorkflow.value.transitions[index - 1]
   
   try {
-    await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
+    await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
       method: 'PUT',
       body: { sortOrder: prevTransition.sortOrder }
     })
-    await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${prevTransition.id}`, {
+    await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${prevTransition.id}`, {
       method: 'PUT',
       body: { sortOrder: transition.sortOrder }
     })
@@ -355,11 +355,11 @@ const moveTransitionDown = async (transition: WorkflowTransition, index: number)
   const nextTransition = selectedWorkflow.value.transitions[index + 1]
   
   try {
-    await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
+    await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
       method: 'PUT',
       body: { sortOrder: nextTransition.sortOrder }
     })
-    await $fetch(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${nextTransition.id}`, {
+    await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${nextTransition.id}`, {
       method: 'PUT',
       body: { sortOrder: transition.sortOrder }
     })

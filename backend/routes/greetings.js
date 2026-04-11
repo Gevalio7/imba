@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getGreetings,
   getGreetingById,
@@ -15,12 +16,12 @@ router.get('/', getGreetings);
 router.get('/:id', getGreetingById);
 
 // POST /greetings
-router.post('/', createGreetings);
+router.post('/', protect, createGreetings);
 
 // PUT /greetings/:id
-router.put('/:id', updateGreetings);
+router.put('/:id', protect, updateGreetings);
 
 // DELETE /greetings/:id
-router.delete('/:id', deleteGreetings);
+router.delete('/:id', protect, deleteGreetings);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const Agents = require('../models/agents');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { pool } = require('../config/db');

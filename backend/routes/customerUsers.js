@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getCustomerUsers,
   getCustomerUserById,
@@ -15,12 +16,12 @@ router.get('/', getCustomerUsers);
 router.get('/:id', getCustomerUserById);
 
 // POST /customerUsers
-router.post('/', createCustomerUsers);
+router.post('/', protect, createCustomerUsers);
 
 // PUT /customerUsers/:id
-router.put('/:id', updateCustomerUsers);
+router.put('/:id', protect, updateCustomerUsers);
 
 // DELETE /customerUsers/:id
-router.delete('/:id', deleteCustomerUsers);
+router.delete('/:id', protect, deleteCustomerUsers);
 
 module.exports = router;

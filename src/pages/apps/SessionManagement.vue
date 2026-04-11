@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Управление сессией
@@ -31,7 +31,7 @@ const fetchSessionManagement = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching sessionManagement from:', `${API_BASE}/sessionManagement`)
-    const data = await $fetch<{ sessionManagement: SessionManagement[], total: number }>(`${API_BASE}/sessionManagement`)
+    const data = await $api<{ sessionManagement: SessionManagement[], total: number }>(`${API_BASE}/sessionManagement`)
     console.log('Fetched sessionManagement data:', data)
     sessionManagement.value = data.sessionManagement
     total.value = data.total
@@ -46,7 +46,7 @@ const fetchSessionManagement = async () => {
 // Создание управление сессией
 const createSessionManagement = async (item: Omit<SessionManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SessionManagement>(`${API_BASE}/sessionManagement`, {
+    const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement`, {
       method: 'POST',
       body: item
     })
@@ -61,7 +61,7 @@ const createSessionManagement = async (item: Omit<SessionManagement, 'id' | 'cre
 // Обновление управление сессией
 const updateSessionManagement = async (id: number, item: Omit<SessionManagement, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SessionManagement>(`${API_BASE}/sessionManagement/${id}`, {
+    const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -79,7 +79,7 @@ const updateSessionManagement = async (id: number, item: Omit<SessionManagement,
 // Удаление управление сессией
 const deleteSessionManagement = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/sessionManagement/${id}`, {
+    await $api(`${API_BASE}/sessionManagement/${id}`, {
       method: 'DELETE'
     })
     const index = sessionManagement.value.findIndex(p => p.id === id)

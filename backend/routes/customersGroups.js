@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getCustomersGroups,
   getCustomersGroupById,
@@ -15,12 +16,12 @@ router.get('/', getCustomersGroups);
 router.get('/:id', getCustomersGroupById);
 
 // POST /customersGroups
-router.post('/', createCustomersGroups);
+router.post('/', protect, createCustomersGroups);
 
 // PUT /customersGroups/:id
-router.put('/:id', updateCustomersGroups);
+router.put('/:id', protect, updateCustomersGroups);
 
 // DELETE /customersGroups/:id
-router.delete('/:id', deleteCustomersGroups);
+router.delete('/:id', protect, deleteCustomersGroups);
 
 module.exports = router;

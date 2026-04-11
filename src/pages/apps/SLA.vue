@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для SLA
@@ -46,7 +46,7 @@ const fetchCalendars = async () => {
   console.log('fetchCalendars called')
   try {
     console.log('Fetching calendars from:', `${API_BASE}/calendars`)
-    const data = await $fetch(`${API_BASE}/calendars`)
+    const data = await $api(`${API_BASE}/calendars`)
     console.log('Fetched calendars:', data)
     calendars.value = data.calendars || []
     console.log('Calendars set to:', calendars.value)
@@ -58,7 +58,7 @@ const fetchCalendars = async () => {
 const fetchServices = async () => {
   try {
     console.log('Fetching services from:', `${API_BASE}/services`)
-    const data = await $fetch(`${API_BASE}/services`)
+    const data = await $api(`${API_BASE}/services`)
     console.log('Fetched services:', data)
     services.value = data.services || []
     console.log('Services set to:', services.value)
@@ -73,7 +73,7 @@ const fetchSLA = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching sla from:', `${API_BASE}/sla`)
-    const data = await $fetch<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+    const data = await $api<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
     console.log('Fetched sla data:', data)
     sLA.value = data.sla
     total.value = data.total
@@ -88,7 +88,7 @@ const fetchSLA = async () => {
 // Создание sla
 const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SLA>(`${API_BASE}/sla`, {
+    const data = await $api<SLA>(`${API_BASE}/sla`, {
       method: 'POST',
       body: item
     })
@@ -103,7 +103,7 @@ const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
 // Обновление sla
 const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SLA>(`${API_BASE}/sla/${id}`, {
+    const data = await $api<SLA>(`${API_BASE}/sla/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -121,7 +121,7 @@ const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updat
 // Удаление sla
 const deleteSLA = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/sla/${id}`, {
+    await $api(`${API_BASE}/sla/${id}`, {
       method: 'DELETE'
     })
     const index = sLA.value.findIndex(p => p.id === id)

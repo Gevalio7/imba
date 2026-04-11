@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getSla,
   getSlaById,
@@ -15,12 +16,12 @@ router.get('/', getSla);
 router.get('/:id', getSlaById);
 
 // POST /sla
-router.post('/', createSla);
+router.post('/', protect, createSla);
 
 // PUT /sla/:id
-router.put('/:id', updateSla);
+router.put('/:id', protect, updateSla);
 
 // DELETE /sla/:id
-router.delete('/:id', deleteSla);
+router.delete('/:id', protect, deleteSla);
 
 module.exports = router;

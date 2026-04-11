@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Сервис
@@ -95,7 +95,7 @@ const fetchServices = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching services from:', `${API_BASE}/services`)
-    const data = await $fetch<{ services: Services[], total: number }>(`${API_BASE}/services`)
+    const data = await $api<{ services: Services[], total: number }>(`${API_BASE}/services`)
     console.log('Fetched services data:', data)
     services.value = data.services
     total.value = data.total
@@ -110,7 +110,7 @@ const fetchServices = async () => {
 // Создание сервис
 const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Services>(`${API_BASE}/services`, {
+    const data = await $api<Services>(`${API_BASE}/services`, {
       method: 'POST',
       body: item
     })
@@ -125,7 +125,7 @@ const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updated
 // Обновление сервис
 const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Services>(`${API_BASE}/services/${id}`, {
+    const data = await $api<Services>(`${API_BASE}/services/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -143,7 +143,7 @@ const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt
 // Удаление сервис
 const deleteServices = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/services/${id}`, {
+    await $api(`${API_BASE}/services/${id}`, {
       method: 'DELETE'
     })
     const index = services.value.findIndex(p => p.id === id)
@@ -167,7 +167,7 @@ onMounted(() => {
 const fetchCustomers = async () => {
   try {
     customersLoading.value = true
-    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
     customers.value = data.customers || []
   } catch (err) {
     console.error('Error fetching customers:', err)
@@ -180,7 +180,7 @@ const fetchCustomers = async () => {
 const fetchSLAs = async () => {
   try {
     slasLoading.value = true
-    const data = await $fetch<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+    const data = await $api<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
     slas.value = data.sla || []
   } catch (err) {
     console.error('Error fetching SLAs:', err)
@@ -380,7 +380,7 @@ const editItem = async (item: Services) => {
   
   // Загружаем полные данные сервиса с сервера
   try {
-    const fullItem = await $fetch<Services>(`${API_BASE}/services/${item.id}`)
+    const fullItem = await $api<Services>(`${API_BASE}/services/${item.id}`)
     editedItem.value = { ...fullItem }
     // Устанавливаем выбранные компании
     selectedCustomerIds.value = fullItem.customers?.map(c => c.id) || []
@@ -487,7 +487,7 @@ const uploadFiles = async (serviceId: number) => {
       formData.append('files', file)
     })
     
-    await $fetch(`${API_BASE}/services/${serviceId}/attachments`, {
+    await $api(`${API_BASE}/services/${serviceId}/attachments`, {
       method: 'POST',
       body: formData
     })
@@ -503,7 +503,7 @@ const uploadFiles = async (serviceId: number) => {
 // Удаление вложения
 const removeAttachment = async (attachmentId: number) => {
   try {
-    await $fetch(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachmentId}`, {
+    await $api(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachmentId}`, {
       method: 'DELETE'
     })
     // Удаляем из списка существующих вложений

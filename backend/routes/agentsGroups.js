@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getAgentsGroups,
   getAgentsGroupById,
@@ -18,21 +19,21 @@ router.get('/', getAgentsGroups);
 router.get('/:id', getAgentsGroupById);
 
 // POST /agentsGroups
-router.post('/', createAgentsGroups);
+router.post('/', protect, createAgentsGroups);
 
 // PUT /agentsGroups/:id
-router.put('/:id', updateAgentsGroups);
+router.put('/:id', protect, updateAgentsGroups);
 
 // DELETE /agentsGroups/:id
-router.delete('/:id', deleteAgentsGroups);
+router.delete('/:id', protect, deleteAgentsGroups);
 
 // GET /agentsGroups/:id/agents
 router.get('/:id/agents', getAgentsInGroup);
 
 // POST /agentsGroups/:id/agents
-router.post('/:id/agents', addAgentToGroup);
+router.post('/:id/agents', protect, addAgentToGroup);
 
 // DELETE /agentsGroups/:id/agents/:agentId
-router.delete('/:id/agents/:agentId', removeAgentFromGroup);
+router.delete('/:id/agents/:agentId', protect, removeAgentFromGroup);
 
 module.exports = router;

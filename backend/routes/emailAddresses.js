@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getEmailAddresses,
   getEmailAddressById,
@@ -15,12 +16,12 @@ router.get('/', getEmailAddresses);
 router.get('/:id', getEmailAddressById);
 
 // POST /emailAddresses
-router.post('/', createEmailAddresses);
+router.post('/', protect, createEmailAddresses);
 
 // PUT /emailAddresses/:id
-router.put('/:id', updateEmailAddresses);
+router.put('/:id', protect, updateEmailAddresses);
 
 // DELETE /emailAddresses/:id
-router.delete('/:id', deleteEmailAddresses);
+router.delete('/:id', protect, deleteEmailAddresses);
 
 module.exports = router;

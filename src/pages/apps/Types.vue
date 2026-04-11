@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Тип
@@ -78,7 +78,7 @@ const loadingCategories = ref(false)
 // Загрузка списка воркфлоу
 const fetchWorkflows = async () => {
   try {
-    const data = await $fetch<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
+    const data = await $api<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
     workflows.value = data.workflows || []
   } catch (err) {
     console.error('Error fetching workflows:', err)
@@ -90,7 +90,7 @@ const fetchCategories = async () => {
   try {
     loadingCategories.value = true
     // Получаем все категории (включая неактивные для админ-функций)
-    const data = await $fetch<{ typeCategories: TypeCategory[], total: number }>(`${API_BASE}/typeCategories`, {
+    const data = await $api<{ typeCategories: TypeCategory[], total: number }>(`${API_BASE}/typeCategories`, {
       query: { itemsPerPage: 1000, isActive: 'all' }
     })
     typeCategories.value = data.typeCategories || []
@@ -110,7 +110,7 @@ const availableCategoriesForType = (type: Types): TypeCategory[] => {
 // Добавить категорию к типу из таблицы
 const addCategoryToTypeFromTable = async (type: Types, categoryId: number) => {
   try {
-    await $fetch(`${API_BASE}/types/${type.id}/categories`, {
+    await $api(`${API_BASE}/types/${type.id}/categories`, {
       method: 'POST',
       body: { categoryId }
     })
@@ -129,7 +129,7 @@ const addCategoryToTypeFromTable = async (type: Types, categoryId: number) => {
 const fetchTypesWithCategories = async () => {
   try {
     loading.value = true
-    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
+    const data = await $api<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
     types.value = data.types
     total.value = data.total
   } catch (err) {
@@ -152,7 +152,7 @@ const fetchTypes = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching types from:', `${API_BASE}/typeCategories/with-types`)
-    const data = await $fetch<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
+    const data = await $api<{ types: Types[], total: number }>(`${API_BASE}/typeCategories/with-types`)
     console.log('Fetched types data:', data)
     types.value = data.types
     total.value = data.total
@@ -167,7 +167,7 @@ const fetchTypes = async () => {
 // Создание тип
 const createTypes = async (item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Types>(`${API_BASE}/types`, {
+    const data = await $api<Types>(`${API_BASE}/types`, {
       method: 'POST',
       body: item
     })
@@ -182,7 +182,7 @@ const createTypes = async (item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) 
 // Обновление тип
 const updateTypes = async (id: number, item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Types>(`${API_BASE}/types/${id}`, {
+    const data = await $api<Types>(`${API_BASE}/types/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -200,7 +200,7 @@ const updateTypes = async (id: number, item: Omit<Types, 'id' | 'createdAt' | 'u
 // Удаление тип
 const deleteTypes = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/types/${id}`, {
+    await $api(`${API_BASE}/types/${id}`, {
       method: 'DELETE'
     })
     const index = types.value.findIndex(p => p.id === id)
@@ -412,7 +412,7 @@ const addSelectedCategoriesToType = async (item: Types) => {
   
   try {
     for (const catId of categoryIds) {
-      await $fetch(`${API_BASE}/types/${item.id}/categories`, {
+      await $api(`${API_BASE}/types/${item.id}/categories`, {
         method: 'POST',
         body: { categoryId: catId }
       })
@@ -482,7 +482,7 @@ const save = async () => {
       // Удаляем старые категории
       for (const catId of currentCategoryIds) {
         if (!newCategoryIds.includes(catId)) {
-          await $fetch(`${API_BASE}/types/${updated.id}/categories/${catId}`, {
+          await $api(`${API_BASE}/types/${updated.id}/categories/${catId}`, {
             method: 'DELETE'
           })
         }
@@ -491,7 +491,7 @@ const save = async () => {
       // Добавляем новые категории
       for (const catId of newCategoryIds) {
         if (!currentCategoryIds.includes(catId)) {
-          await $fetch(`${API_BASE}/types/${updated.id}/categories`, {
+          await $api(`${API_BASE}/types/${updated.id}/categories`, {
             method: 'POST',
             body: { categoryId: catId }
           })
@@ -508,7 +508,7 @@ const save = async () => {
       
       // Добавляем категории для нового типа
       for (const catId of selectedCategoryIds.value) {
-        await $fetch(`${API_BASE}/types/${created.id}/categories`, {
+        await $api(`${API_BASE}/types/${created.id}/categories`, {
           method: 'POST',
           body: { categoryId: catId }
         })
@@ -605,7 +605,7 @@ const addCategoriesToType = async () => {
   
   try {
     for (const catId of selectedCategoriesForLink.value) {
-      await $fetch(`${API_BASE}/types/${linkingTypeForCategories.value.id}/categories`, {
+      await $api(`${API_BASE}/types/${linkingTypeForCategories.value.id}/categories`, {
         method: 'POST',
         body: { categoryId: catId }
       })
@@ -683,13 +683,13 @@ const confirmDeleteCategory = async () => {
       t.categoryIds && t.categoryIds.includes(categoryId)
     )
     for (const type of typesWithCategory) {
-      await $fetch(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
+      await $api(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
         method: 'DELETE'
       })
     }
 
     // Теперь удаляем саму категорию
-    await $fetch(`${API_BASE}/typeCategories/${categoryId}`, {
+    await $api(`${API_BASE}/typeCategories/${categoryId}`, {
       method: 'DELETE'
     })
     showToast('Категория удалена')
@@ -711,14 +711,14 @@ const saveCategory = async () => {
     savingCategory.value = true
     if (editingCategory.value) {
       // Обновление
-      await $fetch(`${API_BASE}/typeCategories/${editingCategory.value.id}`, {
+      await $api(`${API_BASE}/typeCategories/${editingCategory.value.id}`, {
         method: 'PUT',
         body: categoryForm.value
       })
       showToast('Категория обновлена')
     } else {
       // Создание
-      await $fetch(`${API_BASE}/typeCategories`, {
+      await $api(`${API_BASE}/typeCategories`, {
         method: 'POST',
         body: categoryForm.value
       })
@@ -753,7 +753,7 @@ const addCategoryToType = async () => {
   try {
     // Добавляем категорию к каждому выбранному типу
     for (const typeId of selectedTypesForLink.value) {
-      await $fetch(`${API_BASE}/types/${typeId}/categories`, {
+      await $api(`${API_BASE}/types/${typeId}/categories`, {
         method: 'POST',
         body: { categoryId: linkingCategory.value.id }
       })
@@ -775,7 +775,7 @@ const addCategoryToType = async () => {
 // Удалить категорию из типа
 const removeCategoryFromType = async (type: Types, categoryId: number) => {
   try {
-    await $fetch(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
+    await $api(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
       method: 'DELETE'
     })
     showToast('Связь удалена')

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getPriorities,
   getPriorityById,
@@ -15,12 +16,12 @@ router.get('/', getPriorities);
 router.get('/:id', getPriorityById);
 
 // POST /priorities
-router.post('/', createPriorities);
+router.post('/', protect, createPriorities);
 
 // PUT /priorities/:id
-router.put('/:id', updatePriorities);
+router.put('/:id', protect, updatePriorities);
 
 // DELETE /priorities/:id
-router.delete('/:id', deletePriorities);
+router.delete('/:id', protect, deletePriorities);
 
 module.exports = router;

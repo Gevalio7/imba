@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Клиент
@@ -56,7 +56,7 @@ const customersGroups = ref<CustomersGroup[]>([])
 // Загрузка компаний
 const fetchCustomers = async () => {
   try {
-    const data = await $fetch<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
     customers.value = data.customers
   } catch (err) {
     console.error('Error fetching customers:', err)
@@ -66,7 +66,7 @@ const fetchCustomers = async () => {
 // Загрузка групп клиентов
 const fetchCustomersGroups = async () => {
   try {
-    const data = await $fetch<{ customersGroups: CustomersGroup[], total: number }>(`${API_BASE}/customersGroups`)
+    const data = await $api<{ customersGroups: CustomersGroup[], total: number }>(`${API_BASE}/customersGroups`)
     customersGroups.value = data.customersGroups
   } catch (err) {
     console.error('Error fetching customersGroups:', err)
@@ -99,7 +99,7 @@ const fetchCustomerUsers = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching customerUsers from:', `${API_BASE}/customerUsers`)
-    const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
+    const data = await $api<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
     console.log('Fetched customerUsers data:', data)
     customerUsers.value = data.customerUsers
     total.value = data.total
@@ -114,7 +114,7 @@ const fetchCustomerUsers = async () => {
 // Создание клиент
 const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers`, {
+    const data = await $api<CustomerUsers>(`${API_BASE}/customerUsers`, {
       method: 'POST',
       body: item
     })
@@ -129,7 +129,7 @@ const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' 
 // Обновление клиент
 const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>, updateLocal: boolean = true) => {
   try {
-    const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers/${id}`, {
+    const data = await $api<CustomerUsers>(`${API_BASE}/customerUsers/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -149,7 +149,7 @@ const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 
 // Удаление клиент
 const deleteCustomerUsers = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/customerUsers/${id}`, {
+    await $api(`${API_BASE}/customerUsers/${id}`, {
       method: 'DELETE'
     })
     const index = customerUsers.value.findIndex(p => p.id === id)

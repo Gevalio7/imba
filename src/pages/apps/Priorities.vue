@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Приоритет
@@ -35,7 +35,7 @@ const fetchPriorities = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching priorities from:', `${API_BASE}/priorities`)
-    const data = await $fetch<{ priorities: Priorities[], total: number }>(`${API_BASE}/priorities`)
+    const data = await $api<{ priorities: Priorities[], total: number }>(`${API_BASE}/priorities`)
     console.log('Fetched priorities data:', data)
     priorities.value = data.priorities
     total.value = data.total
@@ -50,7 +50,7 @@ const fetchPriorities = async () => {
 // Создание приоритет
 const createPriorities = async (item: Omit<Priorities, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Priorities>(`${API_BASE}/priorities`, {
+    const data = await $api<Priorities>(`${API_BASE}/priorities`, {
       method: 'POST',
       body: item
     })
@@ -65,7 +65,7 @@ const createPriorities = async (item: Omit<Priorities, 'id' | 'createdAt' | 'upd
 // Обновление приоритет
 const updatePriorities = async (id: number, item: Omit<Priorities, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Priorities>(`${API_BASE}/priorities/${id}`, {
+    const data = await $api<Priorities>(`${API_BASE}/priorities/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -83,7 +83,7 @@ const updatePriorities = async (id: number, item: Omit<Priorities, 'id' | 'creat
 // Удаление приоритет
 const deletePriorities = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/priorities/${id}`, {
+    await $api(`${API_BASE}/priorities/${id}`, {
       method: 'DELETE'
     })
     const index = priorities.value.findIndex(p => p.id === id)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Состояние
@@ -37,7 +37,7 @@ const fetchStates = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching states from:', `${API_BASE}/states`)
-    const data = await $fetch<{ states: States[], total: number }>(`${API_BASE}/states`)
+    const data = await $api<{ states: States[], total: number }>(`${API_BASE}/states`)
     console.log('Fetched states data:', data)
     states.value = data.states
     total.value = data.total
@@ -52,7 +52,7 @@ const fetchStates = async () => {
 // Создание состояние
 const createStates = async (item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<States>(`${API_BASE}/states`, {
+    const data = await $api<States>(`${API_BASE}/states`, {
       method: 'POST',
       body: item
     })
@@ -67,7 +67,7 @@ const createStates = async (item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>
 // Обновление состояние
 const updateStates = async (id: number, item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<States>(`${API_BASE}/states/${id}`, {
+    const data = await $api<States>(`${API_BASE}/states/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -85,7 +85,7 @@ const updateStates = async (id: number, item: Omit<States, 'id' | 'createdAt' | 
 // Удаление состояние
 const deleteStates = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/states/${id}`, {
+    await $api(`${API_BASE}/states/${id}`, {
       method: 'DELETE'
     })
     const index = states.value.findIndex(p => p.id === id)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Шаблон
@@ -28,7 +28,7 @@ const fetchTemplates = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching templates from:', `${API_BASE}/templates`)
-    const data = await $fetch<{ templates: Templates[], total: number }>(`${API_BASE}/templates`)
+    const data = await $api<{ templates: Templates[], total: number }>(`${API_BASE}/templates`)
     console.log('Fetched templates data:', data)
     templates.value = data.templates
     total.value = data.total
@@ -43,7 +43,7 @@ const fetchTemplates = async () => {
 // Создание шаблон
 const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Templates>(`${API_BASE}/templates`, {
+    const data = await $api<Templates>(`${API_BASE}/templates`, {
       method: 'POST',
       body: item
     })
@@ -58,7 +58,7 @@ const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updat
 // Обновление шаблон
 const updateTemplates = async (id: number, item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Templates>(`${API_BASE}/templates/${id}`, {
+    const data = await $api<Templates>(`${API_BASE}/templates/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -76,7 +76,7 @@ const updateTemplates = async (id: number, item: Omit<Templates, 'id' | 'created
 // Удаление шаблон
 const deleteTemplates = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/templates/${id}`, {
+    await $api(`${API_BASE}/templates/${id}`, {
       method: 'DELETE'
     })
     const index = templates.value.findIndex(p => p.id === id)

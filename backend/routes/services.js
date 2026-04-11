@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const multerUpload = multer({ dest: 'uploads/' });
 const { protect } = require('../middleware/auth');
 const {
   getServices,
@@ -46,7 +46,7 @@ router.post('/', protect, createServices);
 router.post('/:id/customers/:customerId', protect, addServiceCustomer);
 
 // POST /services/:id/attachments - загрузить файлы для сервиса
-router.post('/:id/attachments', protect, upload.array('files', 10), uploadServiceAttachments);
+router.post('/:id/attachments', protect, multerUpload.array('files', 10), uploadServiceAttachments);
 
 // PUT /services/:id/sla - установить SLA для сервиса
 router.put('/:id/sla', protect, setServiceSLA);
