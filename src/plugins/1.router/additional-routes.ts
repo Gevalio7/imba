@@ -54,4 +54,15 @@ export const routes: RouteRecordRaw[] = [
     name: 'apps-integrity-check',
     component: () => import('@/pages/apps/IntegrityCheck.vue'),
   },
+  // QueuesAddEdit - страница создания/редактирования очереди
+  {
+    path: '/apps/queues/add',
+    name: 'apps-queues-add',
+    component: () => import('@/pages/apps/QueuesAddEdit.vue'),
+  },
+  {
+    path: '/apps/queues/:id',
+    name: 'apps-queues-edit',
+    component: () => import('@/pages/apps/QueuesAddEdit.vue'),
+  },
 ]

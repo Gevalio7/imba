@@ -13,6 +13,7 @@ const Services = require('../models/services');
 const Sla = require('../models/sla');
 const SystemConfiguration = require('../models/systemConfiguration');
 const CustomerUsers = require('../models/customerUsers');
+const Workflows = require('../models/workflows');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const REFERENCE_DATA_CACHE_TTL = 5 * 60 * 1000;
@@ -48,6 +49,7 @@ router.get('/', asyncHandler(async (req, res) => {
     slaResult,
     systemConfigurationResult,
     customerUsersResult,
+    workflowsResult,
   ] = await Promise.all([
     Priorities.getAll({ itemsPerPage: 1000 }),
     Queues.getAll({ itemsPerPage: 1000 }),
@@ -61,6 +63,7 @@ router.get('/', asyncHandler(async (req, res) => {
     Sla.getAll({ itemsPerPage: 1000 }),
     SystemConfiguration.getAll({ itemsPerPage: 1000 }),
     CustomerUsers.getAll({ itemsPerPage: 1000 }),
+    Workflows.getAll({ itemsPerPage: 1000 }),
   ]);
 
   const data = {
@@ -76,6 +79,7 @@ router.get('/', asyncHandler(async (req, res) => {
     sla: slaResult.sla || [],
     systemConfiguration: systemConfigurationResult.systemConfiguration || [],
     customerUsers: customerUsersResult.customerUsers || [],
+    workflows: workflowsResult.workflows || [],
   };
 
   cachedData = data;

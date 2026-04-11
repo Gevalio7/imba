@@ -20,6 +20,9 @@ declare module 'vue-router/auto-routes' {
   export interface RouteNamedMap {
     '$error': RouteRecordInfo<'$error', '/:error(.*)', { error: ParamValue<true> }, { error: ParamValue<false> }>,
     'access-control': RouteRecordInfo<'access-control', '/access-control', Record<never, never>, Record<never, never>>,
+    'apps-agents': RouteRecordInfo<'apps-agents', '/apps/Agents', Record<never, never>, Record<never, never>>,
+    'apps-agents-add': RouteRecordInfo<'apps-agents-add', '/apps/Agents/add', Record<never, never>, Record<never, never>>,
+    'apps-agents-edit': RouteRecordInfo<'apps-agents-edit', '/apps/Agents/edit', Record<never, never>, Record<never, never>>,
     'apps-agents-groups': RouteRecordInfo<'apps-agents-groups', '/apps/AgentsGroups', Record<never, never>, Record<never, never>>,
     'apps-attachments': RouteRecordInfo<'apps-attachments', '/apps/Attachments', Record<never, never>, Record<never, never>>,
     'apps-auto-responses': RouteRecordInfo<'apps-auto-responses', '/apps/AutoResponses', Record<never, never>, Record<never, never>>,
@@ -41,6 +44,7 @@ declare module 'vue-router/auto-routes' {
     'apps-post-master-mail-accounts': RouteRecordInfo<'apps-post-master-mail-accounts', '/apps/PostMasterMailAccounts', Record<never, never>, Record<never, never>>,
     'apps-priorities': RouteRecordInfo<'apps-priorities', '/apps/Priorities', Record<never, never>, Record<never, never>>,
     'apps-queues': RouteRecordInfo<'apps-queues', '/apps/Queues', Record<never, never>, Record<never, never>>,
+    'apps-queues-add-edit': RouteRecordInfo<'apps-queues-add-edit', '/apps/QueuesAddEdit', Record<never, never>, Record<never, never>>,
     'apps-roles': RouteRecordInfo<'apps-roles', '/apps/Roles', Record<never, never>, Record<never, never>>,
     'apps-services': RouteRecordInfo<'apps-services', '/apps/Services', Record<never, never>, Record<never, never>>,
     'apps-session-management': RouteRecordInfo<'apps-session-management', '/apps/SessionManagement', Record<never, never>, Record<never, never>>,

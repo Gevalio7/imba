@@ -28,6 +28,7 @@ const getAgentRoleIds = async (agentId) => {
  */
 const checkPermission = (permission) => {
   return async (req, res, next) => {
+    console.log(`🔐 checkPermission: ${permission}, user: ${req.user?.id}, path: ${req.path}`);
     try {
       // Если нет user.id - пропускаем (для API ключей или анонимных запросов)
       if (!req.user?.id) {

@@ -260,9 +260,13 @@ const changePassword = async () => {
   try {
     isSaving.value = true
     error.value = null
+    const accessToken = useCookie('accessToken')
 
     await $fetch(`${API_BASE}/agents/${agentId.value}`, {
       method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken.value}`
+      },
       body: {
         password: newPassword.value
       }

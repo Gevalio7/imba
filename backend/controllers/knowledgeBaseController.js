@@ -161,6 +161,23 @@ const incrementViews = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// Получить статьи по фильтрам (категория и/или сервис)
+const getArticlesByFilters = asyncHandler(async (req, res) => {
+  const { categoryId, serviceId } = req.query;
+
+  const filters = {};
+  if (categoryId) filters.categoryId = parseInt(categoryId, 10);
+  if (serviceId) filters.serviceId = parseInt(serviceId, 10);
+
+  const result = await KnowledgeBase.getAll({
+    ...filters,
+    itemsPerPage: 100,
+    page: 1,
+  });
+
+  res.json({ articles: result.articles });
+});
+
 module.exports = {
   getArticles,
   getArticleById,
@@ -168,5 +185,6 @@ module.exports = {
   updateArticle,
   deleteArticle,
   searchByTag,
+  getArticlesByFilters,
   incrementViews,
 };

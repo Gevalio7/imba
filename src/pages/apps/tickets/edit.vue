@@ -533,6 +533,53 @@ const editingCommentContent = ref('')
 const deletingCommentId = ref<number | null>(null)
 const showDeleteDialog = ref(false)
 
+// Быстрые ответы из базы знаний
+interface Article {
+  id: number
+  title: string
+  content: string
+}
+const quickAnswerArticles = ref<Article[]>([])
+const showQuickAnswersDialog = ref(false)
+const loadingQuickAnswers = ref(false)
+
+const currentQueue = computed(() => {
+  if (!ticket.queueId) return null
+  return queues.value.find((q: any) => q.id === ticket.queueId)
+})
+
+const loadQuickAnswers = async () => {
+  if (!currentQueue.value?.quickAnswerArticleIds || currentQueue.value.quickAnswerArticleIds.length === 0) {
+    quickAnswerArticles.value = []
+    return
+  }
+  
+  try {
+    loadingQuickAnswers.value = true
+    const ids = currentQueue.value.quickAnswerArticleIds
+    const data = await $api('/knowledge-base')
+    const allArticles = (data as any).articles || []
+    quickAnswerArticles.value = allArticles.filter((a: any) => ids.includes(a.id))
+  } catch (err) {
+    console.error('Error loading quick answers:', err)
+    quickAnswerArticles.value = []
+  } finally {
+    loadingQuickAnswers.value = false
+  }
+}
+
+const insertQuickAnswer = (article: Article) => {
+  newComment.value += (newComment.value ? '\n\n' : '') + article.content
+  showQuickAnswersDialog.value = false
+}
+
+const openQuickAnswers = () => {
+  showQuickAnswersDialog.value = true
+  if (quickAnswerArticles.value.length === 0) {
+    loadQuickAnswers()
+  }
+}
+
 // Вкладки в блоке комментариев
 const activeTab = ref('comments')
 
@@ -2138,6 +2185,18 @@ const formatDateOnly = (dateStr: string | null) => {
 
                 <!-- Форма добавления комментария -->
                 <div class="comment-form">
+                  <div class="d-flex align-center gap-2 mb-2">
+                    <VBtn
+                      v-if="currentQueue?.quickAnswerArticleIds?.length > 0"
+                      variant="tonal"
+                      size="small"
+                      color="primary"
+                      @click="openQuickAnswers"
+                    >
+                      <VIcon icon="bx-book" class="me-1" />
+                      Быстрые ответы
+                    </VBtn>
+                  </div>
                   <AppTextarea
                     v-model="newComment"
                     placeholder="Напишите комментарий..."
@@ -2966,6 +3025,46 @@ const formatDateOnly = (dateStr: string | null) => {
           <VSpacer />
           <VBtn color="grey" variant="outlined" @click="cancelCreateAuthor">Отмена</VBtn>
           <VBtn color="primary" variant="elevated" @click="createAuthorFromDialog">Создать</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Модальное окно быстрых ответов -->
+    <VDialog v-model="showQuickAnswersDialog" max-width="600" scrollable>
+      <VCard title="Быстрые ответы">
+        <VCardText>
+          <div v-if="loadingQuickAnswers" class="d-flex justify-center pa-4">
+            <VProgressCircular indeterminate color="primary" />
+          </div>
+          <div v-else-if="quickAnswerArticles.length === 0" class="text-center text-medium-emphasis pa-4">
+            Нет привязанных статей к этой очереди
+          </div>
+          <VList v-else>
+            <VListItem
+              v-for="article in quickAnswerArticles"
+              :key="article.id"
+              class="mb-2 border rounded"
+            >
+              <VListItemTitle class="font-weight-medium">{{ article.title }}</VListItemTitle>
+              <VListItemSubtitle class="text-truncate mt-1">
+                {{ article.content?.substring(0, 150) || 'Без содержания' }}...
+              </VListItemSubtitle>
+              <template #append>
+                <VBtn
+                  variant="tonal"
+                  color="primary"
+                  size="small"
+                  @click="insertQuickAnswer(article)"
+                >
+                  Добавить
+                </VBtn>
+              </template>
+            </VListItem>
+          </VList>
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="grey" variant="outlined" @click="showQuickAnswersDialog = false">Закрыть</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

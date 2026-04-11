@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+const { protect } = require('../middleware/auth');
 const {
   getServices,
   getServiceById,
@@ -9,13 +12,11 @@ const {
   getServiceCustomers,
   addServiceCustomer,
   removeServiceCustomer,
-  // Вложения
   getServiceAttachments,
   removeServiceAttachment,
   uploadServiceAttachments,
   downloadServiceAttachment,
   upload,
-  // SLA
   getServiceSLA,
   setServiceSLA,
 } = require('../controllers/servicesController');
@@ -39,27 +40,27 @@ router.get('/:id/attachments/:attachmentId/download', downloadServiceAttachment)
 router.get('/:id/sla', getServiceSLA);
 
 // POST /services
-router.post('/', createServices);
+router.post('/', protect, createServices);
 
 // POST /services/:id/customers/:customerId - добавить компанию к сервису
-router.post('/:id/customers/:customerId', addServiceCustomer);
+router.post('/:id/customers/:customerId', protect, addServiceCustomer);
 
 // POST /services/:id/attachments - загрузить файлы для сервиса
-router.post('/:id/attachments', upload.array('files', 10), uploadServiceAttachments);
+router.post('/:id/attachments', protect, upload.array('files', 10), uploadServiceAttachments);
 
 // PUT /services/:id/sla - установить SLA для сервиса
-router.put('/:id/sla', setServiceSLA);
+router.put('/:id/sla', protect, setServiceSLA);
 
 // PUT /services/:id
-router.put('/:id', updateServices);
+router.put('/:id', protect, updateServices);
 
 // DELETE /services/:id
-router.delete('/:id', deleteServices);
+router.delete('/:id', protect, deleteServices);
 
 // DELETE /services/:id/customers/:customerId - удалить компанию от сервиса
-router.delete('/:id/customers/:customerId', removeServiceCustomer);
+router.delete('/:id/customers/:customerId', protect, removeServiceCustomer);
 
 // DELETE /services/:id/attachments/:attachmentId - удалить вложение от сервиса
-router.delete('/:id/attachments/:attachmentId', removeServiceAttachment);
+router.delete('/:id/attachments/:attachmentId', protect, removeServiceAttachment);
 
 module.exports = router;

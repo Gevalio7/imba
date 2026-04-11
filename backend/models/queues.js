@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Queues {
   static tableName = 'queues';
-  static fields = 'name, description, maxTickets, priority, companyId, serviceId, slaId, workflowId, agentGroupId, priorityId, emailConfig, keywords, autoResponseTemplate';
+  static fields = 'name, description, maxTickets, priority, companyId, serviceId, slaId, workflowId, agentGroupId, priorityId, emailConfig, keywords, autoResponseTemplate, quickAnswerArticleIds';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {} } = options;
@@ -118,7 +118,7 @@ class Queues {
     try {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => queue[field]);
+      const values = fieldList.map(field => queue[field] !== undefined ? queue[field] : null);
 
       // Добавляем templateId
       values.push(queue.templateId || null);
@@ -169,7 +169,7 @@ class Queues {
 
       // Добавляем isActive если передан
       if (queue.isActive !== undefined) {
-        updates.push(`is_active = ${paramIndex}`);
+        updates.push(`is_active = $${paramIndex}`);
         const isActiveValue = queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1';
         values.push(isActiveValue);
         paramIndex++;

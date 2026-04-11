@@ -87,17 +87,38 @@ const createQueues = asyncHandler(async (req, res) => {
 
   // Email конфигурация (JSONB)
   if (req.body.emailConfig !== undefined) {
-    data.emailConfig = req.body.emailConfig;
+    if (typeof req.body.emailConfig === 'string') {
+      try {
+        data.emailConfig = JSON.parse(req.body.emailConfig);
+      } catch (error) {
+        return res.status(400).json({ message: 'emailConfig must be valid JSON' });
+      }
+    } else {
+      data.emailConfig = req.body.emailConfig;
+    }
   }
 
   // Ключевые слова для авто-маршрутизации
   if (req.body.keywords !== undefined) {
-    data.keywords = req.body.keywords;
+    if (typeof req.body.keywords === 'string') {
+      data.keywords = req.body.keywords.split(',').map(k => k.trim()).filter(k => k);
+    } else {
+      data.keywords = req.body.keywords;
+    }
   }
 
   // Шаблон авто-ответа
   if (req.body.autoResponseTemplate !== undefined) {
     data.autoResponseTemplate = req.body.autoResponseTemplate;
+  }
+
+  // Быстрые ответы из базы знаний
+  if (req.body.quickAnswerArticleIds !== undefined) {
+    if (Array.isArray(req.body.quickAnswerArticleIds)) {
+      data.quickAnswerArticleIds = req.body.quickAnswerArticleIds;
+    } else if (req.body.quickAnswerArticleIds === null) {
+      data.quickAnswerArticleIds = null;
+    }
   }
 
   console.log('📝 Данные для создания:', data);
@@ -160,17 +181,38 @@ const updateQueues = asyncHandler(async (req, res) => {
 
   // Email конфигурация (JSONB)
   if (req.body.emailConfig !== undefined) {
-    data.emailConfig = req.body.emailConfig;
+    if (typeof req.body.emailConfig === 'string') {
+      try {
+        data.emailConfig = JSON.parse(req.body.emailConfig);
+      } catch (error) {
+        return res.status(400).json({ message: 'emailConfig must be valid JSON' });
+      }
+    } else {
+      data.emailConfig = req.body.emailConfig;
+    }
   }
 
   // Ключевые слова для авто-маршрутизации
   if (req.body.keywords !== undefined) {
-    data.keywords = req.body.keywords;
+    if (typeof req.body.keywords === 'string') {
+      data.keywords = req.body.keywords.split(',').map(k => k.trim()).filter(k => k);
+    } else {
+      data.keywords = req.body.keywords;
+    }
   }
 
   // Шаблон авто-ответа
   if (req.body.autoResponseTemplate !== undefined) {
     data.autoResponseTemplate = req.body.autoResponseTemplate;
+  }
+
+  // Быстрые ответы из базы знаний
+  if (req.body.quickAnswerArticleIds !== undefined) {
+    if (Array.isArray(req.body.quickAnswerArticleIds)) {
+      data.quickAnswerArticleIds = req.body.quickAnswerArticleIds;
+    } else if (req.body.quickAnswerArticleIds === null) {
+      data.quickAnswerArticleIds = null;
+    }
   }
 
   const updatedQueue = await Queues.update(queueId, data);

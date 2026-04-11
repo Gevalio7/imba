@@ -9,6 +9,15 @@ interface Queues {
   description: string
   maxTickets: number
   priority: number
+  companyId: number | null
+  serviceId: number | null
+  slaId: number | null
+  workflowsId: number | null
+  agentGroupId: number | null
+  priorityId: number | null
+  emailConfig: string
+  keywords: string
+  autoResponseTemplate: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -17,6 +26,68 @@ interface Queues {
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+// Справочники для отображения названий вместо ID
+interface ReferenceData {
+  services: { id: number; name: string }[]
+  sla: { id: number; name: string }[]
+  workflows: { id: number; name: string }[]
+  agentGroups: { id: number; name: string }[]
+  priorities: { id: number; name: string }[]
+}
+
+const referenceData = ref<ReferenceData>({
+  services: [],
+  sla: [],
+  workflows: [],
+  agentGroups: [],
+  priorities: []
+})
+
+const fetchReferenceData = async () => {
+  try {
+    const data = await $fetch<ReferenceData>(`${API_BASE}/reference-data`)
+    referenceData.value = {
+      services: data.services || [],
+      sla: data.sla || [],
+      workflows: data.workflows || [],
+      agentGroups: data.agentGroups || [],
+      priorities: data.priorities || []
+    }
+  } catch (err) {
+    console.error('Error fetching reference data:', err)
+  }
+}
+
+const getServiceName = (id: number | null) => {
+  if (!id) return '-'
+  const service = referenceData.value.services.find(s => s.id === id)
+  return service?.name || '-'
+}
+
+const getSlaName = (id: number | null) => {
+  if (!id) return '-'
+  const sla = referenceData.value.sla.find(s => s.id === id)
+  return sla?.name || '-'
+}
+
+const getWorkflowName = (id: number | null) => {
+  if (!id) return '-'
+  const workflows = referenceData.value.workflows.find(w => w.id === id)
+  return workflows?.name || '-'
+}
+
+const getAgentGroupName = (id: number | null) => {
+  if (!id) return '-'
+  const group = referenceData.value.agentGroups.find(g => g.id === id)
+  return group?.name || '-'
+}
+
+const getPriorityName = (id: number | null) => {
+  if (!id) return '-'
+  const priority = referenceData.value.priorities.find(p => p.id === id)
+  return priority?.name || '-'
+}
 
 // Роутер
 const router = useRouter()
@@ -95,7 +166,8 @@ const deleteQueues = async (id: number) => {
 }
 
 // Инициализация
-onMounted(() => {
+onMounted(async () => {
+  await fetchReferenceData()
   fetchQueues()
 })
 
@@ -105,6 +177,12 @@ const headers = [
   { title: 'Описание', key: 'description', sortable: true },
   { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
   { title: 'Приоритет', key: 'priority', sortable: true },
+  { title: 'Сервис', key: 'serviceId', sortable: false },
+  { title: 'SLA', key: 'slaId', sortable: false },
+  { title: 'Рабочий процесс', key: 'workflowsId', sortable: false },
+  { title: 'Группа агентов', key: 'agentGroupId', sortable: false },
+  { title: 'Приоритет (справочник)', key: 'priorityId', sortable: false },
+  { title: 'Ключевые слова', key: 'keywords', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -230,9 +308,7 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: Queues) => {
-  editedIndex.value = queues.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+  router.push(`/apps/queues/${item.id}`)
 }
 
 const deleteItem = (item: Queues) => {
@@ -323,19 +399,7 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового очередь
 const addNewQueues = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
-
-// Добавление нового очередь версия 2
-const addNewQueuesV2 = () => {
-  router.push('/apps/Queues-create')
-}
-
-// Добавление нового очередь версия 3
-const addNewQueuesV3 = () => {
-  router.push('/apps/Queues-create-v3')
+  router.push('/apps/queues/add')
 }
 </script>
 
@@ -432,24 +496,6 @@ const addNewQueuesV3 = () => {
             @click="addNewQueues"
           >
             Добавить очередь
-          </VBtn>
-
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            prepend-icon="bx-plus"
-            @click="addNewQueuesV2"
-          >
-            Добавить очередь версия 2
-          </VBtn>
-
-          <VBtn
-            color="warning"
-            variant="tonal"
-            prepend-icon="bx-plus"
-            @click="addNewQueuesV3"
-          >
-            Создать очередь версия 3
           </VBtn>
         </div>
       </div>
@@ -586,6 +632,31 @@ const addNewQueuesV3 = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Сервис -->
+        <template #item.serviceId="{ item }">
+          {{ getServiceName(item.serviceId) }}
+        </template>
+
+        <!-- SLA -->
+        <template #item.slaId="{ item }">
+          {{ getSlaName(item.slaId) }}
+        </template>
+
+        <!-- Рабочий процесс -->
+        <template #item.workflowsId="{ item }">
+          {{ getWorkflowName(item.workflowsId) }}
+        </template>
+
+        <!-- Группа агентов -->
+        <template #item.agentGroupId="{ item }">
+          {{ getAgentGroupName(item.agentGroupId) }}
+        </template>
+
+        <!-- Приоритет (справочник) -->
+        <template #item.priorityId="{ item }">
+          {{ getPriorityName(item.priorityId) }}
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
