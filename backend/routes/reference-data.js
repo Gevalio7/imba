@@ -9,11 +9,13 @@ const TypeCategories = require('../models/typeCategories');
 const Agents = require('../models/agents');
 const AgentsGroups = require('../models/agentsGroups');
 const Customers = require('../models/customers');
+const CustomersGroups = require('../models/customersGroups');
 const Services = require('../models/services');
 const Sla = require('../models/sla');
 const SystemConfiguration = require('../models/systemConfiguration');
 const CustomerUsers = require('../models/customerUsers');
 const Workflows = require('../models/workflows');
+const PostMasterMailAccounts = require('../models/postMasterMailAccounts');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const REFERENCE_DATA_CACHE_TTL = 5 * 60 * 1000;
@@ -45,25 +47,29 @@ router.get('/', asyncHandler(async (req, res) => {
     agentsResult,
     agentsGroupsResult,
     customersResult,
+    customersGroupsResult,
     servicesResult,
     slaResult,
     systemConfigurationResult,
     customerUsersResult,
     workflowsResult,
+    postMasterMailAccountsResult,
   ] = await Promise.all([
-    Priorities.getAll({ itemsPerPage: 1000 }),
+    Priorities.getAll({ itemsPerPage: 1000, isActive: true }),
     Queues.getAll({ itemsPerPage: 1000 }),
-    States.getAll({ itemsPerPage: 1000 }),
-    Types.getAll({ itemsPerPage: 1000 }),
-    TypeCategories.getAll({ itemsPerPage: 1000 }),
-    Agents.getAll({ itemsPerPage: 1000 }),
-    AgentsGroups.getAll({ itemsPerPage: 1000 }),
-    Customers.getAll({ itemsPerPage: 1000 }),
+    States.getAll({ itemsPerPage: 1000, isActive: true }),
+    Types.getAll({ itemsPerPage: 1000, isActive: true }),
+    TypeCategories.getAll({ itemsPerPage: 1000, isActive: true }),
+    Agents.getAll({ itemsPerPage: 1000, isActive: true }),
+    AgentsGroups.getAll({ itemsPerPage: 1000, isActive: true }),
+    Customers.getAll({ itemsPerPage: 1000, isActive: true }),
+    CustomersGroups.getAll({ itemsPerPage: 1000, isActive: true }),
     Services.getAll({ itemsPerPage: 1000 }),
     Sla.getAll({ itemsPerPage: 1000 }),
-    SystemConfiguration.getAll({ itemsPerPage: 1000 }),
+    SystemConfiguration.getAll({ itemsPerPage: 1000, isActive: true }),
     CustomerUsers.getAll({ itemsPerPage: 1000 }),
     Workflows.getAll({ itemsPerPage: 1000 }),
+    PostMasterMailAccounts.getAll({ itemsPerPage: 1000, isActive: true }),
   ]);
 
   const data = {
@@ -75,12 +81,16 @@ router.get('/', asyncHandler(async (req, res) => {
     agents: agentsResult.agents || [],
     agentGroups: agentsGroupsResult.agentsGroups || [],
     customers: customersResult.customers || [],
+    customersGroups: customersGroupsResult.customersGroups || [],
     services: servicesResult.services || [],
     sla: slaResult.sla || [],
     systemConfiguration: systemConfigurationResult.systemConfiguration || [],
     customerUsers: customerUsersResult.customerUsers || [],
     workflows: workflowsResult.workflows || [],
+    postMasterMailAccounts: postMasterMailAccountsResult.postMasterMailAccounts || [],
   };
+
+  console.log('systemConfiguration in data:', data.systemConfiguration);
 
   cachedData = data;
   cacheTimestamp = Date.now();

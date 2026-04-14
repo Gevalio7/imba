@@ -1,26 +1,36 @@
 <script setup lang="ts">
 import { $api } from '@/utils/api'
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 
 interface Queue {
   id: number
   name: string
   description: string
-  maxTickets: number
-  priority: number
   companyId: number | null
   serviceId: number | null
   slaId: number | null
   workflowId: number | null
-  agentGroupId: number | null
+
   priorityId: number | null
-  emailConfig: string
   keywords: string
-  autoResponseTemplate: string
   quickAnswerArticleIds: number[] | null
+  executorGroupIds: number[] | null
+  executorAgentIds: number[] | null
+  observerAgentIds: number[] | null
+  departmentId: number | null
+  typeId: number | null
+  categoryId: number | null
+  postMasterMailAccountId: number | null
+
   isActive: boolean
   createdAt: string
   updatedAt: string
+  templateOpenTicketId: number | null
+  templateCloseTicketId: number | null
+  templateConfirmTicketId: number | null
+  templateStatusChangeId: number | null
+  templateCommentTicketId: number | null
+  templateId: number | null
 }
 
 interface ReferenceData {
@@ -29,6 +39,14 @@ interface ReferenceData {
   workflows: { id: number; name: string }[]
   agentGroups: { id: number; name: string }[]
   priorities: { id: number; name: string }[]
+  customers: { id: number; name: string }[]
+  customersGroups: { id: number; name: string; customerId: number }[]
+  agents: { id: number; firstName: string; lastName: string }[]
+  types: { id: number; name: string }[]
+  typeCategories: { id: number; name: string }[]
+  postMasterMailAccounts: { id: number; name: string }[]
+  templates: { id: number; name: string }[]
+  systemConfiguration: any[]
 }
 
 interface Article {
@@ -47,42 +65,59 @@ const route = useRoute()
 const router = useRouter()
 
 const isEdit = computed(() => {
-  const id = route.params.id
-  return id && !isNaN(Number(id))
+  const id = Array.isArray((route.params as any).id) ? (route.params as any).id[0] : (route.params as any).id
+  return typeof id === 'string' && id && !isNaN(Number(id))
 })
 const queueId = computed(() => {
-  const id = route.params.id
-  if (isEdit.value && id) return Number(id)
+  const id = Array.isArray((route.params as any).id) ? (route.params as any).id[0] : (route.params as any).id
+  if (isEdit.value && typeof id === 'string') return Number(id)
   return null
 })
 
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
+const activeTab = ref('basic')
 const referenceData = ref<ReferenceData>({
   services: [],
   sla: [],
   workflows: [],
   agentGroups: [],
-  priorities: []
+  priorities: [],
+  customers: [],
+  customersGroups: [],
+  agents: [],
+  types: [],
+  typeCategories: [],
+  postMasterMailAccounts: [],
+  templates: [],
+  systemConfiguration: []
 })
 
 const queue = ref<Queue>({
   id: 0,
   name: '',
   description: '',
-  maxTickets: 0,
-  priority: 0,
   companyId: null,
   serviceId: null,
   slaId: null,
   workflowId: null,
-  agentGroupId: null,
   priorityId: null,
-  emailConfig: '',
   keywords: '',
-  autoResponseTemplate: '',
   quickAnswerArticleIds: null,
+  executorGroupIds: null,
+  executorAgentIds: null,
+  observerAgentIds: null,
+  departmentId: null,
+  typeId: null,
+  categoryId: null,
+  postMasterMailAccountId: null,
+  templateOpenTicketId: null,
+  templateCloseTicketId: null,
+  templateConfirmTicketId: null,
+  templateStatusChangeId: null,
+  templateCommentTicketId: null,
+  templateId: null,
   isActive: true,
   createdAt: '',
   updatedAt: ''
@@ -104,9 +139,83 @@ const agentGroupOptions = computed(() =>
   referenceData.value.agentGroups.map(g => ({ title: g.name, value: g.id }))
 )
 
-const priorityOptions = computed(() => 
+const priorityOptions = computed(() =>
   referenceData.value.priorities.map(p => ({ title: p.name, value: p.id }))
 )
+
+const companyOptions = computed(() =>
+  referenceData.value.customers.map(c => ({ title: c.name, value: c.id }))
+)
+
+const departmentOptions = computed(() => {
+  const filtered = referenceData.value.customersGroups
+    .filter(d => !queue.value.companyId || d.customerId === queue.value.companyId)
+  console.log('departmentOptions filtered ids:', filtered.map(d => d.id))
+  console.log('all customersGroups ids:', referenceData.value.customersGroups.map(d => ({ id: d.id, customerId: d.customerId })))
+  console.log('current departmentId:', queue.value.departmentId, 'companyId:', queue.value.companyId)
+  const options = filtered.map(d => ({ title: d.name, value: d.id }))
+  // If current departmentId is not in options, add it
+  if (queue.value.departmentId && !options.find(o => o.value === queue.value.departmentId)) {
+    const dept = referenceData.value.customersGroups.find(d => d.id === queue.value.departmentId)
+    if (dept) {
+      console.log('Adding missing department:', dept)
+      options.push({ title: `${dept.name} (несоответствует компании)`, value: dept.id })
+    }
+  }
+  console.log('final options ids:', options.map(o => o.value))
+  return options
+})
+
+const agentOptions = computed(() =>
+  referenceData.value.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))
+)
+
+const typeOptions = computed(() =>
+  referenceData.value.types.map(t => ({ title: t.name, value: t.id }))
+)
+
+const typeCategoryOptions = computed(() =>
+  referenceData.value.typeCategories.map(c => ({ title: c.name, value: c.id }))
+)
+
+const postMasterMailAccountOptions = computed(() =>
+  referenceData.value.postMasterMailAccounts.map(a => ({ title: a.name, value: a.id }))
+)
+
+const templateOptions = computed(() =>
+  referenceData.value.templates.map(t => ({ title: t.name, value: t.id }))
+)
+
+const allowMultipleExecutorGroups = computed(() => {
+  const config = referenceData.value.systemConfiguration.find(c => c.name === 'allow_multiple_executor_groups')
+  const value = config ? config.value === 'true' || config.value === true : false
+  console.log('allowMultipleExecutorGroups:', value, 'config:', config)
+  return value
+})
+
+const allowMultipleExecutors = computed(() => {
+  const config = referenceData.value.systemConfiguration.find(c => c.name === 'allow_multiple_executors')
+  const value = config ? config.value === 'true' || config.value === true : false
+  console.log('allowMultipleExecutors:', value, 'config:', config)
+  return value
+})
+
+const agentAutoAssignAsExecutor = computed(() => {
+  const config = referenceData.value.systemConfiguration.find(c => c.name === 'agent_auto_assign_as_executor')
+  const value = config ? config.value === 'true' || config.value === true : false
+  console.log('agentAutoAssignAsExecutor:', value, 'config:', config)
+  return value
+})
+
+const keywordsArray = ref<string[]>([])
+
+watch(() => queue.value.keywords, (newVal) => {
+  keywordsArray.value = typeof newVal === 'string' && newVal ? newVal.split(',').map(k => k.trim()).filter(k => k) : []
+}, { immediate: true })
+
+watch(keywordsArray, (newVal) => {
+  queue.value.keywords = newVal.join(', ')
+}, { deep: true })
 
 const categoriesList = ref<{ id: number; name: string }[]>([])
 const servicesList = ref<{ id: number; name: string }[]>([])
@@ -205,24 +314,41 @@ const fetchReferenceData = async () => {
       sla: data.sla || [],
       workflows: data.workflows || [],
       agentGroups: data.agentGroups || [],
-      priorities: data.priorities || []
+      priorities: data.priorities || [],
+      customers: data.customers || [],
+      customersGroups: data.customersGroups || [],
+      agents: data.agents || [],
+      types: data.types || [],
+      typeCategories: data.typeCategories || [],
+      postMasterMailAccounts: data.postMasterMailAccounts || [],
+      templates: data.templates || [],
+      systemConfiguration: data.systemConfiguration || []
     }
   } catch (err) {
     console.error('Error fetching reference data:', err)
   }
 }
 
+const fetchTemplates = async () => {
+  try {
+    const data = await $api<{ templates: any[] }>(`${API_BASE}/templates`)
+    referenceData.value.templates = data.templates || []
+  } catch (err) {
+    console.error('Error fetching templates:', err)
+  }
+}
+
 const fetchQueue = async () => {
   if (!queueId.value) return
-  
+
   try {
     loading.value = true
     const data = await $api(`${API_BASE}/queues/${queueId.value}`)
-    // Convert emailConfig from object to JSON string for textarea
-    if (data.emailConfig && typeof data.emailConfig === 'object') {
-      data.emailConfig = JSON.stringify(data.emailConfig, null, 2)
-    }
-    queue.value = data as Queue
+    console.log('Fetched queue data:', data)
+    console.log('departmentId:', data.departmentId, 'companyId:', data.companyId)
+    Object.assign(queue.value, data as Queue)
+    await nextTick()
+    console.log('After nextTick, departmentId:', queue.value.departmentId)
     // Initialize selected article IDs
     if (queue.value.quickAnswerArticleIds && Array.isArray(queue.value.quickAnswerArticleIds)) {
       selectedArticleIds.value = [...queue.value.quickAnswerArticleIds]
@@ -246,20 +372,32 @@ const saveQueue = async () => {
     const queueData: any = {
       name: queue.value.name,
       description: queue.value.description,
-      maxTickets: queue.value.maxTickets,
-      priority: queue.value.priority,
       isActive: queue.value.isActive
     }
 
     if (queue.value.serviceId !== undefined) queueData.serviceId = queue.value.serviceId
     if (queue.value.slaId !== undefined) queueData.slaId = queue.value.slaId
     if (queue.value.workflowId !== undefined) queueData.workflowId = queue.value.workflowId
-    if (queue.value.agentGroupId !== undefined) queueData.agentGroupId = queue.value.agentGroupId
     if (queue.value.priorityId !== undefined) queueData.priorityId = queue.value.priorityId
-    if (queue.value.emailConfig !== undefined) queueData.emailConfig = queue.value.emailConfig
-    if (queue.value.keywords !== undefined) queueData.keywords = queue.value.keywords
-    if (queue.value.autoResponseTemplate !== undefined) queueData.autoResponseTemplate = queue.value.autoResponseTemplate
+    if (queue.value.keywords !== undefined && queue.value.keywords !== '') queueData.keywords = queue.value.keywords
     if (selectedArticleIds.value.length > 0) queueData.quickAnswerArticleIds = selectedArticleIds.value
+    if (queue.value.templateOpenTicketId !== undefined) queueData.templateOpenTicketId = queue.value.templateOpenTicketId
+    if (queue.value.templateCloseTicketId !== undefined) queueData.templateCloseTicketId = queue.value.templateCloseTicketId
+    if (queue.value.templateConfirmTicketId !== undefined) queueData.templateConfirmTicketId = queue.value.templateConfirmTicketId
+    if (queue.value.templateStatusChangeId !== undefined) queueData.templateStatusChangeId = queue.value.templateStatusChangeId
+    if (queue.value.templateCommentTicketId !== undefined) queueData.templateCommentTicketId = queue.value.templateCommentTicketId
+
+    console.log('Saving queueData:', queueData)
+
+    // Новые поля
+    if (queue.value.companyId !== undefined) queueData.companyId = queue.value.companyId
+    if (queue.value.departmentId !== undefined) queueData.departmentId = queue.value.departmentId
+    if (queue.value.typeId !== undefined) queueData.typeId = queue.value.typeId
+    if (queue.value.categoryId !== undefined) queueData.categoryId = queue.value.categoryId
+    if (queue.value.postMasterMailAccountId !== undefined) queueData.postMasterMailAccountId = queue.value.postMasterMailAccountId
+    if (queue.value.executorGroupIds !== undefined && queue.value.executorGroupIds !== null) queueData.executorGroupIds = queue.value.executorGroupIds
+    if (queue.value.executorAgentIds !== undefined && queue.value.executorAgentIds !== null) queueData.executorAgentIds = queue.value.executorAgentIds
+    if (queue.value.observerAgentIds !== undefined && queue.value.observerAgentIds !== null) queueData.observerAgentIds = queue.value.observerAgentIds
 
     if (isEdit.value) {
       await $api(`${API_BASE}/queues/${queueId.value}`, {
@@ -298,8 +436,17 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
+// Watch for companyId changes to reset related fields (only if user changed, not on load)
+watch(() => queue.value.companyId, (newCompanyId, oldCompanyId) => {
+  if (newCompanyId !== oldCompanyId && oldCompanyId !== null) {
+    queue.value.departmentId = null
+    queue.value.postMasterMailAccountId = null
+  }
+})
+
 onMounted(async () => {
   await fetchReferenceData()
+  await fetchTemplates()
   if (isEdit.value) {
     await fetchQueue()
   }
@@ -310,153 +457,301 @@ onMounted(async () => {
   <div>
     <VCard :title="isEdit ? 'Редактирование очереди' : 'Создание очереди'">
       <VCardText>
-        <VRow>
-          <VCol cols="12" sm="6">
-            <AppTextField
-              v-model="queue.name"
-              label="Название *"
-              placeholder="Введите название"
-            />
-          </VCol>
+        <div class="d-flex">
+          <VTabs v-model="activeTab" direction="vertical" class="v-tabs--vertical">
+          <VTab value="basic" prepend-icon="bx-info-circle">Основная информация</VTab>
+          <VTab value="organization" prepend-icon="bx-building">Организация</VTab>
+          <VTab value="types" prepend-icon="bx-category">Типы</VTab>
+          <VTab value="services" prepend-icon="bx-cog">Сервисы</VTab>
+          <VTab value="agents" prepend-icon="bx-group">Агенты</VTab>
+          <VTab value="observers" prepend-icon="bx-eye">Наблюдатели</VTab>
+          <VTab value="email" prepend-icon="bx-envelope">Почта</VTab>
+          <VTab value="templates" prepend-icon="bx-file">Шаблоны</VTab>
+          <VTab value="quick_answers" prepend-icon="bx-book">Быстрые ответы</VTab>
+        </VTabs>
 
-          <VCol cols="12" sm="6">
-            <AppTextField
-              v-model="queue.priority"
-              label="Приоритет"
-              type="number"
-              min="0"
-            />
-          </VCol>
+        <VWindow v-model="activeTab">
+          <VWindowItem value="basic">
+            <div class="pa-4">
+              <VRow>
+              <VCol cols="12">
+                <AppTextField
+                  v-model="queue.name"
+                  label="Название *"
+                  placeholder="Введите название"
+                />
+              </VCol>
 
-          <VCol cols="12">
-            <AppTextarea
-              v-model="queue.description"
-              label="Описание"
-              rows="3"
-              placeholder="Введите описание"
-            />
-          </VCol>
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.priorityId"
+                  label="Приоритет"
+                  :items="priorityOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
 
-          <VCol cols="12" sm="6">
-            <AppTextField
-              v-model="queue.maxTickets"
-              label="Макс. тикетов"
-              type="number"
-              min="0"
-            />
-          </VCol>
+              <VCol cols="12">
+                <AppTextarea
+                  v-model="queue.description"
+                  label="Описание"
+                  rows="3"
+                  placeholder="Введите описание"
+                />
+              </VCol>
 
-          <VCol cols="12" sm="6">
-            <AppSelect
-              v-model="queue.serviceId"
-              label="Сервис"
-              :items="serviceOptions"
-              clearable
-              clear-icon="bx-x"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <AppSelect
-              v-model="queue.slaId"
-              label="SLA"
-              :items="slaOptions"
-              clearable
-              clear-icon="bx-x"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <AppSelect
-              v-model="queue.workflowId"
-              label="Рабочий процесс"
-              :items="workflowOptions"
-              clearable
-              clear-icon="bx-x"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <AppSelect
-              v-model="queue.agentGroupId"
-              label="Группа агентов"
-              :items="agentGroupOptions"
-              clearable
-              clear-icon="bx-x"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <AppSelect
-              v-model="queue.priorityId"
-              label="Приоритет (справочник)"
-              :items="priorityOptions"
-              clearable
-              clear-icon="bx-x"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <VSwitch
-              v-model="queue.isActive"
-              label="Активен"
-              color="primary"
-            />
-          </VCol>
-
-          <VCol cols="12">
-            <AppTextarea
-              v-model="queue.keywords"
-              label="Ключевые слова"
-              rows="2"
-              placeholder="Введите ключевые слова через запятую"
-            />
-          </VCol>
-
-          <VCol cols="12">
-            <AppTextarea
-              v-model="queue.emailConfig"
-              label="Конфигурация email"
-              rows="3"
-              placeholder="Введите конфигурацию email"
-            />
-          </VCol>
-
-          <VCol cols="12">
-            <AppTextarea
-              v-model="queue.autoResponseTemplate"
-              label="Шаблон автоответа"
-              rows="4"
-              placeholder="Введите шаблон автоответа"
-            />
-          </VCol>
-
-          <VCol cols="12">
-            <div class="d-flex align-center gap-4">
-              <VBtn
-                variant="outlined"
-                color="primary"
-                @click="openQuickAnswersDialog"
-              >
-                <VIcon icon="bx-book" class="me-2" />
-                Быстрые ответы
-              </VBtn>
-              <span v-if="selectedArticleIds.length > 0" class="text-body-2 text-medium-emphasis">
-                Выбрано: {{ selectedArticleIds.length }} статей
-              </span>
+              <VCol cols="12">
+                <VSwitch
+                  v-model="queue.isActive"
+                  label="Активен"
+                  color="primary"
+                />
+              </VCol>
+            </VRow>
             </div>
-            <div v-if="selectedArticleIds.length > 0" class="mt-3 d-flex flex-wrap gap-2">
-              <VChip
-                v-for="article in selectedArticlesDetails"
-                :key="article.id"
-                closable
-                @click:close="removeArticle(article.id)"
-              >
-                {{ article.title }}
-              </VChip>
+          </VWindowItem>
+
+
+          <VWindowItem value="organization">
+            <div class="pa-4">
+              <VRow>
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.companyId"
+                  label="Организация"
+                  :items="companyOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.departmentId"
+                  label="Подразделение"
+                  :items="departmentOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
             </div>
-          </VCol>
-        </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="types">
+            <div class="pa-4">
+              <VRow>
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.typeId"
+                  label="Тип"
+                  :items="typeOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.categoryId"
+                  label="Категория типа"
+                  :items="typeCategoryOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+            </div>
+          </VWindowItem>
+
+          <VWindowItem value="services">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.serviceId"
+                  label="Сервис"
+                  :items="serviceOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.slaId"
+                  label="SLA"
+                  :items="slaOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.workflowId"
+                  label="Рабочий процесс"
+                  :items="workflowOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="agents">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.executorGroupIds"
+                  label="Группы агентов-исполнителей"
+                  :items="agentGroupOptions"
+                  :multiple="allowMultipleExecutorGroups"
+                  :chips="allowMultipleExecutorGroups"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.executorAgentIds"
+                  label="Агенты-исполнители"
+                  :items="agentOptions"
+                  :multiple="allowMultipleExecutors"
+                  :chips="allowMultipleExecutors"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="observers">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.observerAgentIds"
+                  label="Наблюдатели"
+                  :items="agentOptions"
+                  multiple
+                  :chips="true"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="email">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.postMasterMailAccountId"
+                  label="Почтовый аккаунт"
+                  :items="postMasterMailAccountOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <VCombobox
+                  v-model="keywordsArray"
+                  label="Ключевые слова"
+                  multiple
+                  chips
+                  placeholder="Введите ключевые слова"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="templates">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.templateOpenTicketId"
+                  label="Шаблон открытия обращения"
+                  :items="templateOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.templateCloseTicketId"
+                  label="Шаблон закрытия обращения"
+                  :items="templateOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.templateConfirmTicketId"
+                  label="Шаблон согласования заявки"
+                  :items="templateOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.templateStatusChangeId"
+                  label="Шаблон изменения статуса обращения"
+                  :items="templateOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
+                  v-model="queue.templateCommentTicketId"
+                  label="Шаблон получения комментария по заявке"
+                  :items="templateOptions"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="quick_answers">
+            <VRow class="pa-4">
+              <VCol cols="12">
+                <div class="d-flex align-center gap-4">
+                  <VBtn
+                    variant="outlined"
+                    color="primary"
+                    @click="openQuickAnswersDialog"
+                  >
+                    <VIcon icon="bx-book" class="me-2" />
+                    Быстрые ответы
+                  </VBtn>
+                  <span v-if="selectedArticleIds.length > 0" class="text-body-2 text-medium-emphasis">
+                    Выбрано: {{ selectedArticleIds.length }} статей
+                  </span>
+                </div>
+                <div v-if="selectedArticleIds.length > 0" class="mt-3 d-flex flex-wrap gap-2">
+                  <VChip
+                    v-for="article in selectedArticlesDetails"
+                    :key="article.id"
+                    closable
+                    @click:close="removeArticle(article.id)"
+                  >
+                    {{ article.title }}
+                  </VChip>
+                </div>
+              </VCol>
+            </VRow>
+          </VWindowItem>
+        </VWindow>
+        </div>
       </VCardText>
 
       <VCardText>
@@ -492,7 +787,7 @@ onMounted(async () => {
       <VCard title="Быстрые ответы из базы знаний">
         <VCardText>
           <VRow class="mb-4">
-            <VCol cols="12" sm="6">
+            <VCol cols="12">
               <AppSelect
                 v-model="quickAnswerFilter.categoryId"
                 label="Категория"
@@ -502,7 +797,7 @@ onMounted(async () => {
                 placeholder="Все категории"
               />
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol cols="12">
               <AppSelect
                 v-model="quickAnswerFilter.serviceId"
                 label="Сервис"
@@ -557,3 +852,14 @@ onMounted(async () => {
     </VDialog>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.v-tabs--vertical {
+  .v-tabs-bar {
+    width: 250px;
+    flex-shrink: 0;
+  }
+
+
+}
+</style>

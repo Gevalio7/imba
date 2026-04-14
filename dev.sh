@@ -172,6 +172,16 @@ print_color $YELLOW "⏳ Ожидание запуска бэкенда..."
 for i in {1..30}; do
     if check_port 3000; then
         print_color $GREEN "✅ Бэкенд запущен на http://localhost:3000"
+
+        # Очистка кэша справочников
+        print_color $CYAN "🗂️  Очистка кэша справочников..."
+        curl -s -X GET http://localhost:3000/api/reference-data/clear-cache > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            print_color $GREEN "✅ Кэш справочников очищен"
+        else
+            print_color $YELLOW "⚠️  Не удалось очистить кэш справочников"
+        fi
+
         break
     fi
     if [ $i -eq 30 ]; then

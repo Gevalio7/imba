@@ -10,20 +10,29 @@ class AgentsGroups {
   static fields = 'name';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeAgents = false } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeAgents = false, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
 
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`ag.is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
+
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        const conditions = searchFields.map(field => `ag.${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
@@ -34,7 +43,7 @@ class AgentsGroups {
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${AgentsGroups.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${AgentsGroups.tableName} ag ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 

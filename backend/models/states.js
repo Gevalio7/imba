@@ -10,20 +10,29 @@ class States {
   static fields = 'name, comment, type, color';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
+
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
 
       if (q) {
         const searchFields = this.fields.split(', ');
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);

@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Queues {
   static tableName = 'queues';
-  static fields = 'name, description, maxTickets, priority, companyId, serviceId, slaId, workflowId, agentGroupId, priorityId, emailConfig, keywords, autoResponseTemplate, quickAnswerArticleIds';
+  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {} } = options;
@@ -47,6 +47,11 @@ class Queues {
       if (filters.priorityId) {
         filterConditions.push(`priority_id = ${paramIndex}`);
         params.push(filters.priorityId);
+        paramIndex++;
+      }
+      if (filters.departmentId) {
+        filterConditions.push(`department_id = ${paramIndex}`);
+        params.push(filters.departmentId);
         paramIndex++;
       }
 
@@ -118,7 +123,13 @@ class Queues {
     try {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => queue[field] !== undefined ? queue[field] : null);
+      const values = fieldList.map(field => {
+        if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds'].includes(field)) {
+          // Преобразуем массивы в PostgreSQL array синтаксис
+          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null;
+        }
+        return queue[field] !== undefined ? queue[field] : null;
+      });
 
       // Добавляем templateId
       values.push(queue.templateId || null);
@@ -155,7 +166,12 @@ class Queues {
       fieldList.forEach(field => {
         if (queue[field] !== undefined) {
           updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(queue[field]);
+          if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds'].includes(field)) {
+            // Преобразуем массивы в PostgreSQL array синтаксис
+            values.push(queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null);
+          } else {
+            values.push(queue[field]);
+          }
           paramIndex++;
         }
       });

@@ -10,13 +10,20 @@ class SystemConfiguration {
   static fields = 'name, description, value, configType, isEditable';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
-    console.log('getAll called with options:', options);
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
+    console.log('SystemConfiguration getAll called with options:', options);
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
+
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
 
       if (q) {
         console.log('fields:', this.fields);
@@ -24,10 +31,12 @@ class SystemConfiguration {
         console.log('searchFields:', searchFields);
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
         console.log('conditions:', conditions);
-        whereClause = `WHERE ${conditions}`;
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
@@ -51,6 +60,7 @@ class SystemConfiguration {
       const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${SystemConfiguration.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
+      console.log('SystemConfiguration dataResult.rows:', dataResult.rows);
 
       return {
         systemConfiguration: dataResult.rows,

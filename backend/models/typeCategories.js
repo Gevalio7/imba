@@ -10,20 +10,29 @@ class TypeCategories {
   static fields = 'name, laborHours, isActive';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
 
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
+
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        const conditions = searchFields.map(field => `tc.${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = '';
       const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
@@ -34,7 +43,7 @@ class TypeCategories {
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${TypeCategories.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${TypeCategories.tableName} tc ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
@@ -44,7 +53,7 @@ class TypeCategories {
         return snake === f ? `tc.${snake}` : `tc.${snake} as "${f}"`;
       }).join(', ');
 
-      const dataQuery = `SELECT tc.id, ${sqlFields}, tc.created_at as "createdAt", tc.updated_at as "updatedAt" FROM ${TypeCategories.tableName} tc ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT tc.id, ${sqlFields}, tc.created_at as "createdAt", tc.updated_at as "updatedAt", tc.is_active as "isActive" FROM ${TypeCategories.tableName} tc ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       
       const dataResult = await pool.query(dataQuery, params);

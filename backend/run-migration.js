@@ -3,7 +3,7 @@ const path = require('path');
 const { pool } = require('./config/db');
 
 async function runMigration() {
-  const migrationPath = path.join(__dirname, 'migrations', 'add-escalation-fields-to-tickets.sql');
+  const migrationPath = path.join(__dirname, 'migrations', 'add-name-column-to-post-master-mail-accounts.sql');
 
   try {
     console.log('🚀 Запуск миграции: add-escalation-fields-to-tickets.sql');

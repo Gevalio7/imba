@@ -12,12 +12,24 @@ interface Queues {
   companyId: number | null
   serviceId: number | null
   slaId: number | null
-  workflowsId: number | null
-  agentGroupId: number | null
+  workflowId: number | null
+
   priorityId: number | null
-  emailConfig: string
   keywords: string
-  autoResponseTemplate: string
+  quickAnswerArticleIds: number[] | null
+  executorGroupIds: number[] | null
+  executorAgentIds: number[] | null
+  observerAgentIds: number[] | null
+  departmentId: number | null
+  typeId: number | null
+  categoryId: number | null
+  postMasterMailAccountId: number | null
+
+  templateOpenTicketId: number | null
+  templateCloseTicketId: number | null
+  templateConfirmTicketId: number | null
+  templateStatusChangeId: number | null
+  templateCommentTicketId: number | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -34,6 +46,13 @@ interface ReferenceData {
   workflows: { id: number; name: string }[]
   agentGroups: { id: number; name: string }[]
   priorities: { id: number; name: string }[]
+  customers: { id: number; name: string }[]
+  customersGroups: { id: number; name: string; customerId: number }[]
+  agents: { id: number; firstName: string; lastName: string }[]
+  types: { id: number; name: string }[]
+  typeCategories: { id: number; name: string }[]
+  postMasterMailAccounts: { id: number; name: string }[]
+  templates: { id: number; name: string }[]
 }
 
 const referenceData = ref<ReferenceData>({
@@ -41,7 +60,14 @@ const referenceData = ref<ReferenceData>({
   sla: [],
   workflows: [],
   agentGroups: [],
-  priorities: []
+  priorities: [],
+  customers: [],
+  customersGroups: [],
+  agents: [],
+  types: [],
+  typeCategories: [],
+  postMasterMailAccounts: [],
+  templates: []
 })
 
 const fetchReferenceData = async () => {
@@ -52,7 +78,14 @@ const fetchReferenceData = async () => {
       sla: data.sla || [],
       workflows: data.workflows || [],
       agentGroups: data.agentGroups || [],
-      priorities: data.priorities || []
+      priorities: data.priorities || [],
+      customers: data.customers || [],
+      customersGroups: data.customersGroups || [],
+      agents: data.agents || [],
+      types: data.types || [],
+      typeCategories: data.typeCategories || [],
+      postMasterMailAccounts: data.postMasterMailAccounts || [],
+      templates: data.templates || []
     }
   } catch (err) {
     console.error('Error fetching reference data:', err)
@@ -87,6 +120,51 @@ const getPriorityName = (id: number | null) => {
   if (!id) return '-'
   const priority = referenceData.value.priorities.find(p => p.id === id)
   return priority?.name || '-'
+}
+
+const getCompanyName = (id: number | null) => {
+  if (!id) return '-'
+  const company = referenceData.value.customers.find(c => c.id === id)
+  return company?.name || '-'
+}
+
+const getDepartmentName = (id: number | null) => {
+  if (!id) return '-'
+  const department = referenceData.value.customersGroups.find(d => d.id === id)
+  return department?.name || '-'
+}
+
+const getAgentNames = (ids: number[] | null) => {
+  if (!ids || ids.length === 0) return '-'
+  const names = ids.map(id => {
+    const agent = referenceData.value.agents.find(a => a.id === id)
+    return agent ? `${agent.firstName} ${agent.lastName}` : `Агент ${id}`
+  })
+  return names.join(', ')
+}
+
+const getTypeName = (id: number | null) => {
+  if (!id) return '-'
+  const type = referenceData.value.types.find(t => t.id === id)
+  return type?.name || '-'
+}
+
+const getCategoryName = (id: number | null) => {
+  if (!id) return '-'
+  const category = referenceData.value.typeCategories.find(c => c.id === id)
+  return category?.name || '-'
+}
+
+const getPostMasterMailAccountName = (id: number | null) => {
+  if (!id) return '-'
+  const account = referenceData.value.postMasterMailAccounts.find(a => a.id === id)
+  return account?.name || '-'
+}
+
+const getTemplateName = (id: number | null) => {
+  if (!id) return '-'
+  const template = referenceData.value.templates.find(t => t.id === id)
+  return template?.name || '-'
 }
 
 // Роутер
@@ -175,13 +253,16 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
   { title: 'Описание', key: 'description', sortable: true },
-  { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
-  { title: 'Приоритет', key: 'priority', sortable: true },
+  { title: 'Организация', key: 'companyId', sortable: false },
+  { title: 'Подразделение', key: 'departmentId', sortable: false },
+  { title: 'Тип', key: 'typeId', sortable: false },
+  { title: 'Категория', key: 'categoryId', sortable: false },
+  { title: 'Почтовый аккаунт', key: 'postMasterMailAccountId', sortable: false },
   { title: 'Сервис', key: 'serviceId', sortable: false },
   { title: 'SLA', key: 'slaId', sortable: false },
-  { title: 'Рабочий процесс', key: 'workflowsId', sortable: false },
-  { title: 'Группа агентов', key: 'agentGroupId', sortable: false },
+  { title: 'Рабочий процесс', key: 'workflowId', sortable: false },
   { title: 'Приоритет (справочник)', key: 'priorityId', sortable: false },
+  { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
   { title: 'Ключевые слова', key: 'keywords', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -292,6 +373,25 @@ const defaultItem = ref<Queues>({
   description: '',
   maxTickets: 0,
   priority: 0,
+  companyId: null,
+  serviceId: null,
+  slaId: null,
+  workflowId: null,
+  priorityId: null,
+  keywords: '',
+  quickAnswerArticleIds: null,
+  executorGroupIds: null,
+  executorAgentIds: null,
+  observerAgentIds: null,
+  departmentId: null,
+  typeId: null,
+  categoryId: null,
+  postMasterMailAccountId: null,
+  templateOpenTicketId: null,
+  templateCloseTicketId: null,
+  templateConfirmTicketId: null,
+  templateStatusChangeId: null,
+  templateCommentTicketId: null,
   createdAt: '',
   updatedAt: '',
   isActive: true,
@@ -335,26 +435,24 @@ const save = async () => {
     return
   }
 
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateQueues(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Очередь успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createQueues({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Очередь успешно добавлен')
+    try {
+      if (editedIndex.value > -1) {
+        // Обновление существующего
+        const updated = await updateQueues(editedItem.value.id, {
+          ...editedItem.value
+        })
+        showToast('Очередь успешно сохранена')
+      } else {
+        // Добавление нового
+        const created = await createQueues({
+          ...editedItem.value
+        })
+        showToast('Очередь успешно добавлена')
+      }
+      close()
+    } catch (err) {
+      showToast('Ошибка сохранения очереди', 'error')
     }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения очередь', 'error')
-  }
 }
 
 const deleteItemConfirm = async () => {
@@ -643,14 +741,70 @@ const addNewQueues = () => {
         </template>
 
         <!-- Рабочий процесс -->
-        <template #item.workflowsId="{ item }">
-          {{ getWorkflowName(item.workflowsId) }}
+        <template #item.workflowId="{ item }">
+          {{ getWorkflowName(item.workflowId) }}
         </template>
 
-        <!-- Группа агентов -->
-        <template #item.agentGroupId="{ item }">
-          {{ getAgentGroupName(item.agentGroupId) }}
+
+
+        <!-- Организация -->
+        <template #item.companyId="{ item }">
+          {{ getCompanyName(item.companyId) }}
         </template>
+
+        <!-- Подразделение -->
+        <template #item.departmentId="{ item }">
+          {{ getDepartmentName(item.departmentId) }}
+        </template>
+
+        <!-- Тип -->
+        <template #item.typeId="{ item }">
+          {{ getTypeName(item.typeId) }}
+        </template>
+
+        <!-- Категория -->
+        <template #item.categoryId="{ item }">
+          {{ getCategoryName(item.categoryId) }}
+        </template>
+
+        <!-- Ключевые слова -->
+        <template #item.keywords="{ item }">
+          <div v-if="item.keywords && Array.isArray(item.keywords)" class="d-flex flex-wrap gap-1">
+            <VChip
+              v-for="keyword in item.keywords"
+              :key="keyword"
+              size="small"
+              color="primary"
+              variant="flat"
+              prepend-icon="bx-tag"
+            >
+              {{ keyword }}
+            </VChip>
+          </div>
+          <span v-else class="text-disabled">-</span>
+        </template>
+
+        <!-- Почтовый аккаунт -->
+        <template #item.postMasterMailAccountId="{ item }">
+          {{ getPostMasterMailAccountName(item.postMasterMailAccountId) }}
+        </template>
+
+        <!-- Группы исполнителей -->
+        <template #item.executorGroupIds="{ item }">
+          {{ item.executorGroupIds && item.executorGroupIds.length > 0 ? item.executorGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
+        </template>
+
+        <!-- Исполнители -->
+        <template #item.executorAgentIds="{ item }">
+          {{ getAgentNames(item.executorAgentIds) }}
+        </template>
+
+        <!-- Наблюдатели -->
+        <template #item.observerAgentIds="{ item }">
+          {{ getAgentNames(item.observerAgentIds) }}
+        </template>
+
+
 
         <!-- Приоритет (справочник) -->
         <template #item.priorityId="{ item }">
@@ -754,6 +908,62 @@ const addNewQueues = () => {
                 label="Приоритет"
                 type="number"
                 min="0"
+              />
+            </VCol>
+
+            <!-- Организация -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.companyId"
+                label="Организация"
+                :items="referenceData.customers.map(c => ({ title: c.name, value: c.id }))"
+                clearable
+                clear-icon="bx-x"
+              />
+            </VCol>
+
+            <!-- Подразделение -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.departmentId"
+                label="Подразделение"
+                :items="referenceData.customersGroups.filter(d => !editedItem.companyId || d.customerId === editedItem.companyId).map(d => ({ title: d.name, value: d.id }))"
+                clearable
+                clear-icon="bx-x"
+              />
+            </VCol>
+
+            <!-- Тип -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.typeId"
+                label="Тип"
+                :items="referenceData.types.map(t => ({ title: t.name, value: t.id }))"
+                clearable
+                clear-icon="bx-x"
+              />
+            </VCol>
+
+            <!-- Категория -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppSelect
+                v-model="editedItem.categoryId"
+                label="Категория типа"
+                :items="referenceData.typeCategories.map(c => ({ title: c.name, value: c.id }))"
+                clearable
+                clear-icon="bx-x"
               />
             </VCol>
 

@@ -5,6 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 // Типы данных для PostMasterMailAccount
 interface PostMasterMailAccount {
   id: number
+  name: string
   type: 'IMAP' | 'IMAPS' | 'IMAPTLS' | 'MSGraph' | 'POP3' | 'POP3S' | 'POP3TLS'
   authenticationType: 'oauth2_token' | 'password'
   login: string
@@ -163,6 +164,7 @@ onMounted(() => {
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
   { title: 'Тип', key: 'type', sortable: true },
   { title: 'Хост', key: 'host', sortable: true },
   { title: 'Логин', key: 'login', sortable: true },
@@ -286,6 +288,7 @@ const deleteDialog = ref(false)
 
 const defaultItem = ref<PostMasterMailAccount>({
   id: -1,
+  name: '',
   type: 'IMAP',
   authenticationType: 'password',
   login: '',
@@ -338,6 +341,10 @@ const closeDelete = () => {
 
 const save = async () => {
   // Валидация
+  if (!editedItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
   if (!editedItem.value.type?.trim()) {
     showToast('Тип протокола обязателен для заполнения', 'error')
     return
@@ -661,7 +668,7 @@ const addNewPostMasterMailAccount = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
+              @update:model-value="(val) => val !== null && toggleStatus(item, val)"
               color="primary"
               hide-details
             />
@@ -731,6 +738,18 @@ const addNewPostMasterMailAccount = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать почтовый аккаунт' : 'Добавить почтовый аккаунт'">
         <VCardText>
           <VRow>
+
+            <!-- Название -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model="editedItem.name"
+                label="Название *"
+                placeholder="Введите название аккаунта"
+              />
+            </VCol>
 
             <!-- Тип протокола -->
             <VCol

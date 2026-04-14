@@ -11,26 +11,35 @@ function toSnakeCase(str) {
 
 class PostMasterMailAccounts {
   static tableName = 'post_master_mail_accounts';
-  static fields = 'type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID';
+  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
 
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
+
       if (q) {
-        const searchFields = ['type', 'host', 'login'];
+        const searchFields = ['name', 'type', 'host', 'login'];
         const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
 
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
       let orderClause = '';
-      const sortableFields = ['type', 'host', 'login', 'created_at', 'updated_at'];
+      const sortableFields = ['name', 'type', 'host', 'login', 'created_at', 'updated_at'];
       if (sortBy && sortableFields.includes(sortBy)) {
         orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
       }
@@ -48,7 +57,7 @@ class PostMasterMailAccounts {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(itemsPerPage, offset);
       const dataResult = await pool.query(dataQuery, params);
 

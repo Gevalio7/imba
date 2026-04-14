@@ -10,20 +10,29 @@ class Types {
   static fields = 'name, comment, workflowId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeCategories = false } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, includeCategories = false, isActive } = options;
 
     try {
-      let whereClause = '';
+      let whereConditions = [];
       let params = [];
       let paramIndex = 1;
 
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        whereConditions.push(`t.is_active = $${paramIndex}`);
+        params.push(isActive);
+        paramIndex++;
+      }
+
       if (q) {
         const searchFields = ['name', 'comment'];
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
+        const conditions = searchFields.map(field => `t.${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+        whereConditions.push(`(${conditions})`);
         params.push(`%${q}%`);
         paramIndex++;
       }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       let orderClause = 'ORDER BY id ASC';
       const sortableFields = ['id', 'name', 'createdAt', 'updatedAt'];
@@ -34,27 +43,27 @@ class Types {
       const offset = (page - 1) * itemsPerPage;
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Types.tableName} ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM ${Types.tableName} t ${whereClause}`;
       const countResult = await pool.query(countQuery, params);
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated data with workflow info
       const dataQuery = `
-        SELECT 
-          t.id, 
-          t.name, 
-          t.comment, 
+        SELECT
+          t.id,
+          t.name,
+          t.comment,
           t.workflow_id as "workflowId",
           t.category_ids as "categoryIds",
-          t.created_at as "createdAt", 
-          t.updated_at as "updatedAt", 
+          t.created_at as "createdAt",
+          t.updated_at as "updatedAt",
           t.is_active as "isActive",
           w.name as "workflowName"
         FROM ${Types.tableName} t
         LEFT JOIN workflows w ON t.workflow_id = w.id
         ${whereClause}
         ${orderClause}
-        LIMIT $${paramIndex} 
+        LIMIT $${paramIndex}
         OFFSET $${paramIndex + 1}
       `;
       params.push(itemsPerPage, offset);

@@ -2,7 +2,7 @@ const Queues = require('../models/queues');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const getQueues = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page, companyId, serviceId, slaId, agentGroupId } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page, companyId, serviceId, slaId, agentGroupId, departmentId } = req.query;
 
   const searchQuery = typeof q === 'string' ? q : undefined;
   const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
@@ -16,6 +16,7 @@ const getQueues = asyncHandler(async (req, res) => {
   if (serviceId) filters.serviceId = parseInt(serviceId, 10);
   if (slaId) filters.slaId = parseInt(slaId, 10);
   if (agentGroupId) filters.agentGroupId = parseInt(agentGroupId, 10);
+  if (departmentId) filters.departmentId = parseInt(departmentId, 10);
 
   const result = await Queues.getAll({
     q: searchQuery,
@@ -48,16 +49,31 @@ const getQueueById = asyncHandler(async (req, res) => {
 
 const createQueues = asyncHandler(async (req, res) => {
   console.log('📝 Создание очереди, тело запроса:', req.body);
-  
+
   const data = {};
   data.name = req.body.name;
   data.description = req.body.description;
-  data.maxTickets = req.body.maxTickets;
-  data.priority = req.body.priority;
 
   // Добавляем templateId если передан
   if (req.body.templateId !== undefined) {
     data.templateId = req.body.templateId;
+  }
+
+  // Новые поля шаблонов
+  if (req.body.templateOpenTicketId !== undefined) {
+    data.templateOpenTicketId = req.body.templateOpenTicketId;
+  }
+  if (req.body.templateCloseTicketId !== undefined) {
+    data.templateCloseTicketId = req.body.templateCloseTicketId;
+  }
+  if (req.body.templateConfirmTicketId !== undefined) {
+    data.templateConfirmTicketId = req.body.templateConfirmTicketId;
+  }
+  if (req.body.templateStatusChangeId !== undefined) {
+    data.templateStatusChangeId = req.body.templateStatusChangeId;
+  }
+  if (req.body.templateCommentTicketId !== undefined) {
+    data.templateCommentTicketId = req.body.templateCommentTicketId;
   }
 
   // Добавляем isActive если передан
@@ -65,9 +81,12 @@ const createQueues = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
-  // Новые поля: companyId, serviceId, slaId, workflowId, agentGroupId, priorityId
+  // Новые поля: companyId, departmentId, serviceId, slaId, workflowId, agentGroupId, priorityId
   if (req.body.companyId !== undefined) {
     data.companyId = req.body.companyId;
+  }
+  if (req.body.departmentId !== undefined) {
+    data.departmentId = req.body.departmentId;
   }
   if (req.body.serviceId !== undefined) {
     data.serviceId = req.body.serviceId;
@@ -83,6 +102,32 @@ const createQueues = asyncHandler(async (req, res) => {
   }
   if (req.body.priorityId !== undefined) {
     data.priorityId = req.body.priorityId;
+  }
+  if (req.body.typeId !== undefined) {
+    data.typeId = req.body.typeId;
+  }
+  if (req.body.categoryId !== undefined) {
+    data.categoryId = req.body.categoryId;
+  }
+  if (req.body.postMasterMailAccountId !== undefined) {
+    data.postMasterMailAccountId = req.body.postMasterMailAccountId;
+  }
+
+  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds
+  if (req.body.executorGroupIds !== undefined) {
+    if (Array.isArray(req.body.executorGroupIds)) {
+      data.executorGroupIds = req.body.executorGroupIds;
+    }
+  }
+  if (req.body.executorAgentIds !== undefined) {
+    if (Array.isArray(req.body.executorAgentIds)) {
+      data.executorAgentIds = req.body.executorAgentIds;
+    }
+  }
+  if (req.body.observerAgentIds !== undefined) {
+    if (Array.isArray(req.body.observerAgentIds)) {
+      data.observerAgentIds = req.body.observerAgentIds;
+    }
   }
 
   // Email конфигурация (JSONB)
@@ -146,12 +191,27 @@ const updateQueues = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) data.name = req.body.name;
   if (req.body.description !== undefined) data.description = req.body.description;
-  if (req.body.maxTickets !== undefined) data.maxTickets = req.body.maxTickets;
-  if (req.body.priority !== undefined) data.priority = req.body.priority;
 
   // Добавляем templateId если передан
   if (req.body.templateId !== undefined) {
     data.templateId = req.body.templateId;
+  }
+
+  // Новые поля шаблонов
+  if (req.body.templateOpenTicketId !== undefined) {
+    data.templateOpenTicketId = req.body.templateOpenTicketId;
+  }
+  if (req.body.templateCloseTicketId !== undefined) {
+    data.templateCloseTicketId = req.body.templateCloseTicketId;
+  }
+  if (req.body.templateConfirmTicketId !== undefined) {
+    data.templateConfirmTicketId = req.body.templateConfirmTicketId;
+  }
+  if (req.body.templateStatusChangeId !== undefined) {
+    data.templateStatusChangeId = req.body.templateStatusChangeId;
+  }
+  if (req.body.templateCommentTicketId !== undefined) {
+    data.templateCommentTicketId = req.body.templateCommentTicketId;
   }
 
   // Добавляем isActive если передан
@@ -159,9 +219,12 @@ const updateQueues = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive;
   }
 
-  // Новые поля: companyId, serviceId, slaId, workflowId, agentGroupId, priorityId
+  // Новые поля: companyId, departmentId, serviceId, slaId, workflowId, agentGroupId, priorityId
   if (req.body.companyId !== undefined) {
     data.companyId = req.body.companyId;
+  }
+  if (req.body.departmentId !== undefined) {
+    data.departmentId = req.body.departmentId;
   }
   if (req.body.serviceId !== undefined) {
     data.serviceId = req.body.serviceId;
@@ -177,6 +240,32 @@ const updateQueues = asyncHandler(async (req, res) => {
   }
   if (req.body.priorityId !== undefined) {
     data.priorityId = req.body.priorityId;
+  }
+  if (req.body.typeId !== undefined) {
+    data.typeId = req.body.typeId;
+  }
+  if (req.body.categoryId !== undefined) {
+    data.categoryId = req.body.categoryId;
+  }
+  if (req.body.postMasterMailAccountId !== undefined) {
+    data.postMasterMailAccountId = req.body.postMasterMailAccountId;
+  }
+
+  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds
+  if (req.body.executorGroupIds !== undefined) {
+    if (Array.isArray(req.body.executorGroupIds)) {
+      data.executorGroupIds = req.body.executorGroupIds;
+    }
+  }
+  if (req.body.executorAgentIds !== undefined) {
+    if (Array.isArray(req.body.executorAgentIds)) {
+      data.executorAgentIds = req.body.executorAgentIds;
+    }
+  }
+  if (req.body.observerAgentIds !== undefined) {
+    if (Array.isArray(req.body.observerAgentIds)) {
+      data.observerAgentIds = req.body.observerAgentIds;
+    }
   }
 
   // Email конфигурация (JSONB)
