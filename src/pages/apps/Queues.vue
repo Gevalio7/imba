@@ -7,8 +7,6 @@ interface Queues {
   id: number
   name: string
   description: string
-  maxTickets: number
-  priority: number
   companyId: number | null
   serviceId: number | null
   slaId: number | null
@@ -45,7 +43,7 @@ interface ReferenceData {
   sla: { id: number; name: string }[]
   workflows: { id: number; name: string }[]
   agentGroups: { id: number; name: string }[]
-  priorities: { id: number; name: string }[]
+  priorities: { id: number; name: string; color: string }[]
   customers: { id: number; name: string }[]
   customersGroups: { id: number; name: string; customerId: number }[]
   agents: { id: number; firstName: string; lastName: string }[]
@@ -121,6 +119,16 @@ const getPriorityName = (id: number | null) => {
   const priority = referenceData.value.priorities.find(p => p.id === id)
   return priority?.name || '-'
 }
+
+const getPriorityColor = (id: number | null) => {
+  if (!id) return 'grey'
+  const priority = referenceData.value.priorities.find(p => p.id === id)
+  return priority?.color || 'grey'
+}
+
+const priorityOptions = computed(() =>
+  referenceData.value.priorities.map(p => ({ title: p.name, value: p.id }))
+)
 
 const getCompanyName = (id: number | null) => {
   if (!id) return '-'
@@ -262,7 +270,6 @@ const headers = [
   { title: 'SLA', key: 'slaId', sortable: false },
   { title: 'Рабочий процесс', key: 'workflowId', sortable: false },
   { title: 'Приоритет (справочник)', key: 'priorityId', sortable: false },
-  { title: 'Макс. тикетов', key: 'maxTickets', sortable: true },
   { title: 'Ключевые слова', key: 'keywords', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -371,8 +378,6 @@ const defaultItem = ref<Queues>({
   id: -1,
   name: '',
   description: '',
-  maxTickets: 0,
-  priority: 0,
   companyId: null,
   serviceId: null,
   slaId: null,
@@ -808,7 +813,10 @@ const addNewQueues = () => {
 
         <!-- Приоритет (справочник) -->
         <template #item.priorityId="{ item }">
-          {{ getPriorityName(item.priorityId) }}
+          <VChip v-if="item.priorityId" :color="getPriorityColor(item.priorityId)" size="small">
+            {{ getPriorityName(item.priorityId) }}
+          </VChip>
+          <span v-else>-</span>
         </template>
 
         <!-- Активен -->
@@ -885,29 +893,17 @@ const addNewQueues = () => {
               />
             </VCol>
 
-            <!-- Макс. тикетов -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.maxTickets"
-                label="Макс. тикетов"
-                type="number"
-                min="0"
-              />
-            </VCol>
-
             <!-- Приоритет -->
             <VCol
               cols="12"
               sm="6"
             >
-              <AppTextField
-                v-model="editedItem.priority"
+              <AppSelect
+                v-model="editedItem.priorityId"
                 label="Приоритет"
-                type="number"
-                min="0"
+                :items="priorityOptions"
+                clearable
+                clear-icon="bx-x"
               />
             </VCol>
 
