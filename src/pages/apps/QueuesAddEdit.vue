@@ -308,7 +308,7 @@ const openQuickAnswersDialog = () => {
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $api<ReferenceData>(`${API_BASE}/reference-data`)
+    const data =     await $api<ReferenceData>(`${API_BASE}/referenceData`)
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -353,6 +353,8 @@ const fetchQueue = async () => {
     if (queue.value.quickAnswerArticleIds && Array.isArray(queue.value.quickAnswerArticleIds)) {
       selectedArticleIds.value = [...queue.value.quickAnswerArticleIds]
     }
+    // Initialize keywords array
+    keywordsArray.value = typeof queue.value.keywords === 'string' && queue.value.keywords ? queue.value.keywords.split(',').map(k => k.trim()).filter(k => k) : []
   } catch (err) {
     error.value = 'Ошибка загрузки очереди'
     console.error('Error fetching queue:', err)
@@ -657,7 +659,8 @@ onMounted(async () => {
 
               <VCol cols="12">
                 <VCombobox
-                  v-model="keywordsArray"
+                  :model-value="keywordsArray"
+                  @update:model-value="keywordsArray = $event"
                   label="Ключевые слова"
                   multiple
                   chips

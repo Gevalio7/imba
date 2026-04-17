@@ -293,7 +293,12 @@ watch(() => ticket.stateId, async (newStateId, oldStateId) => {
     }
     performEscalation()
     // Save silently
-    await performSave(false)
+    try {
+      await performSave(false)
+    } catch (err: any) {
+      console.error('Error saving ticket during escalation:', err)
+    saving.value = false
+  }
   }
 })
 
@@ -980,6 +985,16 @@ const fetchStatusHistory = async () => {
   }
 }
 
+// Загрузка списка сотрудников клиентов
+const fetchCustomerUsers = async () => {
+  try {
+    const result = await $api<{ customerUsers: any[], total: number }>('/customerUsers')
+    refData.customerUsers = result.customerUsers || []
+  } catch (err) {
+    console.error('Error fetching customer users:', err)
+  }
+}
+
 // Форматирование интервала времени
 const formatTimeInStatus = (interval: string | Record<string, number> | null) => {
   if (!interval) return '-'
@@ -1024,7 +1039,6 @@ const formatTimeInStatus = (interval: string | Record<string, number> | null) =>
 
 // Функция выполнения сохранения
 const performSave = async (redirectAfterSave = true) => {
-  try {
     // Находим текущего агента
     const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
 
@@ -1104,14 +1118,7 @@ const performSave = async (redirectAfterSave = true) => {
         await fetchTicket()
       }
     }
-  }
-  catch (err: any) {
-    console.error('Error saving ticket:', err)
-    if (redirectAfterSave) {
-      showToast('Ошибка сохранения обращения', 'error')
-      saving.value = false
-    }
-  }
+  saving.value = false
 }
 
 // Сохранение
@@ -1149,7 +1156,6 @@ const save = async () => {
     await performSave()
   }
   catch (err: any) {
-    console.error('Error saving ticket:', err)
     // Показываем более информативное сообщение об ошибке
     if (err.data?.message) {
       showToast(err.data.message, 'error')
@@ -1193,7 +1199,6 @@ const createAuthorFromDialog = async () => {
     // Теперь выполняем сохранение тикета
     await performSave()
   } catch (err: any) {
-    console.error('Error creating customer user:', err)
     showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
     saving.value = false
   }

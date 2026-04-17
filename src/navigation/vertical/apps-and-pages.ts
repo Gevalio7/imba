@@ -70,6 +70,7 @@ export default [
     children: [
       { title: 'Очереди', to: 'apps-queues' },
       { title: 'Типы', to: 'apps-types' },
+      { title: 'Категории', to: 'apps-type-categories' },
       { title: 'Статусы', to: 'apps-states' },
       { title: 'Приоритеты', to: 'apps-priorities' },
       { title: 'SLA', to: 'apps-sla' },

@@ -145,25 +145,12 @@ const createQueues = asyncHandler(async (req, res) => {
 
   // Ключевые слова для авто-маршрутизации
   if (req.body.keywords !== undefined) {
-    if (typeof req.body.keywords === 'string') {
-      data.keywords = req.body.keywords.split(',').map(k => k.trim()).filter(k => k);
-    } else {
-      data.keywords = req.body.keywords;
-    }
+    data.keywords = req.body.keywords;
   }
 
   // Шаблон авто-ответа
   if (req.body.autoResponseTemplate !== undefined) {
     data.autoResponseTemplate = req.body.autoResponseTemplate;
-  }
-
-  // Быстрые ответы из базы знаний
-  if (req.body.quickAnswerArticleIds !== undefined) {
-    if (Array.isArray(req.body.quickAnswerArticleIds)) {
-      data.quickAnswerArticleIds = req.body.quickAnswerArticleIds;
-    } else if (req.body.quickAnswerArticleIds === null) {
-      data.quickAnswerArticleIds = null;
-    }
   }
 
   console.log('📝 Данные для создания:', data);
@@ -302,6 +289,11 @@ const updateQueues = asyncHandler(async (req, res) => {
     } else if (req.body.quickAnswerArticleIds === null) {
       data.quickAnswerArticleIds = null;
     }
+  }
+
+  // Ключевые слова для авто-маршрутизации
+  if (req.body.keywords !== undefined) {
+    data.keywords = req.body.keywords;
   }
 
   const updatedQueue = await Queues.update(queueId, data);
