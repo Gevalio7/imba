@@ -137,6 +137,17 @@ const cancel = () => {
   router.push('/apps/tickets')
 }
 
+// Save action with error handling
+const handleSave = async () => {
+  try {
+    await save()
+    showToast('Обращение успешно сохранено', 'success')
+  } catch (error: any) {
+    const message = error.message || 'Ошибка при сохранении обращения'
+    showToast(message, 'error')
+  }
+}
+
 
 </script>
 
@@ -166,7 +177,7 @@ const cancel = () => {
         </VBtn>
         <VBtn
           :loading="saving"
-          @click="save"
+          @click="handleSave"
         >
           Сохранить
         </VBtn>

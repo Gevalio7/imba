@@ -53,6 +53,9 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     initialExecutorGroupIds: [],
   })
 
+  // Track original saved status for workflow validation
+  const originalStateId = ref<number | undefined>(undefined)
+
   const description = ref('')
   const saving = ref(false)
 
@@ -120,18 +123,22 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     try {
       loadingWorkflow.value = true
 
-      // Формируем URL с параметром currentStatusId если он передан
+      // Всегда используем оригинальный сохраненный статус для определения доступных переходов
+      // Это предотвращает "перепрыгивание" через этапы workflow
+      const statusForWorkflow = originalStateId.value ?? currentStatusId
+
+      // Формируем URL с параметром currentStatusId
       let url = `/types/${ticket.typeId}/workflow`
-      if (currentStatusId !== undefined && currentStatusId !== null) {
-        url += `?currentStatusId=${currentStatusId}`
+      if (statusForWorkflow !== undefined && statusForWorkflow !== null) {
+        url += `?currentStatusId=${statusForWorkflow}`
       }
 
       const data = await $api(url)
 
       currentWorkflow.value = (data as any).workflow
 
-      // Если передан текущий статус и есть workflow, используем переходы из текущего статуса
-      if (currentStatusId !== undefined && currentStatusId !== null && currentWorkflow.value && (data as any).currentStatusTransitions) {
+      // Если есть workflow, используем переходы из оригинального статуса
+      if (statusForWorkflow !== undefined && statusForWorkflow !== null && currentWorkflow.value && (data as any).currentStatusTransitions) {
         availableStatuses.value = (data as any).currentStatusTransitions
       }
       else {
@@ -192,6 +199,9 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       if (t.typeId) {
         await fetchTypeWorkflow(t.stateId)
       }
+
+      // Track original saved status for workflow validation
+      originalStateId.value = t.stateId
     }
     catch (err) {
       console.error('Error fetching ticket:', err)
@@ -235,33 +245,46 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     const method = isCreating ? 'POST' : 'PUT'
     const endpoint = isCreating ? '/tickets' : `/tickets/${ticketId.value}`
 
-    const response = await $api(endpoint, {
-      method,
-      body: {
-        ...ticketData,
-        ...(isCreating ? {} : { id: ticket.id }), // Для обновления передаем id
-        changedBy: currentAgent?.id,
-        description: description.value,
-      },
-    })
+    try {
+      const response = await $api(endpoint, {
+        method,
+        body: {
+          ...ticketData,
+          ...(isCreating ? {} : { id: ticket.id }), // Для обновления передаем id
+          changedBy: currentAgent?.id,
+          description: description.value,
+        },
+      })
 
-    // Для нового тикета обновляем ticket.id
-    if (isCreating && response.id) {
-      ticket.id = response.id
-    }
-
-    if (redirectAfterSave) {
-      if (isCreating) {
-        router.push('/apps/tickets')
-      } else {
-        await fetchTicket() // Обновляем данные включая SLA дедлайны
-        router.push('/apps/tickets')
+      // Для нового тикета обновляем ticket.id
+      if (isCreating && response.id) {
+        ticket.id = response.id
       }
-    } else {
-      // Тихое сохранение без уведомлений и перенаправления
+
+      // Обновляем оригинальный статус после успешного сохранения
       if (!isCreating) {
-        await fetchTicket()
+        originalStateId.value = ticket.stateId
       }
+
+      if (redirectAfterSave) {
+        if (isCreating) {
+          router.push('/apps/tickets')
+        } else {
+          await fetchTicket() // Обновляем данные включая SLA дедлайны
+          router.push('/apps/tickets')
+        }
+      } else {
+        // Тихое сохранение без уведомлений и перенаправления
+        if (!isCreating) {
+          await fetchTicket()
+        }
+      }
+    } catch (error: any) {
+      // Если ошибка валидации перехода workflow, показываем предупреждение
+      if (error.response?.status === 403 && error.response?.data?.error === 'TRANSITION_NOT_ALLOWED') {
+        throw new Error(`Невозможно изменить статус: переход из "${error.response.data.currentStatus?.name}" недопустим по workflow. Пожалуйста, сохраните изменения поэтапно.`)
+      }
+      throw error
     }
     saving.value = false
   }
@@ -393,14 +416,15 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     }
   })
 
-  // Watcher для изменения статуса - обновляем доступные переходы
+  // Watcher для изменения статуса - валидируем переход но не обновляем доступные статусы
   watch(() => ticket.stateId, async (newStateId, oldStateId) => {
     // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
     if (oldStateId === undefined) return
 
-    // Если есть тип и workflow, обновляем доступные переходы
-    if (ticket.typeId && currentWorkflow.value) {
-      await fetchTypeWorkflow(newStateId)
+    // Если статус изменился и есть оригинальный статус, проверяем валидность перехода
+    if (newStateId !== originalStateId.value && originalStateId.value !== undefined) {
+      // Не обновляем availableStatuses - они должны оставаться на основе оригинального статуса
+      // Валидация будет происходить при сохранении
     }
   })
 
@@ -444,5 +468,6 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     loadingWorkflow,
     allowMultipleExecutorGroups,
     allowMultipleExecutors,
+    originalStateId,
   }
 }
