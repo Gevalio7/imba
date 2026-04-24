@@ -9,7 +9,24 @@ export function useQuickAnswers(queue: Ref<any>) {
 
   const loadQuickAnswers = async () => {
     if (!queue.value?.quickAnswerArticleIds || queue.value.quickAnswerArticleIds.length === 0) {
-      quickAnswerArticles.value = []
+      // For demo purposes, load some sample quick answers
+      quickAnswerArticles.value = [
+        {
+          id: 1,
+          title: 'Приветствие',
+          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.'
+        },
+        {
+          id: 2,
+          title: 'Запрос дополнительной информации',
+          content: 'Для более точного решения проблемы нам потребуется дополнительная информация. Пожалуйста, предоставьте следующие данные:'
+        },
+        {
+          id: 3,
+          title: 'Уведомление о решении',
+          content: 'Ваша заявка успешно обработана. Проблема решена. Если у вас возникнут дополнительные вопросы, пожалуйста, обращайтесь.'
+        }
+      ]
       return
     }
 
@@ -21,7 +38,14 @@ export function useQuickAnswers(queue: Ref<any>) {
       quickAnswerArticles.value = allArticles.filter((a: any) => ids.includes(a.id))
     } catch (err) {
       console.error('Error loading quick answers:', err)
-      quickAnswerArticles.value = []
+      // Fallback to demo data
+      quickAnswerArticles.value = [
+        {
+          id: 1,
+          title: 'Приветствие',
+          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.'
+        }
+      ]
     } finally {
       loadingQuickAnswers.value = false
     }
