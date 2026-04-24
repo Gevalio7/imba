@@ -31,6 +31,7 @@ declare global {
   const createGenericProjection: typeof import('@vueuse/math')['createGenericProjection']
   const createGlobalState: typeof import('@vueuse/core')['createGlobalState']
   const createInjectionState: typeof import('@vueuse/core')['createInjectionState']
+  const createObjectUrl: typeof import('./src/utils/fileUtils')['createObjectUrl']
   const createPinia: typeof import('pinia')['createPinia']
   const createProjection: typeof import('@vueuse/math')['createProjection']
   const createReactiveFn: typeof import('@vueuse/core')['createReactiveFn']
@@ -52,11 +53,16 @@ declare global {
   const emailValidator: typeof import('./src/@core/utils/validators')['emailValidator']
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const filterConditions: typeof import('./src/composables/useFilters')['filterConditions']
-  const formatDate: typeof import('./src/@core/utils/formatters')['formatDate']
+  const formatDate: typeof import('./src/utils/slaFormatter')['formatDate']
+  const formatDateOnly: typeof import('./src/utils/slaFormatter')['formatDateOnly']
   const formatDateToMonthShort: typeof import('./src/@core/utils/formatters')['formatDateToMonthShort']
+  const formatDeadline: typeof import('./src/utils/slaFormatter')['formatDeadline']
+  const formatFileSize: typeof import('./src/utils/fileUtils')['formatFileSize']
+  const formatSlaTime: typeof import('./src/utils/slaFormatter')['formatSlaTime']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getMimeType: typeof import('./src/utils/fileUtils')['getMimeType']
   const h: typeof import('vue')['h']
   const hexToRgb: typeof import('./src/@core/utils/colorConverter')['hexToRgb']
   const ignorableWatch: typeof import('@vueuse/core')['ignorableWatch']
@@ -66,6 +72,8 @@ declare global {
   const isDefined: typeof import('@vueuse/core')['isDefined']
   const isEmpty: typeof import('./src/@core/utils/helpers')['isEmpty']
   const isEmptyArray: typeof import('./src/@core/utils/helpers')['isEmptyArray']
+  const isImageFile: typeof import('./src/utils/fileUtils')['isImageFile']
+  const isImageType: typeof import('./src/utils/fileUtils')['isImageType']
   const isNullOrUndefined: typeof import('./src/@core/utils/helpers')['isNullOrUndefined']
   const isObject: typeof import('./src/@core/utils/helpers')['isObject']
   const isProxy: typeof import('vue')['isProxy']
@@ -179,6 +187,7 @@ declare global {
   const useAsyncQueue: typeof import('@vueuse/core')['useAsyncQueue']
   const useAsyncState: typeof import('@vueuse/core')['useAsyncState']
   const useAttrs: typeof import('vue')['useAttrs']
+  const useAuthorSearch: typeof import('./src/composables/useAuthorSearch')['useAuthorSearch']
   const useAverage: typeof import('@vueuse/math')['useAverage']
   const useBase64: typeof import('@vueuse/core')['useBase64']
   const useBattery: typeof import('@vueuse/core')['useBattery']
@@ -240,6 +249,7 @@ declare global {
   const useId: typeof import('vue')['useId']
   const useIdle: typeof import('@vueuse/core')['useIdle']
   const useImage: typeof import('@vueuse/core')['useImage']
+  const useImagePreview: typeof import('./src/composables/useImagePreview')['useImagePreview']
   const useInfiniteScroll: typeof import('@vueuse/core')['useInfiniteScroll']
   const useIntersectionObserver: typeof import('@vueuse/core')['useIntersectionObserver']
   const useInterval: typeof import('@vueuse/core')['useInterval']
@@ -284,6 +294,7 @@ declare global {
   const usePreferredReducedMotion: typeof import('@vueuse/core')['usePreferredReducedMotion']
   const usePrevious: typeof import('@vueuse/core')['usePrevious']
   const useProjection: typeof import('@vueuse/math')['useProjection']
+  const useQuickAnswers: typeof import('./src/composables/useQuickAnswers')['useQuickAnswers']
   const useRafFn: typeof import('@vueuse/core')['useRafFn']
   const useRefHistory: typeof import('@vueuse/core')['useRefHistory']
   const useReferenceData: typeof import('./src/composables/useReferenceData')['useReferenceData']
@@ -299,6 +310,7 @@ declare global {
   const useScrollLock: typeof import('@vueuse/core')['useScrollLock']
   const useSessionStorage: typeof import('@vueuse/core')['useSessionStorage']
   const useShare: typeof import('@vueuse/core')['useShare']
+  const useShareMenu: typeof import('./src/composables/useShareMenu')['useShareMenu']
   const useSkins: typeof import('./src/@core/composable/useSkins')['useSkins']
   const useSlots: typeof import('vue')['useSlots']
   const useSorted: typeof import('@vueuse/core')['useSorted']
@@ -318,6 +330,13 @@ declare global {
   const useThrottle: typeof import('@vueuse/core')['useThrottle']
   const useThrottleFn: typeof import('@vueuse/core')['useThrottleFn']
   const useThrottledRefHistory: typeof import('@vueuse/core')['useThrottledRefHistory']
+  const useTicketAttachments: typeof import('./src/composables/useTicketAttachments')['useTicketAttachments']
+  const useTicketComments: typeof import('./src/composables/useTicketComments')['useTicketComments']
+  const useTicketEscalation: typeof import('./src/composables/useTicketEscalation')['useTicketEscalation']
+  const useTicketForm: typeof import('./src/composables/useTicketForm')['useTicketForm']
+  const useTicketHistory: typeof import('./src/composables/useTicketHistory')['useTicketHistory']
+  const useTicketSchedule: typeof import('./src/composables/useTicketSchedule')['useTicketSchedule']
+  const useTicketWorkflow: typeof import('./src/composables/useTicketWorkflow')['useTicketWorkflow']
   const useTimeAgo: typeof import('@vueuse/core')['useTimeAgo']
   const useTimeout: typeof import('@vueuse/core')['useTimeout']
   const useTimeoutFn: typeof import('@vueuse/core')['useTimeoutFn']
@@ -397,6 +416,7 @@ declare module 'vue' {
     readonly createGenericProjection: UnwrapRef<typeof import('@vueuse/math')['createGenericProjection']>
     readonly createGlobalState: UnwrapRef<typeof import('@vueuse/core')['createGlobalState']>
     readonly createInjectionState: UnwrapRef<typeof import('@vueuse/core')['createInjectionState']>
+    readonly createObjectUrl: UnwrapRef<typeof import('./src/utils/fileUtils')['createObjectUrl']>
     readonly createPinia: UnwrapRef<typeof import('pinia')['createPinia']>
     readonly createProjection: UnwrapRef<typeof import('@vueuse/math')['createProjection']>
     readonly createReactiveFn: UnwrapRef<typeof import('@vueuse/core')['createReactiveFn']>
@@ -419,10 +439,16 @@ declare module 'vue' {
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
     readonly filterConditions: UnwrapRef<typeof import('./src/composables/useFilters')['filterConditions']>
     readonly formatDate: UnwrapRef<typeof import('./src/@core/utils/formatters')['formatDate']>
+    readonly formatDate: UnwrapRef<typeof import('./src/utils/slaFormatter')['formatDate']>
+    readonly formatDateOnly: UnwrapRef<typeof import('./src/utils/slaFormatter')['formatDateOnly']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./src/@core/utils/formatters')['formatDateToMonthShort']>
+    readonly formatDeadline: UnwrapRef<typeof import('./src/utils/slaFormatter')['formatDeadline']>
+    readonly formatFileSize: UnwrapRef<typeof import('./src/utils/fileUtils')['formatFileSize']>
+    readonly formatSlaTime: UnwrapRef<typeof import('./src/utils/slaFormatter')['formatSlaTime']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getMimeType: UnwrapRef<typeof import('./src/utils/fileUtils')['getMimeType']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hexToRgb: UnwrapRef<typeof import('./src/@core/utils/colorConverter')['hexToRgb']>
     readonly ignorableWatch: UnwrapRef<typeof import('@vueuse/core')['ignorableWatch']>
@@ -432,6 +458,8 @@ declare module 'vue' {
     readonly isDefined: UnwrapRef<typeof import('@vueuse/core')['isDefined']>
     readonly isEmpty: UnwrapRef<typeof import('./src/@core/utils/helpers')['isEmpty']>
     readonly isEmptyArray: UnwrapRef<typeof import('./src/@core/utils/helpers')['isEmptyArray']>
+    readonly isImageFile: UnwrapRef<typeof import('./src/utils/fileUtils')['isImageFile']>
+    readonly isImageType: UnwrapRef<typeof import('./src/utils/fileUtils')['isImageType']>
     readonly isNullOrUndefined: UnwrapRef<typeof import('./src/@core/utils/helpers')['isNullOrUndefined']>
     readonly isObject: UnwrapRef<typeof import('./src/@core/utils/helpers')['isObject']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
@@ -439,7 +467,6 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isToday: UnwrapRef<typeof import('./src/@core/utils/helpers')['isToday']>
-    readonly kFormatter: UnwrapRef<typeof import('./src/@core/utils/formatters')['kFormatter']>
     readonly lengthValidator: UnwrapRef<typeof import('./src/@core/utils/validators')['lengthValidator']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>
@@ -545,6 +572,7 @@ declare module 'vue' {
     readonly useAsyncQueue: UnwrapRef<typeof import('@vueuse/core')['useAsyncQueue']>
     readonly useAsyncState: UnwrapRef<typeof import('@vueuse/core')['useAsyncState']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
+    readonly useAuthorSearch: UnwrapRef<typeof import('./src/composables/useAuthorSearch')['useAuthorSearch']>
     readonly useAverage: UnwrapRef<typeof import('@vueuse/math')['useAverage']>
     readonly useBase64: UnwrapRef<typeof import('@vueuse/core')['useBase64']>
     readonly useBattery: UnwrapRef<typeof import('@vueuse/core')['useBattery']>
@@ -606,6 +634,7 @@ declare module 'vue' {
     readonly useId: UnwrapRef<typeof import('vue')['useId']>
     readonly useIdle: UnwrapRef<typeof import('@vueuse/core')['useIdle']>
     readonly useImage: UnwrapRef<typeof import('@vueuse/core')['useImage']>
+    readonly useImagePreview: UnwrapRef<typeof import('./src/composables/useImagePreview')['useImagePreview']>
     readonly useInfiniteScroll: UnwrapRef<typeof import('@vueuse/core')['useInfiniteScroll']>
     readonly useIntersectionObserver: UnwrapRef<typeof import('@vueuse/core')['useIntersectionObserver']>
     readonly useInterval: UnwrapRef<typeof import('@vueuse/core')['useInterval']>
@@ -650,6 +679,7 @@ declare module 'vue' {
     readonly usePreferredReducedMotion: UnwrapRef<typeof import('@vueuse/core')['usePreferredReducedMotion']>
     readonly usePrevious: UnwrapRef<typeof import('@vueuse/core')['usePrevious']>
     readonly useProjection: UnwrapRef<typeof import('@vueuse/math')['useProjection']>
+    readonly useQuickAnswers: UnwrapRef<typeof import('./src/composables/useQuickAnswers')['useQuickAnswers']>
     readonly useRafFn: UnwrapRef<typeof import('@vueuse/core')['useRafFn']>
     readonly useRefHistory: UnwrapRef<typeof import('@vueuse/core')['useRefHistory']>
     readonly useReferenceData: UnwrapRef<typeof import('./src/composables/useReferenceData')['useReferenceData']>
@@ -665,6 +695,7 @@ declare module 'vue' {
     readonly useScrollLock: UnwrapRef<typeof import('@vueuse/core')['useScrollLock']>
     readonly useSessionStorage: UnwrapRef<typeof import('@vueuse/core')['useSessionStorage']>
     readonly useShare: UnwrapRef<typeof import('@vueuse/core')['useShare']>
+    readonly useShareMenu: UnwrapRef<typeof import('./src/composables/useShareMenu')['useShareMenu']>
     readonly useSkins: UnwrapRef<typeof import('./src/@core/composable/useSkins')['useSkins']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
     readonly useSorted: UnwrapRef<typeof import('@vueuse/core')['useSorted']>
@@ -684,6 +715,13 @@ declare module 'vue' {
     readonly useThrottle: UnwrapRef<typeof import('@vueuse/core')['useThrottle']>
     readonly useThrottleFn: UnwrapRef<typeof import('@vueuse/core')['useThrottleFn']>
     readonly useThrottledRefHistory: UnwrapRef<typeof import('@vueuse/core')['useThrottledRefHistory']>
+    readonly useTicketAttachments: UnwrapRef<typeof import('./src/composables/useTicketAttachments')['useTicketAttachments']>
+    readonly useTicketComments: UnwrapRef<typeof import('./src/composables/useTicketComments')['useTicketComments']>
+    readonly useTicketEscalation: UnwrapRef<typeof import('./src/composables/useTicketEscalation')['useTicketEscalation']>
+    readonly useTicketForm: UnwrapRef<typeof import('./src/composables/useTicketForm')['useTicketForm']>
+    readonly useTicketHistory: UnwrapRef<typeof import('./src/composables/useTicketHistory')['useTicketHistory']>
+    readonly useTicketSchedule: UnwrapRef<typeof import('./src/composables/useTicketSchedule')['useTicketSchedule']>
+    readonly useTicketWorkflow: UnwrapRef<typeof import('./src/composables/useTicketWorkflow')['useTicketWorkflow']>
     readonly useTimeAgo: UnwrapRef<typeof import('@vueuse/core')['useTimeAgo']>
     readonly useTimeout: UnwrapRef<typeof import('@vueuse/core')['useTimeout']>
     readonly useTimeoutFn: UnwrapRef<typeof import('@vueuse/core')['useTimeoutFn']>
