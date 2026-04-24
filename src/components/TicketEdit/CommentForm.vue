@@ -6,7 +6,7 @@
         variant="tonal"
         size="small"
         color="primary"
-        @click="$emit('open-quick-answers')"
+        @click="openQuickAnswersDialog"
       >
         <VIcon icon="bx-book" class="me-1" />
         Быстрые ответы
@@ -41,11 +41,21 @@
         Отправить
       </VBtn>
     </div>
+
+    <!-- Диалог быстрых ответов -->
+    <QuickAnswersDialog
+      v-model="showQuickAnswersDialog"
+      :articles="quickAnswers"
+      :loading="quickAnswersLoading"
+      @insert="handleInsertQuickAnswer"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Article } from '@/types/ticket'
+import QuickAnswersDialog from './QuickAnswersDialog.vue'
 
 interface Props {
   newComment: string
@@ -56,13 +66,30 @@ interface Props {
   quickAnswers: Article[]
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+// Dialog state
+const showQuickAnswersDialog = ref(false)
+
+const emit = defineEmits<{
   'update:newComment': [value: string]
   'update:isInternalComment': [value: boolean]
   'add': []
   'open-quick-answers': []
   'insert-quick-answer': [article: Article]
 }>()
+
+// Handle quick answer insertion
+const handleInsertQuickAnswer = (article: Article) => {
+  // Insert the article content into the comment field
+  emit('update:newComment', article.content || '')
+  // Close the dialog
+  showQuickAnswersDialog.value = false
+}
+
+// Handle opening quick answers dialog
+const openQuickAnswersDialog = () => {
+  showQuickAnswersDialog.value = true
+  emit('open-quick-answers')
+}
 </script>

@@ -106,7 +106,6 @@ const currentQueue = computed(() => ({
 const {
   quickAnswerArticles,
   loadingQuickAnswers,
-  showDialog: showQuickAnswersDialog,
   loadQuickAnswers,
   insertQuickAnswer,
   openQuickAnswersDialog,
@@ -138,13 +137,7 @@ const cancel = () => {
   router.push('/apps/tickets')
 }
 
-// Handle quick answer insertion
-const handleInsertQuickAnswer = (article: any) => {
-  // Add the quick answer content to the comment field
-  newComment.value = article.content || ''
-  // Close the dialog
-  closeQuickAnswersDialog()
-}
+
 </script>
 
 <template>
@@ -416,7 +409,6 @@ const handleInsertQuickAnswer = (article: any) => {
           @cancel-edit-comment="cancelEditComment"
           @delete-comment="confirmDeleteComment"
           @open-quick-answers="openQuickAnswersDialog"
-          @insert-quick-answer="handleInsertQuickAnswer"
         />
       </VCol>
 
@@ -574,13 +566,7 @@ const handleInsertQuickAnswer = (article: any) => {
       </VCard>
     </VDialog>
 
-    <!-- Диалог быстрых ответов -->
-    <QuickAnswersDialog
-      v-model="showQuickAnswersDialog"
-      :articles="quickAnswerArticles"
-      :loading="loadingQuickAnswers"
-      @insert="insertQuickAnswer"
-    />
+
   </div>
 </template>
 
@@ -590,7 +576,6 @@ import { formatDate } from '@/utils/slaFormatter'
 import { isImageFile, isImageType, createObjectUrl } from '@/utils/fileUtils'
 import TicketProperties from '@/components/TicketEdit/TicketProperties.vue'
 import TicketCommentsSection from '@/components/TicketEdit/TicketCommentsSection.vue'
-import QuickAnswersDialog from '@/components/TicketEdit/QuickAnswersDialog.vue'
 
 // Active tab for comments/history
 const activeTab = ref('comments')
