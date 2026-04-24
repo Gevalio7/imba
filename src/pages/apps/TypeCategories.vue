@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { $api } from '@/utils/api'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Категория типа
 interface TypeCategories {
   id: number
   name: string
   laborHours: number
+  comment: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -22,6 +23,19 @@ const itemsPerPage = ref(10)
 const page = ref(1)
 const sortBy = ref()
 const orderBy = ref()
+
+// Фильтры
+const statusFilter = ref<number | null>(null)
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
+const isFilterDialogOpen = ref(false)
+
+// Массовые действия
+const selectedItems = ref<any[]>([])
+const isBulkActionsMenuOpen = ref(false)
+const isBulkDeleteDialogOpen = ref(false)
+const isBulkStatusDialogOpen = ref(false)
+const bulkStatusValue = ref<number>(1)
 
 // Данные категории типов
 const typeCategories = ref<TypeCategories[]>([])
@@ -93,12 +107,133 @@ const deleteTypeCategory = async (id: number) => {
   }
 }
 
-// Вычисляемые свойства для фильтрации
+// Фильтрация
 const filteredTypeCategories = computed(() => {
-  if (!searchQuery.value) return typeCategories.value
-  return typeCategories.value.filter(typeCategory =>
-    typeCategory.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  let filtered = typeCategories.value
+
+  if (searchQuery.value.trim()) {
+    // Фильтруем по поисковому запросу (по названию)
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+  }
+
+  if (statusFilter.value !== null) {
+    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+  }
+
+  if (selectedNames.value.length > 0) {
+    // Фильтруем по выбранным названиям
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  }
+
+  return filtered
+})
+
+// Сброс фильтров
+const clearFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = null
+  selectedNames.value = []
+}
+
+// Уникальные названия для фильтра
+const uniqueNames = computed(() => {
+  const names = typeCategories.value.map(p => p.name)
+  return [...new Set(names)].sort()
+})
+
+// Проверка активных фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
+
+// Массовые действия
+const bulkDelete = () => {
+  console.log('🗑️ Массовое удаление - вызвано')
+  console.log('📋 Выбранные элементы:', selectedItems.value)
+  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
+  isBulkDeleteDialogOpen.value = true
+}
+
+const bulkChangeStatus = () => {
+  console.log('🔄 Массовое изменение статуса - вызвано')
+  console.log('📋 Выбранные элементы:', selectedItems.value)
+  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
+  isBulkStatusDialogOpen.value = true
+}
+
+const confirmBulkDelete = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await deleteTypeCategory(item.id)
+    }
+    selectedItems.value = []
+    showToast(`Удалено ${count} категорий типов`)
+    isBulkDeleteDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового удаления', 'error')
+  }
+}
+
+const confirmBulkStatusChange = async () => {
+  try {
+    const count = selectedItems.value.length
+    for (const item of selectedItems.value) {
+      await updateTypeCategory(item.id, {
+        ...item,
+        isActive: bulkStatusValue.value === 1
+      })
+    }
+    selectedItems.value = []
+    showToast(`Статус изменен для ${count} категорий типов`)
+    isBulkStatusDialogOpen.value = false
+  } catch (err) {
+    showToast('Ошибка массового изменения статуса', 'error')
+  }
+}
+
+const resolveStatusVariant = (isActive: boolean) => {
+  if (isActive)
+    return { color: 'primary', text: 'Активен' }
+  else
+    return { color: 'error', text: 'Не активен' }
+}
+
+// Пагинация
+const currentPage = ref(1)
+
+// Опции статуса
+const statusOptions = [
+  { text: 'Активен', value: 1 },
+  { text: 'Не активен', value: 2 },
+]
+
+// Уведомления
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
+// Отслеживание изменений выбранных элементов
+watch(selectedItems, (newValue) => {
+  console.log('✅ Изменение выбранных элементов')
+  console.log('📋 Новое значение selectedItems:', newValue)
+  console.log('📊 Количество выбранных:', newValue.length)
+  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
+}, { deep: true })
+
+// Ограничение количества выбранных названий
+watch(selectedNames, (value) => {
+  if (value.length > 10) {
+    nextTick(() => selectedNames.value.pop())
+  }
 })
 
 // Диалоги
@@ -108,6 +243,7 @@ const deleteDialog = ref(false)
 const defaultItem = ref<TypeCategories>({
   id: -1,
   name: '',
+  comment: '',
   laborHours: 0,
   isActive: true,
   createdAt: '',
@@ -118,9 +254,16 @@ const editedItem = ref<TypeCategories>({ ...defaultItem.value })
 
 const editedIndex = ref(-1)
 
-const formTitle = computed(() => {
-  return editedIndex.value === -1 ? 'Создать категорию типа' : 'Редактировать категорию типа'
-})
+const headers = [
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
+  { title: 'Трудозатраты (часы)', key: 'laborHours', sortable: true },
+  { title: 'Комментарий', key: 'comment', sortable: true },
+  { title: 'Создано', key: 'createdAt', sortable: true },
+  { title: 'Изменено', key: 'updatedAt', sortable: true },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false }
+]
 
 // Методы для работы с диалогами
 const editItem = (item: TypeCategories) => {
@@ -142,9 +285,10 @@ const closeDelete = () => {
 const deleteItemConfirm = async () => {
   try {
     await deleteTypeCategory(editedItem.value.id)
+    showToast('Категория типа успешно удалена')
     closeDelete()
   } catch (err) {
-    console.error('Error deleting type category:', err)
+    showToast('Ошибка удаления категории типа', 'error')
   }
 }
 
@@ -155,25 +299,57 @@ const closeEdit = () => {
 }
 
 const save = async () => {
+  if (!editedItem.value.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+
   try {
     if (editedIndex.value > -1) {
-      await updateTypeCategory(editedItem.value.id, editedItem.value)
+      // Обновление существующего
+      const updated = await updateTypeCategory(editedItem.value.id, {
+        ...editedItem.value,
+        isActive: editedItem.value.isActive
+      })
+      showToast('Категория типа успешно сохранена')
     } else {
-      await createTypeCategory(editedItem.value)
+      // Добавление нового
+      const created = await createTypeCategory({
+        ...editedItem.value,
+        isActive: editedItem.value.isActive
+      })
+      showToast('Категория типа успешно добавлена')
     }
     closeEdit()
   } catch (err) {
-    console.error('Error saving type category:', err)
+    showToast('Ошибка сохранения категории типа', 'error')
   }
 }
 
 // Переключение статуса
-const toggleStatus = async (item: TypeCategories, newStatus: boolean) => {
+const toggleStatus = async (item: TypeCategories, newValue: boolean | null) => {
+  console.log('🔄 toggleStatus вызван')
+  console.log('📝 Элемент:', item)
+  console.log('🔢 Новое значение isActive:', newValue)
+
+  if (newValue === null) return
+
   try {
-    await updateTypeCategory(item.id, { isActive: newStatus })
+    await updateTypeCategory(item.id, {
+      ...item,
+      isActive: newValue
+    })
+    showToast('Статус категории типа изменен')
   } catch (err) {
-    console.error('Error toggling status:', err)
+    showToast('Ошибка изменения статуса', 'error')
   }
+}
+
+// Добавление новой категории типа
+const addNewTypeCategories = () => {
+  editedItem.value = { ...defaultItem.value }
+  editedIndex.value = -1
+  editDialog.value = true
 }
 
 // Загрузка данных при монтировании
@@ -183,101 +359,329 @@ onMounted(() => {
 </script>
 
 <template>
-  <VCard>
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6">
-          <VTextField
+  <div>
+    <VCard title="Категории типов">
+
+      <!-- Индикатор загрузки -->
+      <div v-if="loading" class="d-flex justify-center pa-6">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <!-- Сообщение об ошибке -->
+      <div v-else-if="error" class="d-flex justify-center pa-6">
+        <VAlert type="error" class="ma-4">
+          {{ error }}
+        </VAlert>
+      </div>
+
+      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+        <div class="d-flex align-center">
+          <!-- Поиск -->
+          <AppTextField
             v-model="searchQuery"
-            label="Поиск"
-            prepend-inner-icon="bx-search"
-            single-line
-            hide-details
-            density="compact"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" class="d-flex justify-end">
-          <VBtn color="primary" @click="editItem(defaultItem)">
-            <VIcon icon="bx-plus" class="me-2" />
-            Создать категорию типа
-          </VBtn>
-        </VCol>
-      </VRow>
-    </VCardText>
-
-    <VDataTable
-      :headers="[
-        { title: 'Название', key: 'name', sortable: true },
-        { title: 'Трудозатраты (часы)', key: 'laborHours', sortable: true },
-        { title: 'Активен', key: 'isActive', sortable: false },
-        { title: 'Создано', key: 'createdAt', sortable: true },
-        { title: 'Действия', key: 'actions', sortable: false }
-      ]"
-      :items="filteredTypeCategories"
-      :loading="loading"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:page="page = $event"
-      @update:items-per-page="itemsPerPage = $event"
-      @update:sort-by="sortBy = $event"
-      @update:sort-desc="orderBy = $event ? 'desc' : 'asc'"
-      class="text-no-wrap"
-    >
-      <template #item.laborHours="{ item }">
-        {{ item.laborHours }}
-      </template>
-
-      <template #item.isActive="{ item }">
-        <div class="d-flex align-center gap-2">
-          <VSwitch
-            :model-value="item.isActive"
-            @update:model-value="(val) => toggleStatus(item, val)"
+            placeholder="Поиск категории типа"
+            style="inline-size: 250px;"
+            class="me-3"
           />
         </div>
-      </template>
 
-      <template #item.createdAt="{ item }">
-        {{ new Date(item.createdAt).toLocaleDateString() }}
-      </template>
+        <!-- Кнопка фильтра -->
+        <VBtn
+          variant="tonal"
+          color="secondary"
+          :prepend-icon="hasActiveFilters ? 'bx-x' : 'bx-filter'"
+          @click="hasActiveFilters ? clearFilters() : isFilterDialogOpen = true"
+        >
+          {{ hasActiveFilters ? 'Сбросить фильтр' : 'Фильтр' }}
+        </VBtn>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
+        <!-- Кнопка массовых действий -->
+        <VMenu
+          v-model="isBulkActionsMenuOpen"
+          :close-on-content-click="false"
+        >
+          <template #activator="{ props }">
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              prepend-icon="bx-dots-vertical-rounded"
+              :disabled="selectedItems.length === 0"
+              v-bind="props"
+            >
+              Действия ({{ selectedItems.length }})
+            </VBtn>
+          </template>
+          <VList>
+            <VListItem
+              @click="() => {
+                bulkDelete()
+                isBulkActionsMenuOpen = false
+              }"
+            >
+              <VListItemTitle>Удалить</VListItemTitle>
+            </VListItem>
+            <VListItem
+              @click="() => {
+                bulkChangeStatus()
+                isBulkActionsMenuOpen = false
+              }"
+            >
+              <VListItemTitle>Изменить статус</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
+
+        <VSpacer />
+        <div class="d-flex gap-4 flex-wrap align-center">
+          <AppSelect
+            v-model="itemsPerPage"
+            :items="[5, 10, 20, 25, 50]"
+          />
+          <!-- Экспорт -->
           <VBtn
-            icon
-            variant="text"
-            size="small"
-            @click="editItem(item)"
+            variant="tonal"
+            color="secondary"
+            prepend-icon="bx-export"
           >
-            <VIcon icon="bx-edit" />
+            Экспорт
           </VBtn>
+
           <VBtn
-            icon
-            variant="text"
-            size="small"
-            color="error"
-            @click="deleteItem(item)"
+            color="primary"
+            prepend-icon="bx-plus"
+            @click="addNewTypeCategories"
           >
-            <VIcon icon="bx-trash" />
+            Добавить категорию типа
           </VBtn>
         </div>
-      </template>
-    </VDataTable>
+      </div>
+
+
+      <!-- Диалог фильтров -->
+      <VDialog
+        v-model="isFilterDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Фильтры">
+          <VCardText>
+            <VRow>
+              <VCol cols="12">
+                <AppCombobox
+                  v-model="selectedNames"
+                  v-model:search-input="searchNames"
+                  :items="uniqueNames"
+                  hide-selected
+                  :hide-no-data="false"
+                  placeholder="Выберите названия"
+                  hint="Максимум 10 названий"
+                  label="Названия категорий типов"
+                  multiple
+                  persistent-hint
+                >
+                  <template #no-data>
+                    <VListItem>
+                      <VListItemTitle>
+                        Нет результатов для "<strong>{{ searchNames }}</strong>"
+                      </VListItemTitle>
+                    </VListItem>
+                  </template>
+                </AppCombobox>
+              </VCol>
+              <VCol cols="12" md="6">
+                <AppSelect
+                  v-model="statusFilter"
+                  placeholder="Статус"
+                  :items="[
+                    { title: 'Активен', value: 1 },
+                    { title: 'Не активен', value: 2 },
+                  ]"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VCardText>
+
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                variant="text"
+                @click="clearFilters"
+              >
+                Сбросить
+              </VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isFilterDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="isFilterDialogOpen = false"
+              >
+                Применить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
+      <!-- Диалог массового удаления -->
+      <VDialog
+        v-model="isBulkDeleteDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Подтверждение удаления">
+          <VCardText>
+            Вы уверены, что хотите удалить выбранные категории типов? Это действие нельзя отменить.
+          </VCardText>
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkDeleteDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkDelete"
+              >
+                Удалить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
+      <!-- Диалог массового изменения статуса -->
+      <VDialog
+        v-model="isBulkStatusDialogOpen"
+        max-width="500px"
+      >
+        <VCard title="Изменить статус">
+          <VCardText>
+            <AppSelect
+              v-model="bulkStatusValue"
+              :items="statusOptions"
+              item-title="text"
+              item-value="value"
+              label="Новый статус"
+            />
+          </VCardText>
+          <VCardText>
+            <div class="d-flex justify-end gap-4">
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkStatusDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkStatusChange"
+              >
+                Применить
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </VDialog>
+
+      <VDivider />
+
+      <!-- Таблица -->
+      <VDataTable
+        v-model="selectedItems"
+        v-model:items-per-page="itemsPerPage"
+        v-model:page="currentPage"
+        :headers="headers"
+        :items="filteredTypeCategories"
+        show-select
+        :hide-default-footer="true"
+        item-value="id"
+        return-object
+        no-data-text="Нет данных"
+      >
+        <!-- Трудозатраты -->
+        <template #item.laborHours="{ item }">
+          {{ item.laborHours }}
+        </template>
+
+        <!-- Активен -->
+        <template #item.isActive="{ item }">
+          <div class="d-flex align-center gap-2">
+            <VSwitch
+              :model-value="item.isActive"
+              @update:model-value="(val) => toggleStatus(item, val)"
+              color="primary"
+              hide-details
+            />
+            <VChip
+              v-bind="resolveStatusVariant(item.isActive)"
+              density="compact"
+              label
+              size="small"
+            />
+          </div>
+        </template>
+
+        <!-- Действия -->
+        <template #item.actions="{ item }">
+          <div class="d-flex gap-1">
+            <IconBtn @click="editItem(item)">
+              <VIcon icon="bx-edit" />
+            </IconBtn>
+            <IconBtn @click="deleteItem(item)">
+              <VIcon icon="bx-trash" />
+            </IconBtn>
+          </div>
+        </template>
+      </VDataTable>
+
+      <!-- Пагинация -->
+      <div class="d-flex justify-center mt-4 pb-4">
+        <VPagination
+          v-model="currentPage"
+          :length="Math.ceil(filteredTypeCategories.length / itemsPerPage) || 1"
+          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+        />
+      </div>
+    </VCard>
 
     <!-- Диалог редактирования -->
-    <VDialog v-model="editDialog" max-width="600px">
-      <VCard>
-        <VCardTitle>{{ formTitle }}</VCardTitle>
+    <VDialog
+      v-model="editDialog"
+      max-width="600px"
+    >
+      <VCard :title="editedIndex > -1 ? 'Редактировать категорию типа' : 'Добавить категорию типа'">
         <VCardText>
           <VRow>
-            <VCol cols="12">
-              <VTextField
+
+            <!-- Название -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
-                required
               />
             </VCol>
-            <VCol cols="12">
-              <VTextField
+
+            <!-- Трудозатраты -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
                 v-model="editedItem.laborHours"
                 label="Трудозатраты (часы)"
                 type="number"
@@ -285,35 +689,97 @@ onMounted(() => {
                 step="0.5"
               />
             </VCol>
-            <VCol cols="12">
+          </VRow>
+          <VRow>
+            <!-- Активен -->
+            <VCol
+              cols="12"
+              md="6"
+            >
               <VSwitch
                 v-model="editedItem.isActive"
-                label="Активен"
+                :label="editedItem.isActive ? 'Активен' : 'Не активен'"
+                color="primary"
+                density="compact"
+              />
+            </VCol>
+          </VRow>
+          <VRow>
+            <!-- Комментарий -->
+            <VCol
+              cols="12"
+            >
+              <AppTextarea
+                v-model="editedItem.comment"
+                label="Комментарий"
+                rows="3"
+                placeholder="Введите комментарий..."
               />
             </VCol>
           </VRow>
         </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn @click="closeEdit">Отмена</VBtn>
-          <VBtn color="primary" @click="save">Сохранить</VBtn>
-        </VCardActions>
+
+        <VCardText>
+          <div class="self-align-end d-flex gap-4 justify-end">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeEdit"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
       </VCard>
     </VDialog>
 
-    <!-- Диалог подтверждения удаления -->
-    <VDialog v-model="deleteDialog" max-width="400px">
-      <VCard>
-        <VCardTitle>Подтверждение удаления</VCardTitle>
+    <!-- Диалог удаления -->
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
+      <VCard title="Вы уверены, что хотите удалить этот категорию типа?">
         <VCardText>
-          Вы действительно хотите удалить категорию типа "{{ editedItem.name }}"?
+          <div class="d-flex justify-center gap-4">
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
+          </div>
         </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn @click="closeDelete">Отмена</VBtn>
-          <VBtn color="error" @click="deleteItemConfirm">Удалить</VBtn>
-        </VCardActions>
       </VCard>
     </VDialog>
-  </VCard>
+  </div>
+
+  <!-- Уведомления -->
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="3000"
+  >
+    {{ toastMessage }}
+  </VSnackbar>
 </template>
+
+<style lang="scss" scoped>
+.v-card {
+  margin-block-end: 1rem;
+}
+</style>
