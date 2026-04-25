@@ -3,6 +3,7 @@ import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useReferenceData } from '@/composables/useReferenceData'
+import { useAuthorSearch } from '@/composables/useAuthorSearch'
 
 definePage({
   meta: {
@@ -246,68 +247,20 @@ const agentOptions = computed(() => {
   }))
 })
 
-// Авторы (сотрудники) для выбора
-const authorOptions = computed(() => {
-  console.log('authorOptions computed, customerUsers.length:', customerUsers.value.length)
-  const options = customerUsers.value.map((c: any) => {
-    const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
-    const email = c.email ? ` (${c.email})` : ''
-    const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
-    return {
-      title: `${name}${email}${companyInfo}`,
-      value: c.id,
-      customerId: c.customerId,
-      customerName: c.customerName,
-    }
-  })
-  console.log('authorOptions returning:', options.length, 'options')
-  return options
-})
-
-// Отображаемое значение поиска для поля автора (не очищается Vuetify)
-const authorSearchDisplay = ref('')
-
-// Watcher для отслеживания изменений поиска
-watch(() => authorSearchDisplay.value, (newVal, oldVal) => {
-  console.log('authorSearchDisplay changed from "' + oldVal + '" to "' + newVal + '"')
-})
-
-
-
-// Временные данные для нового сотрудника
-const newAuthorData = ref({
-  email: '',
-  firstName: 'Новый',
-  lastName: 'Сотрудник',
-})
+// Use useAuthorSearch composable for author selection
+const {
+  authorSearch,
+  showCreateNewAuthor,
+  newAuthorData,
+  filteredAuthorOptions,
+  canCreateCustomerUserByEmail,
+  handleAuthorUpdate,
+  handleAuthorClear,
+  createNewAuthor,
+} = useAuthorSearch(customerUsers, systemConfigs, computed(() => ticket.value.companyId))
 
 // Модальное окно создания сотрудника
 const showCreateAuthorDialog = ref(false)
-
-// systemConfigs теперь получается через useReferenceData composable (systemConfigs computed)
-
-// Проверка - разрешено ли создание сотрудника по email
-const canCreateCustomerUserByEmail = computed(() => {
-  const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
-  const isEnabled = config?.value === true || config?.value === 'true'
-  const isActive = config?.isActive !== false
-  console.log('Config:', config, 'isEnabled:', isEnabled, 'isActive:', isActive)
-  return isEnabled && isActive
-})
-
-// Фильтрованный список авторов по поиску
-const filteredAuthorOptions = computed(() => {
-  if (!authorSearchDisplay.value.trim()) {
-    return authorOptions.value
-  }
-  const search = authorSearchDisplay.value.toLowerCase()
-  const matches = authorOptions.value.filter((a: any) => {
-    return a.title.toLowerCase().includes(search)
-  })
-
-  console.log('filteredAuthorOptions: search="' + search + '", matches:', matches.length)
-  return matches
-})
 
 // Проверка - является ли введенный текст email
 const isEmail = (text: string) => {
@@ -315,12 +268,8 @@ const isEmail = (text: string) => {
   return emailRegex.test(text)
 }
 
-// Вычисляемый - показывать ли иконку создания в no-data
-const showCreateIconInNoData = computed(() => {
-  const shouldShow = authorSearchDisplay.value && isEmail(authorSearchDisplay.value) && !filteredAuthorOptions.value.length && canCreateCustomerUserByEmail.value
-  console.log('showCreateIconInNoData: search="' + authorSearchDisplay.value + '", isEmail=' + isEmail(authorSearchDisplay.value) + ', filteredLength=' + filteredAuthorOptions.value.length + ', canCreate=' + canCreateCustomerUserByEmail.value + ', shouldShow=' + shouldShow)
-  return shouldShow
-})
+// Use showCreateNewAuthor from composable for no-data
+const showCreateIconInNoData = showCreateNewAuthor
 
 // Обработка выбора автора (включая кастомный email)
 const handleAuthorSelect = (value: any) => {
@@ -331,34 +280,8 @@ const handleAuthorSelect = (value: any) => {
       ticket.value.ownerId = null
     } else {
       ticket.value.ownerId = null
-      authorSearchDisplay.value = ''
+      authorSearch.value = ''
       showToast('Создание сотрудника по email отключено в настройках', 'error')
-    }
-  }
-}
-
-// Очистка выбора автора
-const handleAuthorClear = () => {
-  newAuthorData.value.email = ''
-  authorSearchDisplay.value = ''
-  ticket.value.ownerId = null
-}
-
-// Обработка ввода в поле автора
-const handleAuthorUpdate = async (search: string) => {
-  console.log('handleAuthorUpdate called with search:', search, 'length:', search?.length)
-  if (!search?.trim()) return
-
-  if (isEmail(search.trim())) {
-    console.log('Email detected in handleAuthorUpdate')
-    const existingUser = customerUsers.value.find(
-      (u: any) => u.email?.toLowerCase() === search.trim().toLowerCase()
-    )
-    console.log('existingUser in handleAuthorUpdate:', existingUser)
-
-    if (!existingUser && canCreateCustomerUserByEmail.value) {
-      console.log('Setting new user data for email:', search.trim())
-      newAuthorData.value.email = search.trim()
     }
   }
 }
@@ -586,6 +509,16 @@ const save = async () => {
     return
   }
 
+  if (!ticket.value.queueId) {
+    showToast('Очередь обязательна для заполнения', 'error')
+    return
+  }
+
+  if (!ticket.value.ownerId) {
+    showToast('Автор обязателен для заполнения', 'error')
+    return
+  }
+
   if (ticket.value.ownerId === '') {
     ticket.value.ownerId = null
   }
@@ -611,22 +544,13 @@ const createAuthorFromDialog = async () => {
   try {
     saving.value = true
 
-    const newUser = await $api('/customerUsers', {
-      method: 'POST',
-      body: {
-        email: newAuthorData.value.email,
-        firstName: newAuthorData.value.firstName,
-        lastName: newAuthorData.value.lastName,
-        login: newAuthorData.value.email,
-        customerId: ticket.value.companyId || null,
-      },
-    })
+    const newUser = await createNewAuthor()
 
     await loadReferenceData(true)
 
     ticket.value.ownerId = (newUser as any).id
     newAuthorData.value.email = ''
-    authorSearchDisplay.value = ''
+    authorSearch.value = ''
     showCreateAuthorDialog.value = false
 
     showToast('Сотрудник создан', 'success')
@@ -641,26 +565,20 @@ const createAuthorFromDialog = async () => {
 
 // Создание сотрудника напрямую из no-data
 const createNewUserFromNoData = async () => {
-  console.log('createNewUserFromNoData called, search="' + authorSearchDisplay.value + '"')
-  if (!authorSearchDisplay.value || !isEmail(authorSearchDisplay.value)) {
+  console.log('createNewUserFromNoData called, search="' + authorSearch.value + '"')
+  if (!authorSearch.value || !isEmail(authorSearch.value)) {
     showToast('Введите корректный email', 'error')
     return
   }
 
+  // Ensure newAuthorData has the email
+  newAuthorData.value.email = authorSearch.value
+
   try {
     saving.value = true
-    console.log('Creating new user with email:', authorSearchDisplay.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
+    console.log('Creating new user with email:', authorSearch.value, 'name:', newAuthorData.value.firstName, newAuthorData.value.lastName)
 
-    const newUser = await $api('/customerUsers', {
-      method: 'POST',
-      body: {
-        email: authorSearchDisplay.value,
-        firstName: newAuthorData.value.firstName,
-        lastName: newAuthorData.value.lastName,
-        login: authorSearchDisplay.value,
-        customerId: ticket.value.companyId || null,
-      },
-    })
+    const newUser = await createNewAuthor()
 
     console.log('New user created:', newUser)
     console.log('Fetching updated customerUsers...')
@@ -671,8 +589,8 @@ const createNewUserFromNoData = async () => {
     ticket.value.ownerId = createdUserId
     console.log('ticket.ownerId set to:', ticket.value.ownerId)
 
-    authorSearchDisplay.value = ''
-    console.log('authorSearchDisplay cleared, VAutocomplete should show selected item')
+    // authorSearch is already cleared by createNewAuthor
+    console.log('authorSearch cleared, VAutocomplete should show selected item')
 
     showToast('Сотрудник создан', 'success')
     saving.value = false
@@ -687,7 +605,7 @@ const createNewUserFromNoData = async () => {
 const cancelCreateAuthor = () => {
   showCreateAuthorDialog.value = false
   newAuthorData.value.email = ''
-  authorSearchDisplay.value = ''
+  authorSearch.value = ''
   ticket.value.ownerId = null
   saving.value = false
 }
@@ -787,7 +705,8 @@ onMounted(async () => {
               <VCol cols="12">
                 <AppTextField
                   v-model="ticket.title"
-                  label="Заголовок *"
+                  :error="!ticket.title?.trim()"
+                  label="Заголовок"
                   placeholder="Введите заголовок обращения"
                 />
               </VCol>
@@ -898,6 +817,7 @@ onMounted(async () => {
                 label="Тип"
                 placeholder="Выберите тип"
                 clearable
+                density="comfortable"
               />
 
               <!-- Категория - зависит от типа -->
@@ -910,6 +830,7 @@ onMounted(async () => {
                 :placeholder="hasCategoriesForType ? 'Выберите категорию' : 'Нет категорий для типа'"
                 :disabled="!ticket.typeId || !hasCategoriesForType"
                 clearable
+                density="comfortable"
               >
                 <template #append-inner>
                   <span v-if="!ticket.typeId" class="text-caption text-medium-emphasis">(выберите тип)</span>
@@ -945,6 +866,7 @@ onMounted(async () => {
                 label="Приоритет"
                 placeholder="Выберите приоритет"
                 clearable
+                density="comfortable"
               />
 
               <AppSelect
@@ -952,9 +874,11 @@ onMounted(async () => {
                 :items="queues"
                 item-title="name"
                 item-value="id"
+                :error="!ticket.queueId"
                 label="Очередь"
                 placeholder="Выберите очередь"
                 clearable
+                density="comfortable"
               />
 
               <!-- Статус - ограничен доступными из workflow или все если тип не выбран -->
@@ -965,9 +889,8 @@ onMounted(async () => {
                 item-value="value"
                 label="Статус"
                 :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
-                :hint="availableStatuses.length > 0 ? 'Доступные статусы из workflow' : ''"
-                :persistent-hint="availableStatuses.length > 0"
                 clearable
+                density="comfortable"
               >
                 <template #selection="{ item }">
                   <VChip
@@ -1004,15 +927,28 @@ onMounted(async () => {
                 :items="filteredAuthorOptions"
                 item-title="title"
                 item-value="value"
+                :error="!ticket.ownerId"
                 label="Автор"
                 placeholder="Введите имя или email для поиска..."
-                v-model:search="authorSearchDisplay"
+                v-model:search="authorSearch"
                 clearable
                 allow-custom
+                :menu-props="{ location: 'top' }"
+                variant="outlined"
+                density="comfortable"
                 @update:model-value="handleAuthorSelect"
                 @update:search="handleAuthorUpdate"
                 @click:clear="handleAuthorClear"
               >
+                <template #selection="{ item }">
+                  <VChip
+                    density="compact"
+                    label
+                    size="small"
+                  >
+                    {{ item.title }}
+                  </VChip>
+                </template>
                 <template #no-data>
                   <div>
                     <div v-if="showCreateIconInNoData" class="px-4 py-2 cursor-pointer" @click="createNewUserFromNoData">
@@ -1035,6 +971,7 @@ onMounted(async () => {
                 multiple
                 chips
                 clearable
+                density="comfortable"
               />
 
               <!-- Исполнители -->
@@ -1046,6 +983,7 @@ onMounted(async () => {
                 multiple
                 chips
                 clearable
+                density="comfortable"
               >
                 <template #append-inner>
                   <VBtn
@@ -1067,6 +1005,7 @@ onMounted(async () => {
                 label="Компания"
                 placeholder="Выберите компанию"
                 clearable
+                density="comfortable"
               />
 
               <AppSelect
@@ -1077,6 +1016,7 @@ onMounted(async () => {
                 label="Сервис"
                 placeholder="Выберите сервис"
                 clearable
+                density="comfortable"
               />
 
               <AppSelect
@@ -1087,6 +1027,7 @@ onMounted(async () => {
                 label="SLA"
                 placeholder="Выберите SLA"
                 clearable
+                density="comfortable"
               />
 
               <!-- Информация о SLA дедлайнах -->
@@ -1130,7 +1071,7 @@ onMounted(async () => {
       <VCard title="Создание нового сотрудника">
         <VCardText>
           <div class="text-body-1 mb-3">
-            Сотрудника с email <strong>{{ newAuthorData.email || authorSearchDisplay }}</strong> не найдено. Создать нового сотрудника?
+            Сотрудника с email <strong>{{ newAuthorData.email || authorSearch }}</strong> не найдено. Создать нового сотрудника?
           </div>
           <div class="d-flex gap-2 mb-3">
             <AppTextField

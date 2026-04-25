@@ -17,22 +17,29 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
   // Проверка - разрешено ли создание сотрудника по email
   const canCreateCustomerUserByEmail = computed(() => {
     const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
-    const result = config?.value === 'true' && config?.isActive
-    return result
+    const isEnabled = config?.value === true || config?.value === 'true'
+    const isActive = config?.isActive !== false
+    console.log('Config create_customer_user_by_email:', { value: config?.value, isActive: config?.isActive, canCreate: isEnabled && isActive })
+    return isEnabled && isActive
   })
 
   // Фильтрованный список авторов по поиску
   const filteredAuthorOptions = computed(() => {
+    // Если предлагаем создать нового сотрудника, скрываем обычные опции
+    if (showCreateNewAuthor.value) {
+      return []
+    }
+
     if (!authorSearch.value.trim()) {
-      return customerUsers.value.map((c: any) => {
-        const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
-        const email = c.email ? ` (${c.email})` : ''
-        const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
+      return customerUsers.value.map((a: any) => {
+        const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login || 'Неизвестно'
+        const email = a.email ? ` (${a.email})` : ''
+        const companyInfo = a.customerName ? ` [${a.customerName}]` : ''
         return {
           title: `${name}${email}${companyInfo}`,
-          value: c.id,
-          customerId: c.customerId,
-          customerName: c.customerName,
+          value: a.id,
+          customerId: a.customerId,
+          customerName: a.customerName,
         }
       })
     }
@@ -56,6 +63,11 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
     })
   })
 
+  // Проверка - является ли введенный текст потенциальным email (содержит @)
+  const isPotentialEmail = (text: string) => {
+    return text.includes('@') && !text.includes(' ')
+  }
+
   // Проверка - является ли введенный текст email
   const isEmail = (text: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -66,12 +78,16 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
   const handleAuthorUpdate = (search: string) => {
     authorSearch.value = search || ''
 
-    // Если включена опция создания по email и введен email
-    if (canCreateCustomerUserByEmail.value && search && isEmail(search)) {
+    console.log('handleAuthorUpdate: search="' + search + '", canCreate=' + canCreateCustomerUserByEmail.value + ', isPotentialEmail=' + (search ? isPotentialEmail(search) : false) + ', isEmail=' + (search ? isEmail(search) : false) + ', filteredLength=' + filteredAuthorOptions.value.length)
+
+    // Если включена опция создания по email и введен потенциальный email
+    if (canCreateCustomerUserByEmail.value && search && isPotentialEmail(search)) {
       // Проверяем, есть ли сотрудник с таким email
       const found = filteredAuthorOptions.value.find((a: any) =>
         a.title.toLowerCase().includes(search.toLowerCase())
       )
+
+      console.log('Email check: found=' + !!found + ', showCreateNewAuthor will be ' + !found)
 
       if (!found) {
         // Показываем опцию создания нового сотрудника
@@ -83,6 +99,8 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
     } else {
       showCreateNewAuthor.value = false
     }
+
+    console.log('Final showCreateNewAuthor=' + showCreateNewAuthor.value)
   }
 
   // Очистка выбора автора

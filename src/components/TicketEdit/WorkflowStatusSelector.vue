@@ -6,7 +6,7 @@
     item-value="value"
     label="Статус"
     :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
-    :hint="availableStatuses.length > 0 ? 'Доступные статусы из workflow' : ''"
+
     :persistent-hint="availableStatuses.length > 0"
     clearable
     @update:model-value="$emit('update:modelValue', $event)"
