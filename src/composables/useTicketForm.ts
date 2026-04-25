@@ -362,17 +362,50 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     }
   })
 
-  // Watcher для изменения очереди - автозаполнение исполнителя
-  watch(() => ticket.queueId, (newQueueId, oldQueueId) => {
-    // Пропускаем начальную загрузку (когда ещё тикет не загружен)
-    if (oldQueueId === undefined || ticket.id === -1) return
+  // Watcher для изменения очереди - автозаполнение полей
+  watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
+    // Пропускаем начальную загрузку
+    if (oldQueueId === undefined) return
 
     if (newQueueId) {
       const queue = queues.value.find((q: any) => q.id === newQueueId)
-      if (queue && queue.agentGroupId) {
-        // Автозаполняем группу исполнителей из очереди если не выбраны исполнители
-        if (ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0) {
+      if (queue) {
+        // Автозаполняем поля из данных очереди
+        if (queue.companyId) {
+          ticket.companyId = queue.companyId
+        }
+        if (queue.serviceId) {
+          ticket.serviceId = queue.serviceId
+        }
+        if (queue.slaId) {
+          ticket.slaId = queue.slaId
+        }
+        if (queue.priorityId) {
+          ticket.priorityId = queue.priorityId
+        }
+
+        // Автозаполняем исполнителя из группы очереди если не выбраны исполнители
+        if (queue.agentGroupId && ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0) {
           ticket.executorGroupIds = [queue.agentGroupId]
+        }
+
+        // Если у очереди есть workflow - ищем тип с этим workflow
+        if (queue.workflowId) {
+          try {
+            const typesData = await $api("/types")
+            const typesList = (typesData as any).types || []
+            const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
+            if (typeWithWorkflow) {
+              ticket.typeId = typeWithWorkflow.id
+            }
+          } catch (err) {
+            console.error("Error finding type for workflow:", err)
+          }
+        }
+
+        // Если у очереди есть category_id - автозаполняем категорию
+        if (queue.categoryId) {
+          ticket.categoryId = queue.categoryId
         }
       }
     }

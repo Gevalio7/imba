@@ -3,6 +3,7 @@ import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
 
 definePage({
   meta: {
@@ -174,7 +175,7 @@ const filterableColumns = computed(() => {
 const searchQuery = ref('')
 
 // Получить специальное значение для фильтрации
-const getFilterSpecialValue = (schedule: TicketSchedule, columnKey: string): string | undefined => {
+const getFilterSpecialValue = (schedule: TicketSchedule, columnKey: string): string => {
   if (columnKey === 'scheduleType') {
     return getScheduleTypeText(schedule.scheduleType)
   } else if (columnKey === 'period') {
@@ -182,7 +183,7 @@ const getFilterSpecialValue = (schedule: TicketSchedule, columnKey: string): str
   } else if (columnKey === 'isActive') {
     return schedule.isActive ? 'Активно' : 'Приостановлено'
   }
-  return undefined
+  return ''
 }
 
 const filteredSchedules = computed(() => {
@@ -209,7 +210,7 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
 // Массовые действия
-const selectedItems = ref<TicketSchedule[]>([])
+const selectedItems = ref<number[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 
@@ -342,6 +343,11 @@ const logsLoading = ref(false)
 const scheduleLogs = ref<any[]>([])
 const logsScheduleId = ref<number | null>(null)
 
+// Диалог редактирования расписания
+const editDialog = ref(false)
+const editingSchedule = ref<TicketSchedule | null>(null)
+const savingSchedule = ref(false)
+
 // Открыть логи расписания
 const openLogsDialog = async (schedule: TicketSchedule) => {
   logsScheduleId.value = schedule.id
@@ -399,6 +405,58 @@ const deleteItemConfirm = async () => {
     closeDelete()
   } catch (err) {
     showToast('Ошибка удаления расписания', 'error')
+  }
+}
+
+// Открыть диалог редактирования расписания
+const openEditDialog = (schedule: TicketSchedule) => {
+  editingSchedule.value = schedule
+  editDialog.value = true
+}
+
+// Сохранить расписание
+const saveSchedule = async () => {
+  savingSchedule.value = true
+  try {
+    // Диалог сам обработает сохранение
+    await fetchSchedules()
+    showToast('Расписание сохранено')
+    editDialog.value = false
+  } catch (err) {
+    showToast('Ошибка сохранения расписания', 'error')
+  } finally {
+    savingSchedule.value = false
+  }
+}
+
+// Удалить расписание из диалога
+const deleteScheduleFromDialog = async () => {
+  if (!editingSchedule.value) return
+  try {
+    await deleteScheduleById(editingSchedule.value.id)
+    showToast('Расписание удалено')
+    editDialog.value = false
+  } catch (err) {
+    showToast('Ошибка удаления расписания', 'error')
+  }
+}
+
+// Запустить расписание сейчас
+const runScheduleNow = async () => {
+  if (!editingSchedule.value?.id) return
+  try {
+    await $api(`/ticketSchedules/${editingSchedule.value.id}/run`, {
+      method: 'POST'
+    })
+    showToast('Тикет создан по расписанию')
+    editDialog.value = false
+    await fetchSchedules()
+  } catch (err: any) {
+    console.error('Error running schedule:', err)
+    console.log('Error data:', err?.data)
+    const message = err?.data?.message || err?.response?.data?.message || err?.message || 'Ошибка создания тикета'
+    console.log('Toast message:', message)
+    showToast(message, 'error')
   }
 }
 
@@ -628,13 +686,13 @@ onMounted(() => {
                 placeholder="Колонка"
                 style="width: 180px;"
               />
-              <AppSelect
-                v-model="filter.condition"
-                :items="getConditionsForColumn(columnSettings.find(c => c.key === filter.column))"
-                placeholder="Условие"
-                style="width: 150px;"
-                :clearable="filter.condition !== null && filter.condition !== ''"
-              />
+               <AppSelect
+                 v-model="filter.condition"
+                 :items="getConditionsForColumn(columnSettings.find(c => c.key === filter.column))"
+                 placeholder="Условие"
+                 style="width: 150px;"
+                 :clearable="filter.condition !== null"
+               />
               
               <!-- Для булевых колонок -->
               <AppSelect
@@ -864,7 +922,7 @@ onMounted(() => {
             <IconBtn @click="toggleActiveStatus(item.id, !item.isActive)">
               <VIcon :icon="item.isActive ? 'bx-pause' : 'bx-play'" />
             </IconBtn>
-            <IconBtn @click="goToTicket(item.ticketId)">
+            <IconBtn @click="openEditDialog(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
             <IconBtn @click="deleteItem(item)">
@@ -948,8 +1006,19 @@ onMounted(() => {
       </VCard>
     </VDialog>
 
+    <!-- Диалог редактирования расписания -->
+    <TicketScheduleDialog
+      v-model="editDialog"
+      :schedule="editingSchedule"
+      :saving="savingSchedule"
+      :ticket-id="editingSchedule?.ticketId || undefined"
+      @save="saveSchedule"
+      @delete="deleteScheduleFromDialog"
+      @run-now="runScheduleNow"
+    />
+
     <!-- Уведомления -->
-    <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="3000">
+    <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="5000">
       {{ toastMessage }}
     </VSnackbar>
   </div>

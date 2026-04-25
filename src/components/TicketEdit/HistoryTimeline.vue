@@ -31,7 +31,7 @@
               {{ item.fieldDisplayName }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ item.changedByName }} • {{ formatDate(item.createdAt) }}
+              {{ item.changedByName }} • {{ formatDateTime(item.createdAt) }}
             </div>
           </div>
           <div class="text-body-2">
@@ -62,7 +62,7 @@
               {{ item.action || 'Согласование' }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ item.approverName || 'Система' }} • {{ formatDate(item.createdAt) }}
+              {{ item.approverName || 'Система' }} • {{ formatDateTime(item.createdAt) }}
             </div>
           </div>
           <VChip
@@ -112,7 +112,7 @@
             </div>
 
             <div class="text-caption text-medium-emphasis">
-              {{ item.changedByName || 'Система' }} • {{ formatDate(item.transitionTime || item.createdAt) }}
+              {{ item.changedByName || 'Система' }} • {{ formatDateTime(item.transitionTime || item.createdAt) }}
             </div>
 
             <!-- Метка действия -->
@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDate } from '@/utils/slaFormatter'
+import { formatDateTime } from '@/utils/slaFormatter'
 
 interface Props {
   items: any[]

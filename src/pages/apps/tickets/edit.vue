@@ -8,6 +8,7 @@ import { useTicketAttachments } from '@/composables/useTicketAttachments'
 import { useImagePreview } from '@/composables/useImagePreview'
 import { useTicketHistory } from '@/composables/useTicketHistory'
 import { useQuickAnswers } from '@/composables/useQuickAnswers'
+import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
 
 definePage({
   meta: {
@@ -24,7 +25,7 @@ const ticketId = computed(() => {
 })
 
 // Use composables
-const { data: refData, fetchAll: loadReferenceData } = useReferenceData()
+const { data: refData, fetchAll: loadReferenceData, refreshData: refreshReferenceData } = useReferenceData()
 
 const {
   ticket,
@@ -121,6 +122,9 @@ onMounted(async () => {
   await fetchAllHistory()
 })
 
+// Расписание
+const scheduleDialog = ref(false)
+
 // Toast notifications
 const isToastVisible = ref(false)
 const toastMessage = ref('')
@@ -130,6 +134,16 @@ const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
   toastColor.value = color
   isToastVisible.value = true
+}
+
+// Обновление справочных данных
+const refreshData = async () => {
+  try {
+    await refreshReferenceData()
+    showToast('Справочные данные обновлены', 'success')
+  } catch (error) {
+    showToast('Ошибка обновления данных', 'error')
+  }
 }
 
 // Cancel action
@@ -146,6 +160,15 @@ const handleSave = async () => {
     const message = error.message || 'Ошибка при сохранении обращения'
     showToast(message, 'error')
   }
+}
+
+// Расписание
+const openScheduleDialog = () => {
+  scheduleDialog.value = true
+}
+
+const onScheduleUpdate = () => {
+  showToast('Расписание обновлено', 'success')
 }
 
 
@@ -174,6 +197,22 @@ const handleSave = async () => {
           @click="cancel"
         >
           Отмена
+        </VBtn>
+        <VBtn
+          variant="outlined"
+          color="primary"
+          @click="refreshData"
+        >
+          <VIcon icon="bx-refresh" class="me-2" />
+          Обновить данные
+        </VBtn>
+        <VBtn
+          variant="tonal"
+          color="primary"
+          @click="openScheduleDialog"
+        >
+          <VIcon icon="bx-calendar" class="me-2" />
+          Расписание
         </VBtn>
         <VBtn
           :loading="saving"
@@ -577,13 +616,21 @@ const handleSave = async () => {
       </VCard>
     </VDialog>
 
+    <!-- Диалог расписания -->
+    <TicketScheduleDialog
+      v-if="scheduleDialog"
+      v-model="scheduleDialog"
+      :schedule="null"
+      :saving="false"
+      :ticket-id="Number(ticketId)"
+      @update="onScheduleUpdate"
+    />
 
   </div>
 </template>
 
 <script lang="ts">
 // Import utilities
-import { formatDate } from '@/utils/slaFormatter'
 import { isImageFile, isImageType, createObjectUrl } from '@/utils/fileUtils'
 import TicketProperties from '@/components/TicketEdit/TicketProperties.vue'
 import TicketCommentsSection from '@/components/TicketEdit/TicketCommentsSection.vue'

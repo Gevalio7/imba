@@ -91,8 +91,8 @@
           class="mt-4"
         >
           <div class="text-body-2">
-            <div>Следующий запуск: <strong>{{ formatDate(schedule.nextRunAt) }}</strong></div>
-            <div v-if="schedule.lastRunAt">Последний запуск: {{ formatDate(schedule.lastRunAt) }}</div>
+            <div>Следующий запуск: <strong>{{ formatDateTime(schedule.nextRunAt) }}</strong></div>
+            <div v-if="schedule.lastRunAt">Последний запуск: {{ formatDateTime(schedule.lastRunAt) }}</div>
           </div>
         </VAlert>
       </VCardText>
@@ -122,23 +122,41 @@
         </VBtn>
         <VBtn
           :loading="saving"
-          @click="$emit('save')"
+          @click="saveSchedule"
         >
-          Сохранить
+          {{ schedule?.id ? 'Сохранить' : 'Создать' }}
         </VBtn>
-      </CardActions>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <script setup lang="ts">
-import { formatDate } from '@/utils/slaFormatter'
-import type { TicketSchedule } from '@/types/ticket'
+import { reactive, watch } from 'vue'
+import { $api } from '@/utils/api'
+import { formatDateTime } from '@/utils/slaFormatter'
+
+// Интерфейс расписания для диалога
+interface DialogTicketSchedule {
+  id?: number
+  ticketId: number | null
+  scheduleType: 'daily' | 'weekly' | 'monthly'
+  scheduleTime: string
+  scheduleDays: number[] | null
+  scheduleDayOfMonth: number | null
+  startDate: string | null
+  endDate: string | null
+  isActive: boolean
+  titlePrefix: string | null
+  nextRunAt?: string
+  lastRunAt?: string
+}
 
 interface Props {
   modelValue: boolean
-  schedule?: TicketSchedule | null
+  schedule?: any
   saving: boolean
+  ticketId?: number | null
 }
 
 const props = defineProps<Props>()
@@ -167,15 +185,15 @@ const monthDays = Array.from({ length: 31 }, (_, i) => ({
   value: i + 1,
 }))
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   save: []
   delete: []
   'run-now': []
 }>()
 
-// Форма расписания (должна быть передана через props или управляться родителем)
-const form = computed(() => ({
+// Форма расписания
+const form = reactive({
   scheduleType: 'daily' as 'daily' | 'weekly' | 'monthly',
   scheduleTime: '09:00',
   scheduleDays: [] as number[],
@@ -184,5 +202,81 @@ const form = computed(() => ({
   endDate: null as string | null,
   isActive: true,
   titlePrefix: 'Расписание (Р) ',
-}))
+})
+
+// Инициализация формы при открытии
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    // Сброс формы при открытии
+    form.scheduleType = 'daily'
+    form.scheduleTime = '09:00'
+    form.scheduleDays = []
+    form.scheduleDayOfMonth = 1
+    form.startDate = null
+    form.endDate = null
+    form.isActive = true
+    form.titlePrefix = 'Расписание (Р) '
+  }
+})
+
+// Инициализация формы при открытии
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    if (props.schedule) {
+      // Редактирование - заполняем форму текущими значениями
+      form.scheduleType = props.schedule.scheduleType || 'daily'
+      form.scheduleTime = props.schedule.scheduleTime || '09:00'
+      form.scheduleDays = props.schedule.scheduleDays || []
+      form.scheduleDayOfMonth = props.schedule.scheduleDayOfMonth || 1
+      form.startDate = props.schedule.startDate || null
+      form.endDate = props.schedule.endDate || null
+      form.isActive = props.schedule.isActive !== false
+      form.titlePrefix = props.schedule.titlePrefix || 'Расписание (Р) '
+    } else {
+      // Создание - сбрасываем форму
+      form.scheduleType = 'daily'
+      form.scheduleTime = '09:00'
+      form.scheduleDays = []
+      form.scheduleDayOfMonth = 1
+      form.startDate = null
+      form.endDate = null
+      form.isActive = true
+      form.titlePrefix = 'Расписание (Р) '
+    }
+  }
+})
+
+// Сохранение расписания
+const saveSchedule = async () => {
+  try {
+    const scheduleData = {
+      ...form
+    }
+
+    // Для создания добавляем ticketId
+    if (!props.schedule?.id && props.ticketId) {
+      scheduleData.ticketId = props.ticketId
+    }
+    // Для обновления ticketId не нужен, расписание уже привязано
+
+    if (props.schedule?.id) {
+      // Обновление
+      await $api(`/ticketSchedules/${props.schedule.id}`, {
+        method: 'PUT',
+        body: scheduleData
+      })
+    } else {
+      // Создание
+      await $api('/ticketSchedules', {
+        method: 'POST',
+        body: scheduleData
+      })
+    }
+
+    emit('save')
+    emit('update:modelValue', false)
+  } catch (error) {
+    console.error('Error saving schedule:', error)
+  }
+}
 </script>

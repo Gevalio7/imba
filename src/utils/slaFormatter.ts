@@ -47,7 +47,7 @@ export function formatDeadline(date: Date | null): string {
  * @param dateStr - Date string to format
  * @returns Formatted string like "15.04.2026 14:30"
  */
-export function formatDate(dateStr: string | null): string {
+export function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return ''
 
   return new Date(dateStr).toLocaleString('ru-RU', {

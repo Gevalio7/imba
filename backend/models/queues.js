@@ -10,7 +10,7 @@ class Queues {
   static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {} } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {}, isActive } = options;
 
     try {
       let whereClause = '';
@@ -52,6 +52,13 @@ class Queues {
       if (filters.departmentId) {
         filterConditions.push(`department_id = ${paramIndex}`);
         params.push(filters.departmentId);
+        paramIndex++;
+      }
+
+      // Фильтр по статусу (isActive)
+      if (isActive !== undefined) {
+        filterConditions.push(`is_active = $${paramIndex}`);
+        params.push(isActive);
         paramIndex++;
       }
 

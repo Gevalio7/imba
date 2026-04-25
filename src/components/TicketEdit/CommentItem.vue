@@ -16,7 +16,7 @@
             {{ comment.authorName || comment.author || 'Пользователь' }}
           </div>
           <div class="text-caption text-medium-emphasis">
-            {{ formatDate(comment.createdAt) }}
+            {{ formatDateTime(comment.createdAt) }}
           </div>
         </div>
       </div>
@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDate } from '@/utils/slaFormatter'
+import { formatDateTime } from '@/utils/slaFormatter'
 import type { TicketComment } from '@/types/ticket'
 
 interface Props {

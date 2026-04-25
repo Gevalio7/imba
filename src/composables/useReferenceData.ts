@@ -43,7 +43,7 @@ const isLoaded = ref(false)
 const isLoading = ref(false)
 const lastFetch = ref<number | null>(null)
 
-const CACHE_TTL = 5 * 60 * 1000
+const CACHE_TTL = 30 * 1000 // 30 seconds
 
 export function useReferenceData() {
   const fetchAll = async (forceRefresh = false) => {
@@ -93,11 +93,16 @@ export function useReferenceData() {
     lastFetch.value = null
   }
 
+  const refreshData = async () => {
+    return fetchAll(true)
+  }
+
   return {
     data,
     isLoaded,
     isLoading,
     fetchAll,
     clearCache,
+    refreshData,
   }
 }

@@ -58,7 +58,7 @@ router.get('/', asyncHandler(async (req, res) => {
     templatesResult,
   ] = await Promise.all([
     Priorities.getAll({ itemsPerPage: 1000, isActive: true }),
-    Queues.getAll({ itemsPerPage: 1000 }),
+    Queues.getAll({ itemsPerPage: 1000, isActive: true }),
     States.getAll({ itemsPerPage: 1000, isActive: true }),
     Types.getAll({ itemsPerPage: 1000, isActive: true }),
     TypeCategories.getAll({ itemsPerPage: 1000, isActive: true }),

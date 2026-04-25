@@ -13,7 +13,7 @@ definePage({
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 const router = useRouter()
 
-const { data: refData, fetchAll: loadReferenceData, isLoading: refLoading } = useReferenceData()
+const { data: refData, fetchAll: loadReferenceData, refreshData: refreshReferenceData, isLoading: refLoading } = useReferenceData()
 
 const priorities = computed(() => refData.priorities)
 const queues = computed(() => refData.queues)
@@ -115,36 +115,36 @@ watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
 
 // Watcher для изменения очереди - автозаполнение полей
 watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
-  // Пропускаем начальную загрузку
-  if (oldQueueId === undefined) return
-  
-  if (newQueueId) {
+  // Пропускаем только если это не реальное изменение
+  if (oldQueueId === undefined && newQueueId === undefined) {
+    return
+  }
+
+  // Обрабатываем изменение, если newQueueId отличается от oldQueueId
+  if (newQueueId !== oldQueueId && newQueueId) {
     const queue = getQueueById(newQueueId)
     if (queue) {
-      // Автозаполняем компанию если не выбрана
-      if (!ticket.value.companyId && queue.companyId) {
+      // Автозаполняем поля из данных очереди
+      if (queue.companyId) {
         ticket.value.companyId = queue.companyId
       }
-      // Автозаполняем сервис если не выбран
-      if (!ticket.value.serviceId && queue.serviceId) {
+      if (queue.serviceId) {
         ticket.value.serviceId = queue.serviceId
       }
-      // Автозаполняем SLA если не выбран
-      if (!ticket.value.slaId && queue.slaId) {
+      if (queue.slaId) {
         ticket.value.slaId = queue.slaId
       }
-      // Автозаполняем приоритет если не выбран
-      if (!ticket.value.priorityId && queue.priorityId) {
+      if (queue.priorityId) {
         ticket.value.priorityId = queue.priorityId
       }
-      
+
       // Автозаполняем исполнителя из группы очереди если не выбраны исполнители
       if (queue.agentGroupId && ticket.value.executorGroupIds.length === 0 && ticket.value.executorAgentIds.length === 0) {
         ticket.value.executorGroupIds = [queue.agentGroupId]
       }
-      
+
       // Если у очереди есть workflow - ищем тип с этим workflow
-      if (queue.workflowId && !ticket.value.typeId) {
+      if (queue.workflowId) {
         try {
           const typesData = await $api('/types')
           const typesList = (typesData as any).types || []
@@ -155,6 +155,11 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
         } catch (err) {
           console.error('Error finding type for workflow:', err)
         }
+      }
+
+      // Если у очереди есть category_id - автозаполняем категорию
+      if (queue.categoryId) {
+        ticket.value.categoryId = queue.categoryId
       }
     }
   }
@@ -525,6 +530,16 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
+// Обновление справочных данных
+const refreshData = async () => {
+  try {
+    await refreshReferenceData()
+    showToast('Справочные данные обновлены', 'success')
+  } catch (error) {
+    showToast('Ошибка обновления данных', 'error')
+  }
+}
+
 // Функция выполнения сохранения
 const performSave = async () => {
   try {
@@ -607,7 +622,7 @@ const createAuthorFromDialog = async () => {
       },
     })
 
-    await fetchCustomerUsers()
+    await loadReferenceData(true)
 
     ticket.value.ownerId = (newUser as any).id
     newAuthorData.value.email = ''
@@ -649,7 +664,7 @@ const createNewUserFromNoData = async () => {
 
     console.log('New user created:', newUser)
     console.log('Fetching updated customerUsers...')
-    await fetchCustomerUsers()
+    await loadReferenceData(true)
     console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
 
     const createdUserId = (newUser as any).id
@@ -728,20 +743,29 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="d-flex gap-4 align-center flex-wrap">
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          @click="cancel"
-        >
-          Отмена
-        </VBtn>
-        <VBtn
-          :loading="saving"
-          @click="save"
-        >
-          Создать обращение
-        </VBtn>
+       <div class="d-flex gap-4 align-center flex-wrap">
+         <VBtn
+           variant="tonal"
+           color="secondary"
+           @click="cancel"
+         >
+           Отмена
+         </VBtn>
+         <VBtn
+           variant="outlined"
+           color="primary"
+           @click="refreshData"
+           :loading="refLoading"
+         >
+           <VIcon icon="bx-refresh" class="me-2" />
+           Обновить данные
+         </VBtn>
+         <VBtn
+           :loading="saving"
+           @click="save"
+         >
+           Создать обращение
+         </VBtn>
       </div>
     </div>
 
