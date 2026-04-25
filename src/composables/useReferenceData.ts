@@ -16,6 +16,9 @@ interface ReferenceData {
   sla: any[]
   systemConfiguration: any[]
   customerUsers: any[]
+  workflows: any[]
+  postMasterMailAccounts: any[]
+  templates: any[]
 }
 
 const data = reactive<ReferenceData>({
@@ -31,6 +34,9 @@ const data = reactive<ReferenceData>({
   sla: [],
   systemConfiguration: [],
   customerUsers: [],
+  workflows: [],
+  postMasterMailAccounts: [],
+  templates: [],
 })
 
 const isLoaded = ref(false)
@@ -55,8 +61,8 @@ export function useReferenceData() {
         ? '/referenceData?forceRefresh=true'
         : '/referenceData'
 
-      const result = await $api<ReferenceData>(endpoint)
-      
+      const result = await $api<ReferenceData>(`${API_BASE}/referenceData${forceRefresh ? '?forceRefresh=true' : ''}`)
+
       data.priorities = result.priorities || []
       data.queues = result.queues || []
       data.states = result.states || []
@@ -69,6 +75,9 @@ export function useReferenceData() {
       data.sla = result.sla || []
       data.systemConfiguration = result.systemConfiguration || []
       data.customerUsers = result.customerUsers || []
+      data.workflows = result.workflows || []
+      data.postMasterMailAccounts = result.postMasterMailAccounts || []
+      data.templates = result.templates || []
       
       isLoaded.value = true
       lastFetch.value = Date.now()

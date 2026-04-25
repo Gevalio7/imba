@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
@@ -13,11 +14,13 @@ interface Queues {
   workflowId: number | null
 
   priorityId: number | null
-  keywords: string
+  keywords: string[] | null
   quickAnswerArticleIds: number[] | null
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
   observerAgentIds: number[] | null
+  approverGroupIds: number[] | null
+  approverAgentIds: number[] | null
   departmentId: number | null
   typeId: number | null
   categoryId: number | null
@@ -53,6 +56,86 @@ interface ReferenceData {
   templates: { id: number; name: string }[]
 }
 
+// Доступные колонки для настройки
+const availableColumns: ColumnSetting[] = [
+  { key: 'id', title: 'ID', visible: true, sortable: true, type: 'text' },
+  { key: 'name', title: 'Название', visible: true, sortable: true, type: 'text' },
+  { key: 'description', title: 'Описание', visible: true, sortable: true, type: 'text' },
+  { key: 'companyId', title: 'Организация', visible: true, sortable: false, type: 'select' },
+  { key: 'departmentId', title: 'Подразделение', visible: true, sortable: false, type: 'select' },
+  { key: 'typeId', title: 'Тип', visible: true, sortable: false, type: 'select' },
+  { key: 'categoryId', title: 'Категория', visible: true, sortable: false, type: 'select' },
+  { key: 'postMasterMailAccountId', title: 'Почтовый аккаунт', visible: true, sortable: false, type: 'select' },
+  { key: 'serviceId', title: 'Сервис', visible: true, sortable: false, type: 'select' },
+  { key: 'slaId', title: 'SLA', visible: true, sortable: false, type: 'select' },
+  { key: 'workflowId', title: 'Рабочий процесс', visible: true, sortable: false, type: 'select' },
+  { key: 'priorityId', title: 'Приоритет (справочник)', visible: true, sortable: false, type: 'select' },
+  { key: 'executorGroupIds', title: 'Группы исполнителей', visible: true, sortable: false, type: 'select' },
+  { key: 'executorAgentIds', title: 'Исполнители', visible: true, sortable: false, type: 'select' },
+  { key: 'observerAgentIds', title: 'Наблюдатели', visible: true, sortable: false, type: 'select' },
+  { key: 'approverGroupIds', title: 'Группы согласующих', visible: true, sortable: false, type: 'select' },
+  { key: 'approverAgentIds', title: 'Согласующие', visible: true, sortable: false, type: 'select' },
+  { key: 'keywords', title: 'Ключевые слова', visible: true, sortable: false, type: 'text' },
+  { key: 'createdAt', title: 'Создано', visible: true, sortable: true, type: 'date' },
+  { key: 'updatedAt', title: 'Изменено', visible: true, sortable: true, type: 'date' },
+  { key: 'isActive', title: 'Активен', visible: true, sortable: false, type: 'boolean' },
+  { key: 'actions', title: 'Действия', visible: true, sortable: false, type: 'text' },
+]
+
+// Загрузка/сохранение настроек колонок
+const STORAGE_KEY = 'queues-columns-settings'
+
+const loadColumnSettings = (): ColumnSetting[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as ColumnSetting[]
+      return availableColumns.map(col => {
+        const savedCol = parsed.find((s: ColumnSetting) => s.key === col.key)
+        return savedCol ? { ...col, visible: savedCol.visible } : col
+      })
+    }
+  } catch (e) {
+    console.error('Error loading column settings:', e)
+  }
+  return [...availableColumns]
+}
+
+const columnSettings = ref<ColumnSetting[]>(loadColumnSettings())
+
+// Вычисляемые заголовки на основе настроек колонок
+const visibleHeaders = computed(() => {
+  return columnSettings.value.filter(col => col.visible)
+})
+
+// Сохранение настроек колонок
+watch(columnSettings, (newSettings) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+  } catch (e) {
+    console.error('Error saving column settings:', e)
+  }
+}, { deep: true })
+
+// Методы для работы с колонками
+const moveColumnUp = (index: number) => {
+  if (index <= 0) return
+  const temp = columnSettings.value[index]
+  columnSettings.value[index] = columnSettings.value[index - 1]
+  columnSettings.value[index - 1] = temp
+}
+
+const moveColumnDown = (index: number) => {
+  if (index >= columnSettings.value.length - 1) return
+  const temp = columnSettings.value[index]
+  columnSettings.value[index] = columnSettings.value[index + 1]
+  columnSettings.value[index + 1] = temp
+}
+
+const resetColumnSettings = () => {
+  columnSettings.value = availableColumns.map(col => ({ ...col, visible: true }))
+}
+
 const referenceData = ref<ReferenceData>({
   services: [],
   sla: [],
@@ -70,7 +153,7 @@ const referenceData = ref<ReferenceData>({
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $api<ReferenceData>(`${API_BASE}/reference-data`)
+    const data = await $api<ReferenceData>(`${API_BASE}/referenceData`)
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -270,6 +353,16 @@ const headers = [
   { title: 'SLA', key: 'slaId', sortable: false },
   { title: 'Рабочий процесс', key: 'workflowId', sortable: false },
   { title: 'Приоритет (справочник)', key: 'priorityId', sortable: false },
+  { title: 'Группы исполнителей', key: 'executorGroupIds', sortable: false },
+  { title: 'Исполнители', key: 'executorAgentIds', sortable: false },
+  { title: 'Наблюдатели', key: 'observerAgentIds', sortable: false },
+  { title: 'Группы согласующих', key: 'approverGroupIds', sortable: false },
+  { title: 'Согласующие', key: 'approverAgentIds', sortable: false },
+  { title: 'Шаблон открытия', key: 'templateOpenTicketId', sortable: false },
+  { title: 'Шаблон закрытия', key: 'templateCloseTicketId', sortable: false },
+  { title: 'Шаблон подтверждения', key: 'templateConfirmTicketId', sortable: false },
+  { title: 'Шаблон изменения статуса', key: 'templateStatusChangeId', sortable: false },
+  { title: 'Шаблон комментария', key: 'templateCommentTicketId', sortable: false },
   { title: 'Ключевые слова', key: 'keywords', sortable: false },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
@@ -373,6 +466,7 @@ watch(selectedItems, (newValue) => {
 // Диалоги
 const editDialog = ref(false)
 const deleteDialog = ref(false)
+const isColumnsDialogOpen = ref(false)
 
 const defaultItem = ref<Queues>({
   id: -1,
@@ -383,11 +477,13 @@ const defaultItem = ref<Queues>({
   slaId: null,
   workflowId: null,
   priorityId: null,
-  keywords: '',
+  keywords: null,
   quickAnswerArticleIds: null,
   executorGroupIds: null,
   executorAgentIds: null,
   observerAgentIds: null,
+  approverGroupIds: null,
+  approverAgentIds: null,
   departmentId: null,
   typeId: null,
   categoryId: null,
@@ -441,17 +537,21 @@ const save = async () => {
   }
 
     try {
+      // Подготавливаем данные для отправки
+      const dataToSave = {
+        ...editedItem.value,
+        keywords: editedItem.value.keywords
+          ? editedItem.value.keywords.split(',').map(k => k.trim()).filter(k => k)
+          : null
+      }
+
       if (editedIndex.value > -1) {
         // Обновление существующего
-        const updated = await updateQueues(editedItem.value.id, {
-          ...editedItem.value
-        })
+        const updated = await updateQueues(editedItem.value.id, dataToSave)
         showToast('Очередь успешно сохранена')
       } else {
         // Добавление нового
-        const created = await createQueues({
-          ...editedItem.value
-        })
+        const created = await createQueues(dataToSave)
         showToast('Очередь успешно добавлена')
       }
       close()
@@ -584,6 +684,14 @@ const addNewQueues = () => {
             v-model="itemsPerPage"
             :items="[5, 10, 20, 25, 50]"
           />
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            prepend-icon="bx-columns"
+            @click="isColumnsDialogOpen = true"
+          >
+            Колонки
+          </VBtn>
           <!-- Экспорт -->
           <VBtn
             variant="tonal"
@@ -727,7 +835,7 @@ const addNewQueues = () => {
         v-model="selectedItems"
         v-model:items-per-page="itemsPerPage"
         v-model:page="currentPage"
-        :headers="headers"
+        :headers="visibleHeaders"
         :items="filteredQueues"
         show-select
         :hide-default-footer="true"
@@ -809,7 +917,15 @@ const addNewQueues = () => {
           {{ getAgentNames(item.observerAgentIds) }}
         </template>
 
+        <!-- Группы согласующих -->
+        <template #item.approverGroupIds="{ item }">
+          {{ item.approverGroupIds && item.approverGroupIds.length > 0 ? item.approverGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
+        </template>
 
+        <!-- Согласующие -->
+        <template #item.approverAgentIds="{ item }">
+          {{ getAgentNames(item.approverAgentIds) }}
+        </template>
 
         <!-- Приоритет (справочник) -->
         <template #item.priorityId="{ item }">
@@ -817,6 +933,31 @@ const addNewQueues = () => {
             {{ getPriorityName(item.priorityId) }}
           </VChip>
           <span v-else>-</span>
+        </template>
+
+        <!-- Шаблон открытия -->
+        <template #item.templateOpenTicketId="{ item }">
+          {{ getTemplateName(item.templateOpenTicketId) }}
+        </template>
+
+        <!-- Шаблон закрытия -->
+        <template #item.templateCloseTicketId="{ item }">
+          {{ getTemplateName(item.templateCloseTicketId) }}
+        </template>
+
+        <!-- Шаблон подтверждения -->
+        <template #item.templateConfirmTicketId="{ item }">
+          {{ getTemplateName(item.templateConfirmTicketId) }}
+        </template>
+
+        <!-- Шаблон изменения статуса -->
+        <template #item.templateStatusChangeId="{ item }">
+          {{ getTemplateName(item.templateStatusChangeId) }}
+        </template>
+
+        <!-- Шаблон комментария -->
+        <template #item.templateCommentTicketId="{ item }">
+          {{ getTemplateName(item.templateCommentTicketId) }}
         </template>
 
         <!-- Активен -->
@@ -963,6 +1104,71 @@ const addNewQueues = () => {
               />
             </VCol>
 
+            <!-- Группы исполнителей -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedItem.executorGroupIds"
+                label="Группы исполнителей"
+                :items="referenceData.agentGroups.map(g => ({ title: g.name, value: g.id }))"
+                multiple
+                clearable
+                clear-icon="bx-x"
+                chips
+              />
+            </VCol>
+
+            <!-- Исполнители -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedItem.executorAgentIds"
+                label="Исполнители"
+                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
+                multiple
+                clearable
+                clear-icon="bx-x"
+                chips
+              />
+            </VCol>
+
+            <!-- Наблюдатели -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedItem.observerAgentIds"
+                label="Наблюдатели"
+                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
+                multiple
+                clearable
+                clear-icon="bx-x"
+                chips
+              />
+            </VCol>
+
+            <!-- Группы согласующих -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedItem.approverGroupIds"
+                label="Группы согласующих"
+                :items="referenceData.agentGroups.map(g => ({ title: g.name, value: g.id }))"
+                multiple
+                clearable
+                clear-icon="bx-x"
+                chips
+              />
+            </VCol>
+
+            <!-- Согласующие -->
+            <VCol cols="12" sm="6">
+              <AppSelect
+                v-model="editedItem.approverAgentIds"
+                label="Согласующие"
+                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
+                multiple
+                clearable
+                clear-icon="bx-x"
+                chips
+              />
+            </VCol>
+
             <!-- Активен -->
             <VCol
               cols="12"
@@ -1025,6 +1231,53 @@ const addNewQueues = () => {
       </VCard>
     </VDialog>
   </div>
+
+  <!-- Диалог настроек колонок -->
+  <VDialog v-model="isColumnsDialogOpen" max-width="600px">
+    <VCard title="Настройка колонок">
+      <VCardText>
+        <div class="d-flex justify-end mb-4">
+          <VBtn variant="text" size="small" @click="resetColumnSettings">Сбросить</VBtn>
+        </div>
+        <VList>
+          <VListItem
+            v-for="(col, index) in columnSettings"
+            :key="col.key"
+            class="mb-1"
+          >
+            <template #prepend>
+              <VCheckbox
+                v-model="col.visible"
+                hide-details
+                density="compact"
+              />
+            </template>
+            <VListItemTitle>{{ col.title }}</VListItemTitle>
+            <template #append>
+              <div class="d-flex gap-1">
+                <IconBtn
+                  @click="moveColumnUp(index)"
+                  :disabled="index === 0"
+                >
+                  <VIcon icon="bx-chevron-up" />
+                </IconBtn>
+                <IconBtn
+                  @click="moveColumnDown(index)"
+                  :disabled="index === columnSettings.length - 1"
+                >
+                  <VIcon icon="bx-chevron-down" />
+                </IconBtn>
+              </div>
+            </template>
+          </VListItem>
+        </VList>
+      </VCardText>
+      <VCardActions>
+        <VSpacer />
+        <VBtn @click="isColumnsDialogOpen = false">Закрыть</VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 
   <!-- Уведомления -->
   <VSnackbar

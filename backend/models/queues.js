@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Queues {
   static tableName = 'queues';
-  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId';
+  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {} } = options;
@@ -124,9 +124,13 @@ class Queues {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => {
-        if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds'].includes(field)) {
+        if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds', 'approverGroupIds', 'approverAgentIds'].includes(field)) {
           // Преобразуем массивы в PostgreSQL array синтаксис
           return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null;
+        }
+        if (field === 'keywords') {
+          // Keywords обрабатывается отдельно как TEXT[]
+          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}` : null;
         }
         return queue[field] !== undefined ? queue[field] : null;
       });
@@ -166,7 +170,7 @@ class Queues {
       fieldList.forEach(field => {
         if (queue[field] !== undefined) {
           updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds'].includes(field)) {
+          if (['executorGroupIds', 'executorAgentIds', 'observerAgentIds', 'approverGroupIds', 'approverAgentIds'].includes(field)) {
             // Преобразуем массивы в PostgreSQL array синтаксис
             values.push(queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null);
           } else {

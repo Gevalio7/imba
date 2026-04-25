@@ -16,6 +16,7 @@ const SystemConfiguration = require('../models/systemConfiguration');
 const CustomerUsers = require('../models/customerUsers');
 const Workflows = require('../models/workflows');
 const PostMasterMailAccounts = require('../models/postMasterMailAccounts');
+const Templates = require('../models/templates');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const REFERENCE_DATA_CACHE_TTL = 5 * 60 * 1000;
@@ -54,6 +55,7 @@ router.get('/', asyncHandler(async (req, res) => {
     customerUsersResult,
     workflowsResult,
     postMasterMailAccountsResult,
+    templatesResult,
   ] = await Promise.all([
     Priorities.getAll({ itemsPerPage: 1000, isActive: true }),
     Queues.getAll({ itemsPerPage: 1000 }),
@@ -70,6 +72,7 @@ router.get('/', asyncHandler(async (req, res) => {
     CustomerUsers.getAll({ itemsPerPage: 1000 }),
     Workflows.getAll({ itemsPerPage: 1000 }),
     PostMasterMailAccounts.getAll({ itemsPerPage: 1000, isActive: true }),
+    Templates.getAll({ itemsPerPage: 1000 }),
   ]);
 
   const data = {
@@ -88,6 +91,7 @@ router.get('/', asyncHandler(async (req, res) => {
     customerUsers: customerUsersResult.customerUsers || [],
     workflows: workflowsResult.workflows || [],
     postMasterMailAccounts: postMasterMailAccountsResult.postMasterMailAccounts || [],
+    templates: templatesResult.templates || [],
   };
 
   console.log('systemConfiguration in data:', data.systemConfiguration);

@@ -17,6 +17,8 @@ interface Queue {
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
   observerAgentIds: number[] | null
+  approverGroupIds: number[] | null
+  approverAgentIds: number[] | null
   departmentId: number | null
   typeId: number | null
   categoryId: number | null
@@ -108,6 +110,8 @@ const queue = ref<Queue>({
   executorGroupIds: null,
   executorAgentIds: null,
   observerAgentIds: null,
+  approverGroupIds: null,
+  approverAgentIds: null,
   departmentId: null,
   typeId: null,
   categoryId: null,
@@ -400,6 +404,8 @@ const saveQueue = async () => {
     if (queue.value.executorGroupIds !== undefined && queue.value.executorGroupIds !== null) queueData.executorGroupIds = queue.value.executorGroupIds
     if (queue.value.executorAgentIds !== undefined && queue.value.executorAgentIds !== null) queueData.executorAgentIds = queue.value.executorAgentIds
     if (queue.value.observerAgentIds !== undefined && queue.value.observerAgentIds !== null) queueData.observerAgentIds = queue.value.observerAgentIds
+    if (queue.value.approverGroupIds !== undefined && queue.value.approverGroupIds !== null) queueData.approverGroupIds = queue.value.approverGroupIds
+    if (queue.value.approverAgentIds !== undefined && queue.value.approverAgentIds !== null) queueData.approverAgentIds = queue.value.approverAgentIds
 
     if (isEdit.value) {
       await $api(`${API_BASE}/queues/${queueId.value}`, {
@@ -467,6 +473,7 @@ onMounted(async () => {
           <VTab value="services" prepend-icon="bx-cog">Сервисы</VTab>
           <VTab value="agents" prepend-icon="bx-group">Агенты</VTab>
           <VTab value="observers" prepend-icon="bx-eye">Наблюдатели</VTab>
+          <VTab value="approvers" prepend-icon="bx-check-circle">Согласующие</VTab>
           <VTab value="email" prepend-icon="bx-envelope">Почта</VTab>
           <VTab value="templates" prepend-icon="bx-file">Шаблоны</VTab>
           <VTab value="quick_answers" prepend-icon="bx-book">Быстрые ответы</VTab>
@@ -638,6 +645,33 @@ onMounted(async () => {
                   :items="agentOptions"
                   multiple
                   :chips="true"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+            </VRow>
+          </VWindowItem>
+
+          <VWindowItem value="approvers">
+            <VRow class="pa-4">
+              <VCol cols="12" sm="6">
+                <AppSelect
+                  v-model="queue.approverGroupIds"
+                  label="Группы согласующих"
+                  :items="agentGroupOptions"
+                  multiple
+                  chips
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
+                <AppSelect
+                  v-model="queue.approverAgentIds"
+                  label="Согласующие"
+                  :items="agentOptions"
+                  multiple
+                  chips
                   clearable
                   clear-icon="bx-x"
                 />

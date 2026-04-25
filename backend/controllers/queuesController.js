@@ -145,7 +145,13 @@ const createQueues = asyncHandler(async (req, res) => {
 
   // Ключевые слова для авто-маршрутизации
   if (req.body.keywords !== undefined) {
-    data.keywords = req.body.keywords;
+    if (typeof req.body.keywords === 'string') {
+      data.keywords = req.body.keywords.split(',').map(k => k.trim()).filter(k => k);
+    } else if (Array.isArray(req.body.keywords)) {
+      data.keywords = req.body.keywords;
+    } else {
+      data.keywords = null;
+    }
   }
 
   // Шаблон авто-ответа
@@ -238,7 +244,7 @@ const updateQueues = asyncHandler(async (req, res) => {
     data.postMasterMailAccountId = req.body.postMasterMailAccountId;
   }
 
-  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds
+  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds, approverGroupIds, approverAgentIds
   if (req.body.executorGroupIds !== undefined) {
     if (Array.isArray(req.body.executorGroupIds)) {
       data.executorGroupIds = req.body.executorGroupIds;
@@ -252,6 +258,16 @@ const updateQueues = asyncHandler(async (req, res) => {
   if (req.body.observerAgentIds !== undefined) {
     if (Array.isArray(req.body.observerAgentIds)) {
       data.observerAgentIds = req.body.observerAgentIds;
+    }
+  }
+  if (req.body.approverGroupIds !== undefined) {
+    if (Array.isArray(req.body.approverGroupIds)) {
+      data.approverGroupIds = req.body.approverGroupIds;
+    }
+  }
+  if (req.body.approverAgentIds !== undefined) {
+    if (Array.isArray(req.body.approverAgentIds)) {
+      data.approverAgentIds = req.body.approverAgentIds;
     }
   }
 
@@ -293,7 +309,13 @@ const updateQueues = asyncHandler(async (req, res) => {
 
   // Ключевые слова для авто-маршрутизации
   if (req.body.keywords !== undefined) {
-    data.keywords = req.body.keywords;
+    if (typeof req.body.keywords === 'string') {
+      data.keywords = req.body.keywords.split(',').map(k => k.trim()).filter(k => k);
+    } else if (Array.isArray(req.body.keywords)) {
+      data.keywords = req.body.keywords;
+    } else {
+      data.keywords = null;
+    }
   }
 
   const updatedQueue = await Queues.update(queueId, data);
