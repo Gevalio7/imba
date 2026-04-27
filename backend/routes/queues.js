@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permissions');
 const {
   getQueues,
   getQueueById,
@@ -16,12 +17,12 @@ router.get('/', getQueues);
 router.get('/:id', getQueueById);
 
 // POST /queues
-router.post('/', protect, createQueues);
+router.post('/', protect, checkPermission('system_settings'), createQueues);
 
 // PUT /queues/:id
-router.put('/:id', protect, updateQueues);
+router.put('/:id', protect, checkPermission('system_settings'), updateQueues);
 
 // DELETE /queues/:id
-router.delete('/:id', protect, deleteQueues);
+router.delete('/:id', protect, checkPermission('system_settings'), deleteQueues);
 
 module.exports = router;

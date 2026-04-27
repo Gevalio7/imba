@@ -16,6 +16,7 @@ interface Queue {
   quickAnswerArticleIds: number[] | null
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
+  observerGroupIds: number[] | null
   observerAgentIds: number[] | null
   approverGroupIds: number[] | null
   approverAgentIds: number[] | null
@@ -107,11 +108,12 @@ const queue = ref<Queue>({
   priorityId: null,
   keywords: '',
   quickAnswerArticleIds: null,
-  executorGroupIds: null,
-  executorAgentIds: null,
-  observerAgentIds: null,
-  approverGroupIds: null,
-  approverAgentIds: null,
+  executorGroupIds: [],
+  executorAgentIds: [],
+  observerGroupIds: [],
+  observerAgentIds: [],
+  approverGroupIds: [],
+  approverAgentIds: [],
   departmentId: null,
   typeId: null,
   categoryId: null,
@@ -139,56 +141,118 @@ const workflowOptions = computed(() =>
   referenceData.value.workflows.map(w => ({ title: w.name, value: w.id }))
 )
 
-const agentGroupOptions = computed(() => 
-  referenceData.value.agentGroups.map(g => ({ title: g.name, value: g.id }))
-)
-
-const priorityOptions = computed(() =>
-  referenceData.value.priorities.map(p => ({ title: p.name, value: p.id }))
-)
-
-const companyOptions = computed(() =>
-  referenceData.value.customers.map(c => ({ title: c.name, value: c.id }))
-)
-
-const departmentOptions = computed(() => {
-  const filtered = referenceData.value.customersGroups
-    .filter(d => !queue.value.companyId || d.customerId === queue.value.companyId)
-  console.log('departmentOptions filtered ids:', filtered.map(d => d.id))
-  console.log('all customersGroups ids:', referenceData.value.customersGroups.map(d => ({ id: d.id, customerId: d.customerId })))
-  console.log('current departmentId:', queue.value.departmentId, 'companyId:', queue.value.companyId)
-  const options = filtered.map(d => ({ title: d.name, value: d.id }))
-  // If current departmentId is not in options, add it
-  if (queue.value.departmentId && !options.find(o => o.value === queue.value.departmentId)) {
-    const dept = referenceData.value.customersGroups.find(d => d.id === queue.value.departmentId)
-    if (dept) {
-      console.log('Adding missing department:', dept)
-      options.push({ title: `${dept.name} (несоответствует компании)`, value: dept.id })
-    }
+const agentGroupOptions = computed(() => {
+  try {
+    const groups = referenceData.value.agentGroups || []
+    return groups
+      .filter(g => g && g.name)
+      .map(g => ({ title: g.name, value: g.id }))
+  } catch (err) {
+    console.error('Error in agentGroupOptions:', err)
+    return []
   }
-  console.log('final options ids:', options.map(o => o.value))
-  return options
 })
 
-const agentOptions = computed(() =>
-  referenceData.value.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))
-)
+// Отдельные опции для групп наблюдателей
+const observerGroupOptions = computed(() => {
+  try {
+    const groups = referenceData.value.agentGroups || []
+    return groups
+      .filter(g => g && typeof g === 'object' && g.id && g.name)
+      .map(g => ({ title: g.name, value: g.id }))
+  } catch (err) {
+    console.error('Error in observerGroupOptions:', err)
+    return []
+  }
+})
+
+const priorityOptions = computed(() => {
+  try {
+    return referenceData.value.priorities?.map(p => ({ title: p.name, value: p.id })) || []
+  } catch (err) {
+    console.error('Error in priorityOptions:', err)
+    return []
+  }
+})
+
+const companyOptions = computed(() => {
+  try {
+    return referenceData.value.customers?.map(c => ({ title: c.name, value: c.id })) || []
+  } catch (err) {
+    console.error('Error in companyOptions:', err)
+    return []
+  }
+})
+
+const departmentOptions = computed(() => {
+  try {
+    if (!referenceData.value.customersGroups || !Array.isArray(referenceData.value.customersGroups)) {
+      console.warn('customersGroups is not available or not an array')
+      return []
+    }
+
+    const filtered = referenceData.value.customersGroups
+      .filter(d => d && (!queue.value.companyId || d.customerId === queue.value.companyId))
+    console.log('departmentOptions filtered ids:', filtered.map(d => d.id))
+    console.log('all customersGroups ids:', referenceData.value.customersGroups.map(d => ({ id: d.id, customerId: d.customerId })))
+    console.log('current departmentId:', queue.value.departmentId, 'companyId:', queue.value.companyId)
+    const options = filtered.map(d => ({ title: d.name, value: d.id }))
+
+    // If current departmentId is not in options, add it
+    if (queue.value.departmentId && !options.find(o => o.value === queue.value.departmentId)) {
+      const dept = referenceData.value.customersGroups.find(d => d && d.id === queue.value.departmentId)
+      if (dept) {
+        console.log('Adding missing department:', dept)
+        options.push({ title: `${dept.name} (несоответствует компании)`, value: dept.id })
+      }
+    }
+    console.log('final options ids:', options.map(o => o.value))
+    return options
+  } catch (err) {
+    console.error('Error in departmentOptions:', err)
+    return []
+  }
+})
+
+const agentOptions = computed(() => {
+  try {
+    return referenceData.value.agents?.map(a => ({ title: `${a.firstName || ''} ${a.lastName || ''}`.trim() || `Agent ${a.id}`, value: a.id })) || []
+  } catch (err) {
+    console.error('Error in agentOptions:', err)
+    return []
+  }
+})
 
 const typeOptions = computed(() =>
   referenceData.value.types.map(t => ({ title: t.name, value: t.id }))
 )
 
-const typeCategoryOptions = computed(() =>
-  referenceData.value.typeCategories.map(c => ({ title: c.name, value: c.id }))
-)
+const typeCategoryOptions = computed(() => {
+  try {
+    return referenceData.value.typeCategories?.map(c => ({ title: c.name, value: c.id })) || []
+  } catch (err) {
+    console.error('Error in typeCategoryOptions:', err)
+    return []
+  }
+})
 
-const postMasterMailAccountOptions = computed(() =>
-  referenceData.value.postMasterMailAccounts.map(a => ({ title: a.name, value: a.id }))
-)
+const postMasterMailAccountOptions = computed(() => {
+  try {
+    return referenceData.value.postMasterMailAccounts?.map(a => ({ title: a.name, value: a.id })) || []
+  } catch (err) {
+    console.error('Error in postMasterMailAccountOptions:', err)
+    return []
+  }
+})
 
-const templateOptions = computed(() =>
-  referenceData.value.templates.map(t => ({ title: t.name, value: t.id }))
-)
+const templateOptions = computed(() => {
+  try {
+    return referenceData.value.templates?.map(t => ({ title: t.name, value: t.id })) || []
+  } catch (err) {
+    console.error('Error in templateOptions:', err)
+    return []
+  }
+})
 
 const allowMultipleExecutorGroups = computed(() => {
   const config = referenceData.value.systemConfiguration.find(c => c.name === 'allow_multiple_executor_groups')
@@ -312,7 +376,12 @@ const openQuickAnswersDialog = () => {
 
 const fetchReferenceData = async () => {
   try {
-    const data =     await $api<ReferenceData>(`${API_BASE}/referenceData`)
+    const data = await $api<ReferenceData>(`${API_BASE}/referenceData`)
+    console.log('Reference data received:', {
+      agentGroups: data.agentGroups,
+      customersGroups: data.customersGroups,
+      agents: data.agents
+    })
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -351,6 +420,13 @@ const fetchQueue = async () => {
     console.log('Fetched queue data:', data)
     console.log('departmentId:', data.departmentId, 'companyId:', data.companyId)
     Object.assign(queue.value, data as Queue)
+    // Ensure arrays are always arrays after loading
+    queue.value.executorGroupIds = Array.isArray(queue.value.executorGroupIds) ? queue.value.executorGroupIds : []
+    queue.value.executorAgentIds = Array.isArray(queue.value.executorAgentIds) ? queue.value.executorAgentIds : []
+    queue.value.observerGroupIds = Array.isArray(queue.value.observerGroupIds) ? queue.value.observerGroupIds : []
+    queue.value.approverGroupIds = Array.isArray(queue.value.approverGroupIds) ? queue.value.approverGroupIds : []
+    queue.value.observerAgentIds = Array.isArray(queue.value.observerAgentIds) ? queue.value.observerAgentIds : []
+    queue.value.approverAgentIds = Array.isArray(queue.value.approverAgentIds) ? queue.value.approverAgentIds : []
     await nextTick()
     console.log('After nextTick, departmentId:', queue.value.departmentId)
     // Initialize selected article IDs
@@ -393,19 +469,20 @@ const saveQueue = async () => {
     if (queue.value.templateStatusChangeId !== undefined) queueData.templateStatusChangeId = queue.value.templateStatusChangeId
     if (queue.value.templateCommentTicketId !== undefined) queueData.templateCommentTicketId = queue.value.templateCommentTicketId
 
-    console.log('Saving queueData:', queueData)
-
-    // Новые поля
+    // Новые поля - всегда отправляем массивы, даже если они пустые
     if (queue.value.companyId !== undefined) queueData.companyId = queue.value.companyId
     if (queue.value.departmentId !== undefined) queueData.departmentId = queue.value.departmentId
     if (queue.value.typeId !== undefined) queueData.typeId = queue.value.typeId
     if (queue.value.categoryId !== undefined) queueData.categoryId = queue.value.categoryId
     if (queue.value.postMasterMailAccountId !== undefined) queueData.postMasterMailAccountId = queue.value.postMasterMailAccountId
-    if (queue.value.executorGroupIds !== undefined && queue.value.executorGroupIds !== null) queueData.executorGroupIds = queue.value.executorGroupIds
-    if (queue.value.executorAgentIds !== undefined && queue.value.executorAgentIds !== null) queueData.executorAgentIds = queue.value.executorAgentIds
-    if (queue.value.observerAgentIds !== undefined && queue.value.observerAgentIds !== null) queueData.observerAgentIds = queue.value.observerAgentIds
+    queueData.executorGroupIds = queue.value.executorGroupIds || []
+    queueData.executorAgentIds = queue.value.executorAgentIds || []
+    queueData.observerGroupIds = queue.value.observerGroupIds || []
+    queueData.observerAgentIds = queue.value.observerAgentIds || []
     if (queue.value.approverGroupIds !== undefined && queue.value.approverGroupIds !== null) queueData.approverGroupIds = queue.value.approverGroupIds
     if (queue.value.approverAgentIds !== undefined && queue.value.approverAgentIds !== null) queueData.approverAgentIds = queue.value.approverAgentIds
+
+    console.log('Saving queueData:', JSON.stringify(queueData, null, 2))
 
     if (isEdit.value) {
       await $api(`${API_BASE}/queues/${queueId.value}`, {
@@ -420,8 +497,8 @@ const saveQueue = async () => {
       })
       showToast('Очередь успешно создана')
     }
-    
-    router.push('/apps/Queues')
+
+    router.push('/apps/Queues?refresh=' + Date.now())
   } catch (err) {
     showToast('Ошибка сохранения очереди', 'error')
     console.error('Error saving queue:', err)
@@ -446,11 +523,13 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Watch for companyId changes to reset related fields (only if user changed, not on load)
 watch(() => queue.value.companyId, (newCompanyId, oldCompanyId) => {
-  if (newCompanyId !== oldCompanyId && oldCompanyId !== null) {
+  if (newCompanyId !== oldCompanyId && oldCompanyId !== null && referenceData.value.customersGroups) {
     queue.value.departmentId = null
     queue.value.postMasterMailAccountId = null
   }
 })
+
+
 
 onMounted(async () => {
   await fetchReferenceData()
@@ -472,7 +551,7 @@ onMounted(async () => {
           <VTab value="types" prepend-icon="bx-category">Типы</VTab>
           <VTab value="services" prepend-icon="bx-cog">Сервисы</VTab>
           <VTab value="agents" prepend-icon="bx-group">Агенты</VTab>
-          <VTab value="observers" prepend-icon="bx-eye">Наблюдатели</VTab>
+          <VTab value="observers" prepend-icon="bx-search">Наблюдатели</VTab>
           <VTab value="approvers" prepend-icon="bx-check-circle">Согласующие</VTab>
           <VTab value="email" prepend-icon="bx-envelope">Почта</VTab>
           <VTab value="templates" prepend-icon="bx-file">Шаблоны</VTab>
@@ -613,6 +692,7 @@ onMounted(async () => {
               <VCol cols="12">
                 <AppSelect
                   v-model="queue.executorGroupIds"
+                  @update:model-value="(val: number[]) => { queue.executorGroupIds = Array.isArray(val) ? val : [] }"
                   label="Группы агентов-исполнителей"
                   :items="agentGroupOptions"
                   :multiple="allowMultipleExecutorGroups"
@@ -625,6 +705,7 @@ onMounted(async () => {
               <VCol cols="12">
                 <AppSelect
                   v-model="queue.executorAgentIds"
+                  @update:model-value="(val: number[]) => { queue.executorAgentIds = Array.isArray(val) ? val : [] }"
                   label="Агенты-исполнители"
                   :items="agentOptions"
                   :multiple="allowMultipleExecutors"
@@ -640,7 +721,21 @@ onMounted(async () => {
             <VRow class="pa-4">
               <VCol cols="12">
                 <AppSelect
+                  v-model="queue.observerGroupIds"
+                  @update:model-value="(val: number[]) => { queue.observerGroupIds = Array.isArray(val) ? val : [] }"
+                  label="Группы наблюдателей"
+                  :items="observerGroupOptions"
+                  multiple
+                  chips
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+
+              <VCol cols="12">
+                <AppSelect
                   v-model="queue.observerAgentIds"
+                  @update:model-value="(val: number[]) => { queue.observerAgentIds = Array.isArray(val) ? val : [] }"
                   label="Наблюдатели"
                   :items="agentOptions"
                   multiple
@@ -657,6 +752,7 @@ onMounted(async () => {
               <VCol cols="12" sm="6">
                 <AppSelect
                   v-model="queue.approverGroupIds"
+                  @update:model-value="(val: number[]) => { queue.approverGroupIds = Array.isArray(val) ? val : [] }"
                   label="Группы согласующих"
                   :items="agentGroupOptions"
                   multiple
@@ -668,6 +764,7 @@ onMounted(async () => {
               <VCol cols="12" sm="6">
                 <AppSelect
                   v-model="queue.approverAgentIds"
+                  @update:model-value="(val: number[]) => { queue.approverAgentIds = Array.isArray(val) ? val : [] }"
                   label="Согласующие"
                   :items="agentOptions"
                   multiple

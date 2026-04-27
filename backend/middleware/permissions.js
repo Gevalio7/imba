@@ -111,29 +111,37 @@ const getAgentPermissions = async (agentId) => {
 const getTicketVisibilityFilter = async (agentId) => {
   try {
     const permissions = await getAgentPermissions(agentId);
-    
+
     // Super user видит все тикеты
     if (permissions.super_user || permissions.see_all_tickets) {
       return null; // Нет фильтра - видит все
     }
 
-    // Для агента строим условие
+    // Для агента строим условие и параметры
     const conditions = [];
-    
+    const params = [];
+
     // Агент видит тикеты, где он является владельцем (ownerId)
-    conditions.push(`t.owner_id = ${agentId}`);
-    
+    conditions.push('t.owner_id = $1');
+    params.push(agentId);
+
     // Если есть see_company_tickets - видит все тикеты компании
     // (требуется логика определения компании агента)
-    
+
     // Если есть see_department_tickets - видит тикеты отдела
     // (требуется логика определения отдела агента)
-    
-    return conditions.join(' OR ');
+
+    return {
+      condition: conditions.join(' OR '),
+      params: params
+    };
   } catch (error) {
     console.error('Error getting ticket visibility filter:', error);
     // При ошибке показываем только свои тикеты
-    return `t.owner_id = ${agentId}`;
+    return {
+      condition: 't.owner_id = $1',
+      params: [agentId]
+    };
   }
 };
 

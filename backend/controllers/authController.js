@@ -2,14 +2,80 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/users');
 const Agents = require('../models/agents');
+const { getAgentPermissions } = require('../middleware/permissions');
 
 // Генерация JWT токена
 const generateToken = (userId) => {
   return jwt.sign(
     { userId },
     process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: '30d' }
+    { expiresIn: '30d' },
   );
+};
+
+// Маппинг разрешений на CASL правила
+const mapPermissionsToAbilityRules = (permissions) => {
+  const rules = [];
+
+  // Проходим по всем активным разрешениям
+  Object.entries(permissions)
+    .filter(([key, value]) => value === true)
+    .forEach(([permission]) => {
+      switch (permission) {
+        case 'super_user':
+          rules.push({ action: 'manage', subject: 'all' });
+          break;
+
+        case 'create_ticket':
+          rules.push({ action: 'create', subject: 'tickets' });
+          break;
+
+        case 'see_own_tickets':
+          rules.push({ action: 'read', subject: 'own_tickets' });
+          break;
+
+        case 'see_all_tickets':
+        case 'see_department_tickets':
+        case 'see_company_tickets':
+          rules.push({ action: 'read', subject: 'all_tickets' });
+          break;
+
+        case 'reply_to_tickets':
+          rules.push({ action: 'update', subject: 'tickets' });
+          break;
+
+        case 'change_status':
+          rules.push({ action: 'update', subject: 'ticket_status' });
+          break;
+
+        case 'system_settings':
+          rules.push({ action: 'manage', subject: 'system_settings' });
+          break;
+
+        case 'manage_users':
+          rules.push({ action: 'manage', subject: 'manage_users' });
+          break;
+
+        case 'kb_read':
+          rules.push({ action: 'read', subject: 'knowledge_base' });
+          break;
+
+        case 'kb_write':
+          rules.push({ action: 'manage', subject: 'knowledge_base' });
+          break;
+
+        case 'view_reports':
+          rules.push({ action: 'read', subject: 'reports' });
+          break;
+
+        default:
+          // Для неизвестных разрешений даем read доступ
+          rules.push({ action: 'read', subject: permission });
+          break;
+      }
+    });
+
+  return rules;
 };
 
 // Регистрация нового пользователя
@@ -126,6 +192,26 @@ const login = async (req, res) => {
     // Генерация токена
     const token = generateToken(entity.id);
 
+    // Получение разрешений для агента
+    let userAbilityRules = [];
+    if (isAgent) {
+      const permissions = await getAgentPermissions(entity.id);
+      // Преобразуем разрешения в CASL правила
+      userAbilityRules = mapPermissionsToAbilityRules(permissions);
+    } else {
+      // Для обычных пользователей - минимальные права
+      userAbilityRules = [
+        {
+          action: 'read',
+          subject: 'own_profile',
+        },
+        {
+          action: 'create',
+          subject: 'tickets',
+        },
+      ];
+    }
+
     res.json({
       accessToken: token,
       userData: {
@@ -137,12 +223,7 @@ const login = async (req, res) => {
         avatar: isAgent ? agent.avatar : null,
         type: isAgent ? 'agent' : 'user',
       },
-      userAbilityRules: [
-        {
-          action: 'manage',
-          subject: 'all',
-        },
-      ],
+      userAbilityRules,
     });
   } catch (error) {
     console.error('Ошибка входа:', error);

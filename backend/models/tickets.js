@@ -9,7 +9,7 @@ class Tickets {
   static tableName = 'tickets';
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive, visibilityFilter } = options;
 
     // Валидация пагинации
     const safePage = Math.max(1, parseInt(page, 10) || 1);
@@ -36,6 +36,13 @@ class Tickets {
         whereClause += ` AND (${conditions})`;
         params.push(`%${q}%`);
         paramIndex++;
+      }
+
+      // Применяем фильтр видимости
+      if (visibilityFilter) {
+        whereClause += ` AND (${visibilityFilter.condition})`;
+        params.push(...visibilityFilter.params);
+        paramIndex += visibilityFilter.params.length;
       }
 
       // Белый список полей для сортировки

@@ -10,9 +10,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . -c .eslintrc.cjs --fix --rulesdir eslint-internal-rules/ --ext .ts,.js,.cjs,.vue,.tsx,.jsx",
     "build:icons": "tsx src/plugins/iconify/build-icons.ts",
-    "msw:init": "msw init public/ --save",
     "backup-db": "./backup-db.sh",
-    "postinstall": "npm run build:icons && npm run msw:init"
+    "postinstall": "npm run build:icons"
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",
@@ -100,7 +99,6 @@
     "eslint-plugin-unicorn": "51.0.1",
     "eslint-plugin-vue": "9.33.0",
     "minimatch": "^10.2.4",
-    "msw": "^2.12.7",
     "postcss-html": "1.8.0",
     "postcss-scss": "4.0.9",
     "sass": "1.76.0",
@@ -131,8 +129,5 @@
     "postcss": "^8",
     "@tiptap/core": "^2",
     "minimatch": "^10.2.4"
-  },
-  "msw": {
-    "workerDirectory": "public"
   }
 }

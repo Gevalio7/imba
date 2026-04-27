@@ -113,7 +113,7 @@ const createQueues = asyncHandler(async (req, res) => {
     data.postMasterMailAccountId = req.body.postMasterMailAccountId;
   }
 
-  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds
+  // Новые поля: executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds
   if (req.body.executorGroupIds !== undefined) {
     if (Array.isArray(req.body.executorGroupIds)) {
       data.executorGroupIds = req.body.executorGroupIds;
@@ -122,6 +122,11 @@ const createQueues = asyncHandler(async (req, res) => {
   if (req.body.executorAgentIds !== undefined) {
     if (Array.isArray(req.body.executorAgentIds)) {
       data.executorAgentIds = req.body.executorAgentIds;
+    }
+  }
+  if (req.body.observerGroupIds !== undefined) {
+    if (Array.isArray(req.body.observerGroupIds)) {
+      data.observerGroupIds = req.body.observerGroupIds;
     }
   }
   if (req.body.observerAgentIds !== undefined) {
@@ -244,7 +249,7 @@ const updateQueues = asyncHandler(async (req, res) => {
     data.postMasterMailAccountId = req.body.postMasterMailAccountId;
   }
 
-  // Новые поля: executorGroupIds, executorAgentIds, observerAgentIds, approverGroupIds, approverAgentIds
+  // Новые поля: executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds
   if (req.body.executorGroupIds !== undefined) {
     if (Array.isArray(req.body.executorGroupIds)) {
       data.executorGroupIds = req.body.executorGroupIds;
@@ -253,6 +258,11 @@ const updateQueues = asyncHandler(async (req, res) => {
   if (req.body.executorAgentIds !== undefined) {
     if (Array.isArray(req.body.executorAgentIds)) {
       data.executorAgentIds = req.body.executorAgentIds;
+    }
+  }
+  if (req.body.observerGroupIds !== undefined) {
+    if (Array.isArray(req.body.observerGroupIds)) {
+      data.observerGroupIds = req.body.observerGroupIds;
     }
   }
   if (req.body.observerAgentIds !== undefined) {

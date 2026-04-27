@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permissions');
 const {
   getRoles,
   getRoleById,
@@ -26,18 +27,18 @@ router.get('/:id', getRoleById);
 router.get('/:id/permissions', getRolePermissions);
 
 // PUT /roles/:id/permissions - установить разрешения роли
-router.put('/:id/permissions', protect, setRolePermissions);
+router.put('/:id/permissions', protect, checkPermission('manage_users'), setRolePermissions);
 
 // GET /agents/:id/permissions - разрешения агента
 router.get('/agent/:id/permissions', getAgentPermissions);
 
 // POST /roles
-router.post('/', protect, createRoles);
+router.post('/', protect, checkPermission('manage_users'), createRoles);
 
 // PUT /roles/:id
-router.put('/:id', protect, updateRoles);
+router.put('/:id', protect, checkPermission('manage_users'), updateRoles);
 
 // DELETE /roles/:id
-router.delete('/:id', protect, deleteRoles);
+router.delete('/:id', protect, checkPermission('manage_users'), deleteRoles);
 
 module.exports = router;

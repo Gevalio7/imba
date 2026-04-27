@@ -14,6 +14,7 @@ const Sla = require('../models/sla');
 const CustomerUsers = require('../models/customerUsers');
 const SystemConfiguration = require('../models/systemConfiguration');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getTicketVisibilityFilter } = require('../middleware/permissions');
 
 let configCache = null;
 
@@ -57,6 +58,12 @@ const getTickets = asyncHandler(async (req, res) => {
   const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
   const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
 
+  // Получаем фильтр видимости для агента
+  let visibilityFilter = null;
+  if (req.user?.id) {
+    visibilityFilter = await getTicketVisibilityFilter(req.user.id);
+  }
+
   const result = await Tickets.getAll({
     q: searchQuery,
     sortBy: sortByLocal,
@@ -64,6 +71,7 @@ const getTickets = asyncHandler(async (req, res) => {
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
     isActive: isActive,
+    visibilityFilter: visibilityFilter,
   });
 
   res.json(result);

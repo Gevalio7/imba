@@ -2,6 +2,7 @@
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 // Типы данных для Очередь
 interface Queues {
@@ -18,6 +19,7 @@ interface Queues {
   quickAnswerArticleIds: number[] | null
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
+  observerGroupIds: number[] | null
   observerAgentIds: number[] | null
   approverGroupIds: number[] | null
   approverAgentIds: number[] | null
@@ -72,6 +74,7 @@ const availableColumns: ColumnSetting[] = [
   { key: 'priorityId', title: 'Приоритет (справочник)', visible: true, sortable: false, type: 'select' },
   { key: 'executorGroupIds', title: 'Группы исполнителей', visible: true, sortable: false, type: 'select' },
   { key: 'executorAgentIds', title: 'Исполнители', visible: true, sortable: false, type: 'select' },
+  { key: 'observerGroupIds', title: 'Группы наблюдателей', visible: true, sortable: false, type: 'select' },
   { key: 'observerAgentIds', title: 'Наблюдатели', visible: true, sortable: false, type: 'select' },
   { key: 'approverGroupIds', title: 'Группы согласующих', visible: true, sortable: false, type: 'select' },
   { key: 'approverAgentIds', title: 'Согласующие', visible: true, sortable: false, type: 'select' },
@@ -193,19 +196,19 @@ const getWorkflowName = (id: number | null) => {
 
 const getAgentGroupName = (id: number | null) => {
   if (!id) return '-'
-  const group = referenceData.value.agentGroups.find(g => g.id === id)
+  const group = referenceData.value.agentGroups.find(g => g && g.id === id)
   return group?.name || '-'
 }
 
 const getPriorityName = (id: number | null) => {
   if (!id) return '-'
-  const priority = referenceData.value.priorities.find(p => p.id === id)
+  const priority = referenceData.value.priorities.find(p => p && p.id === id)
   return priority?.name || '-'
 }
 
 const getPriorityColor = (id: number | null) => {
   if (!id) return 'grey'
-  const priority = referenceData.value.priorities.find(p => p.id === id)
+  const priority = referenceData.value.priorities.find(p => p && p.id === id)
   return priority?.color || 'grey'
 }
 
@@ -215,20 +218,20 @@ const priorityOptions = computed(() =>
 
 const getCompanyName = (id: number | null) => {
   if (!id) return '-'
-  const company = referenceData.value.customers.find(c => c.id === id)
+  const company = referenceData.value.customers.find(c => c && c.id === id)
   return company?.name || '-'
 }
 
 const getDepartmentName = (id: number | null) => {
   if (!id) return '-'
-  const department = referenceData.value.customersGroups.find(d => d.id === id)
+  const department = referenceData.value.customersGroups.find(d => d && d.id === id)
   return department?.name || '-'
 }
 
 const getAgentNames = (ids: number[] | null) => {
   if (!ids || ids.length === 0) return '-'
   const names = ids.map(id => {
-    const agent = referenceData.value.agents.find(a => a.id === id)
+    const agent = referenceData.value.agents.find(a => a && a.id === id)
     return agent ? `${agent.firstName} ${agent.lastName}` : `Агент ${id}`
   })
   return names.join(', ')
@@ -236,30 +239,31 @@ const getAgentNames = (ids: number[] | null) => {
 
 const getTypeName = (id: number | null) => {
   if (!id) return '-'
-  const type = referenceData.value.types.find(t => t.id === id)
+  const type = referenceData.value.types.find(t => t && t.id === id)
   return type?.name || '-'
 }
 
 const getCategoryName = (id: number | null) => {
   if (!id) return '-'
-  const category = referenceData.value.typeCategories.find(c => c.id === id)
+  const category = referenceData.value.typeCategories.find(c => c && c.id === id)
   return category?.name || '-'
 }
 
 const getPostMasterMailAccountName = (id: number | null) => {
   if (!id) return '-'
-  const account = referenceData.value.postMasterMailAccounts.find(a => a.id === id)
+  const account = referenceData.value.postMasterMailAccounts.find(a => a && a.id === id)
   return account?.name || '-'
 }
 
 const getTemplateName = (id: number | null) => {
   if (!id) return '-'
-  const template = referenceData.value.templates.find(t => t.id === id)
+  const template = referenceData.value.templates.find(t => t && t.id === id)
   return template?.name || '-'
 }
 
 // Роутер
 const router = useRouter()
+const route = useRoute()
 
 // Данные очереди
 const queues = ref<Queues[]>([])
@@ -333,6 +337,13 @@ const deleteQueues = async (id: number) => {
     throw err
   }
 }
+
+// Watcher для обновления данных при возврате со страницы редактирования
+watch(() => route.query.refresh, (newVal) => {
+  if (newVal) {
+    fetchQueues()
+  }
+})
 
 // Инициализация
 onMounted(async () => {
@@ -481,6 +492,7 @@ const defaultItem = ref<Queues>({
   quickAnswerArticleIds: null,
   executorGroupIds: null,
   executorAgentIds: null,
+  observerGroupIds: null,
   observerAgentIds: null,
   approverGroupIds: null,
   approverAgentIds: null,
@@ -541,7 +553,7 @@ const save = async () => {
       const dataToSave = {
         ...editedItem.value,
         keywords: editedItem.value.keywords
-          ? editedItem.value.keywords.split(',').map(k => k.trim()).filter(k => k)
+          ? editedItem.value.keywords.join(', ')
           : null
       }
 
@@ -910,6 +922,11 @@ const addNewQueues = () => {
         <!-- Исполнители -->
         <template #item.executorAgentIds="{ item }">
           {{ getAgentNames(item.executorAgentIds) }}
+        </template>
+
+        <!-- Группы наблюдателей -->
+        <template #item.observerGroupIds="{ item }">
+          {{ item.observerGroupIds && item.observerGroupIds.length > 0 ? item.observerGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
         </template>
 
         <!-- Наблюдатели -->

@@ -82,6 +82,8 @@ const ticket = ref({
   ownerId: undefined as number | string | null | undefined,
   executorAgentIds: [] as number[],
   executorGroupIds: [] as number[],
+  observerAgentIds: [] as number[],
+  observerGroupIds: [] as number[],
   companyId: undefined as number | undefined,
   serviceId: undefined as number | undefined,
   slaId: undefined as number | undefined,
@@ -139,9 +141,20 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
         ticket.value.priorityId = queue.priorityId
       }
 
-      // Автозаполняем исполнителя из группы очереди если не выбраны исполнители
-      if (queue.agentGroupId && ticket.value.executorGroupIds.length === 0 && ticket.value.executorAgentIds.length === 0) {
-        ticket.value.executorGroupIds = [queue.agentGroupId]
+      // Автозаполняем исполнителей из очереди если не выбраны
+      if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0) {
+        ticket.value.executorGroupIds = [...queue.executorGroupIds]
+      }
+      if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0) {
+        ticket.value.executorAgentIds = [...queue.executorAgentIds]
+      }
+
+      // Автозаполняем наблюдателей из очереди если не выбраны
+      if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0) {
+        ticket.value.observerGroupIds = [...queue.observerGroupIds]
+      }
+      if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0) {
+        ticket.value.observerAgentIds = [...queue.observerAgentIds]
       }
 
       // Если у очереди есть workflow - ищем тип с этим workflow
@@ -170,14 +183,14 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
 watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
   // Пропускаем начальную загрузку
   if (oldCompanyId === undefined) return
-  
+
   // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
   if (newCompanyId && ticket.value.serviceId) {
-    const currentService = services.value.find((s: any) => s.id === ticket.value.serviceId)
+    const currentService = services.value.find((s: any) => s && s.id === ticket.value.serviceId)
     if (currentService) {
       // Если у сервиса есть компании и новая компания не в списке - очищаем сервис
-      if (currentService.customers && currentService.customers.length > 0) {
-        const belongsToCompany = currentService.customers.some((c: any) => c.id === newCompanyId)
+      if (currentService.customers && Array.isArray(currentService.customers) && currentService.customers.length > 0) {
+        const belongsToCompany = currentService.customers.some((c: any) => c && typeof c === 'object' && c.id === newCompanyId)
         if (!belongsToCompany) {
           // Сервис не принадлежит компании - очищаем выбор
           ticket.value.serviceId = undefined
@@ -191,11 +204,11 @@ watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
 watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
   // Пропускаем начальную загрузку
   if (oldServiceId === undefined) return
-  
+
   // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
   if (newServiceId && !ticket.value.slaId) {
-    const service = services.value.find((s: any) => s.id === newServiceId)
-    if (service && service.sla && service.sla.id) {
+    const service = services.value.find((s: any) => s && s.id === newServiceId)
+    if (service && service.sla && typeof service.sla === 'object' && service.sla.id) {
       ticket.value.slaId = service.sla.id
     }
   }
@@ -208,8 +221,8 @@ watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
 
   // Если выбран сотрудник (число), находим его customerId
   if (typeof newOwnerId === 'number') {
-    const selectedUser = customerUsers.value.find((u: any) => u.id === newOwnerId)
-    if (selectedUser?.customerId && !ticket.value.companyId) {
+    const selectedUser = customerUsers.value.find((u: any) => u && u.id === newOwnerId)
+    if (selectedUser && selectedUser.customerId && !ticket.value.companyId) {
       ticket.value.companyId = selectedUser.customerId
     }
   }
@@ -241,7 +254,7 @@ const formatFileSize = (bytes: number) => {
 
 // Агенты для выбора
 const agentOptions = computed(() => {
-  return agents.value.map((a: any) => ({
+  return agents.value.filter(a => a).map((a: any) => ({
     title: `${a.firstName || ''} ${a.lastName || ''} (${a.email || a.login})`.trim(),
     value: a.id,
   }))
@@ -296,7 +309,15 @@ const handleAuthorSelect = (value: any) => {
 
 // Группы агентов для выбора
 const agentGroupOptions = computed(() => {
-  return agentGroups.value.map((g: any) => ({
+  return agentGroups.value.filter(g => g).map((g: any) => ({
+    title: g.name,
+    value: g.id,
+  }))
+})
+
+// Группы наблюдателей для выбора (отдельный computed для избежания конфликтов)
+const observerGroupOptions = computed(() => {
+  return agentGroups.value.filter((g: any) => g).map((g: any) => ({
     title: g.name,
     value: g.id,
   }))
@@ -308,15 +329,15 @@ const userData = useCookie<any>('userData')
 // Назначить на себя
 const assignToMe = () => {
   // Находим агента по логину пользователя
-  const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
+  const currentAgent = agents.value.find((a: any) => a && a.login === userData.value?.login)
   if (currentAgent) {
     // Добавляем себя как исполнителя
     if (!ticket.value.executorAgentIds.includes(currentAgent.id)) {
       ticket.value.executorAgentIds = [...ticket.value.executorAgentIds, currentAgent.id]
     }
     // Добавляем группы, в которые входит пользователь
-    if (currentAgent.groups && currentAgent.groups.length > 0) {
-      const groupIds = currentAgent.groups.map((g: any) => g.id).filter((id: number) => !ticket.value.executorGroupIds.includes(id))
+    if (currentAgent.groups && Array.isArray(currentAgent.groups) && currentAgent.groups.length > 0) {
+      const groupIds = currentAgent.groups.filter((g: any) => g).map((g: any) => g.id).filter((id: number) => !ticket.value.executorGroupIds.includes(id))
       ticket.value.executorGroupIds = [...ticket.value.executorGroupIds, ...groupIds]
     }
     showToast('Вы назначены исполнителем')
@@ -359,11 +380,11 @@ const filteredServices = computed(() => {
   // Фильтруем сервисы по компании
   return services.value.filter((s: any) => {
     // Сервис без компаний - показываем (глобальный)
-    if (!s.customers || s.customers.length === 0) {
+    if (!s.customers || !Array.isArray(s.customers) || s.customers.length === 0) {
       return true
     }
     // Проверяем есть ли компания в списке компаний сервиса
-    return s.customers.some((c: any) => c.id === ticket.value.companyId)
+    return s.customers.some((c: any) => c && typeof c === 'object' && c.id === ticket.value.companyId)
   })
 })
 
@@ -974,28 +995,52 @@ onMounted(async () => {
                 density="comfortable"
               />
 
-              <!-- Исполнители -->
-              <AppSelect
-                v-model="ticket.executorAgentIds"
-                :items="agentOptions"
-                label="Исполнители"
-                placeholder="Выберите исполнителей"
-                multiple
-                chips
-                clearable
-                density="comfortable"
-              >
-                <template #append-inner>
-                  <VBtn
-                    variant="text"
-                    size="small"
-                    color="primary"
-                    @click="assignToMe"
-                  >
-                    Назначить на себя
-                  </VBtn>
-                </template>
-              </AppSelect>
+               <!-- Исполнители -->
+               <AppSelect
+                 v-model="ticket.executorAgentIds"
+                 :items="agentOptions"
+                 label="Исполнители"
+                 placeholder="Выберите исполнителей"
+                 multiple
+                 chips
+                 clearable
+                 density="comfortable"
+               >
+                 <template #append-inner>
+                   <VBtn
+                     variant="text"
+                     size="small"
+                     color="primary"
+                     @click="assignToMe"
+                   >
+                     Назначить на себя
+                   </VBtn>
+                 </template>
+               </AppSelect>
+
+               <!-- Группы наблюдателей -->
+               <AppSelect
+                 v-model="ticket.observerGroupIds"
+                 :items="observerGroupOptions"
+                 label="Группы наблюдателей"
+                 placeholder="Выберите группы наблюдателей"
+                 multiple
+                 chips
+                 clearable
+                 clear-icon="bx-x"
+               />
+
+               <!-- Наблюдатели -->
+               <AppSelect
+                 v-model="ticket.observerAgentIds"
+                 :items="agentOptions"
+                 label="Наблюдатели"
+                 placeholder="Выберите наблюдателей"
+                 multiple
+                 chips
+                 clearable
+                 density="comfortable"
+               />
 
               <AppSelect
                 v-model="ticket.companyId"
