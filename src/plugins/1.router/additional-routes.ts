@@ -30,12 +30,7 @@ export const redirects: RouteRecordRaw[] = [
 ]
 
 export const routes: RouteRecordRaw[] = [
-  // RoleCards - страница списка ролей
-  {
-    path: '/apps/roles/cards',
-    name: 'apps-roles-cards',
-    component: () => import('@/views/apps/roles/RoleCards.vue'),
-  },
+
   // SystemConfiguration - страница Конфигурация системы
   {
     path: '/apps/tickets/system-configuration',

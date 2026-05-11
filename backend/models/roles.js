@@ -166,7 +166,7 @@ class Roles {
     return [
       // Супер-пользователь
       { code: 'super_user', name: 'Супер-пользователь (полный доступ)', category: 'admin' },
-      
+
       // Тикеты
       { code: 'create_ticket', name: 'Создание заявок', category: 'tickets' },
       { code: 'see_own_tickets', name: 'Видеть только свои заявки', category: 'tickets' },
@@ -176,15 +176,26 @@ class Roles {
       { code: 'see_all_tickets', name: 'Видеть все заявки', category: 'tickets' },
       { code: 'see_department_tickets', name: 'Видеть заявки отдела', category: 'tickets' },
       { code: 'see_company_tickets', name: 'Видеть заявки компании', category: 'tickets' },
-      
+
       // База знаний
       { code: 'kb_read', name: 'Доступ к БЗ (чтение)', category: 'knowledge_base' },
       { code: 'kb_write', name: 'Доступ к БЗ (создание/редактирование)', category: 'knowledge_base' },
-      
+
       // Отчёты и настройки
       { code: 'view_reports', name: 'Просмотр отчётов', category: 'reports' },
       { code: 'system_settings', name: 'Настройка системы', category: 'settings' },
       { code: 'manage_users', name: 'Управление пользователями', category: 'settings' },
+
+      // Menu permissions (для интерфейса ролей)
+      { code: 'menu_tickets_list_read', name: 'Меню: Список обращений (чтение)', category: 'menu' },
+      { code: 'menu_tickets_list_write', name: 'Меню: Список обращений (запись)', category: 'menu' },
+      { code: 'menu_tickets_list_delete', name: 'Меню: Список обращений (удаление)', category: 'menu' },
+      { code: 'menu_tickets_create_read', name: 'Меню: Создать обращение (чтение)', category: 'menu' },
+      { code: 'menu_tickets_create_write', name: 'Меню: Создать обращение (запись)', category: 'menu' },
+      { code: 'menu_tickets_create_delete', name: 'Меню: Создать обращение (удаление)', category: 'menu' },
+      { code: 'menu_tickets_schedules_read', name: 'Меню: Расписания (чтение)', category: 'menu' },
+      { code: 'menu_tickets_schedules_write', name: 'Меню: Расписания (запись)', category: 'menu' },
+      { code: 'menu_tickets_schedules_delete', name: 'Меню: Расписания (удаление)', category: 'menu' },
     ];
   }
 
@@ -241,10 +252,10 @@ class Roles {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        
+
         // Удаляем старые разрешения
         await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
-        
+
         // Добавляем новые разрешения
         for (const [permission, is_granted] of Object.entries(permissions)) {
           await client.query(
@@ -252,7 +263,7 @@ class Roles {
             [roleId, permission, is_granted]
           );
         }
-        
+
         await client.query('COMMIT');
         return true;
       } catch (error) {

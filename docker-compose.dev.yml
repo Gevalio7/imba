@@ -12,3 +12,20 @@ services:
     restart: always
     ports:
       - 5173:5173
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_dev
+    environment:
+      POSTGRES_DB: test_entities_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

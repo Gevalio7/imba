@@ -28,7 +28,7 @@ export default [
     title: 'Агенты',
     icon: { icon: 'bx-user' },
     children: [
-      { title: 'Список', to: 'apps-agents-groups' },
+      { title: 'Список', to: 'apps-agents' },
     ],
   },
   {
@@ -56,9 +56,8 @@ export default [
     title: 'Роли',
     icon: { icon: 'bx-check-shield' },
     children: [
-      { title: 'Роли', to: 'apps-roles', action: 'read', subject: 'manage_users' },
-      { title: 'Список ролей', to: 'apps-roles-cards', action: 'read', subject: 'manage_users' },
-      { title: 'Разрешения', to: 'apps-permissions', action: 'read', subject: 'manage_users' },
+      { title: 'Роли', to: 'apps-roles', action: 'read', subject: 'menu_roles' },
+      { title: 'Разрешения', to: 'apps-permissions', action: 'read', subject: 'menu_roles' },
     ],
   },
   

@@ -49,7 +49,7 @@ const mapPermissionsToAbilityRules = (permissions) => {
           break;
 
         case 'system_settings':
-          rules.push({ action: 'manage', subject: 'system_settings' });
+          rules.push({ action: 'read', subject: 'system_settings' });
           break;
 
         case 'manage_users':

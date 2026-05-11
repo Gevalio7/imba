@@ -1,19 +1,10 @@
 <script setup lang="ts">
-import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
-import RoleCards from '@/views/apps/roles/RoleCards.vue'
 import RolePermissions from '@/views/apps/roles/RolePermissions.vue'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
-// Переключатель вида ролей (карточки/таблица)
-const rolesViewMode = ref<'cards' | 'table'>(
-  (localStorage.getItem('rolesViewMode') as 'cards' | 'table') || 'table'
-)
 
-// Сохраняем состояние при изменении
-watch(rolesViewMode, (newValue) => {
-  localStorage.setItem('rolesViewMode', newValue)
-})
 
 // Типы данных для Роль
 interface Roles {
@@ -28,6 +19,8 @@ interface Roles {
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
+
+const router = useRouter()
 
 // Данные роли
 const roles = ref<Roles[]>([])
@@ -211,11 +204,7 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Диалоги
-const editDialog = ref(false)
 const deleteDialog = ref(false)
-
-// Вкладки в диалоге редактирования
-const editTab = ref('main') // 'main' | 'permissions'
 
 const defaultItem = ref<Roles>({
   id: -1,
@@ -237,9 +226,7 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: Roles) => {
-  editedIndex.value = roles.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+  router.push({ path: '/apps/roles/edit', query: { id: item.id } })
 }
 
 const deleteItem = (item: Roles) => {
@@ -248,44 +235,10 @@ const deleteItem = (item: Roles) => {
   deleteDialog.value = true
 }
 
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
 const closeDelete = () => {
   deleteDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateRoles(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Роль успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createRoles({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Роль успешно добавлен')
-    }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения роль', 'error')
-  }
 }
 
 const deleteItemConfirm = async () => {
@@ -328,28 +281,10 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового роль
 const addNewRoles = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+  router.push('/apps/roles/edit')
 }
 
-// Состояние аккордеонов (какие панели открыты)
-const expandedPanels = ref<number[]>(
-  JSON.parse(localStorage.getItem('rolesExpandedPanels') || '[]')
-)
 
-// Сохраняем состояние аккордеонов при изменении
-watch(expandedPanels, (newValue) => {
-  localStorage.setItem('rolesExpandedPanels', JSON.stringify(newValue))
-}, { deep: true })
-
-// Ref для таблицы агентов
-const agentsTableRef = ref<InstanceType<typeof AgentsTable> | null>(null)
-
-// Обработчик обновления агента
-const handleAgentUpdated = () => {
-  // Можно добавить дополнительную логику при обновлении агента
-}
 </script>
 
 <template>
@@ -365,15 +300,7 @@ const handleAgentUpdated = () => {
             Управление ролями пользователей системы.
           </p>
         </div>
-        <VBtnToggle
-          v-model="rolesViewMode"
-          mandatory
-          variant="outlined"
-          divided
-        >
-          <VBtn value="cards" icon="bx-grid-alt" />
-          <VBtn value="table" icon="bx-list-ul" />
-        </VBtnToggle>
+
       </div>
 
       <!-- Индикатор загрузки -->
@@ -389,20 +316,7 @@ const handleAgentUpdated = () => {
       </div>
 
       <template v-else>
-        <!-- Карточный вид -->
-        <div v-if="rolesViewMode === 'cards'" class="pa-6">
-          <RoleCards
-            :roles="filteredRoles"
-            :loading="loading"
-            @edit="editItem"
-            @delete="deleteItem"
-            @toggle-status="toggleStatus"
-            @add="addNewRoles"
-          />
-        </div>
-
         <!-- Табличный вид -->
-        <template v-if="rolesViewMode === 'table'">
           <div class="d-flex flex-wrap gap-4 pa-6">
             <div class="d-flex align-center">
               <!-- Поиск -->
@@ -539,8 +453,6 @@ const handleAgentUpdated = () => {
             />
           </div>
         </template>
-      </template>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -659,117 +571,9 @@ const handleAgentUpdated = () => {
       </VDialog>
     </VCard>
 
-    <!-- Аккордеон для Агентов -->
-    <VCol cols="12">
-      <VExpansionPanels
-        v-model="expandedPanels"
-        variant="accordion"
-        class="expansion-panels-width-border mt-6"
-      >
-        <VExpansionPanel elevation="0" :value="0">
-          <VExpansionPanelTitle
-            collapse-icon="bx-minus"
-            expand-icon="bx-plus"
-          >
-            <div>
-              <h4 class="text-h4 mb-1">
-                Все агенты
-              </h4>
-              <p class="text-body-1 mb-0">
-                Список всех агентов системы с возможностью фильтрации и массовых действий.
-              </p>
-            </div>
-          </VExpansionPanelTitle>
 
-          <VExpansionPanelText class="w-100">
-            <AgentsTable ref="agentsTableRef" @agent-updated="handleAgentUpdated" />
-          </VExpansionPanelText>
-        </VExpansionPanel>
-      </VExpansionPanels>
-    </VCol>
 
-    <!-- Диалог редактирования -->
-    <VDialog
-      v-model="editDialog"
-      max-width="800px"
-    >
-      <VCard :title="editedIndex > -1 ? 'Редактировать роль' : 'Добавить роль'">
-        <!-- Вкладки -->
-        <VTabs v-model="editTab" color="primary">
-          <VTab value="main">Основное</VTab>
-          <VTab value="permissions" :disabled="editedIndex === -1">Разрешения</VTab>
-        </VTabs>
 
-        <VDivider />
-
-        <VCardText style="max-height: 60vh; overflow-y: auto;">
-          <VWindow v-model="editTab">
-            <!-- Вкладка Основное -->
-            <VWindowItem value="main">
-              <VRow>
-                <!-- Название -->
-                <VCol cols="12" sm="6">
-                  <AppTextField
-                    v-model="editedItem.name"
-                    label="Название *"
-                  />
-                </VCol>
-
-                <!-- Сообщение -->
-                <VCol cols="12">
-                  <AppTextarea
-                    v-model="editedItem.message"
-                    label="Сообщение"
-                    rows="3"
-                    placeholder="Введите сообщение..."
-                  />
-                </VCol>
-
-                <!-- Активен -->
-                <VCol cols="12" sm="6">
-                  <VSwitch
-                    v-model="editedItem.isActive"
-                    label="Активен"
-                    color="primary"
-                  />
-                </VCol>
-              </VRow>
-            </VWindowItem>
-
-            <!-- Вкладка Разрешения -->
-            <VWindowItem value="permissions">
-              <RolePermissions
-                v-if="editedItem.id > 0"
-                :role-id="editedItem.id"
-                @saved="showToast('Разрешения сохранены')"
-              />
-              <div v-else class="text-center pa-6 text-medium-emphasis">
-                Сохраните роль сначала, чтобы редактировать разрешения
-              </div>
-            </VWindowItem>
-          </VWindow>
-        </VCardText>
-
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
 
     <!-- Диалог удаления -->
     <VDialog

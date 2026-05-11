@@ -30,18 +30,19 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
         return undefined
     }
 
-    if (!canNavigate(to) && to.matched.length) {
-      /* eslint-disable indent */
-      return isLoggedIn
-        ? { name: 'not-authorized' }
-        : {
-            name: 'login',
-            query: {
-              ...to.query,
-              to: to.fullPath !== '/' ? to.path : undefined,
-            },
-          }
-      /* eslint-enable indent */
-    }
+    // Временно отключена проверка ролевой модели
+    // if (!canNavigate(to) && to.matched.length) {
+    //   /* eslint-disable indent */
+    //   return isLoggedIn
+    //     ? { name: 'not-authorized' }
+    //     : {
+    //         name: 'login',
+    //         query: {
+    //           ...to.query,
+    //           to: to.fullPath !== '/' ? to.path : undefined,
+    //         },
+    //       }
+    //   /* eslint-enable indent */
+    // }
   })
 }

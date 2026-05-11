@@ -9,10 +9,15 @@ import AnalyticsRevenue from '@/views/dashboards/analytics/AnalyticsRevenue.vue'
 import AnalyticsSystemTabs from '@/views/dashboards/analytics/AnalyticsSystemTabs.vue'
 import AnalyticsTotalRevenue from '@/views/dashboards/analytics/AnalyticsTotalRevenue.vue'
 import AnalyticsTransactions from '@/views/dashboards/analytics/AnalyticsTransactions.vue'
+import { useUserPermissions } from '@/composables/useUserPermissions'
 
 // 👉 Images
 import paypal from '@images/cards/paypal-error.png'
 import wallet from '@images/cards/wallet-info.png'
+
+// Загружаем права при заходе на защищённую страницу
+const { loadPermissions } = useUserPermissions()
+loadPermissions()
 
 const statisticsVertical = [
   {

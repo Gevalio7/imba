@@ -1,36 +1,49 @@
 <script setup lang="ts">
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
+import { onMounted } from 'vue'
 
 const router = useRouter()
 const ability = useAbility()
 
-// TODO: Get type from backend
-const userData = useCookie<any>('userData')
+// Читаем userData из sessionStorage
+const getStoredUserData = () => {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const data = sessionStorage.getItem('userData')
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error('Failed to parse userData:', error)
+    return null
+  }
+}
+
+const userData = ref(getStoredUserData())
+
+// Обновляем userData при загрузке компонента
+onMounted(() => {
+  userData.value = getStoredUserData()
+})
 
 const logout = async () => {
-  // Remove "accessToken" from cookie
-  useCookie('accessToken').value = null
-
-  // Remove "userData" from cookie
-  userData.value = null
-
-  // Remove "userData" from cookie
-  userData.value = null
-
-  // Redirect to login page
-  await router.push('/login')
-
-  // ℹ️ We had to remove abilities in then block because if we don't nav menu items mutation is visible while redirecting user to login page
-  // Remove "userAbilities" from cookie
-  useCookie('userAbilityRules').value = null
-  await router.push('/login')
-
-  // ℹ️ We had to remove abilities in then block because if we don't nav menu items mutation is visible while redirecting user to login page
-  // Remove "userAbilities" from cookie
-  useCookie('userAbilityRules').value = null
-
-  // Reset ability to initial ability
+  // Очищаем sessionStorage
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('userAbilityRules')
+    sessionStorage.removeItem('userData')
+    sessionStorage.removeItem('accessToken')
+  }
+  
+  // Очищаем cookie если есть
+  if (typeof document !== 'undefined') {
+    document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    document.cookie = 'userAbilityRules=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  }
+  
+  // Сбрасываем ability
   ability.update([])
+  
+  // Форсированный редирект на логин
+  window.location.href = '/login'
 }
 
 const userProfileList = [
@@ -58,11 +71,11 @@ const userProfileList = [
     <VAvatar
       size="38"
       class="cursor-pointer"
-      :color="!(userData && userData.avatar) ? 'primary' : undefined"
-      :variant="!(userData && userData.avatar) ? 'tonal' : undefined"
+      :color="!userData.avatar ? 'primary' : undefined"
+      :variant="!userData.avatar ? 'tonal' : undefined"
     >
       <VImg
-        v-if="userData && userData.avatar"
+        v-if="userData.avatar"
         :src="userData.avatar"
       />
       <VIcon
@@ -90,15 +103,11 @@ const userProfileList = [
                   bordered
                 >
                   <VAvatar
-                    :color="
-                      !(userData && userData.avatar) ? 'primary' : undefined
-                    "
-                    :variant="
-                      !(userData && userData.avatar) ? 'tonal' : undefined
-                    "
+                    :color="!userData.avatar ? 'primary' : undefined"
+                    :variant="!userData.avatar ? 'tonal' : undefined"
                   >
                     <VImg
-                      v-if="userData && userData.avatar"
+                      v-if="userData.avatar"
                       :src="userData.avatar"
                     />
                     <VIcon

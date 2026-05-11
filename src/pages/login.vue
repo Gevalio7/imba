@@ -4,6 +4,7 @@ import authV2LoginIllustration from '@images/pages/auth-v2-login-illustration.pn
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
 import { VForm } from 'vuetify/components/VForm'
+import { useUserPermissions } from '@/composables/useUserPermissions'
 
 definePage({
   meta: {
@@ -19,6 +20,8 @@ const router = useRouter()
 
 const ability = useAbility()
 
+const { loadPermissions } = useUserPermissions()
+
 const errors = ref<Record<string, string | undefined>>({
   email: undefined,
   password: undefined,
@@ -27,8 +30,8 @@ const errors = ref<Record<string, string | undefined>>({
 const refVForm = ref<VForm>()
 
 const credentials = ref({
-  email: 'admin@demo.com',
-  password: 'admin',
+  email: 'morozova@dreamdesc.ru',
+  password: '123456',
 })
 
 const rememberMe = ref(false)
@@ -51,17 +54,25 @@ const login = async () => {
 
     const { accessToken, userData, userAbilityRules } = res
 
-    useCookie('userAbilityRules').value = userAbilityRules
+    console.log('Login response:', { accessToken, userData, userAbilityRulesCount: userAbilityRules?.length })
+
+    // Сохраняем в sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('userAbilityRules', JSON.stringify(userAbilityRules))
+      sessionStorage.setItem('userData', JSON.stringify(userData))
+      sessionStorage.setItem('accessToken', accessToken)
+      
+      console.log('Saved to sessionStorage. userAbilityRules count:', userAbilityRules.length)
+      console.log('UserData saved:', userData)
+    }
+    
     ability.update(userAbilityRules)
 
-    useCookie('userData').value = userData
-    useCookie('accessToken').value = accessToken
+    // Загружаем права
+    loadPermissions()
 
-    // Redirect to `to` query if exist or redirect to index route
-    // ❗ nextTick is required to wait for DOM updates and later redirect
-    await nextTick(() => {
-      router.replace(route.query.to ? String(route.query.to) : '/')
-    })
+    // Форсированный редирект на дашборд
+    window.location.href = route.query.to ? String(route.query.to) : '/dashboards/analytics'
   }
   catch (err) {
     console.error(err)
