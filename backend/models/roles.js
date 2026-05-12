@@ -186,6 +186,7 @@ class Roles {
       { code: 'system_settings', name: 'Настройка системы', category: 'settings' },
       { code: 'manage_users', name: 'Управление пользователями', category: 'settings' },
       { code: 'menu_roles', name: 'Доступ к управлению ролями', category: 'settings' },
+      { code: 'manage_roles', name: 'Управление ролями и разрешениями', category: 'settings' },
 
       // Menu permissions (для интерфейса ролей)
       { code: 'menu_tickets_list_read', name: 'Меню: Список обращений (чтение)', category: 'menu' },

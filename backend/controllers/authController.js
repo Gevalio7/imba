@@ -53,8 +53,12 @@ const mapPermissionsToAbilityRules = (permissions) => {
           break;
 
         case 'manage_users':
-          rules.push({ action: 'manage', subject: 'manage_users' });
-          break;
+           rules.push({ action: 'manage', subject: 'manage_users' });
+           break;
+
+         case 'manage_roles':
+           rules.push({ action: 'manage', subject: 'roles' });
+           break;
 
         case 'kb_read':
           rules.push({ action: 'read', subject: 'knowledge_base' });

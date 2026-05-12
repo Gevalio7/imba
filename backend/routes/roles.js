@@ -27,7 +27,7 @@ router.get('/:id', getRoleById);
 router.get('/:id/permissions', getRolePermissions);
 
 // PUT /roles/:id/permissions - установить разрешения роли
-router.put('/:id/permissions', protect, setRolePermissions);
+router.put('/:id/permissions', protect, checkPermission('manage_roles'), setRolePermissions);
 
 // GET /agents/:id/permissions - разрешения агента
 router.get('/agent/:id/permissions', getAgentPermissions);
