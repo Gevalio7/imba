@@ -11,7 +11,10 @@ export const useApi = createFetch({
   options: {
     refetch: true,
     async beforeFetch({ options }) {
-      const accessToken = useCookie('accessToken').value
+      let accessToken = null
+      if (typeof sessionStorage !== 'undefined') {
+        accessToken = sessionStorage.getItem('accessToken')
+      }
 
       if (accessToken) {
         options.headers = {
