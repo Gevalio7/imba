@@ -5,6 +5,7 @@ import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
 import { VForm } from 'vuetify/components/VForm'
 import { useUserPermissions } from '@/composables/useUserPermissions'
+import { getFirstAccessibleRoutePath } from '@/utils/firstAccessibleRoute'
 
 definePage({
   meta: {
@@ -71,8 +72,15 @@ const login = async () => {
     // Загружаем права
     loadPermissions()
 
-    // Форсированный редирект на дашборд
-    window.location.href = route.query.to ? String(route.query.to) : '/dashboards/analytics'
+    // Куда редиректить:
+    // 1) Если в URL есть ?to=... — туда (вернёт на исходную страницу)
+    // 2) Иначе — на первый доступный пункт меню (по userAbilityRules)
+    // 3) Фолбэк — /dashboards/analytics
+    const targetPath = route.query.to
+      ? String(route.query.to)
+      : getFirstAccessibleRoutePath(userAbilityRules || [])
+
+    window.location.href = targetPath
   }
   catch (err) {
     console.error(err)

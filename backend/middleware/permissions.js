@@ -105,39 +105,35 @@ const getAgentPermissions = async (agentId) => {
 };
 
 /**
- * Фильтровать тикеты по уровню доступа
- * Возвращает SQL условие WHERE для фильтрации
+ * Фильтровать тикеты по уровню доступа.
+ *
+ * В новой модели видимость списка тикетов управляется правом
+ * `menu_tickets_list_read`:
+ *   - есть → агент видит все тикеты (бывшее `see_all_tickets`)
+ *   - нет  → только свои (owner_id) (бывшее `see_own_tickets`)
+ *
+ * TODO(scoping): прежняя модель различала уровни видимости
+ * own/department/company/all. Если нужны промежуточные scopes, ввести
+ * либо отдельные коды (menu_tickets_list_company_read,
+ * menu_tickets_list_department_read), либо использовать числовой level
+ * у строки role_permissions (7=all, 5=company, 4=department, 0=own).
  */
 const getTicketVisibilityFilter = async (agentId) => {
   try {
     const permissions = await getAgentPermissions(agentId);
 
-    // Super user видит все тикеты
-    if (permissions.super_user || permissions.see_all_tickets) {
-      return null; // Нет фильтра - видит все
+    // Если есть право на чтение списка тикетов — нет фильтра
+    if (permissions.menu_tickets_list_read) {
+      return null;
     }
 
-    // Для агента строим условие и параметры
-    const conditions = [];
-    const params = [];
-
-    // Агент видит тикеты, где он является владельцем (ownerId)
-    conditions.push('t.owner_id = $1');
-    params.push(agentId);
-
-    // Если есть see_company_tickets - видит все тикеты компании
-    // (требуется логика определения компании агента)
-
-    // Если есть see_department_tickets - видит тикеты отдела
-    // (требуется логика определения отдела агента)
-
+    // Иначе — только свои тикеты
     return {
-      condition: conditions.join(' OR '),
-      params: params
+      condition: 't.owner_id = $1',
+      params: [agentId]
     };
   } catch (error) {
     console.error('Error getting ticket visibility filter:', error);
-    // При ошибке показываем только свои тикеты
     return {
       condition: 't.owner_id = $1',
       params: [agentId]

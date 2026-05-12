@@ -63,6 +63,8 @@ declare global {
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getFirstAccessibleRouteName: typeof import('./src/utils/firstAccessibleRoute')['getFirstAccessibleRouteName']
+  const getFirstAccessibleRoutePath: typeof import('./src/utils/firstAccessibleRoute')['getFirstAccessibleRoutePath']
   const getMimeType: typeof import('./src/utils/fileUtils')['getMimeType']
   const h: typeof import('vue')['h']
   const hexToRgb: typeof import('./src/@core/utils/colorConverter')['hexToRgb']
@@ -451,6 +453,8 @@ declare module 'vue' {
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getFirstAccessibleRouteName: UnwrapRef<typeof import('./src/utils/firstAccessibleRoute')['getFirstAccessibleRouteName']>
+    readonly getFirstAccessibleRoutePath: UnwrapRef<typeof import('./src/utils/firstAccessibleRoute')['getFirstAccessibleRoutePath']>
     readonly getMimeType: UnwrapRef<typeof import('./src/utils/fileUtils')['getMimeType']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hexToRgb: UnwrapRef<typeof import('./src/@core/utils/colorConverter')['hexToRgb']>

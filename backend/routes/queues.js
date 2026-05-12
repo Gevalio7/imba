@@ -17,12 +17,12 @@ router.get('/', getQueues);
 router.get('/:id', getQueueById);
 
 // POST /queues
-router.post('/', protect, checkPermission('system_settings'), createQueues);
+router.post('/', protect, checkPermission('menu_queues_write'), createQueues);
 
 // PUT /queues/:id
-router.put('/:id', protect, checkPermission('system_settings'), updateQueues);
+router.put('/:id', protect, checkPermission('menu_queues_write'), updateQueues);
 
 // DELETE /queues/:id
-router.delete('/:id', protect, checkPermission('system_settings'), deleteQueues);
+router.delete('/:id', protect, checkPermission('menu_queues_delete'), deleteQueues);
 
 module.exports = router;

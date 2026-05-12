@@ -23,16 +23,16 @@ router.get('/:id/actions', getTicketActions);
 // GET /tickets/:id - получить тикет по ID
 router.get('/:id', getTicketById);
 
-// POST /tickets - создать тикет (требуется разрешение create_ticket)
-router.post('/', /* protect, checkPermission('create_ticket'), */ createTicket);
+// POST /tickets - создать тикет (требуется menu_tickets_create_write)
+router.post('/', /* protect, checkPermission('menu_tickets_create_write'), */ createTicket);
 
-// POST /tickets/:id/change-status - сменить статус (требуется change_status)
-router.post('/:id/change-status', /* protect, checkPermission('change_status'), */ changeTicketStatus);
+// POST /tickets/:id/change-status - сменить статус (требуется menu_tickets_list_write)
+router.post('/:id/change-status', /* protect, checkPermission('menu_tickets_list_write'), */ changeTicketStatus);
 
-// PUT /tickets/:id - обновить тикет (требуется reply_to_tickets)
-router.put('/:id', /* protect, checkPermission('reply_to_tickets'), */ updateTicket);
+// PUT /tickets/:id - обновить тикет (требуется menu_tickets_list_write)
+router.put('/:id', /* protect, checkPermission('menu_tickets_list_write'), */ updateTicket);
 
-// DELETE /tickets/:id - удалить тикет (только для админов)
-router.delete('/:id', /* protect, */ deleteTicket);
+// DELETE /tickets/:id - удалить тикет (требуется menu_tickets_list_delete)
+router.delete('/:id', /* protect, checkPermission('menu_tickets_list_delete'), */ deleteTicket);
 
 module.exports = router;

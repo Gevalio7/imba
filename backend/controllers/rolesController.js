@@ -1,6 +1,7 @@
 const Roles = require('../models/roles');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { getAgentPermissions: getAgentPermissionsMiddleware } = require('../middleware/permissions');
+const { pool } = require('../config/db');
 
 const getRoles = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
@@ -102,9 +103,59 @@ const deleteRoles = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-// Получить все доступные разрешения
+// Получить все доступные разрешения (синхронизированные с БД)
 const getAvailablePermissions = asyncHandler(async (req, res) => {
-  const permissions = Roles.getAvailablePermissions();
+  try {
+    const permissions = await Roles.syncPermissionsWithDatabase();
+    res.json({ permissions });
+  } catch (error) {
+    console.error('Error in getAvailablePermissions:', error);
+    // Fallback к статичным разрешениям модели
+    const permissions = Roles.getAvailablePermissions();
+    res.json({ permissions });
+  }
+});
+
+// Получить разрешения с уровнями доступа (Linux-подобная модель)
+const getAvailablePermissionsWithLevels = asyncHandler(async (req, res) => {
+  try {
+    const permissions = await Roles.syncPermissionsWithDatabase();
+    const levelDescriptions = Roles.getLevelDescriptions();
+    res.json({ permissions, levelDescriptions });
+  } catch (error) {
+    console.error('Error in getAvailablePermissionsWithLevels:', error);
+    const permissions = Roles.getAvailablePermissions();
+    const levelDescriptions = Roles.getLevelDescriptions();
+    res.json({ permissions, levelDescriptions });
+  }
+});
+
+// Установить уровень доступа для конкретного разрешения роли
+const setRolePermissionLevel = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const roleId = parseInt(id, 10);
+
+  if (isNaN(roleId)) {
+    return res.status(400).json({ message: 'Invalid ID' });
+  }
+
+  const role = await Roles.getById(roleId);
+  if (!role) {
+    return res.status(404).json({ message: 'Role not found' });
+  }
+
+  const { permission, level } = req.body;
+  if (!permission || typeof permission !== 'string') {
+    return res.status(400).json({ message: 'permission is required' });
+  }
+  const numericLevel = parseInt(level, 10);
+  if (isNaN(numericLevel) || numericLevel < 0 || numericLevel > 777) {
+    return res.status(400).json({ message: 'level must be a number 0..777' });
+  }
+
+  await Roles.setPermissionLevel(roleId, permission, numericLevel);
+
+  const permissions = await Roles.getAllPermissionsWithDetails(roleId);
   res.json({ permissions });
 });
 
@@ -123,8 +174,8 @@ const getRolePermissions = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Role not found' });
   }
 
-  // Получаем разрешения с деталями
-  const permissions = await Roles.getPermissionsWithDetails(roleId);
+  // Получаем все разрешения с деталями
+  const permissions = await Roles.getAllPermissionsWithDetails(roleId);
   
   res.json({ permissions });
 });
@@ -151,10 +202,10 @@ const setRolePermissions = asyncHandler(async (req, res) => {
   }
 
   await Roles.setPermissions(roleId, permissions);
-  
+
   // Получаем обновленные разрешения
-  const updatedPermissions = await Roles.getPermissionsWithDetails(roleId);
-  
+  const updatedPermissions = await Roles.getAllPermissionsWithDetails(roleId);
+
   res.json({ permissions: updatedPermissions });
 });
 
@@ -179,7 +230,9 @@ module.exports = {
   updateRoles,
   deleteRoles,
   getAvailablePermissions,
+  getAvailablePermissionsWithLevels,
   getRolePermissions,
   setRolePermissions,
+  setRolePermissionLevel,
   getAgentPermissions,
 };

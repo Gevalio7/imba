@@ -22,19 +22,19 @@ router.get('/:id/workflow', getTypeWithWorkflow);
 router.get('/:id', getTypeById);
 
 // POST /types
-router.post('/', protect, checkPermission('system_settings'), createTypes);
+router.post('/', protect, checkPermission('menu_types_write'), createTypes);
 
 // PUT /types/:id
-router.put('/:id', protect, checkPermission('system_settings'), updateTypes);
+router.put('/:id', protect, checkPermission('menu_types_write'), updateTypes);
 
 // DELETE /types/:id
-router.delete('/:id', protect, checkPermission('system_settings'), deleteTypes);
+router.delete('/:id', protect, checkPermission('menu_types_delete'), deleteTypes);
 
 // Маршруты для связи типов и категорий
 // POST /types/:id/categories - добавить категорию к типу
-router.post('/:id/categories', protect, checkPermission('system_settings'), typeCategoriesController.addCategoryToType);
+router.post('/:id/categories', protect, checkPermission('menu_types_write'), typeCategoriesController.addCategoryToType);
 
 // DELETE /types/:id/categories/:categoryId - удалить категорию из типа
-router.delete('/:id/categories/:categoryId', protect, checkPermission('system_settings'), typeCategoriesController.removeCategoryFromType);
+router.delete('/:id/categories/:categoryId', protect, checkPermission('menu_types_delete'), typeCategoriesController.removeCategoryFromType);
 
 module.exports = router;

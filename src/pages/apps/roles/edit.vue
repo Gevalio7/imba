@@ -13,9 +13,25 @@ interface Permission {
   code: string
   name: string
   category: string
+  level: number
+  defaultLevel?: number
   read: boolean
   write: boolean
   delete: boolean
+}
+
+interface ApiPermission {
+  code: string
+  name: string
+  category: string
+  level?: number
+  default_level?: number
+  is_granted?: boolean
+}
+
+interface AccessLevelOption {
+  level: number
+  description: string
 }
 
 interface Role {
@@ -91,6 +107,36 @@ const expandedPanels = ref([
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
+
+// Описания уровней доступа (Linux-подобная модель)
+const levelDescriptions = ref<Record<number, string>>({
+  777: 'Полный доступ для всех (rwx/rwx/rwx)',
+  755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
+  744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
+  700: 'Полный доступ только для владельца (rwx/---/---)',
+  666: 'Чтение и запись для всех (rw-/rw-/rw-)',
+  644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
+  600: 'Чтение и запись только для владельца (rw-/---/---)',
+  444: 'Только чтение для всех (r--/r--/r--)',
+  400: 'Только чтение для владельца (r--/---/---)',
+  0: 'Нет доступа (---)'
+})
+
+const accessLevels = computed<AccessLevelOption[]>(() =>
+  Object.entries(levelDescriptions.value)
+    .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
+    .sort((a, b) => b.level - a.level)
+)
+
+const getLevelDescription = (level: number): string => {
+  return levelDescriptions.value[level] || `Уровень ${level}`
+}
+
+const getPermissionLevel = (childCode: string, type: 'read' | 'write' | 'delete'): number => {
+  const key = `${childCode}_${type}`
+  const p = permissionsMap.value.get(key)
+  return p?.level ?? 0
+}
 
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
@@ -422,6 +468,7 @@ const updateParentState = (childCode: string) => {
         code: parentKey,
         name: category.label,
         category: category.category,
+        level: 0,
         read: false,
         write: false,
         delete: false
@@ -551,51 +598,69 @@ const fetchRole = async () => {
 
 const fetchPermissions = async () => {
   try {
-    const data = await $api<{ permissions: Permission[] }>('/roles/permissions')
+    // Загружаем доступные разрешения с уровнями (синхронизированные с БД)
+    const data = await $api<{ permissions: ApiPermission[]; levelDescriptions?: Record<number, string> }>(
+      '/roles/permissions-with-levels'
+    )
 
-    console.log('Loaded permissions from API:', data.permissions.length)
+    console.log('Loaded permissions with levels from API:', data.permissions.length)
 
-    // Заполняем Map - преобразуем is_granted в read/write/delete
+    if (data.levelDescriptions) {
+      levelDescriptions.value = data.levelDescriptions
+    }
+
+    // Заполняем Map - преобразуем is_granted в read/write/delete + level
     data.permissions.forEach(perm => {
-      // Определяем тип по суффиксу кода
       let type: 'read' | 'write' | 'delete' | null = null
       if (perm.code.endsWith('_read')) type = 'read'
       else if (perm.code.endsWith('_write')) type = 'write'
       else if (perm.code.endsWith('_delete')) type = 'delete'
-      
+
+      const level = typeof perm.level === 'number' ? perm.level : 0
+      const defaultLevel = typeof perm.default_level === 'number' ? perm.default_level : level
+
       if (type) {
-        // Это permission с типом (read/write/delete)
         permissionsMap.value.set(perm.code, {
           code: perm.code,
           name: perm.name,
           category: perm.category,
-          read: type === 'read' ? (perm as any).is_granted === true : false,
-          write: type === 'write' ? (perm as any).is_granted === true : false,
-          delete: type === 'delete' ? (perm as any).is_granted === true : false
+          level,
+          defaultLevel,
+          read: type === 'read' ? perm.is_granted === true : false,
+          write: type === 'write' ? perm.is_granted === true : false,
+          delete: type === 'delete' ? perm.is_granted === true : false
         })
       } else {
-        // Обычный permission без типа read/write/delete
         permissionsMap.value.set(perm.code, {
           code: perm.code,
           name: perm.name,
           category: perm.category,
-          read: (perm as any).is_granted === true,
+          level,
+          defaultLevel,
+          read: perm.is_granted === true,
           write: false,
           delete: false
         })
       }
     })
 
-    // Добавляем permissions для всех пунктов меню если их нет
+    // Добавляем permissions для всех пунктов меню если их нет (на основе menuConfig)
     menuConfig.forEach(category => {
       category.children.forEach(child => {
-        const codes = [`${child.code!}_read`, `${child.code!}_write`, `${child.code!}_delete`]
-        codes.forEach(code => {
-          if (!permissionsMap.value.has(code)) {
-            permissionsMap.value.set(code, {
-              code,
+        if (!child.code) return
+        const variants: Array<{ code: string; default: number }> = [
+          { code: `${child.code}_read`, default: 444 },
+          { code: `${child.code}_write`, default: 644 },
+          { code: `${child.code}_delete`, default: 744 }
+        ]
+        variants.forEach(v => {
+          if (!permissionsMap.value.has(v.code)) {
+            permissionsMap.value.set(v.code, {
+              code: v.code,
               name: child.label,
               category: category.category,
+              level: 0,
+              defaultLevel: v.default,
               read: false,
               write: false,
               delete: false
@@ -605,30 +670,40 @@ const fetchPermissions = async () => {
       })
     })
 
-    // Если редактируем существующую роль, загружаем ее разрешения
+    // Если редактируем существующую роль, загружаем её разрешения с уровнями
     if (!isNew.value && roleId.value) {
       console.log('Loading permissions for role:', roleId.value)
-      const rolePermissions = await $api<{ permissions: Permission[] }>(`/roles/${roleId.value}/permissions`)
+      const rolePermissions = await $api<{ permissions: ApiPermission[] }>(
+        `/roles/${roleId.value}/permissions`
+      )
 
-      console.log('Role permissions count:', rolePermissions.permissions ? rolePermissions.permissions.length : 0)
+      console.log('Role permissions count:', rolePermissions.permissions?.length ?? 0)
 
       if (rolePermissions.permissions) {
         rolePermissions.permissions.forEach(perm => {
+          const level = typeof perm.level === 'number' ? perm.level : 0
+          const defaultLevel = typeof perm.default_level === 'number' ? perm.default_level : level
+
           if (!permissionsMap.value.has(perm.code)) {
             permissionsMap.value.set(perm.code, {
               code: perm.code,
-              name: perm.name || '',
-              category: perm.category || '',
+              name: perm.name || perm.code,
+              category: perm.category || 'other',
+              level,
+              defaultLevel,
               read: false,
               write: false,
               delete: false
             })
           }
           const p = permissionsMap.value.get(perm.code)!
-          // Определяем тип и применяем is_granted
-          if (perm.code.endsWith('_read')) p.read = (perm as any).is_granted === true
-          else if (perm.code.endsWith('_write')) p.write = (perm as any).is_granted === true
-          else if (perm.code.endsWith('_delete')) p.delete = (perm as any).is_granted === true
+          p.level = level
+          p.defaultLevel = defaultLevel
+
+          if (perm.code.endsWith('_read')) p.read = perm.is_granted === true
+          else if (perm.code.endsWith('_write')) p.write = perm.is_granted === true
+          else if (perm.code.endsWith('_delete')) p.delete = perm.is_granted === true
+          else p.read = perm.is_granted === true
         })
       }
 
@@ -645,6 +720,37 @@ const fetchPermissions = async () => {
     console.log('Total permissions in map:', permissionsMap.value.size)
   } catch (err) {
     console.error('Error fetching permissions:', err)
+  }
+}
+
+// Обновить уровень доступа для конкретного разрешения
+const updatePermissionLevel = async (
+  childCode: string,
+  type: 'read' | 'write' | 'delete',
+  newLevel: number
+) => {
+  if (!roleId.value || roleId.value === 0) {
+    showToast('Сначала сохраните основную информацию роли', 'warning')
+    return
+  }
+
+  const key = `${childCode}_${type}`
+  const permission = permissionsMap.value.get(key)
+  if (!permission) return
+
+  const oldLevel = permission.level
+  permission.level = newLevel
+
+  try {
+    await $api(`/roles/${roleId.value}/permissions-level`, {
+      method: 'PUT',
+      body: { permission: key, level: newLevel }
+    })
+    showToast(`Уровень доступа обновлён: ${newLevel}`)
+  } catch (err) {
+    console.error('Failed to update permission level:', err)
+    permission.level = oldLevel
+    showToast('Ошибка обновления уровня доступа', 'error')
   }
 }
 
@@ -924,9 +1030,22 @@ onMounted(async () => {
               type="info"
               variant="tonal"
               density="compact"
-              class="mb-0"
+              class="mb-2"
             >
               Изменения сохраняются автоматически при переключении
+            </VAlert>
+            <VAlert
+              type="info"
+              variant="outlined"
+              density="compact"
+              class="mb-0"
+            >
+              <div class="text-caption">
+                <strong>Уровни доступа (модель Linux):</strong>
+                <span class="ml-1">первая цифра — владелец, вторая — группа, третья — остальные.</span>
+                <span class="ml-1">7=rwx, 6=rw-, 5=r-x, 4=r--, 0=---.</span>
+                <span class="ml-1">Кликните по числу рядом с чекбоксом, чтобы изменить уровень.</span>
+              </div>
             </VAlert>
           </VCardSubtitle>
           <VCardText>
@@ -1009,34 +1128,61 @@ onMounted(async () => {
                       color="grey"
                     />
                     <span class="text-body-2">{{ child.label }}</span>
-                    <div class="ml-auto d-flex gap-6">
-                      <VCheckbox
-                        v-if="child.code"
-                        :model-value="getChildPermission(child.code!, 'read')"
-                        density="compact"
-                        hide-details
-                        color="primary"
-                        @update:model-value="(val) => setChildPermission(child.code!, 'read', val)"
-                        @click.stop
-                      />
-                      <VCheckbox
-                        v-if="child.code"
-                        :model-value="getChildPermission(child.code!, 'write')"
-                        density="compact"
-                        hide-details
-                        color="primary"
-                        @update:model-value="(val) => setChildPermission(child.code!, 'write', val)"
-                        @click.stop
-                      />
-                      <VCheckbox
-                        v-if="child.code"
-                        :model-value="getChildPermission(child.code!, 'delete')"
-                        density="compact"
-                        hide-details
-                        color="primary"
-                        @update:model-value="(val) => setChildPermission(child.code!, 'delete', val)"
-                        @click.stop
-                      />
+                    <div class="ml-auto d-flex gap-6 align-center">
+                      <div
+                        v-for="t in (['read','write','delete'] as const)"
+                        :key="t"
+                        class="d-flex align-center permission-cell"
+                      >
+                        <VCheckbox
+                          v-if="child.code"
+                          :model-value="getChildPermission(child.code!, t)"
+                          density="compact"
+                          hide-details
+                          color="primary"
+                          @update:model-value="(val) => setChildPermission(child.code!, t, val)"
+                          @click.stop
+                        />
+                        <VMenu
+                          v-if="child.code"
+                          :close-on-content-click="true"
+                          location="bottom end"
+                        >
+                          <template #activator="{ props: menuProps }">
+                            <VChip
+                              v-bind="menuProps"
+                              size="x-small"
+                              variant="tonal"
+                              :color="getPermissionLevel(child.code!, t) === 0 ? 'grey' : 'primary'"
+                              class="permission-level-chip ml-1"
+                              @click.stop
+                            >
+                              {{ getPermissionLevel(child.code!, t) }}
+                            </VChip>
+                          </template>
+                          <VList density="compact">
+                            <VListItem
+                              v-for="opt in accessLevels"
+                              :key="opt.level"
+                              :value="opt.level"
+                              :active="getPermissionLevel(child.code!, t) === opt.level"
+                              @click="updatePermissionLevel(child.code!, t, opt.level)"
+                            >
+                              <VListItemTitle class="d-flex align-center">
+                                <VChip
+                                  size="x-small"
+                                  :color="opt.level === 0 ? 'grey' : 'primary'"
+                                  variant="tonal"
+                                  class="mr-2"
+                                >
+                                  {{ opt.level }}
+                                </VChip>
+                                <span class="text-caption">{{ opt.description }}</span>
+                              </VListItemTitle>
+                            </VListItem>
+                          </VList>
+                        </VMenu>
+                      </div>
                     </div>
                   </div>
                 </VListItem>
@@ -1076,6 +1222,18 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .gap-6 {
   gap: 1.5rem;
+}
+
+.permission-cell {
+  min-width: 80px;
+  justify-content: flex-end;
+}
+
+.permission-level-chip {
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  justify-content: center;
 }
 
 .permission-check {

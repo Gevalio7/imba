@@ -1,5 +1,20 @@
 import type { RouteNamedMap, _RouterTyped } from 'unplugin-vue-router'
 import { canNavigate } from '@layouts/plugins/casl'
+import { getFirstAccessibleRoutePath } from '@/utils/firstAccessibleRoute'
+
+interface AbilityRule { action: string; subject: string }
+
+const readAbilityRulesFromSession = (): AbilityRule[] => {
+  if (typeof sessionStorage === 'undefined') return []
+  try {
+    const raw = sessionStorage.getItem('userAbilityRules')
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]: any }>) => {
   // 👉 router.beforeEach
@@ -19,20 +34,28 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
     const isLoggedIn = !!(useCookie('userData').value && useCookie('accessToken').value)
 
     /*
-      If user is logged in and is trying to access login like page, redirect to home
+      If user is logged in and is trying to access login like page, redirect to first accessible page
       else allow visiting the page
       (WARN: Don't allow executing further by return statement because next code will check for permissions)
      */
     if (to.meta.unauthenticatedOnly) {
-      if (isLoggedIn)
-        return '/'
-      else
-        return undefined
+      if (isLoggedIn) {
+        // Перенаправляем на первый доступный пункт меню (по правам пользователя),
+        // чтобы не попадать на страницу, которая скрыта в меню.
+        const rules = readAbilityRulesFromSession()
+        return getFirstAccessibleRoutePath(rules)
+      }
+      return undefined
     }
 
-    // Временно отключена проверка ролевой модели
+    // Если зашли на корень `/` — отправляем на первый доступный пункт.
+    if (to.path === '/') {
+      const rules = readAbilityRulesFromSession()
+      return getFirstAccessibleRoutePath(rules)
+    }
+
+    // Временно отключена проверка ролевой модели для произвольных маршрутов.
     // if (!canNavigate(to) && to.matched.length) {
-    //   /* eslint-disable indent */
     //   return isLoggedIn
     //     ? { name: 'not-authorized' }
     //     : {
@@ -42,7 +65,6 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
     //           to: to.fullPath !== '/' ? to.path : undefined,
     //         },
     //       }
-    //   /* eslint-enable indent */
     // }
   })
 }

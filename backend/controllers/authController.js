@@ -13,71 +13,41 @@ const generateToken = (userId) => {
   );
 };
 
-// Маппинг разрешений на CASL правила
+// Маппинг разрешений на CASL правила.
+// Единая модель: разрешения имеют вид menu_<раздел>_<read|write|delete>.
+// Для каждого активного разрешения генерируется правило с subject = 'menu_<раздел>'
+// и action = read|write|delete. Это используется фронтом для показа пунктов меню
+// и доступности кнопок создания/редактирования/удаления.
+//
+// Разрешения, не соответствующие шаблону menu_*_<read|write|delete> (legacy:
+// super_user, manage_roles, system_settings, kb_*, see_*_tickets и т.п.), молча
+// игнорируются с предупреждением в лог. Это переходный период; рекомендуется
+// очистить БД миграцией.
 const mapPermissionsToAbilityRules = (permissions) => {
   const rules = [];
+  const legacy = [];
 
-  // Проходим по всем активным разрешениям
   Object.entries(permissions)
-    .filter(([key, value]) => value === true)
+    .filter(([, value]) => value === true)
     .forEach(([permission]) => {
-      switch (permission) {
-        case 'super_user':
-          rules.push({ action: 'manage', subject: 'all' });
-          break;
-
-        case 'create_ticket':
-          rules.push({ action: 'create', subject: 'tickets' });
-          break;
-
-        case 'see_own_tickets':
-          rules.push({ action: 'read', subject: 'own_tickets' });
-          break;
-
-        case 'see_all_tickets':
-        case 'see_department_tickets':
-        case 'see_company_tickets':
-          rules.push({ action: 'read', subject: 'all_tickets' });
-          break;
-
-        case 'reply_to_tickets':
-          rules.push({ action: 'update', subject: 'tickets' });
-          break;
-
-        case 'change_status':
-          rules.push({ action: 'update', subject: 'ticket_status' });
-          break;
-
-        case 'system_settings':
-          rules.push({ action: 'read', subject: 'system_settings' });
-          break;
-
-        case 'manage_users':
-           rules.push({ action: 'manage', subject: 'manage_users' });
-           break;
-
-         case 'manage_roles':
-           rules.push({ action: 'manage', subject: 'roles' });
-           break;
-
-        case 'kb_read':
-          rules.push({ action: 'read', subject: 'knowledge_base' });
-          break;
-
-        case 'kb_write':
-          rules.push({ action: 'manage', subject: 'knowledge_base' });
-          break;
-
-        case 'view_reports':
-          rules.push({ action: 'read', subject: 'reports' });
-          break;
-
-        default:
-          // Для неизвестных разрешений даем read доступ
-          rules.push({ action: 'read', subject: permission });
-          break;
+      const match = permission.match(/^(.*)_(read|write|delete)$/);
+      if (!match) {
+        legacy.push(permission);
+        return;
       }
+      const subject = match[1];
+      const op = match[2];
+      // action имена совпадают с типом операции (read/write/delete) — это согласовано
+      // с фронтовым useUserPermissions, который различает операции по action.
+      rules.push({ action: op, subject });
     });
+
+  if (legacy.length > 0) {
+    console.warn(
+      `[auth] Ignored ${legacy.length} legacy permission(s) not matching menu_*_<read|write|delete>:`,
+      legacy.join(', ')
+    );
+  }
 
   return rules;
 };
@@ -203,16 +173,9 @@ const login = async (req, res) => {
       // Преобразуем разрешения в CASL правила
       userAbilityRules = mapPermissionsToAbilityRules(permissions);
     } else {
-      // Для обычных пользователей - минимальные права
+      // Для обычных пользователей (не агентов) — минимальные права (свой профиль)
       userAbilityRules = [
-        {
-          action: 'read',
-          subject: 'own_profile',
-        },
-        {
-          action: 'create',
-          subject: 'tickets',
-        },
+        { action: 'read', subject: 'own_profile' },
       ];
     }
 

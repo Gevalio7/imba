@@ -161,44 +161,169 @@ class Roles {
 
   // ========== Методы для работы с разрешениями ==========
 
-  // Получить все доступные разрешения
-  static getAvailablePermissions() {
+  // Описания числовых уровней доступа (Linux-подобная модель)
+  static getLevelDescriptions() {
+    return {
+      777: 'Полный доступ для всех (rwx/rwx/rwx)',
+      755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
+      744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
+      700: 'Полный доступ только для владельца (rwx/---/---)',
+      666: 'Чтение и запись для всех (rw-/rw-/rw-)',
+      644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
+      600: 'Чтение и запись только для владельца (rw-/---/---)',
+      444: 'Только чтение для всех (r--/r--/r--)',
+      400: 'Только чтение для владельца (r--/---/---)',
+      0: 'Нет доступа (---)'
+    };
+  }
+
+  // Каноничный список разделов меню. Каждый раздел даёт три разрешения: _read, _write, _delete.
+  // Добавление нового пункта меню = добавление одной строки сюда.
+  static getMenuItems() {
     return [
-      // Супер-пользователь
-      { code: 'super_user', name: 'Супер-пользователь (полный доступ)', category: 'admin' },
-
+      // Дашборды
+      { base: 'menu_dashboard', label: 'Дашборд (Аналитика)' },
       // Тикеты
-      { code: 'create_ticket', name: 'Создание заявок', category: 'tickets' },
-      { code: 'see_own_tickets', name: 'Видеть только свои заявки', category: 'tickets' },
-      { code: 'reply_to_tickets', name: 'Отвечать на заявки', category: 'tickets' },
-      { code: 'internal_notes', name: 'Внутренние заметки', category: 'tickets' },
-      { code: 'change_status', name: 'Менять статус/приоритет', category: 'tickets' },
-      { code: 'see_all_tickets', name: 'Видеть все заявки', category: 'tickets' },
-      { code: 'see_department_tickets', name: 'Видеть заявки отдела', category: 'tickets' },
-      { code: 'see_company_tickets', name: 'Видеть заявки компании', category: 'tickets' },
-
+      { base: 'menu_tickets_list', label: 'Список обращений' },
+      { base: 'menu_tickets_create', label: 'Создать обращение' },
+      { base: 'menu_tickets_schedules', label: 'Расписания тикетов' },
+      // Чат / Канбан
+      { base: 'menu_chat', label: 'Чат' },
+      { base: 'menu_kanban', label: 'Канбан' },
+      // Агенты
+      { base: 'menu_agents', label: 'Агенты' },
       // База знаний
-      { code: 'kb_read', name: 'Доступ к БЗ (чтение)', category: 'knowledge_base' },
-      { code: 'kb_write', name: 'Доступ к БЗ (создание/редактирование)', category: 'knowledge_base' },
-
-      // Отчёты и настройки
-      { code: 'view_reports', name: 'Просмотр отчётов', category: 'reports' },
-      { code: 'system_settings', name: 'Настройка системы', category: 'settings' },
-      { code: 'manage_users', name: 'Управление пользователями', category: 'settings' },
-      { code: 'menu_roles', name: 'Доступ к управлению ролями', category: 'settings' },
-      { code: 'manage_roles', name: 'Управление ролями и разрешениями', category: 'settings' },
-
-      // Menu permissions (для интерфейса ролей)
-      { code: 'menu_tickets_list_read', name: 'Меню: Список обращений (чтение)', category: 'menu' },
-      { code: 'menu_tickets_list_write', name: 'Меню: Список обращений (запись)', category: 'menu' },
-      { code: 'menu_tickets_list_delete', name: 'Меню: Список обращений (удаление)', category: 'menu' },
-      { code: 'menu_tickets_create_read', name: 'Меню: Создать обращение (чтение)', category: 'menu' },
-      { code: 'menu_tickets_create_write', name: 'Меню: Создать обращение (запись)', category: 'menu' },
-      { code: 'menu_tickets_create_delete', name: 'Меню: Создать обращение (удаление)', category: 'menu' },
-      { code: 'menu_tickets_schedules_read', name: 'Меню: Расписания (чтение)', category: 'menu' },
-      { code: 'menu_tickets_schedules_write', name: 'Меню: Расписания (запись)', category: 'menu' },
-      { code: 'menu_tickets_schedules_delete', name: 'Меню: Расписания (удаление)', category: 'menu' },
+      { base: 'menu_knowledge_base', label: 'База знаний' },
+      // Сервисы
+      { base: 'menu_services', label: 'Сервисы' },
+      // Компании
+      { base: 'menu_companies_list', label: 'Компании' },
+      { base: 'menu_companies_groups', label: 'Отделы и филиалы' },
+      { base: 'menu_companies_users', label: 'Сотрудники' },
+      { base: 'menu_companies_structure', label: 'Структура компании' },
+      // Роли и разрешения
+      { base: 'menu_roles_list', label: 'Роли' },
+      { base: 'menu_permissions', label: 'Разрешения' },
+      // Настройки тикетов
+      { base: 'menu_queues', label: 'Очереди' },
+      { base: 'menu_types', label: 'Типы тикетов' },
+      { base: 'menu_type_categories', label: 'Категории тикетов' },
+      { base: 'menu_states', label: 'Статусы' },
+      { base: 'menu_priorities', label: 'Приоритеты' },
+      { base: 'menu_sla', label: 'SLA' },
+      { base: 'menu_templates', label: 'Шаблоны' },
+      { base: 'menu_template_queues', label: 'Очереди шаблонов' },
+      { base: 'menu_workflows', label: 'Рабочие процессы' },
+      { base: 'menu_greetings', label: 'Приветствия' },
+      { base: 'menu_signatures', label: 'Подписи' },
+      { base: 'menu_auto_responses', label: 'Автоответы' },
+      { base: 'menu_attachments', label: 'Вложения' },
+      { base: 'menu_tickets_system_configuration', label: 'Конфигурация тикетов' },
+      // Почта
+      { base: 'menu_email_addresses', label: 'Адреса почты' },
+      { base: 'menu_post_master_mail_accounts', label: 'Почтовые аккаунты' },
+      // Система
+      { base: 'menu_calendars', label: 'Календари' },
+      { base: 'menu_session_management', label: 'Сессии' },
+      { base: 'menu_system_log', label: 'Системный лог' },
+      // Прочее
+      { base: 'menu_backup', label: 'Резервное копирование' },
+      { base: 'menu_integrity_check', label: 'Контроль целостности' },
     ];
+  }
+
+  // Получить все доступные разрешения (единая модель: menu_<раздел>_<read|write|delete>)
+  static getAvailablePermissions() {
+    const out = [];
+    const opTypes = [
+      { suffix: 'read', label: 'чтение', level: 444 },
+      { suffix: 'write', label: 'запись', level: 644 },
+      { suffix: 'delete', label: 'удаление', level: 744 },
+    ];
+    for (const item of this.getMenuItems()) {
+      for (const t of opTypes) {
+        out.push({
+          code: `${item.base}_${t.suffix}`,
+          name: `${item.label} (${t.label})`,
+          category: item.base,
+          level: t.level,
+        });
+      }
+    }
+    return out;
+  }
+
+  // Карта (Map) кодов доступных разрешений в их метаданные (быстрый доступ)
+  static _availablePermissionsMap() {
+    const map = new Map();
+    for (const p of this.getAvailablePermissions()) {
+      map.set(p.code, p);
+    }
+    return map;
+  }
+
+  // Получить все уникальные разрешения, существующие в БД
+  static async getAllDatabasePermissions() {
+    try {
+      const result = await pool.query(
+        'SELECT DISTINCT permission FROM role_permissions ORDER BY permission'
+      );
+      return result.rows.map(row => row.permission);
+    } catch (error) {
+      console.error('Error getting database permissions:', error);
+      return [];
+    }
+  }
+
+  // Определить уровень доступа по суффиксу кода (для разрешений, отсутствующих в getAvailablePermissions)
+  static _inferLevelFromCode(code) {
+    if (!code || typeof code !== 'string') return 0;
+    if (code.endsWith('_delete')) return 744;
+    if (code.endsWith('_write')) return 644;
+    if (code.endsWith('_read')) return 444;
+    return 444;
+  }
+
+  // Определить категорию по префиксу кода
+  static _inferCategoryFromCode(code) {
+    if (!code || typeof code !== 'string') return 'other';
+    if (code.startsWith('menu_')) return 'menu';
+    const parts = code.split('_');
+    return parts.length > 1 ? parts[0] : 'other';
+  }
+
+  // Сформировать удобочитаемое имя из кода (fallback)
+  static _humanNameFromCode(code) {
+    return code;
+  }
+
+  // Синхронизация: вернуть объединённый список разрешений (модель + БД), без дубликатов
+  static async syncPermissionsWithDatabase() {
+    try {
+      const dbPermissions = await this.getAllDatabasePermissions();
+      const map = this._availablePermissionsMap();
+
+      // Добавляем те разрешения из БД, которых нет в модели
+      for (const code of dbPermissions) {
+        if (!map.has(code)) {
+          map.set(code, {
+            code,
+            name: this._humanNameFromCode(code),
+            category: this._inferCategoryFromCode(code),
+            level: this._inferLevelFromCode(code),
+          });
+        }
+      }
+
+      // Возвращаем массив, упорядоченный по category, затем code
+      return Array.from(map.values()).sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return a.code.localeCompare(b.code);
+      });
+    } catch (error) {
+      console.error('Error syncing permissions with database:', error);
+      return this.getAvailablePermissions();
+    }
   }
 
   // Получить разрешения роли
@@ -222,47 +347,89 @@ class Roles {
     }
   }
 
-  // Получить разрешения роли с названиями
-  static async getPermissionsWithDetails(roleId) {
+  // Получить все разрешения роли с деталями
+  static async getAllPermissionsWithDetails(roleId) {
     try {
-      const availablePermissions = this.getAvailablePermissions();
-      const result = await pool.query(
-        `SELECT permission, is_granted FROM role_permissions WHERE role_id = $1`,
-        [roleId]
-      );
-      
-      // Создаем объект разрешений
+      // Получаем все разрешения, которые есть в БД для данной роли
+      // Также пробуем получить колонку level (если она существует)
+      let result;
+      let hasLevelColumn = true;
+      try {
+        result = await pool.query(
+          `SELECT permission, is_granted, level FROM role_permissions WHERE role_id = $1`,
+          [roleId]
+        );
+      } catch (e) {
+        // Колонки level может не быть — fallback
+        hasLevelColumn = false;
+        result = await pool.query(
+          `SELECT permission, is_granted FROM role_permissions WHERE role_id = $1`,
+          [roleId]
+        );
+      }
+
+      // Карты для быстрого доступа
       const grantedPermissions = {};
+      const roleLevels = {};
       result.rows.forEach(row => {
         grantedPermissions[row.permission] = row.is_granted;
+        if (hasLevelColumn && row.level !== null && row.level !== undefined) {
+          roleLevels[row.permission] = row.level;
+        }
       });
-      
-      // Добавляем информацию о разрешениях
-      return availablePermissions.map(p => ({
-        ...p,
-        is_granted: grantedPermissions[p.code] || false
+
+      // Получаем синхронизированный список всех разрешений (модель + БД)
+      const availablePermissions = await this.syncPermissionsWithDatabase();
+
+      // Формируем результат: каждое доступное разрешение + флаг is_granted + level
+      const allPermissions = availablePermissions.map(p => ({
+        code: p.code,
+        name: p.name,
+        category: p.category,
+        level: roleLevels[p.code] !== undefined ? roleLevels[p.code] : (p.level || 0),
+        default_level: p.level || 0,
+        is_granted: grantedPermissions[p.code] === true,
       }));
+
+      return allPermissions;
     } catch (error) {
-      console.error('Error in getPermissionsWithDetails:', error);
+      console.error('Error in getAllPermissionsWithDetails:', error);
       throw error;
     }
   }
 
-  // Установить разрешения роли
+  // Установить числовой уровень доступа для разрешения роли
+  static async setPermissionLevel(roleId, permission, level) {
+    try {
+      // Убедимся, что строка role_permissions существует
+      const upsert = `
+        INSERT INTO role_permissions (role_id, permission, is_granted, level)
+        VALUES ($1, $2, COALESCE((SELECT is_granted FROM role_permissions WHERE role_id = $1 AND permission = $2), false), $3)
+        ON CONFLICT (role_id, permission) DO UPDATE SET level = EXCLUDED.level, updated_at = CURRENT_TIMESTAMP
+      `;
+      await pool.query(upsert, [roleId, permission, level]);
+      return true;
+    } catch (error) {
+      console.error('Error in setPermissionLevel:', error);
+      throw error;
+    }
+  }
+
+  // Установить разрешения роли (upsert — не затирает прочие записи и сохраняет level)
   static async setPermissions(roleId, permissions) {
     try {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Удаляем старые разрешения
-        await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
-
-        // Добавляем новые разрешения
+        // Upsert каждой переданной пары (permission -> is_granted)
         for (const [permission, is_granted] of Object.entries(permissions)) {
           await client.query(
-            `INSERT INTO role_permissions (role_id, permission, is_granted) VALUES ($1, $2, $3)`,
-            [roleId, permission, is_granted]
+            `INSERT INTO role_permissions (role_id, permission, is_granted)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (role_id, permission)
+             DO UPDATE SET is_granted = EXCLUDED.is_granted, updated_at = CURRENT_TIMESTAMP`,
+            [roleId, permission, !!is_granted]
           );
         }
 
