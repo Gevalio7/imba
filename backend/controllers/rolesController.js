@@ -1,5 +1,6 @@
 const Roles = require('../models/roles');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getAgentPermissions: getAgentPermissionsMiddleware } = require('../middleware/permissions');
 
 const getRoles = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
@@ -166,7 +167,7 @@ const getAgentPermissions = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  const permissions = await Roles.getAgentPermissions(agentId);
+  const permissions = await getAgentPermissionsMiddleware(agentId);
   
   res.json({ permissions });
 });
