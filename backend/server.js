@@ -53,6 +53,9 @@ if (fs.existsSync(routesPath)) {
 const TicketSchedules = require('./models/ticketSchedules');
 const Tickets = require('./models/tickets');
 
+// ========== CRON ДЛЯ ЗАВЕРШЕНИЯ НЕАКТИВНЫХ СЕССИЙ ==========
+const SessionManagement = require('./models/sessionManagement');
+
 // Функция для выполнения просроченных расписаний
 const processDueSchedules = async () => {
   try {
@@ -163,6 +166,24 @@ const processDueSchedules = async () => {
   }
 }
 
+// Функция для завершения неактивных сессий
+const terminateIdleSessions = async () => {
+  try {
+    const idleTimeoutMinutes = parseInt(process.env.SESSION_IDLE_TIMEOUT_MINUTES || '60');
+    console.log(`🔄 Проверка неактивных сессий (таймаут: ${idleTimeoutMinutes} мин)...`);
+
+    const terminatedCount = await SessionManagement.terminateIdleSessions(idleTimeoutMinutes);
+
+    if (terminatedCount > 0) {
+      console.log(`🛑 Завершено ${terminatedCount} неактивных сессий`);
+    } else {
+      console.log('✅ Неактивных сессий не найдено');
+    }
+  } catch (err) {
+    console.error('❌ Ошибка при завершении неактивных сессий:', err);
+  }
+};
+
 
 
 // Health check
@@ -224,6 +245,11 @@ app.listen(PORT, async () => {
   console.log('⏰ Запуск планировщика расписаний...');
   setInterval(processDueSchedules, 60 * 1000); // Каждую минуту
   setTimeout(processDueSchedules, 5000); // Через 5 секунд после запуска
+
+  // Запускаем cron для завершения неактивных сессий
+  console.log('⏰ Запуск планировщика завершения сессий...');
+  setInterval(terminateIdleSessions, 5 * 60 * 1000); // Каждые 5 минут
+  setTimeout(terminateIdleSessions, 10000); // Через 10 секунд после запуска
 
   // Для тестирования - запускаем сразу
   console.log('🧪 Тестируем расписания сразу...');

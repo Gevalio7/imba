@@ -3,13 +3,14 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/users');
 const Agents = require('../models/agents');
 const { getAgentPermissions } = require('../middleware/permissions');
+const SessionManagement = require('../models/sessionManagement');
 
 // Генерация JWT токена
 const generateToken = (userId) => {
   return jwt.sign(
     { userId },
     process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: '30d' },
+    { expiresIn: process.env.JWT_EXPIRES_IN || '24h' },
   );
 };
 
@@ -165,6 +166,21 @@ const login = async (req, res) => {
 
     // Генерация токена
     const token = generateToken(entity.id);
+
+    // Автоматически завершаем все активные сессии для этого пользователя
+    await SessionManagement.terminateAllForUser(entity.login);
+
+    // Создание новой сессии
+    const sessionData = {
+      username: entity.login,
+      ipAddress: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('User-Agent'),
+      loginTime: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+      isActive: true,
+      type: isAgent ? 'agent' : 'user'
+    };
+    await SessionManagement.create(sessionData);
 
     // Получение разрешений для агента
     let userAbilityRules = [];

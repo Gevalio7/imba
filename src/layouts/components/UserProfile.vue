@@ -25,23 +25,40 @@ onMounted(() => {
 })
 
 const logout = async () => {
+  try {
+    // Получаем userData для идентификации сессии
+    const userData = getStoredUserData()
+    if (userData) {
+      // Вызываем API для завершения сессии на бэкенде
+      await $api('/sessionManagement/terminate-current', { method: 'POST' })
+    }
+  } catch (error) {
+    console.error('Ошибка при завершении сессии на сервере:', error)
+    // Продолжаем logout даже при ошибке API
+  }
+
   // Очищаем sessionStorage
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.removeItem('userAbilityRules')
     sessionStorage.removeItem('userData')
     sessionStorage.removeItem('accessToken')
   }
-  
+
+  // Очищаем localStorage (fallback для новых вкладок)
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('userAbilityRules')
+  }
+
   // Очищаем cookie если есть
   if (typeof document !== 'undefined') {
     document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     document.cookie = 'userAbilityRules=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
   }
-  
+
   // Сбрасываем ability
   ability.update([])
-  
+
   // Форсированный редирект на логин
   window.location.href = '/login'
 }

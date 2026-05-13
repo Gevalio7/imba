@@ -5,23 +5,27 @@ const {
   getSessionManagement,
   getSessionManagementById,
   createSessionManagement,
-  updateSessionManagement,
-  deleteSessionManagement,
+  terminateSession,
+  terminateAllSessions,
+  terminateCurrentSession,
 } = require('../controllers/sessionManagementController');
 
 // GET /sessionManagement - список с query params
-router.get('/', getSessionManagement);
+router.get('/', protect, getSessionManagement);
 
 // GET /sessionManagement/:id
-router.get('/:id', getSessionManagementById);
+router.get('/:id', protect, getSessionManagementById);
 
 // POST /sessionManagement
 router.post('/', protect, createSessionManagement);
 
-// PUT /sessionManagement/:id
-router.put('/:id', protect, updateSessionManagement);
+// PUT /sessionManagement/:id/terminate
+router.put('/:id/terminate', protect, terminateSession);
 
-// DELETE /sessionManagement/:id
-router.delete('/:id', protect, deleteSessionManagement);
+// POST /sessionManagement/terminate-all
+router.post('/terminate-all', protect, terminateAllSessions);
+
+// POST /sessionManagement/terminate-current
+router.post('/terminate-current', protect, terminateCurrentSession);
 
 module.exports = router;

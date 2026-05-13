@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class SessionManagement {
   static tableName = 'session_management';
-  static fields = 'username, ipAddress, userAgent, loginTime, lastActivity';
+  static fields = 'username, ipAddress, userAgent, loginTime, lastActivity, type';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
@@ -126,6 +126,13 @@ class SessionManagement {
         paramIndex++;
       }
 
+      // Если isActive устанавливается в false, обновляем lastActivity
+      if (sessionmanagement.isActive === false) {
+        updates.push(`last_activity = $${paramIndex}`);
+        values.push(new Date().toISOString());
+        paramIndex++;
+      }
+
       // Всегда обновляем updated_at
       updates.push('updated_at = CURRENT_TIMESTAMP');
 
@@ -148,13 +155,41 @@ class SessionManagement {
     }
   }
 
-  static async delete(id) {
-    try {
-      const result = await pool.query(`DELETE FROM ${SessionManagement.tableName} WHERE id = $1`, [id]);
 
-      return result.rowCount > 0;
+
+  static async terminateAllForUser(username) {
+    try {
+      const query = `UPDATE ${SessionManagement.tableName} SET is_active = false, last_activity = CURRENT_TIMESTAMP WHERE username = $1 AND is_active = true`;
+      const result = await pool.query(query, [username]);
+      return result.rowCount;
     } catch (error) {
-      console.error('Error in delete:', error);
+      console.error('Error in terminateAllForUser:', error);
+      throw error;
+    }
+  }
+
+  static async terminateAllActive() {
+    try {
+      const query = `UPDATE ${SessionManagement.tableName} SET is_active = false, last_activity = CURRENT_TIMESTAMP WHERE is_active = true`;
+      const result = await pool.query(query, []);
+      return result.rowCount;
+    } catch (error) {
+      console.error('Error in terminateAllActive:', error);
+      throw error;
+    }
+  }
+
+  static async terminateIdleSessions(idleMinutes = 60) {
+    try {
+      const query = `
+        UPDATE ${SessionManagement.tableName}
+        SET is_active = false, last_activity = CURRENT_TIMESTAMP
+        WHERE is_active = true AND last_activity < NOW() - INTERVAL '${idleMinutes} minutes'
+      `;
+      const result = await pool.query(query, []);
+      return result.rowCount;
+    } catch (error) {
+      console.error('Error in terminateIdleSessions:', error);
       throw error;
     }
   }

@@ -45,7 +45,7 @@ const createSessionManagement = asyncHandler(async (req, res) => {
   data.userAgent = req.body.userAgent;
   data.loginTime = req.body.loginTime;
   data.lastActivity = req.body.lastActivity;
-  
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined) {
     data.isActive = req.body.isActive;
@@ -56,61 +56,59 @@ const createSessionManagement = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'username is required' });
   }
 
+  // Автоматически завершаем все активные сессии для этого пользователя
+  await SessionManagement.terminateAllForUser(data.username);
+
   const newSessionManagement = await SessionManagement.create(data);
 
   res.status(201).json(newSessionManagement);
 });
 
-const updateSessionManagement = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const sessionmanagementId = parseInt(id, 10);
 
-  if (isNaN(sessionmanagementId)) {
+
+const terminateSession = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const sessionId = parseInt(id, 10);
+
+  if (isNaN(sessionId)) {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  const data = {};
-  if (req.body.username !== undefined) data.username = req.body.username;
-  if (req.body.ipAddress !== undefined) data.ipAddress = req.body.ipAddress;
-  if (req.body.userAgent !== undefined) data.userAgent = req.body.userAgent;
-  if (req.body.loginTime !== undefined) data.loginTime = req.body.loginTime;
-  if (req.body.lastActivity !== undefined) data.lastActivity = req.body.lastActivity;
-  
-  // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
+  const updated = await SessionManagement.update(sessionId, { isActive: false });
+
+  if (!updated) {
+    return res.status(404).json({ message: 'Session not found' });
   }
 
-  const updatedSessionManagement = await SessionManagement.update(sessionmanagementId, data);
-
-  if (!updatedSessionManagement) {
-    return res.status(404).json({ message: 'SessionManagement not found' });
-  }
-
-  res.json(updatedSessionManagement);
+  res.json(updated);
 });
 
-const deleteSessionManagement = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const sessionmanagementId = parseInt(id, 10);
+const terminateAllSessions = asyncHandler(async (req, res) => {
+  const count = await SessionManagement.terminateAllActive();
 
-  if (isNaN(sessionmanagementId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
+  res.json({ message: `${count} sessions terminated` });
+});
+
+const terminateCurrentSession = asyncHandler(async (req, res) => {
+  // req.session содержит текущую активную сессию из middleware
+  if (!req.session) {
+    return res.status(401).json({ message: 'Active session not found' });
   }
 
-  const deleted = await SessionManagement.delete(sessionmanagementId);
+  const updated = await SessionManagement.update(req.session.id, { isActive: false });
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'SessionManagement not found' });
+  if (!updated) {
+    return res.status(404).json({ message: 'Session not found' });
   }
 
-  res.status(204).send();
+  res.json({ message: 'Session terminated successfully' });
 });
 
 module.exports = {
   getSessionManagement,
   getSessionManagementById,
   createSessionManagement,
-  updateSessionManagement,
-  deleteSessionManagement,
+  terminateSession,
+  terminateAllSessions,
+  terminateCurrentSession,
 };
