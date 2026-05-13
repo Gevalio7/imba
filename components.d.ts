@@ -78,7 +78,6 @@ declare module 'vue' {
     QueueCards: typeof import('./src/views/apps/queues/QueueCards.vue')['default']
     QuickAnswersDialog: typeof import('./src/components/TicketEdit/QuickAnswersDialog.vue')['default']
     ReferAndEarnDialog: typeof import('./src/components/dialogs/ReferAndEarnDialog.vue')['default']
-    RoleCards: typeof import('./src/views/apps/roles/RoleCards.vue')['default']
     RolePermissions: typeof import('./src/views/apps/roles/RolePermissions.vue')['default']
     RolesTable: typeof import('./src/views/apps/groups/RolesTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 
 // Типы данных
@@ -30,8 +30,6 @@ import kbIllustration2Light from '@images/pages/academy-course-illustration2-lig
 
 const kbIllustration2 = useGenerateImageVariant(kbIllustration2Light, kbIllustration2Dark)
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 const router = useRouter()
 
 // Данные
@@ -55,7 +53,7 @@ const fetchArticles = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $fetch<{ articles: Article[], total: number }>(`${API_BASE}/knowledge-base`)
+    const data = await $api<{ articles: Article[], total: number }>('/knowledge-base')
     articles.value = data.articles
   } catch (err) {
     error.value = 'Ошибка загрузки статей'
@@ -68,7 +66,7 @@ const fetchArticles = async () => {
 // Загрузка категорий
 const fetchCategories = async () => {
   try {
-    const data = await $fetch<any>(`${API_BASE}/types`)
+    const data = await $api<any>('/types')
     categoriesList.value = data.types || []
   } catch (err) {
     console.error('Error fetching categories:', err)
@@ -78,7 +76,7 @@ const fetchCategories = async () => {
 // Загрузка сервисов
 const fetchServices = async () => {
   try {
-    const data = await $fetch<any>(`${API_BASE}/services`)
+    const data = await $api<any>('/services')
     servicesList.value = data.services || []
   } catch (err) {
     console.error('Error fetching services:', err)
@@ -89,7 +87,7 @@ const fetchServices = async () => {
 const createCategory = async () => {
   if (!newCategory.value.name?.trim()) return
   try {
-    await $fetch(`${API_BASE}/types`, {
+    await $api(`/types`, {
       method: 'POST',
       body: { name: newCategory.value.name, comment: newCategory.value.comment }
     })
@@ -106,7 +104,7 @@ const createCategory = async () => {
 const createService = async () => {
   if (!newService.value.name?.trim()) return
   try {
-    await $fetch(`${API_BASE}/services`, {
+    await $api(`/services`, {
       method: 'POST',
       body: { name: newService.value.name }
     })
@@ -154,7 +152,7 @@ onMounted(() => {
 // Удаление статьи
 const deleteArticleById = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/knowledge-base/${id}`, { method: 'DELETE' })
+    await $api(`/knowledge-base/${id}`, { method: 'DELETE' })
     const index = articles.value.findIndex(a => a.id === id)
     if (index !== -1) articles.value.splice(index, 1)
   } catch (err) {

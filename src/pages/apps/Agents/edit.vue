@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AgentActivityTimeline from '../../../views/apps/agents/view/AgentActivityTimeline.vue'
@@ -31,8 +31,7 @@ interface Agent {
 
 
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 const route = useRoute()
 const router = useRouter()
@@ -173,12 +172,7 @@ const fetchAgent = async () => {
 
   try {
     isLoading.value = true
-    const accessToken = useCookie('accessToken')
-    const data = await $fetch<Agent>(`${API_BASE}/agents/${agentId.value}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken.value}`
-      }
-    })
+    const data = await $api<Agent>(`/agents/${agentId.value}`)
     agent.value = data
 
     // Если загружаем текущего пользователя, обновляем userData в cookie
@@ -200,12 +194,8 @@ const saveAgent = async () => {
     isSaving.value = true
     error.value = null
 
-    const accessToken = useCookie('accessToken')
-    const updatedAgent = await $fetch(`${API_BASE}/agents/${agentId.value}`, {
+    const updatedAgent = await $api(`/agents/${agentId.value}`, {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken.value}`
-      },
       body: {
         firstName: agent.value.firstName,
         lastName: agent.value.lastName,
@@ -260,13 +250,8 @@ const changePassword = async () => {
   try {
     isSaving.value = true
     error.value = null
-    const accessToken = useCookie('accessToken')
-
-    await $fetch(`${API_BASE}/agents/${agentId.value}`, {
+    await $api(`/agents/${agentId.value}`, {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken.value}`
-      },
       body: {
         password: newPassword.value
       }

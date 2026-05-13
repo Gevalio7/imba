@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch';
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue';
 
 // Пропсы
@@ -14,9 +14,6 @@ const emit = defineEmits<{
   (e: 'update:permissions', permissions: Record<string, boolean>): void
   (e: 'saved'): void
 }>()
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Типы данных
 interface Permission {
@@ -49,8 +46,8 @@ const fetchPermissions = async () => {
     loading.value = true
     error.value = null
     
-    const data = await $fetch<{ permissions: Permission[] }>(
-      `${API_BASE}/roles/${props.roleId}/permissions`
+    const data = await $api<{ permissions: Permission[] }>(
+      `/roles/${props.roleId}/permissions`
     )
     permissions.value = data.permissions
   } catch (err) {
@@ -75,7 +72,7 @@ const savePermissions = async () => {
       permissionsObj[p.code] = p.is_granted
     })
     
-    await $fetch(`${API_BASE}/roles/${props.roleId}/permissions`, {
+    await $api(`/roles/${props.roleId}/permissions`, {
       method: 'PUT',
       body: { permissions: permissionsObj }
     })

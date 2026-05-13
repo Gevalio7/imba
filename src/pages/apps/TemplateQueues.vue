@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Шаблон
@@ -70,10 +70,6 @@ interface Priorities {
   value: number
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-
 
 // Данные шаблонов
 const templates = ref<Templates[]>([])
@@ -92,8 +88,8 @@ const fetchTemplates = async () => {
   try {
     templatesLoading.value = true
     templatesError.value = null
-    console.log('Fetching templates from:', `${API_BASE}/templates`)
-    const data = await $fetch<{ templates: Templates[], total: number }>(`${API_BASE}/templates`)
+    console.log('Fetching templates from:', `/templates`)
+    const data = await $api<{ templates: Templates[], total: number }>(`/templates`)
     console.log('Fetched templates data:', data)
     templates.value = data.templates
     templatesTotal.value = data.total
@@ -110,8 +106,8 @@ const fetchQueues = async () => {
   try {
     queuesLoading.value = true
     queuesError.value = null
-    console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $fetch<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetching queues from:', `/queues`)
+    const data = await $api<{ queues: Queues[], total: number }>(`/queues`)
     console.log('Fetched queues data:', data)
     queues.value = data.queues
     queuesTotal.value = data.total
@@ -134,7 +130,7 @@ const agentsGroups = ref<any[]>([])
 // Загрузка справочников
 const fetchCompanies = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/customers`)
+    const data = await $api(`/customers`)
     companies.value = data.customers || []
   } catch (err) {
     console.log('Error fetching companies:', err)
@@ -143,7 +139,7 @@ const fetchCompanies = async () => {
 
 const fetchServices = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/services`)
+    const data = await $api(`/services`)
     services.value = data.services || []
   } catch (err) {
     console.log('Error fetching services:', err)
@@ -152,7 +148,7 @@ const fetchServices = async () => {
 
 const fetchSla = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/sla`)
+    const data = await $api(`/sla`)
     slaList.value = data.sla || []
   } catch (err) {
     console.log('Error fetching SLA:', err)
@@ -161,7 +157,7 @@ const fetchSla = async () => {
 
 const fetchWorkflows = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/workflows`)
+    const data = await $api(`/workflows`)
     workflows.value = data.workflows || []
   } catch (err) {
     console.log('Error fetching workflows:', err)
@@ -170,7 +166,7 @@ const fetchWorkflows = async () => {
 
 const fetchPriorities = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/priorities`)
+    const data = await $api(`/priorities`)
     prioritiesList.value = data.priorities || []
   } catch (err) {
     console.log('Error fetching priorities:', err)
@@ -179,7 +175,7 @@ const fetchPriorities = async () => {
 
 const fetchAgentsGroups = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/agentsGroups`)
+    const data = await $api(`/agentsGroups`)
     agentsGroups.value = data.agentsGroups || []
   } catch (err) {
     console.log('Error fetching agentsGroups:', err)
@@ -189,7 +185,7 @@ const fetchAgentsGroups = async () => {
 // Создание шаблона
 const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Templates>(`${API_BASE}/templates`, {
+    const data = await $api<Templates>(`/templates`, {
       method: 'POST',
       body: item
     })
@@ -204,7 +200,7 @@ const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updat
 // Обновление шаблона
 const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
-    const data = await $fetch<Templates>(`${API_BASE}/templates/${id}`, {
+    const data = await $api<Templates>(`/templates/${id}`, {
       method: 'PUT',
       body: updates
     })
@@ -222,7 +218,7 @@ const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id'
 // Удаление шаблона
 const deleteTemplates = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/templates/${id}`, {
+    await $api(`/templates/${id}`, {
       method: 'DELETE'
     })
     const index = templates.value.findIndex(p => p.id === id)
@@ -238,7 +234,7 @@ const deleteTemplates = async (id: number) => {
 // Создание очереди
 const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Queues>(`${API_BASE}/queues`, {
+    const data = await $api<Queues>(`/queues`, {
       method: 'POST',
       body: item
     })
@@ -253,7 +249,7 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
 // Обновление очереди
 const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
-    const data = await $fetch<Queues>(`${API_BASE}/queues/${id}`, {
+    const data = await $api<Queues>(`/queues/${id}`, {
       method: 'PUT',
       body: updates
     })
@@ -271,7 +267,7 @@ const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'cr
 // Удаление очереди
 const deleteQueues = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/queues/${id}`, {
+    await $api(`/queues/${id}`, {
       method: 'DELETE'
     })
     const index = queues.value.findIndex(p => p.id === id)

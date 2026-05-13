@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -8,9 +8,6 @@ definePage({
     navActiveLink: 'apps-knowledge-base',
   },
 })
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 const router = useRouter()
 
@@ -50,7 +47,7 @@ const removeTag = (index: number) => {
 // Загрузка справочников
 const fetchTypes = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/types`)
+    const data = await $api(`/types`)
     types.value = (data as any).types || []
   } catch (err) {
     console.error('Error fetching types:', err)
@@ -59,7 +56,7 @@ const fetchTypes = async () => {
 
 const fetchServices = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/services`)
+    const data = await $api(`/services`)
     services.value = (data as any).services || []
   } catch (err) {
     console.error('Error fetching services:', err)
@@ -86,7 +83,7 @@ const save = async () => {
       tags: article.value.tags.length > 0 ? article.value.tags : null,
     }
     
-    await $fetch(`${API_BASE}/knowledge-base`, {
+    await $api(`/knowledge-base`, {
       method: 'POST',
       body: articleData,
     })

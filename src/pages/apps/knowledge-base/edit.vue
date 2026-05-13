@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -8,9 +8,6 @@ definePage({
     navActiveLink: 'apps-knowledge-base',
   },
 })
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 const route = useRoute()
 const router = useRouter()
@@ -55,7 +52,7 @@ const article = ref({
 // Загрузка справочников
 const fetchTypes = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/types`)
+    const data = await $api(`/types`)
     types.value = (data as any).types || []
   } catch (err) {
     console.error('Error fetching types:', err)
@@ -64,7 +61,7 @@ const fetchTypes = async () => {
 
 const fetchServices = async () => {
   try {
-    const data = await $fetch(`${API_BASE}/services`)
+    const data = await $api(`/services`)
     services.value = (data as any).services || []
   } catch (err) {
     console.error('Error fetching services:', err)
@@ -77,7 +74,7 @@ const fetchArticle = async () => {
   
   try {
     loading.value = true
-    const data = await $fetch(`${API_BASE}/knowledge-base/${articleId.value}`)
+    const data = await $api(`/knowledge-base/${articleId.value}`)
     const item = data as any
     
     article.value = {
@@ -118,13 +115,13 @@ const save = async () => {
     }
     
     if (isEditMode.value) {
-      await $fetch(`${API_BASE}/knowledge-base/${articleId.value}`, {
+      await $api(`/knowledge-base/${articleId.value}`, {
         method: 'PUT',
         body: articleData,
       })
       showToast('Статья успешно обновлена')
     } else {
-      await $fetch(`${API_BASE}/knowledge-base`, {
+      await $api(`/knowledge-base`, {
         method: 'POST',
         body: articleData,
       })

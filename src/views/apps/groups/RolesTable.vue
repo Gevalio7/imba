@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Роль
@@ -12,8 +12,7 @@ interface Roles {
   updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 // Данные роли
 const roles = ref<Roles[]>([])
@@ -26,8 +25,8 @@ const fetchRoles = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching roles from:', `${API_BASE}/roles`)
-    const data = await $fetch<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
+    console.log('Fetching roles from:', `/roles`)
+    const data = await $api<{ roles: Roles[], total: number }>(`/roles`)
     console.log('Fetched roles data:', data)
     roles.value = data.roles
     total.value = data.total
@@ -42,7 +41,7 @@ const fetchRoles = async () => {
 // Создание роль
 const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Roles>(`${API_BASE}/roles`, {
+    const data = await $api<Roles>(`/roles`, {
       method: 'POST',
       body: item
     })
@@ -57,7 +56,7 @@ const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) 
 // Обновление роль
 const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Roles>(`${API_BASE}/roles/${id}`, {
+    const data = await $api<Roles>(`/roles/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -75,7 +74,7 @@ const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'u
 // Удаление роль
 const deleteRoles = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/roles/${id}`, {
+    await $api(`/roles/${id}`, {
       method: 'DELETE'
     })
     const index = roles.value.findIndex(p => p.id === id)

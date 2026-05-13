@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 
 // Типы данных для Группа клиентов
@@ -43,9 +43,6 @@ interface CustomerUsers {
   updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
 // ========== ГРУППЫ КЛИЕНТОВ ==========
 const customersGroups = ref<CustomersGroups[]>([])
 const customersGroupsLoading = ref(false)
@@ -55,7 +52,7 @@ const fetchCustomersGroups = async () => {
   try {
     customersGroupsLoading.value = true
     customersGroupsError.value = null
-    const data = await $fetch<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups`)
+    const data = await $api<{ customersGroups: CustomersGroups[], total: number }>(`/customersGroups`)
     customersGroups.value = data.customersGroups
   } catch (err) {
     customersGroupsError.value = 'Ошибка загрузки групп клиентов'
@@ -74,7 +71,7 @@ const fetchCustomers = async () => {
   try {
     customersLoading.value = true
     customersError.value = null
-    const data = await $fetch<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customers[], total: number }>(`/customers`)
     customers.value = data.customers
   } catch (err) {
     customersError.value = 'Ошибка загрузки компаний'
@@ -93,7 +90,7 @@ const fetchCustomerUsers = async () => {
   try {
     usersLoading.value = true
     usersError.value = null
-    const data = await $fetch<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
+    const data = await $api<{ customerUsers: CustomerUsers[], total: number }>(`/customerUsers`)
     customerUsers.value = data.customerUsers
   } catch (err) {
     usersError.value = 'Ошибка загрузки клиентов компании'
@@ -106,7 +103,7 @@ const fetchCustomerUsers = async () => {
 // ========== CRUD ДЛЯ КОМПАНИЙ ==========
 const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Customers>(`${API_BASE}/customers`, {
+    const data = await $api<Customers>(`/customers`, {
       method: 'POST',
       body: item
     })
@@ -120,7 +117,7 @@ const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updat
 
 const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Customers>(`${API_BASE}/customers/${id}`, {
+    const data = await $api<Customers>(`/customers/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -137,7 +134,7 @@ const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'created
 
 const deleteCustomers = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/customers/${id}`, {
+    await $api(`/customers/${id}`, {
       method: 'DELETE'
     })
     const index = customers.value.findIndex(p => p.id === id)
@@ -153,7 +150,7 @@ const deleteCustomers = async (id: number) => {
 // ========== CRUD ДЛЯ ГРУПП КЛИЕНТОВ ==========
 const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<CustomersGroups>(`${API_BASE}/customersGroups`, {
+    const data = await $api<CustomersGroups>(`/customersGroups`, {
       method: 'POST',
       body: item
     })
@@ -167,7 +164,7 @@ const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'created
 
 const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<CustomersGroups>(`${API_BASE}/customersGroups/${id}`, {
+    const data = await $api<CustomersGroups>(`/customersGroups/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -184,7 +181,7 @@ const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id
 
 const deleteCustomersGroups = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/customersGroups/${id}`, {
+    await $api(`/customersGroups/${id}`, {
       method: 'DELETE'
     })
     const index = customersGroups.value.findIndex(p => p.id === id)
@@ -200,7 +197,7 @@ const deleteCustomersGroups = async (id: number) => {
 // ========== CRUD ДЛЯ КЛИЕНТОВ КОМПАНИИ ==========
 const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers`, {
+    const data = await $api<CustomerUsers>(`/customerUsers`, {
       method: 'POST',
       body: item
     })
@@ -214,7 +211,7 @@ const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' 
 
 const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<CustomerUsers>(`${API_BASE}/customerUsers/${id}`, {
+    const data = await $api<CustomerUsers>(`/customerUsers/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -231,7 +228,7 @@ const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 
 
 const deleteCustomerUsers = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/customerUsers/${id}`, {
+    await $api(`/customerUsers/${id}`, {
       method: 'DELETE'
     })
     const index = customerUsers.value.findIndex(p => p.id === id)
@@ -250,7 +247,7 @@ const updateCustomerUsersGroup = async (userId: number, customersGroupId: number
     const user = customerUsers.value.find(u => u.id === userId)
     if (!user) return
     
-    await $fetch<CustomerUsers>(`${API_BASE}/customerUsers/${userId}`, {
+    await $api<CustomerUsers>(`/customerUsers/${userId}`, {
       method: 'PUT',
       body: {
         firstName: user.firstName,

@@ -3,7 +3,7 @@
 import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
 import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
 import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -70,8 +70,7 @@ interface Agent {
   [key: string]: any
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 // Роутер
 const router = useRouter()
@@ -102,7 +101,7 @@ const error = ref<string | null>(null)
 const fetchRoles = async () => {
   try {
     console.log('[Agents/index.vue] GET /api/roles - fetching roles')
-    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: Role[], total: number }>(`/roles`)
     roles.value = data.roles
   } catch (err) {
     console.error('Error fetching roles:', err)
@@ -115,7 +114,7 @@ const fetchAgentsGroups = async (silent = false) => {
     if (!silent) loading.value = true
     error.value = null
     console.log('[Agents/index.vue] GET /api/agentsGroups - fetching groups')
-    const data = await $fetch<{ agentsGroups: AgentsGroups[], total: number }>(`${API_BASE}/agentsGroups`)
+    const data = await $api<{ agentsGroups: AgentsGroups[], total: number }>(`/agentsGroups`)
     agentsGroups.value = data.agentsGroups
   } catch (err) {
     error.value = 'Ошибка загрузки группы агентов'
@@ -129,7 +128,7 @@ const fetchAgentsGroups = async (silent = false) => {
 const fetchAllAgents = async () => {
   try {
     loadingAgents.value = true
-    const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`, {
+    const data = await $api<{ agents: Agent[], total: number }>(`/agents`, {
       query: { itemsPerPage: 1000 }
     })
     allAgents.value = data.agents
@@ -156,7 +155,7 @@ const handleGroupsUpdated = async () => {
 // Удаление группы
 const deleteGroup = async (group: AgentsGroups) => {
   try {
-    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, { method: 'DELETE' })
+    await $api(`/agentsGroups/${group.id}`, { method: 'DELETE' })
     await handleGroupsUpdated()
     showToast(`Группа "${group.name}" успешно удалена`)
   } catch (err) {
@@ -179,7 +178,7 @@ const showToast = (message: string, color: string = 'success') => {
 // Переключение статуса группы
 const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
   try {
-    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
+    await $api(`/agentsGroups/${group.id}`, {
       method: 'PUT',
       body: { ...group, isActive: newValue }
     })
@@ -232,7 +231,7 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     for (const item of selectedItems.value) {
-      await $fetch(`${API_BASE}/agentsGroups/${item.id}`, { method: 'DELETE' })
+      await $api(`/agentsGroups/${item.id}`, { method: 'DELETE' })
     }
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
@@ -247,7 +246,7 @@ const confirmBulkDelete = async () => {
 const confirmBulkStatusChange = async () => {
   try {
     for (const item of selectedItems.value) {
-      await $fetch(`${API_BASE}/agentsGroups/${item.id}`, {
+      await $api(`/agentsGroups/${item.id}`, {
         method: 'PUT',
         body: { ...item, isActive: bulkStatusValue.value === 1 }
       })
@@ -300,7 +299,7 @@ const createGroup = async () => {
 
   try {
     creatingGroup.value = true
-    await $fetch(`${API_BASE}/agentsGroups`, {
+    await $api(`/agentsGroups`, {
       method: 'POST',
       body: {
         name: newGroupName.value.trim(),

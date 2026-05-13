@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -51,8 +51,7 @@ interface Agent {
   avatar?: string | null
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 // Props - для получения данных из родителя
 interface Props {
@@ -92,7 +91,7 @@ const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleI
 const fetchRoles = async () => {
   try {
     console.log('[AgentsTable.vue] GET /api/roles - fetching roles')
-    const data = await $fetch<{ roles: { id: number; name: string; icon?: string }[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: { id: number; name: string; icon?: string }[], total: number }>('/roles')
     rolesMap.value.clear()
     data.roles.forEach(role => {
       rolesMap.value.set(role.id, { name: role.name, icon: role.icon })
@@ -126,7 +125,7 @@ const fetchAgents = async (silent = false) => {
     }
     
     console.log('[AgentsTable.vue] GET /api/agents - fetching agents')
-    const data = await $fetch<{ agents: Agents[], total: number }>(`${API_BASE}/agents`, {
+    const data = await $api<{ agents: Agents[], total: number }>('/agents', {
       query,
     })
     agents.value = data.agents
@@ -147,7 +146,7 @@ const fetchAgents = async (silent = false) => {
 const fetchGroupsStatus = async () => {
   try {
     console.log('[AgentsTable.vue] GET /api/agentsGroups - fetching groups')
-    const response = await $fetch(`${API_BASE}/agentsGroups`)
+    const response = await $api(`/agentsGroups`)
     console.log('📋 Groups API response:', response)
     console.log('📊 Type:', typeof response)
     console.log('🔍 Has agentsGroups:', !!response.agentsGroups)
@@ -193,7 +192,7 @@ const fetchGroupsStatus = async () => {
 // Создание агента
 const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<Agents>(`${API_BASE}/agents`, {
+    const data = await $api<Agents>('/agents', {
       method: 'POST',
       body: item
     })
@@ -208,7 +207,7 @@ const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>
 // Обновление агента
 const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>>) => {
   try {
-    const data = await $fetch<Agents>(`${API_BASE}/agents/${id}`, {
+    const data = await $api<Agents>(`/agents/${id}`, {
       method: 'PUT',
       body: updates
     })
@@ -235,7 +234,7 @@ const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'cr
 // Удаление агента
 const deleteAgents = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/agents/${id}`, { method: 'DELETE' })
+    await $api(`/agents/${id}`, { method: 'DELETE' })
     const index = agents.value.findIndex(p => p.id === id)
     if (index !== -1) agents.value.splice(index, 1)
   } catch (err) {
@@ -360,7 +359,7 @@ const confirmBulkAddToGroup = async () => {
     
     // Добавляем каждого выбранного агента в группу
     for (const agent of selectedItems.value) {
-      await $fetch(`${API_BASE}/agentsGroups/${bulkAddToGroupId.value}/agents`, {
+      await $api(`/agentsGroups/${bulkAddToGroupId.value}/agents`, {
         method: 'POST',
         body: { agentId: agent.id }
       })
@@ -668,7 +667,7 @@ const addAgentToGroup = async () => {
   }
 
   try {
-    await $fetch(`${API_BASE}/agentsGroups/${selectedGroupForAgent.value}/agents`, {
+    await $api(`/agentsGroups/${selectedGroupForAgent.value}/agents`, {
       method: 'POST',
       body: { agentId: selectedAgentForGroup.value.id }
     })
@@ -714,7 +713,7 @@ const save = async () => {
       })
 
       // Сохраняем группы агента
-      await $fetch(`${API_BASE}/agents/${editedItem.value.id}/groups`, {
+      await $api(`/agents/${editedItem.value.id}/groups`, {
         method: 'PUT',
         body: { groupIds: selectedGroupIds.value }
       })
@@ -749,7 +748,7 @@ const save = async () => {
 
       // Сохраняем группы для нового агента
       if (selectedGroupIds.value.length > 0) {
-        await $fetch(`${API_BASE}/agents/${newAgent.id}/groups`, {
+        await $api(`/agents/${newAgent.id}/groups`, {
           method: 'PUT',
           body: { groupIds: selectedGroupIds.value }
         })

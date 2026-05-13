@@ -65,8 +65,8 @@ async function setupDefaultPermissions() {
       // Администратор — полный доступ ко всему меню
       'Администратор': rwAll(ALL_MENU_BASES),
 
-      // Специалист — только база знаний (чтение)
-      'Специалист': readOnly(['menu_knowledge_base']),
+      // Специалист — полный доступ ко всему меню
+      'Специалист': rwAll(ALL_MENU_BASES),
 
       // Младший специалист — только список тикетов и БЗ (чтение)
       'Младший специалист': readOnly(['menu_tickets_list', 'menu_knowledge_base']),

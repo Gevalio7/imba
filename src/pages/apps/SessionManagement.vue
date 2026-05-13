@@ -10,6 +10,7 @@ interface SessionManagement {
   userAgent: string
   loginTime: string
   lastActivity: string
+  type: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -92,6 +93,45 @@ const deleteSessionManagement = async (id: number) => {
   }
 }
 
+// Завершение сессии
+const terminateSession = async (id: number) => {
+  try {
+    const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement/${id}/terminate`, {
+      method: 'PUT'
+    })
+    const index = sessionManagement.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      sessionManagement.value[index] = data
+    }
+    showToast('Сессия завершена')
+
+    // Если завершена своя сессия, выйти из системы
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+    if (data.username === userData.login) {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('userData')
+      window.location.href = '/login'
+    }
+  } catch (err) {
+    console.error('Error terminating session:', err)
+    showToast('Ошибка завершения сессии', 'error')
+  }
+}
+
+// Завершение всех активных сессий
+const terminateAllSessions = async () => {
+  try {
+    await $api(`${API_BASE}/sessionManagement/terminate-all`, {
+      method: 'POST'
+    })
+    showToast('Сессии завершены')
+    fetchSessionManagement()
+  } catch (err) {
+    console.error('Error terminating all sessions:', err)
+    showToast('Ошибка завершения всех сессий', 'error')
+  }
+}
+
 // Инициализация
 onMounted(() => {
   fetchSessionManagement()
@@ -104,6 +144,7 @@ const headers = [
   { title: 'User Agent', key: 'userAgent', sortable: true },
   { title: 'Время входа', key: 'loginTime', sortable: true },
   { title: 'Последняя активность', key: 'lastActivity', sortable: true },
+  { title: 'Тип', key: 'type', sortable: true },
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
@@ -119,6 +160,10 @@ const filteredSessionManagement = computed(() => {
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
+  if (typeFilter.value !== null) {
+    filtered = filtered.filter(p => p.type === typeFilter.value)
+  }
+
   return filtered
 })
 
@@ -128,48 +173,15 @@ const clearFilters = () => {
 }
 
 // Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
 
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
 
-const confirmBulkDelete = async () => {
+
+const confirmBulkTerminateAll = async () => {
   try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await deleteSessionManagement(item.id)
-    }
-    selectedItems.value = []
-    showToast(`Удалено ${count} управление сессиями`)
-    isBulkDeleteDialogOpen.value = false
+    await terminateAllSessions()
+    isBulkTerminateAllDialogOpen.value = false
   } catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateSessionManagement(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} управление сессиями`)
-    isBulkStatusDialogOpen.value = false
-  } catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
+    showToast('Ошибка завершения сессий', 'error')
   }
 }
 
@@ -186,127 +198,21 @@ const itemsPerPage = ref(10)
 
 // Фильтры
 const statusFilter = ref<number | null>(null)
+const typeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
 const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
+const isBulkTerminateAllDialogOpen = ref(false)
 
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
 
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
 
-const defaultItem = ref<SessionManagement>({
-  id: -1,
-  username: '',
-  ipAddress: '',
-  userAgent: '',
-  loginTime: '',
-  lastActivity: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
 
-const editedItem = ref<SessionManagement>({ ...defaultItem.value })
-const editedIndex = ref(-1)
 
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
 
-// Методы
-const editItem = (item: SessionManagement) => {
-  editedIndex.value = sessionManagement.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
 
-const deleteItem = (item: SessionManagement) => {
-  editedIndex.value = sessionManagement.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
 
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateSessionManagement(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Управление сессией успешно сохранен')
-    } else {
-      // Добавление нового
-      const created = await createSessionManagement({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive
-      })
-      showToast('Управление сессией успешно добавлен')
-    }
-    close()
-  } catch (err) {
-    showToast('Ошибка сохранения управление сессией', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteSessionManagement(editedItem.value.id)
-    showToast('Управление сессией успешно удален')
-    closeDelete()
-  } catch (err) {
-    showToast('Ошибка удаления управление сессией', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: SessionManagement, newValue: boolean) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  try {
-    await updateSessionManagement(item.id, {
-      ...item,
-      isActive: newValue
-    })
-    showToast('Статус управление сессией изменен')
-  } catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
 
 // Уведомления
 const isToastVisible = ref(false)
@@ -319,12 +225,7 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового управление сессией
-const addNewSessionManagement = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
+
 </script>
 
 <template>
@@ -373,28 +274,19 @@ const addNewSessionManagement = () => {
               variant="tonal"
               color="secondary"
               prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedItems.length === 0"
               v-bind="props"
             >
-              Действия ({{ selectedItems.length }})
+              Действия
             </VBtn>
           </template>
           <VList>
             <VListItem
               @click="() => {
-                bulkDelete()
+                isBulkTerminateAllDialogOpen = true
                 isBulkActionsMenuOpen = false
               }"
             >
-              <VListItemTitle>Удалить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Изменить статус</VListItemTitle>
+              <VListItemTitle>Завершить сессии</VListItemTitle>
             </VListItem>
           </VList>
         </VMenu>
@@ -414,13 +306,7 @@ const addNewSessionManagement = () => {
             Экспорт
           </VBtn>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewSessionManagement"
-          >
-            Добавить управление сессией
-          </VBtn>
+
         </div>
       </div>
 
@@ -440,6 +326,18 @@ const addNewSessionManagement = () => {
                   :items="[
                     { title: 'Активен', value: 1 },
                     { title: 'Не активен', value: 2 },
+                  ]"
+                  clearable
+                  clear-icon="bx-x"
+                />
+              </VCol>
+              <VCol cols="12">
+                <AppSelect
+                  v-model="typeFilter"
+                  placeholder="Тип"
+                  :items="[
+                    { title: 'Пользователь', value: 'user' },
+                    { title: 'Агент', value: 'agent' },
                   ]"
                   clearable
                   clear-icon="bx-x"
@@ -475,66 +373,34 @@ const addNewSessionManagement = () => {
         </VCard>
       </VDialog>
 
-      <!-- Диалог массового удаления -->
-      <VDialog
-        v-model="isBulkDeleteDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Подтверждение удаления">
-          <VCardText>
-            Вы уверены, что хотите удалить выбранные управление сессиями? Это действие нельзя отменить.
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkDeleteDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkDelete"
-              >
-                Удалить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
 
-      <!-- Диалог массового изменения статуса -->
+
+
+
+      <!-- Диалог завершения всех сессий -->
       <VDialog
-        v-model="isBulkStatusDialogOpen"
+        v-model="isBulkTerminateAllDialogOpen"
         max-width="500px"
       >
-        <VCard title="Изменить статус">
+        <VCard title="Завершить сессии">
           <VCardText>
-            <AppSelect
-              v-model="bulkStatusValue"
-              :items="statusOptions"
-              item-title="text"
-              item-value="value"
-              label="Новый статус"
-            />
+            Вы уверены, что хотите завершить все активные сессии? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
               <VBtn
                 color="error"
                 variant="outlined"
-                @click="isBulkStatusDialogOpen = false"
+                @click="isBulkTerminateAllDialogOpen = false"
               >
                 Отмена
               </VBtn>
               <VBtn
                 color="success"
                 variant="elevated"
-                @click="confirmBulkStatusChange"
+                @click="confirmBulkTerminateAll"
               >
-                Применить
+                Завершить
               </VBtn>
             </div>
           </VCardText>
@@ -556,16 +422,18 @@ const addNewSessionManagement = () => {
         return-object
         no-data-text="Нет данных"
       >
+        <!-- Тип -->
+        <template #item.type="{ item }">
+          {{ item.type === 'agent' ? 'Агент' : 'Сотрудник' }}
+        </template>
+
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
-            <VSwitch
-              :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
-              color="primary"
-              hide-details
-            />
+            <VIcon v-if="!item.isActive" icon="bx-door-closed" color="error" />
+            <span v-if="!item.isActive" class="text-error">Завершено</span>
             <VChip
+              v-else
               v-bind="resolveStatusVariant(item.isActive)"
               density="compact"
               label
@@ -577,11 +445,8 @@ const addNewSessionManagement = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn @click="deleteItem(item)">
-              <VIcon icon="bx-trash" />
+            <IconBtn v-if="item.isActive" @click="terminateSession(item.id)" color="warning">
+              <VIcon icon="bx-door-open" />
             </IconBtn>
           </div>
         </template>
@@ -597,131 +462,7 @@ const addNewSessionManagement = () => {
       </div>
     </VCard>
 
-    <!-- Диалог редактирования -->
-    <VDialog
-      v-model="editDialog"
-      max-width="600px"
-    >
-      <VCard :title="editedIndex > -1 ? 'Редактировать управление сессией' : 'Добавить управление сессией'">
-        <VCardText>
-          <VRow>
 
-            <!-- Имя пользователя -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextField
-                v-model="editedItem.username"
-                label="Имя пользователя"
-              />
-            </VCol>
-
-            <!-- IP адрес -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextField
-                v-model="editedItem.ipAddress"
-                label="IP адрес"
-              />
-            </VCol>
-
-            <!-- User Agent -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextField
-                v-model="editedItem.userAgent"
-                label="User Agent"
-              />
-            </VCol>
-
-            <!-- Время входа -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextField
-                v-model="editedItem.loginTime"
-                label="Время входа"
-              />
-            </VCol>
-
-            <!-- Последняя активность -->
-            <VCol
-              cols="12"
-              
-            >
-              <AppTextField
-                v-model="editedItem.lastActivity"
-                label="Последняя активность"
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог удаления -->
-    <VDialog
-      v-model="deleteDialog"
-      max-width="500px"
-    >
-      <VCard title="Вы уверены, что хотите удалить этот управление сессией?">
-        <VCardText>
-          <div class="d-flex justify-center gap-4">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="closeDelete"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="deleteItemConfirm"
-            >
-              Удалить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
   </div>
 
   <!-- Уведомления -->

@@ -57,15 +57,26 @@ const login = async () => {
 
     console.log('Login response:', { accessToken, userData, userAbilityRulesCount: userAbilityRules?.length })
 
-    // Сохраняем в sessionStorage
+    // Сохраняем в sessionStorage + localStorage (fallback для новых вкладок)
     if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem('userAbilityRules', JSON.stringify(userAbilityRules))
+      const rulesJson = JSON.stringify(userAbilityRules)
+      sessionStorage.setItem('userAbilityRules', rulesJson)
       sessionStorage.setItem('userData', JSON.stringify(userData))
       sessionStorage.setItem('accessToken', accessToken)
+
+      localStorage.setItem('userAbilityRules', rulesJson)
       
-      console.log('Saved to sessionStorage. userAbilityRules count:', userAbilityRules.length)
-      console.log('UserData saved:', userData)
+      console.log('Saved to storage. userAbilityRules count:', userAbilityRules.length)
     }
+
+    // Сохраняем userData и accessToken в cookie (guards.ts проверяет наличие через useCookie)
+    // НЕ пишем userAbilityRules в cookie — лимит 4KB, а rules > 7KB.
+    // CASL инициализируется из sessionStorage (см. plugins/casl/index.ts).
+    const cookieUserData = useCookie<typeof userData>('userData')
+    const cookieAccessToken = useCookie<string>('accessToken')
+    
+    cookieUserData.value = userData
+    cookieAccessToken.value = accessToken
     
     ability.update(userAbilityRules)
 

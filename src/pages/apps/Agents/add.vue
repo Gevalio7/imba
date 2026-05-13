@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -40,8 +40,7 @@ interface Queue {
   name: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 const router = useRouter()
 
@@ -127,7 +126,7 @@ const notifications = ref([
 const fetchRoles = async () => {
   try {
     rolesLoading.value = true
-    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: Role[], total: number }>(`/roles`)
     roles.value = data.roles
   } catch (err) {
     console.error('Error fetching roles:', err)
@@ -140,7 +139,7 @@ const fetchRoles = async () => {
 const fetchAgentGroups = async () => {
   try {
     agentGroupsLoading.value = true
-    const data = await $fetch<{ agentGroups: AgentGroup[], total: number }>(`${API_BASE}/agents-groups`)
+    const data = await $api<{ agentGroups: AgentGroup[], total: number }>(`/agents-groups`)
     agentGroups.value = data.agentGroups
   } catch (err) {
     console.error('Error fetching agent groups:', err)
@@ -153,7 +152,7 @@ const fetchAgentGroups = async () => {
 const fetchQueues = async () => {
   try {
     queuesLoading.value = true
-    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    const data = await $api<{ queues: Queue[], total: number }>(`/queues`)
     queues.value = data.queues
   } catch (err) {
     console.error('Error fetching queues:', err)
@@ -178,7 +177,7 @@ const createAgent = async () => {
     isSaving.value = true
     error.value = null
     
-    const created = await $fetch<Agent>(`${API_BASE}/agents`, {
+    const created = await $api<Agent>(`/agents`, {
       method: 'POST',
       body: {
         firstName: agent.value.firstName,
@@ -195,7 +194,7 @@ const createAgent = async () => {
 
     // Обновляем группы агента
     if (created && selectedGroupIds.value.length > 0) {
-      await $fetch(`${API_BASE}/agents/${(created as any).id}/groups`, {
+      await $api(`/agents/${(created as any).id}/groups`, {
         method: 'PUT',
         body: { groupIds: selectedGroupIds.value }
       })
@@ -203,7 +202,7 @@ const createAgent = async () => {
 
     // Обновляем очереди агента
     if (created && selectedQueueIds.value.length > 0) {
-      await $fetch(`${API_BASE}/agents/${(created as any).id}/queues`, {
+      await $api(`/agents/${(created as any).id}/queues`, {
         method: 'PUT',
         body: { queueIds: selectedQueueIds.value }
       })

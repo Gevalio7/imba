@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Конфигурация системы
@@ -16,9 +16,6 @@ interface SystemConfiguration {
 }
 
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
 // Данные конфигурация системы
 const systemConfiguration = ref<SystemConfiguration[]>([])
 const total = ref(0)
@@ -30,8 +27,8 @@ const fetchSystemConfiguration = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching systemConfiguration from:', `${API_BASE}/systemConfiguration`)
-    const data = await $fetch<{ systemConfiguration: SystemConfiguration[], total: number }>(`${API_BASE}/systemConfiguration`)
+    console.log('Fetching systemConfiguration from:', `/systemConfiguration`)
+    const data = await $api<{ systemConfiguration: SystemConfiguration[], total: number }>(`/systemConfiguration`)
     console.log('Fetched systemConfiguration data:', data)
     systemConfiguration.value = data.systemConfiguration
     total.value = data.total
@@ -46,7 +43,7 @@ const fetchSystemConfiguration = async () => {
 // Создание конфигурация системы
 const createSystemConfiguration = async (item: Omit<SystemConfiguration, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SystemConfiguration>(`${API_BASE}/systemConfiguration`, {
+    const data = await $api<SystemConfiguration>(`/systemConfiguration`, {
       method: 'POST',
       body: item
     })
@@ -61,7 +58,7 @@ const createSystemConfiguration = async (item: Omit<SystemConfiguration, 'id' | 
 // Обновление конфигурация системы
 const updateSystemConfiguration = async (id: number, item: Omit<SystemConfiguration, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<SystemConfiguration>(`${API_BASE}/systemConfiguration/${id}`, {
+    const data = await $api<SystemConfiguration>(`/systemConfiguration/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -79,7 +76,7 @@ const updateSystemConfiguration = async (id: number, item: Omit<SystemConfigurat
 // Удаление конфигурация системы
 const deleteSystemConfiguration = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/systemConfiguration/${id}`, {
+    await $api(`/systemConfiguration/${id}`, {
       method: 'DELETE'
     })
     const index = systemConfiguration.value.findIndex(p => p.id === id)

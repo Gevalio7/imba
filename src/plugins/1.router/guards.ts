@@ -1,6 +1,7 @@
 import type { RouteNamedMap, _RouterTyped } from 'unplugin-vue-router'
 import { canNavigate } from '@layouts/plugins/casl'
 import { getFirstAccessibleRoutePath } from '@/utils/firstAccessibleRoute'
+import { $api } from '@/utils/api'
 
 interface AbilityRule { action: string; subject: string }
 
@@ -19,7 +20,7 @@ const readAbilityRulesFromSession = (): AbilityRule[] => {
 export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]: any }>) => {
   // 👉 router.beforeEach
   // Docs: https://router.vuejs.org/guide/advanced/navigation-guards.html#global-before-guards
-  router.beforeEach(to => {
+  router.beforeEach(async to => {
     /*
      * If it's a public route, continue navigation. This kind of pages are allowed to visited by login & non-login users. Basically, without any restrictions.
      * Examples of public routes are, 404, under maintenance, etc.
@@ -53,6 +54,8 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
       const rules = readAbilityRulesFromSession()
       return getFirstAccessibleRoutePath(rules)
     }
+
+
 
     // Временно отключена проверка ролевой модели для произвольных маршрутов.
     // if (!canNavigate(to) && to.matched.length) {

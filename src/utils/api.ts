@@ -12,4 +12,13 @@ export const $api = $fetch.create({
       options.headers.set('Authorization', `Bearer ${accessToken}`)
     }
   },
+  onResponseError({ response }) {
+    if (response.status === 401) {
+      // Очищаем токен и перенаправляем на логин
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('accessToken')
+      }
+      window.location.href = '/login'
+    }
+  },
 })

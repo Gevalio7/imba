@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, ref, watch } from 'vue'
 
 // Типы данных для Группа агентов
@@ -47,8 +47,7 @@ const emit = defineEmits<{
   'group-updated': []
 }>()
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+// $api уже содержит baseURL и добавляет Authorization header
 
 // Данные
 const group = ref<AgentsGroups>({
@@ -78,7 +77,7 @@ const loadingRoles = ref(false)
 const fetchAllAgents = async () => {
   try {
     loadingAgents.value = true
-    const data = await $fetch<{ agents: Agent[], total: number }>(`${API_BASE}/agents`)
+    const data = await $api<{ agents: Agent[], total: number }>('/agents')
     allAgents.value = data.agents.filter(agent => agent.isActive) // Только активные
   } catch (err) {
     console.error('Error fetching all agents:', err)
@@ -91,7 +90,7 @@ const fetchAllAgents = async () => {
 const fetchAllRoles = async () => {
   try {
     loadingRoles.value = true
-    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: Role[], total: number }>('/roles')
     roles.value = data.roles
   } catch (err) {
     console.error('Error fetching roles:', err)
@@ -111,7 +110,7 @@ const addAgent = async (agent: Agent) => {
   if (!group.value.id || group.value.id === -1) return
 
   try {
-    await $fetch(`${API_BASE}/agentsGroups/${group.value.id}/agents`, {
+    await $api(`/agentsGroups/${group.value.id}/agents`, {
       method: 'POST',
       body: { agentId: agent.id }
     })
@@ -127,7 +126,7 @@ const removeAgent = async (agent: Agent) => {
   if (!group.value.id || group.value.id === -1) return
 
   try {
-    await $fetch(`${API_BASE}/agentsGroups/${group.value.id}/agents/${agent.id}`, {
+    await $api(`/agentsGroups/${group.value.id}/agents/${agent.id}`, {
       method: 'DELETE'
     })
     group.value.agents = group.value.agents.filter(a => a.id !== agent.id)
@@ -146,7 +145,7 @@ const saveGroup = async () => {
   try {
     if (group.value.id > 0) {
       // Обновление
-      await $fetch(`${API_BASE}/agentsGroups/${group.value.id}`, {
+      await $api(`/agentsGroups/${group.value.id}`, {
         method: 'PUT',
         body: {
           name: group.value.name,
@@ -157,7 +156,7 @@ const saveGroup = async () => {
       showToast('Группа обновлена')
     } else {
       // Создание
-      const newGroup = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups`, {
+      const newGroup = await $api<AgentsGroups>('/agentsGroups', {
         method: 'POST',
         body: {
           name: group.value.name,
@@ -196,7 +195,7 @@ const showToast = (message: string, color: string = 'success') => {
 // Загрузка актуальных данных группы с сервера
 const fetchGroupById = async (groupId: number) => {
   try {
-    const data = await $fetch<AgentsGroups>(`${API_BASE}/agentsGroups/${groupId}`)
+    const data = await $api<AgentsGroups>(`/agentsGroups/${groupId}`)
     group.value = { ...data, agents: group.value.agents || [] }
     // Инициализируем выбранные роли из актуальных данных
     if (data.roles && data.roles.length > 0) {

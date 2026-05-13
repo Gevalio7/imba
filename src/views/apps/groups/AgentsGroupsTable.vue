@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { ref, watch } from 'vue'
 import AddEditGroupDialog from './AddEditGroupDialog.vue'
 
@@ -33,8 +33,7 @@ interface Role {
   name: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+
 
 // Роутер
 
@@ -86,7 +85,7 @@ const fetchRoles = async () => {
   try {
     loadingRoles.value = true
     console.log('[AgentsGroupsTable.vue] GET /api/roles - fetching roles')
-    const data = await $fetch<{ roles: Role[], total: number }>(`${API_BASE}/roles`)
+    const data = await $api<{ roles: Role[], total: number }>(`/roles`)
     roles.value = data.roles
   } catch (err) {
     console.error('Error fetching roles:', err)
@@ -164,7 +163,7 @@ const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
     group.isActive = newValue
 
     // Отправляем на сервер
-    await $fetch(`${API_BASE}/agentsGroups/${group.id}`, {
+    await $api(`/agentsGroups/${group.id}`, {
       method: 'PUT',
       body: { isActive: newValue }
     })
@@ -215,7 +214,7 @@ const deleteItemConfirm = async () => {
       const deletedGroupId = editedItem.value.id
       deleteLoading.value.push(deletedGroupId)
 
-      await $fetch(`${API_BASE}/agentsGroups/${deletedGroupId}`, {
+      await $api(`/agentsGroups/${deletedGroupId}`, {
         method: 'DELETE'
       })
 

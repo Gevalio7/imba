@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Типы данных
 interface ChangedFile {
@@ -40,7 +37,7 @@ const fetchStatus = async () => {
   try {
     loading.value = true
     error.value = null
-    status.value = await $fetch<IntegrityStatus>(`${API_BASE}/integrity`)
+    status.value = await $api<IntegrityStatus>(`/integrity`)
   } catch (err: any) {
     error.value = err.message || 'Ошибка при проверке целостности'
     console.error('Error fetching integrity status:', err)
@@ -62,7 +59,7 @@ const initializeHashes = async () => {
   
   try {
     initializing.value = true
-    await $fetch(`${API_BASE}/integrity/initialize`, { method: 'POST' })
+    await $api(`/integrity/initialize`, { method: 'POST' })
     showToast('Хэши успешно инициализированы')
     await fetchStatus()
   } catch (err: any) {
@@ -79,7 +76,7 @@ const resetHashes = async () => {
   }
   
   try {
-    await $fetch(`${API_BASE}/integrity/reset`, { method: 'POST' })
+    await $api(`/integrity/reset`, { method: 'POST' })
     showToast('Хэши успешно сброшены')
     await fetchStatus()
   } catch (err: any) {

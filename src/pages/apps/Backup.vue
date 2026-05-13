@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для резервного копирования
@@ -34,9 +34,6 @@ interface Pagination {
   hasNextPage: boolean
   hasPrevPage: boolean
 }
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Store
 const searchQuery = ref('')
@@ -78,8 +75,8 @@ const fetchBackups = async () => {
   try {
     loading.value = true
     error.value = null
-    const response = await $fetch<{ data: Backup[]; pagination: Pagination }>(
-      `${API_BASE}/backup`,
+    const response = await $api<{ data: Backup[]; pagination: Pagination }>(
+      `/backup`,
       {
         query: {
           page: currentPage.value,
@@ -101,7 +98,7 @@ const fetchBackups = async () => {
 // Загрузка настроек расписания
 const fetchScheduleSettings = async () => {
   try {
-    const data = await $fetch<ScheduleSettings>(`${API_BASE}/backup/settings`)
+    const data = await $api<ScheduleSettings>(`/backup/settings`)
     scheduleSettings.value = data
   } catch (err) {
     console.error('Error fetching schedule settings:', err)
@@ -113,7 +110,7 @@ const createDatabaseBackup = async () => {
   try {
     creatingBackup.value = true
     backupTypeCreating.value = 'database'
-    const result = await $fetch<{ success: boolean; backup: Backup }>(`${API_BASE}/backup/database`, {
+    const result = await $api<{ success: boolean; backup: Backup }>(`/backup/database`, {
       method: 'POST'
     })
     backups.value.unshift(result.backup)
@@ -133,7 +130,7 @@ const createFilesystemBackup = async () => {
   try {
     creatingBackup.value = true
     backupTypeCreating.value = 'filesystem'
-    const result = await $fetch<{ success: boolean; backup: Backup }>(`${API_BASE}/backup/filesystem`, {
+    const result = await $api<{ success: boolean; backup: Backup }>(`/backup/filesystem`, {
       method: 'POST'
     })
     backups.value.unshift(result.backup)
@@ -155,7 +152,7 @@ const deleteBackup = async (backup: Backup) => {
   }
 
   try {
-    await $fetch(`${API_BASE}/backup/${backup.id}`, {
+    await $api(`/backup/${backup.id}`, {
       method: 'DELETE'
     })
     showToast('Бэкап успешно удален')
@@ -174,7 +171,7 @@ const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
     for (const itemId of selectedItems.value) {
-      await $fetch(`${API_BASE}/backup/${itemId}`, {
+      await $api(`/backup/${itemId}`, {
         method: 'DELETE'
       })
     }
@@ -190,7 +187,7 @@ const confirmBulkDelete = async () => {
 // Скачивание бэкапа
 const downloadBackup = async (backup: Backup) => {
   try {
-    const response = await fetch(`${API_BASE}/backup/${backup.id}/download`)
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/backup/${backup.id}/download`)
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -209,7 +206,7 @@ const downloadBackup = async (backup: Backup) => {
 const saveSchedule = async () => {
   try {
     savingSchedule.value = true
-    await $fetch(`${API_BASE}/backup/settings`, {
+    await $api(`/backup/settings`, {
       method: 'POST',
       body: scheduleSettings.value
     })

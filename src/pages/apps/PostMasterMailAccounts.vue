@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { $fetch } from 'ofetch'
+import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для PostMasterMailAccount
@@ -34,9 +34,6 @@ interface Queue {
   updatedAt: string
 }
 
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Данные PostMasterMailAccount
 const postMasterMailAccounts = ref<PostMasterMailAccount[]>([])
@@ -77,8 +74,8 @@ const fetchPostMasterMailAccounts = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching postMasterMailAccounts from:', `${API_BASE}/postMasterMailAccounts`)
-    const data = await $fetch<{ postMasterMailAccounts: PostMasterMailAccount[], total: number }>(`${API_BASE}/postMasterMailAccounts`)
+    console.log('Fetching postMasterMailAccounts from:', `/postMasterMailAccounts`)
+    const data = await $api<{ postMasterMailAccounts: PostMasterMailAccount[], total: number }>(`/postMasterMailAccounts`)
     console.log('Fetched postMasterMailAccounts data:', data)
     postMasterMailAccounts.value = data.postMasterMailAccounts
     total.value = data.total
@@ -95,8 +92,8 @@ const fetchQueues = async () => {
   try {
     queuesLoading.value = true
     queuesError.value = null
-    console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $fetch<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+    console.log('Fetching queues from:', `/queues`)
+    const data = await $api<{ queues: Queue[], total: number }>(`/queues`)
     console.log('Fetched queues data:', data)
     queues.value = data.queues
   } catch (err) {
@@ -110,7 +107,7 @@ const fetchQueues = async () => {
 // Создание PostMasterMailAccount
 const createPostMasterMailAccount = async (item: Omit<PostMasterMailAccount, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<PostMasterMailAccount>(`${API_BASE}/postMasterMailAccounts`, {
+    const data = await $api<PostMasterMailAccount>(`/postMasterMailAccounts`, {
       method: 'POST',
       body: item
     })
@@ -125,7 +122,7 @@ const createPostMasterMailAccount = async (item: Omit<PostMasterMailAccount, 'id
 // Обновление PostMasterMailAccount
 const updatePostMasterMailAccount = async (id: number, item: Omit<PostMasterMailAccount, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const data = await $fetch<PostMasterMailAccount>(`${API_BASE}/postMasterMailAccounts/${id}`, {
+    const data = await $api<PostMasterMailAccount>(`/postMasterMailAccounts/${id}`, {
       method: 'PUT',
       body: item
     })
@@ -143,7 +140,7 @@ const updatePostMasterMailAccount = async (id: number, item: Omit<PostMasterMail
 // Удаление PostMasterMailAccount
 const deletePostMasterMailAccount = async (id: number) => {
   try {
-    await $fetch(`${API_BASE}/postMasterMailAccounts/${id}`, {
+    await $api(`/postMasterMailAccounts/${id}`, {
       method: 'DELETE'
     })
     const index = postMasterMailAccounts.value.findIndex(p => p.id === id)

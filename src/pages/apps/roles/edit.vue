@@ -6,7 +6,7 @@ definePage({
 })
 
 import { $api } from '@/utils/api'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, triggerRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 interface Permission {
@@ -87,6 +87,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const superAdmin = ref(false)
+const superAdminUpdating = ref(false) // предотвращает рекурсию watcher
 const expandedPanels = ref([
   'menu_tickets',
   'menu_chat',
@@ -146,51 +147,47 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Watcher for super admin toggle
 watch(superAdmin, async (newVal) => {
+  // Предотвращаем рекурсию при откате
+  if (superAdminUpdating.value) return
+
   // Проверяем, что у нас есть ID роли для сохранения
   if (!roleId.value || roleId.value === 0) {
+    superAdminUpdating.value = true
     showToast('Сначала сохраните основную информацию роли', 'warning')
-    superAdmin.value = !newVal // Откатываем изменение
+    superAdmin.value = !newVal
+    nextTick(() => { superAdminUpdating.value = false })
     return
   }
 
   try {
     const permissionsToUpdate: Record<string, boolean> = {}
 
-    if (newVal) {
-      // Включаем все разрешения
-      permissionsMap.value.forEach((perm, code) => {
-        // Пропускаем родительские permissions
-        const isParentPermission = menuConfig.some(cat =>
-          `${cat.category}_read` === code ||
-          `${cat.category}_write` === code ||
-          `${cat.category}_delete` === code
-        )
+    // Собираем ключи для обновления и мутируем локальное состояние
+    permissionsMap.value.forEach((perm, code) => {
+      // Пропускаем родительские permissions (синтетические для UI)
+      const isParentPermission = menuConfig.some(cat =>
+        `${cat.category}_read` === code ||
+        `${cat.category}_write` === code ||
+        `${cat.category}_delete` === code
+      )
 
-        if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
-          permissionsToUpdate[code] = true
-          perm.read = true
-          perm.write = true
-          perm.delete = true
-        }
-      })
-    } else {
-      // Выключаем все разрешения
-      permissionsMap.value.forEach((perm, code) => {
-        // Пропускаем родительские permissions
-        const isParentPermission = menuConfig.some(cat =>
-          `${cat.category}_read` === code ||
-          `${cat.category}_write` === code ||
-          `${cat.category}_delete` === code
-        )
+      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
+        permissionsToUpdate[code] = newVal
+        if (code.endsWith('_read')) perm.read = newVal
+        else if (code.endsWith('_write')) perm.write = newVal
+        else if (code.endsWith('_delete')) perm.delete = newVal
+      }
+    })
 
-        if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
-          permissionsToUpdate[code] = false
-          perm.read = false
-          perm.write = false
-          perm.delete = false
-        }
-      })
-    }
+    // Обновляем UI сразу (до API-вызова)
+    triggerRef(permissionsMap)
+    menuConfig.forEach(category => {
+      if (category.children[0]?.code) {
+        updateParentState(category.children[0].code)
+      }
+    })
+
+    console.log(`Super admin: sending ${Object.keys(permissionsToUpdate).length} permissions, value=${newVal}`)
 
     // Отправляем запрос на сервер
     await $api(`/roles/${roleId.value}/permissions`, {
@@ -198,19 +195,27 @@ watch(superAdmin, async (newVal) => {
       body: { permissions: permissionsToUpdate }
     })
 
-    // Пересчитать состояния родителей
-    menuConfig.forEach(category => {
-      const types = ['read', 'write', 'delete'] as const
-      types.forEach(type => {
-        updateParentState(category.children[0]?.code || '')
-      })
-    })
-
-    console.log(`Super admin mode ${newVal ? 'enabled' : 'disabled'}`)
+    console.log(`Super admin mode ${newVal ? 'enabled' : 'disabled'} — saved`)
   } catch (err) {
     console.error('Failed to update super admin permissions:', err)
     showToast('Ошибка изменения режима суперадмина', 'error')
-    superAdmin.value = !newVal // Откатываем изменение
+    // Откатываем локальное состояние
+    permissionsMap.value.forEach((perm, code) => {
+      const isParentPermission = menuConfig.some(cat =>
+        `${cat.category}_read` === code ||
+        `${cat.category}_write` === code ||
+        `${cat.category}_delete` === code
+      )
+      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
+        if (code.endsWith('_read')) perm.read = !newVal
+        else if (code.endsWith('_write')) perm.write = !newVal
+        else if (code.endsWith('_delete')) perm.delete = !newVal
+      }
+    })
+    triggerRef(permissionsMap)
+    superAdminUpdating.value = true
+    superAdmin.value = !newVal
+    nextTick(() => { superAdminUpdating.value = false })
   }
 })
 
@@ -414,11 +419,7 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
         permissionsToUpdate[`${childCode}_delete`] = false
       }
 
-      await $api(`/roles/${roleId.value}/permissions`, {
-        method: 'PUT',
-        body: { permissions: permissionsToUpdate }
-      })
-
+      // Optimistic update: обновляем UI сразу
       Object.entries(permissionsToUpdate).forEach(([permKey, permValue]) => {
         const p = permissionsMap.value.get(permKey)
         if (p) {
@@ -426,15 +427,24 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
           ;(p as any)[permType] = permValue
         }
       })
-
+      triggerRef(permissionsMap)
       updateParentState(childCode)
+
+      // Отправляем на сервер
+      await $api(`/roles/${roleId.value}/permissions`, {
+        method: 'PUT',
+        body: { permissions: permissionsToUpdate }
+      })
 
       console.log(`Permissions updated:`, permissionsToUpdate)
     } catch (err) {
       console.error(`Failed to update permissions:`, err)
+      // Откатываем при ошибке
       permission.read = oldRead
       permission.write = oldWrite
       permission.delete = oldDelete
+      triggerRef(permissionsMap)
+      updateParentState(childCode)
       showToast('Ошибка сохранения разрешений', 'error')
     }
   }
@@ -461,7 +471,6 @@ const updateParentState = (childCode: string) => {
     )
 
     // Сохраняем состояние родителя в специальном поле
-    // Это состояние будет использоваться в UI для отображения indeterminate
     const parentKey = `${category.category}_${type}`
     if (!permissionsMap.value.get(parentKey)) {
       permissionsMap.value.set(parentKey, {
@@ -477,9 +486,10 @@ const updateParentState = (childCode: string) => {
 
     const parentPerm = permissionsMap.value.get(parentKey)!
     parentPerm[type] = allChecked
-    // Добавляем флаг для indeterminate
     ;(parentPerm as any)[`${type}_indeterminate`] = someChecked && !allChecked
   })
+
+  triggerRef(permissionsMap)
 }
 
 // Переключить всю категорию
@@ -515,29 +525,28 @@ const toggleCategory = async (category: MenuCategory, type: 'read' | 'write' | '
       }
     })
 
+    // Optimistic update: обновляем UI сразу
+    Object.entries(permissionsToUpdate).forEach(([permKey, permValue]) => {
+      const permission = permissionsMap.value.get(permKey)
+      if (permission) {
+        const permType = permKey.endsWith('_read') ? 'read' : permKey.endsWith('_write') ? 'write' : 'delete'
+        ;(permission as any)[permType] = permValue
+      }
+    })
+    triggerRef(permissionsMap)
+    updateParentState(category.children[0]?.code || '')
+
     // Отправляем запрос на сервер
     await $api(`/roles/${roleId.value}/permissions`, {
       method: 'PUT',
       body: { permissions: permissionsToUpdate }
     })
 
-    // Обновляем локальное состояние
-    Object.entries(permissionsToUpdate).forEach(([permKey, permValue]) => {
-      const permission = permissionsMap.value.get(permKey)
-      if (permission) {
-        const [code, permType] = permKey.split('_')
-        if (permType && ['read', 'write', 'delete'].includes(permType)) {
-          ;(permission as any)[permType] = permValue
-        }
-      }
-    })
-
-    // Обновляем родительское состояние
-    updateParentState(category.children[0]?.code || '')
-
     console.log(`Category ${category.category} ${type} permissions updated to ${value}`)
   } catch (err) {
     console.error(`Failed to update category ${category.category} permissions:`, err)
+    // Откатываем — перезагружаем permissions с сервера
+    await fetchPermissions()
     showToast('Ошибка сохранения разрешений категории', 'error')
   }
 }
@@ -707,6 +716,9 @@ const fetchPermissions = async () => {
         })
       }
 
+      // Триггерим реактивность после мутации объектов внутри Map
+      triggerRef(permissionsMap)
+
       // Обновить состояния родителей
       menuConfig.forEach(category => {
         category.children.forEach(child => {
@@ -779,10 +791,24 @@ const saveRole = async () => {
       roleId.value = savedRole.id
 
       // Сохраняем разрешения для новой роли
+      // Формат API: { "menu_xxx_read": true, "menu_xxx_write": true, ... }
       const permissionsObj: Record<string, boolean> = {}
       permissionsMap.value.forEach((perm, code) => {
-        if (perm.read || perm.write || perm.delete) {
-          permissionsObj[code] = perm.read || perm.write || perm.delete
+        // Пропускаем родительские (синтетические) записи категорий
+        const isParentPermission = menuConfig.some(cat =>
+          `${cat.category}_read` === code ||
+          `${cat.category}_write` === code ||
+          `${cat.category}_delete` === code
+        )
+        if (isParentPermission) return
+
+        // Отправляем только записи с корректным суффиксом _read/_write/_delete
+        if (code.endsWith('_read') && perm.read) {
+          permissionsObj[code] = true
+        } else if (code.endsWith('_write') && perm.write) {
+          permissionsObj[code] = true
+        } else if (code.endsWith('_delete') && perm.delete) {
+          permissionsObj[code] = true
         }
       })
 
