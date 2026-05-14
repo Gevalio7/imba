@@ -86,8 +86,6 @@ const permissionsMap = ref<Map<string, Permission>>(new Map())
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
-const superAdmin = ref(false)
-const superAdminUpdating = ref(false) // предотвращает рекурсию watcher
 const expandedPanels = ref([
   'menu_tickets',
   'menu_chat',
@@ -145,79 +143,6 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Watcher for super admin toggle
-watch(superAdmin, async (newVal) => {
-  // Предотвращаем рекурсию при откате
-  if (superAdminUpdating.value) return
-
-  // Проверяем, что у нас есть ID роли для сохранения
-  if (!roleId.value || roleId.value === 0) {
-    superAdminUpdating.value = true
-    showToast('Сначала сохраните основную информацию роли', 'warning')
-    superAdmin.value = !newVal
-    nextTick(() => { superAdminUpdating.value = false })
-    return
-  }
-
-  try {
-    const permissionsToUpdate: Record<string, boolean> = {}
-
-    // Собираем ключи для обновления и мутируем локальное состояние
-    permissionsMap.value.forEach((perm, code) => {
-      // Пропускаем родительские permissions (синтетические для UI)
-      const isParentPermission = menuConfig.some(cat =>
-        `${cat.category}_read` === code ||
-        `${cat.category}_write` === code ||
-        `${cat.category}_delete` === code
-      )
-
-      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
-        permissionsToUpdate[code] = newVal
-        if (code.endsWith('_read')) perm.read = newVal
-        else if (code.endsWith('_write')) perm.write = newVal
-        else if (code.endsWith('_delete')) perm.delete = newVal
-      }
-    })
-
-    // Обновляем UI сразу (до API-вызова)
-    triggerRef(permissionsMap)
-    menuConfig.forEach(category => {
-      if (category.children[0]?.code) {
-        updateParentState(category.children[0].code)
-      }
-    })
-
-    console.log(`Super admin: sending ${Object.keys(permissionsToUpdate).length} permissions, value=${newVal}`)
-
-    // Отправляем запрос на сервер
-    await $api(`/roles/${roleId.value}/permissions`, {
-      method: 'PUT',
-      body: { permissions: permissionsToUpdate }
-    })
-
-    console.log(`Super admin mode ${newVal ? 'enabled' : 'disabled'} — saved`)
-  } catch (err) {
-    console.error('Failed to update super admin permissions:', err)
-    showToast('Ошибка изменения режима суперадмина', 'error')
-    // Откатываем локальное состояние
-    permissionsMap.value.forEach((perm, code) => {
-      const isParentPermission = menuConfig.some(cat =>
-        `${cat.category}_read` === code ||
-        `${cat.category}_write` === code ||
-        `${cat.category}_delete` === code
-      )
-      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
-        if (code.endsWith('_read')) perm.read = !newVal
-        else if (code.endsWith('_write')) perm.write = !newVal
-        else if (code.endsWith('_delete')) perm.delete = !newVal
-      }
-    })
-    triggerRef(permissionsMap)
-    superAdminUpdating.value = true
-    superAdmin.value = !newVal
-    nextTick(() => { superAdminUpdating.value = false })
-  }
-})
 
 
 
@@ -1040,29 +965,6 @@ onMounted(async () => {
             </VRow>
           </VCardText>
         </VCard>
-
-        <!-- Super Admin Toggle -->
-        <VCard variant="outlined" class="mb-6">
-          <VCardTitle class="pb-3">
-            <div class="d-flex align-center">
-              <VIcon icon="bx-crown" class="mr-3" color="error" />
-              <span class="text-h6">Супер-пользователь</span>
-            </div>
-          </VCardTitle>
-          <VCardText>
-            <VSwitch
-              v-model="superAdmin"
-              label="Полный доступ ко всем разрешениям"
-              color="error"
-              inset
-              class="mb-2"
-            />
-            <p class="text-body-2 text-medium-emphasis">
-              Включение этого режима автоматически предоставит все разрешения (чтение, запись, удаление) для всех категорий.
-            </p>
-          </VCardText>
-        </VCard>
-
 
 
         <!-- Разрешения - НОВОЕ ДЕРЕВО -->
