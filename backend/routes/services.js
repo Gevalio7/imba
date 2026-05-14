@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const multerUpload = multer({ dest: 'uploads/' });
 const { protect } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permissions');
 const {
   getServices,
   getServiceById,
@@ -40,7 +41,7 @@ router.get('/:id/attachments/:attachmentId/download', downloadServiceAttachment)
 router.get('/:id/sla', getServiceSLA);
 
 // POST /services
-router.post('/', protect, createServices);
+router.post('/', protect, checkPermission('menu_services_write'), createServices);
 
 // POST /services/:id/customers/:customerId - добавить компанию к сервису
 router.post('/:id/customers/:customerId', protect, addServiceCustomer);
