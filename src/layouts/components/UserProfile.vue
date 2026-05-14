@@ -25,11 +25,18 @@ onMounted(() => {
 })
 
 const logout = async () => {
+  // Логирование состояния перед logout
   try {
-    // Получаем userData для идентификации сессии
+    console.info('Logout: start, sessionStorage keys:', typeof sessionStorage !== 'undefined' ? Object.keys(sessionStorage) : 'no sessionStorage')
+    console.info('Logout: cookies before clear:', typeof document !== 'undefined' ? document.cookie : 'no document')
+  } catch (e) {
+    console.warn('Logout: error reading storages', e)
+  }
+
+  try {
+    // Попытка завершить сессию на сервере (не критично)
     const userData = getStoredUserData()
     if (userData) {
-      // Вызываем API для завершения сессии на бэкенде
       await $api('/sessionManagement/terminate-current', { method: 'POST' })
     }
   } catch (error) {
@@ -37,35 +44,79 @@ const logout = async () => {
     // Продолжаем logout даже при ошибке API
   }
 
-  // Задержка 10 секунд для визуального подтверждения
-  console.log('Начинаем задержку перед logout...')
-  await new Promise(resolve => setTimeout(resolve, 10000))
-  console.log('Задержка завершена, очищаем данные...')
-
-  // Очищаем sessionStorage
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem('userAbilityRules')
-    sessionStorage.removeItem('userData')
-    sessionStorage.removeItem('accessToken')
+  // Очищаем client-side хранилища
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('userAbilityRules')
+      sessionStorage.removeItem('userData')
+      sessionStorage.removeItem('accessToken')
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('userAbilityRules')
+    }
+  } catch (e) {
+    console.warn('Ошибка при очистке session/local storage:', e)
   }
 
-  // Очищаем localStorage (fallback для новых вкладок)
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem('userAbilityRules')
+  // Утилита для удаления cookie (несколько вариантов домена/path)
+  const eraseCookie = (name: string) => {
+    try {
+      const expire = 'Thu, 01 Jan 1970 00:00:00 GMT'
+      const path = 'path=/;'
+      // Простая очистка
+      document.cookie = `${name}=; ${path} expires=${expire}`
+      // Попробуем с доменом (текущий и с leading dot)
+      try {
+        const hostname = location.hostname
+        document.cookie = `${name}=; Domain=${hostname}; ${path} expires=${expire}`
+        document.cookie = `${name}=; Domain=.${hostname}; ${path} expires=${expire}`
+      } catch (dErr) {
+        // ignore
+      }
+    } catch (err) {
+      // ignore
+    }
   }
 
-  // Очищаем cookie если есть
-  if (typeof document !== 'undefined') {
-    document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    document.cookie = 'userAbilityRules=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  // Очищаем cookie, сначала через useCookie (если доступен), затем через document.cookie
+  try {
+    const cookieUserData = useCookie('userData')
+    const cookieAccessToken = useCookie('accessToken')
+    cookieUserData.value = null
+    cookieAccessToken.value = null
+  } catch (cookieError) {
+    console.warn('useCookie недоступен или ошибка при очистке cookie:', cookieError)
+  }
+
+  try {
+    if (typeof document !== 'undefined') {
+      // Выявляем все cookie и удаляем те, которые связаны с аутентификацией
+      const namesToRemove = ['userData', 'accessToken', 'userAbilityRules']
+      // Также удаляем все, найденные в document.cookie
+      const allCookies = document.cookie ? document.cookie.split(';').map(c => c.split('=')[0].trim()) : []
+      const uniqueNames = Array.from(new Set([...namesToRemove, ...allCookies]))
+      uniqueNames.forEach(n => eraseCookie(n))
+      console.info('Logout: cookies after clear attempt:', document.cookie)
+    }
+  } catch (e) {
+    console.warn('Ошибка при попытке очистить cookie через document.cookie:', e)
   }
 
   // Сбрасываем ability
-  ability.update([])
+  try {
+    ability.update([])
+  } catch (e) {
+    console.warn('Ошибка при сбросе ability:', e)
+  }
 
-  // Форсированный редирект на логин
-  window.location.href = '/login'
+  // Жёсткий переход на страницу логина (принудительная перезагрузка страницы)
+  try {
+    // Используем replace, чтобы не оставлять запись в истории
+    window.location.replace('/login')
+  } catch (err) {
+    // Фолбэк
+    window.location.href = '/login'
+  }
 }
 
 const userProfileList = [
