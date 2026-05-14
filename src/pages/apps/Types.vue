@@ -876,13 +876,14 @@ const removeCategoryFromType = async (type: Types, categoryId: number) => {
             Экспорт
           </VBtn>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewTypes"
-          >
-            Добавить тип
-          </VBtn>
+            <VBtn
+              v-if="$can('write','menu_types')"
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="addNewTypes"
+            >
+              Добавить тип
+            </VBtn>
         </div>
       </div>
 
