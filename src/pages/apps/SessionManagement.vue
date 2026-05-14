@@ -118,13 +118,19 @@ const terminateSession = async (id: number) => {
       sessionStorage.removeItem('userData')
       sessionStorage.removeItem('userAbilityRules')
       localStorage.removeItem('userAbilityRules')
-      // Используем router.push для SPA редиректа
-      const router = useRouter()
-      router.push('/login')
-      // Fallback на window.location
-      setTimeout(() => {
-        window.location.href = '/login'
-      }, 100)
+      // Попытка SPA-редиректа через Vue Router с fallback
+      try {
+        const router = useRouter()
+        await router.push('/login')
+      } catch (navErr) {
+        console.error('Router navigation failed, falling back to window.location:', navErr)
+        // Жёсткий редирект
+        try {
+          window.location.replace('/login')
+        } catch (e) {
+          window.location.href = '/login'
+        }
+      }
     } else {
       alert('Это не ваша сессия, остаёмся залогиненными')
     }
