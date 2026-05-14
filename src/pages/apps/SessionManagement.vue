@@ -110,10 +110,11 @@ const terminateSession = async (id: number) => {
     const userData = JSON.parse(sessionStorage.getItem('userData') || '{}')
     console.log('Terminated session username:', data.username)
     console.log('Current user login:', userData.login)
-    alert(`Завершена сессия: ${data.username}, текущий пользователь: ${userData.login}`)
+    // Информируем пользователя через showToast вместо alert
+    showToast(`Завершена сессия: ${data.username}`, 'success')
     if (data.username === userData.login) {
-      alert('Завершаем свою сессию, выходим...')
       console.log('Terminating own session, logging out...')
+      showToast('Выход из вашей сессии', 'success')
       sessionStorage.removeItem('accessToken')
       sessionStorage.removeItem('userData')
       sessionStorage.removeItem('userAbilityRules')
@@ -124,12 +125,15 @@ const terminateSession = async (id: number) => {
         await router.push('/login')
       } catch (navErr) {
         console.error('Router navigation failed, falling back to window.location:', navErr)
-        // Жёсткий редирект
         try {
           window.location.replace('/login')
         } catch (e) {
           window.location.href = '/login'
         }
+      }
+    } else {
+      showToast('Это не ваша сессия — остаёмся залогиненными', 'info')
+    }
       }
     } else {
       alert('Это не ваша сессия, остаёмся залогиненными')
