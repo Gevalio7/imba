@@ -570,10 +570,10 @@ const addNewTemplates = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
+            <IconBtn v-if="$can('write','menu_templates')" @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_templates')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
