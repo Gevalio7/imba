@@ -271,4 +271,12 @@ const userProfileList = [
       <!-- !SECTION -->
     </VAvatar>
   </VBadge>
+
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="1200"
+  >
+    {{ toastMessage }}
+  </VSnackbar>
 </template>
