@@ -12,6 +12,23 @@ import type { Rule } from './ability'
 function getInitialRules(): Rule[] {
   if (typeof window === 'undefined') return []
   try {
+    // Ensure sessionStorage contains userData / accessToken / rules when cookies exist (handle incognito/new tab)
+    const getCookie = (name: string) => document.cookie.split('; ').reduce((s, c) => { const [k, v] = c.split('='); return k === name ? decodeURIComponent(v) : s }, null as string | null)
+
+    try {
+      // If cookies present but sessionStorage missing, copy from cookies/localStorage
+      const cookieUser = getCookie('userData')
+      const cookieToken = getCookie('accessToken')
+      if (cookieUser && !sessionStorage.getItem('userData')) sessionStorage.setItem('userData', cookieUser)
+      if (cookieToken && !sessionStorage.getItem('accessToken')) sessionStorage.setItem('accessToken', cookieToken)
+      if (!sessionStorage.getItem('userAbilityRules') && localStorage.getItem('userAbilityRules')) {
+        sessionStorage.setItem('userAbilityRules', localStorage.getItem('userAbilityRules')!)
+      }
+    } catch (e) {
+      // ignore cookie->session sync errors
+      console.warn('cookie->session sync failed', e)
+    }
+
     // 1. sessionStorage (текущая вкладка, заполняется при логине)
     const session = sessionStorage.getItem('userAbilityRules')
     if (session) {
