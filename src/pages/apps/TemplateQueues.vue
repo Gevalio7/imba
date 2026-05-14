@@ -717,15 +717,19 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление новых элементов
 const addNewTemplates = () => {
-  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
-  editedTemplatesIndex.value = -1
-  templatesEditDialog.value = true
+  if (useGlobalPermissions().can('write','menu_templates')) {
+    editedTemplatesItem.value = { ...defaultTemplatesItem.value }
+    editedTemplatesIndex.value = -1
+    templatesEditDialog.value = true
+  }
 }
 
 const addNewQueues = () => {
-  editedQueuesItem.value = { ...defaultQueuesItem.value }
-  editedQueuesIndex.value = -1
-  queuesEditDialog.value = true
+  if (useGlobalPermissions().can('write','menu_queues')) {
+    editedQueuesItem.value = { ...defaultQueuesItem.value }
+    editedQueuesIndex.value = -1
+    queuesEditDialog.value = true
+  }
 }
 
 // Переключатель вида шаблонов (карточки/таблица)
@@ -1079,12 +1083,12 @@ watch(emailConfig, (newVal) => {
           <!-- Действия -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
-              <IconBtn @click="editTemplatesItem(item)">
-                <VIcon icon="bx-edit" />
-              </IconBtn>
-              <IconBtn @click="deleteTemplatesItem(item)">
-                <VIcon icon="bx-trash" />
-              </IconBtn>
+            <IconBtn v-if="$can('write','menu_templates')" @click="editTemplatesItem(item)">
+              <VIcon icon="bx-edit" />
+            </IconBtn>
+            <IconBtn v-if="$can('delete','menu_templates')" @click="deleteTemplatesItem(item)">
+              <VIcon icon="bx-trash" />
+            </IconBtn>
             </div>
           </template>
         </VDataTable>
@@ -1385,12 +1389,12 @@ watch(emailConfig, (newVal) => {
           <!-- Действия -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
-              <IconBtn @click="editQueuesItem(item)">
-                <VIcon icon="bx-edit" />
-              </IconBtn>
-              <IconBtn @click="deleteQueuesItem(item)">
-                <VIcon icon="bx-trash" />
-              </IconBtn>
+            <IconBtn v-if="$can('write','menu_queues')" @click="editQueuesItem(item)">
+              <VIcon icon="bx-edit" />
+            </IconBtn>
+            <IconBtn v-if="$can('delete','menu_queues')" @click="deleteQueuesItem(item)">
+              <VIcon icon="bx-trash" />
+            </IconBtn>
             </div>
           </template>
         </VDataTable>
