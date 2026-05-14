@@ -450,13 +450,14 @@ const addNewEmailAddresses = () => {
             Экспорт
           </VBtn>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewEmailAddresses"
-          >
-            Добавить email адрес
-          </VBtn>
+            <VBtn
+              v-if="$can('write','menu_email_addresses')"
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="addNewEmailAddresses"
+            >
+              Добавить email адрес
+            </VBtn>
         </div>
       </div>
 
