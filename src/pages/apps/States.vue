@@ -466,6 +466,7 @@ const addNewStates = () => {
           </VBtn>
 
           <VBtn
+            v-if="$can('write','menu_states')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewStates"
