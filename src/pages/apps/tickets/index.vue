@@ -436,6 +436,10 @@ const editTicket = (id: number) => {
   router.push({ path: '/apps/tickets/edit', query: { id } })
 }
 
+const viewTicket = (id: number) => {
+  router.push({ path: '/apps/tickets/view', query: { id } })
+}
+
 // Загрузка уникальных значений из данных тикетов
 const loadUniqueValuesFromTickets = () => {
   console.log('Loading unique values from tickets data...')
@@ -654,6 +658,7 @@ onMounted(() => {
           </VBtn>
 
           <VBtn
+            v-if="$can('write','menu_tickets_create')"
             color="primary"
             prepend-icon="bx-plus"
             @click="createTicket"
@@ -1023,13 +1028,19 @@ onMounted(() => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="cloneTicket(item)">
+            <IconBtn v-if="$can('write','menu_tickets_create')" @click="cloneTicket(item)">
               <VIcon icon="bx-copy" />
             </IconBtn>
-            <IconBtn @click="editTicket(item.id)">
+
+            <!-- Eye (view) icon: show when user has only read permission or lacks write -->
+            <IconBtn v-if="$can('read','menu_tickets_list') && !$can('write','menu_tickets_list')" @click="viewTicket(item.id)">
+              <VIcon icon="bx-show" />
+            </IconBtn>
+
+            <IconBtn v-if="$can('write','menu_tickets_list')" @click="editTicket(item.id)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_tickets_list')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>

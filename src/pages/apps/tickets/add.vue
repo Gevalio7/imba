@@ -8,6 +8,9 @@ import { useAuthorSearch } from '@/composables/useAuthorSearch'
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
+    // route-level permission meta for router guard
+    action: 'write',
+    subject: 'menu_tickets_create',
   },
 })
 

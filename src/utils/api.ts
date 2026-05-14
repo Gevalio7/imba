@@ -13,12 +13,19 @@ export const $api = $fetch.create({
     }
   },
   onResponseError({ response }) {
-    if (response.status === 401) {
-      // Очищаем токен и перенаправляем на логин
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('accessToken')
+    if (response) {
+      // Если 401 — сессия/токен недействителен. Не делаем автоматический редирект здесь,
+      // чтобы не прерывать текущие операции и позволить UI обработать ошибку (rollback, toast).
+      if (response.status === 401) {
+        console.error('API returned 401 Unauthorized. Caller should handle logout/reauthentication.', response)
       }
-      window.location.href = '/login'
+      // Логируем 403/401 для диагностики
+      if (response.status === 403) {
+        console.warn('API returned 403 Forbidden', response)
+      }
     }
+
+    // Пробрасываем ошибку дальше, чтобы вызвавший код мог её обработать
+    return Promise.reject(response)
   },
 })

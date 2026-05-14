@@ -547,15 +547,15 @@ onMounted(() => {
           </template>
           <VList>
             <VListItem @click="bulkSetActive(true)">
-              <VListItemTitle>Активировать</VListItemTitle>
-            </VListItem>
-            <VListItem @click="bulkSetActive(false)">
-              <VListItemTitle>Приостановить</VListItemTitle>
-            </VListItem>
-            <VDivider />
-            <VListItem @click="() => { isBulkDeleteDialogOpen = true; isBulkActionsMenuOpen = false }">
-              <VListItemTitle class="text-error">Удалить</VListItemTitle>
-            </VListItem>
+               <VListItemTitle>Активировать</VListItemTitle>
+             </VListItem>
+             <VListItem @click="bulkSetActive(false)">
+               <VListItemTitle>Приостановить</VListItemTitle>
+             </VListItem>
+             <VDivider />
+             <VListItem v-if="$can('delete','menu_tickets_schedules')" @click="() => { isBulkDeleteDialogOpen = true; isBulkActionsMenuOpen = false }">
+               <VListItemTitle class="text-error">Удалить</VListItemTitle>
+             </VListItem>
           </VList>
         </VMenu>
 
@@ -919,13 +919,13 @@ onMounted(() => {
             <IconBtn @click="openLogsDialog(item)">
               <VIcon icon="bx-history" />
             </IconBtn>
-            <IconBtn @click="toggleActiveStatus(item.id, !item.isActive)">
+            <IconBtn v-if="$can('write','menu_tickets_schedules')" @click="toggleActiveStatus(item.id, !item.isActive)">
               <VIcon :icon="item.isActive ? 'bx-pause' : 'bx-play'" />
             </IconBtn>
-            <IconBtn @click="openEditDialog(item)">
+            <IconBtn v-if="$can('write','menu_tickets_schedules')" @click="openEditDialog(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_tickets_schedules')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>

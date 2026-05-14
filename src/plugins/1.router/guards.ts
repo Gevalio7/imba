@@ -57,17 +57,26 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
 
 
 
-    // Временно отключена проверка ролевой модели для произвольных маршрутов.
-    // if (!canNavigate(to) && to.matched.length) {
-    //   return isLoggedIn
-    //     ? { name: 'not-authorized' }
-    //     : {
-    //         name: 'login',
-    //         query: {
-    //           ...to.query,
-    //           to: to.fullPath !== '/' ? to.path : undefined,
-    //         },
-    //       }
-    // }
+    // Проверяем права доступа к маршруту (если указаны meta.action/meta.subject)
+    // Проверяем права асинхронно
+    try {
+      const allowed = await canNavigate(to)
+      if (!allowed && to.matched.length) {
+        return isLoggedIn
+          ? { name: 'not-authorized' }
+          : {
+              name: 'login',
+              query: {
+                ...to.query,
+                to: to.fullPath !== '/' ? to.path : undefined,
+              },
+            }
+      }
+    } catch (err) {
+      // В случае ошибок при загрузке прав — запрещаем доступ авторизованным пользователям
+      console.error('Error checking navigation permission:', err)
+      if (isLoggedIn) return { name: 'not-authorized' }
+      return { name: 'login', query: { to: to.fullPath !== '/' ? to.path : undefined } }
+    }
   })
 }

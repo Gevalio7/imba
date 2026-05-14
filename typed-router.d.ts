@@ -61,6 +61,7 @@ declare module 'vue-router/auto-routes' {
     'apps-tickets-add': RouteRecordInfo<'apps-tickets-add', '/apps/tickets/add', Record<never, never>, Record<never, never>>,
     'apps-tickets-edit': RouteRecordInfo<'apps-tickets-edit', '/apps/tickets/edit', Record<never, never>, Record<never, never>>,
     'apps-tickets-schedules': RouteRecordInfo<'apps-tickets-schedules', '/apps/tickets/Schedules', Record<never, never>, Record<never, never>>,
+    'apps-tickets-view': RouteRecordInfo<'apps-tickets-view', '/apps/tickets/view', Record<never, never>, Record<never, never>>,
     'apps-type-categories': RouteRecordInfo<'apps-type-categories', '/apps/TypeCategories', Record<never, never>, Record<never, never>>,
     'apps-types': RouteRecordInfo<'apps-types', '/apps/Types', Record<never, never>, Record<never, never>>,
     'apps-workflows': RouteRecordInfo<'apps-workflows', '/apps/Workflows', Record<never, never>, Record<never, never>>,

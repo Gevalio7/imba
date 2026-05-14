@@ -60,9 +60,16 @@ export const canViewNavMenuGroup = (item: NavGroup) => {
   return false
 }
 
-export const canNavigate = (to: RouteLocationNormalized) => {
-  const { can: checkPermission } = useGlobalPermissions()
+export const canNavigate = async (to: RouteLocationNormalized) => {
+  const gp = useGlobalPermissions()
+  // ensure permissions are loaded before making navigation decision
+  try {
+    await gp.ensureLoaded()
+  } catch (e) {
+    // ignore - ensureLoaded handles its own errors
+  }
 
+  const { can: checkPermission } = gp
   const targetRoute = to.matched[to.matched.length - 1]
 
   if (targetRoute?.meta?.action && targetRoute?.meta?.subject)

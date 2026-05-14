@@ -13,6 +13,9 @@ import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.v
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
+    // route-level permission meta for router guard — allow read for viewing, write guarded on actions
+    action: 'read',
+    subject: 'menu_tickets_list',
   },
 })
 
@@ -215,6 +218,7 @@ const onScheduleUpdate = () => {
           Расписание
         </VBtn>
         <VBtn
+          v-if="$can('write','menu_tickets_list')"
           :loading="saving"
           @click="handleSave"
         >
