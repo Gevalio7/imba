@@ -16,12 +16,12 @@ router.get('/', getSignatures);
 router.get('/:id', getSignatureById);
 
 // POST /signatures
-router.post('/', protect, createSignatures);
+router.post('/', protect, checkPermission('menu_signatures_write'), createSignatures);
 
 // PUT /signatures/:id
-router.put('/:id', protect, updateSignatures);
+router.put('/:id', protect, checkPermission('menu_signatures_write'), updateSignatures);
 
 // DELETE /signatures/:id
-router.delete('/:id', protect, deleteSignatures);
+router.delete('/:id', protect, checkPermission('menu_signatures_delete'), deleteSignatures);
 
 module.exports = router;
