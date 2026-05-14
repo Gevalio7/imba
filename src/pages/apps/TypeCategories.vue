@@ -447,6 +447,7 @@ onMounted(() => {
           </VBtn>
 
           <VBtn
+            v-if="$can('write','menu_type_categories')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewTypeCategories"
