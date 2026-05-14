@@ -691,10 +691,10 @@ const downloadItem = async (item: Attachments) => {
             <IconBtn @click="downloadItem(item)">
               <VIcon icon="bx-download" />
             </IconBtn>
-            <IconBtn @click="editItem(item)">
+            <IconBtn v-if="$can('write','menu_attachments')" @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_attachments')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
