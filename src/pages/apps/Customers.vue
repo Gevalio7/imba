@@ -431,13 +431,14 @@ const addNewCustomers = () => {
             Экспорт
           </VBtn>
 
-          <VBtn
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewCustomers"
-          >
-            Добавить компанию
-          </VBtn>
+            <VBtn
+              v-if="$can('write','menu_companies_list')"
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="addNewCustomers"
+            >
+              Добавить компанию
+            </VBtn>
         </div>
       </div>
 
