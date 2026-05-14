@@ -1065,7 +1065,47 @@ onMounted(async () => {
                           @update:model-value="(val) => setChildPermission(child.code!, t, val)"
                           @click.stop
                         />
-                        
+
+                        <VMenu
+                          v-if="child.code"
+                          :close-on-content-click="true"
+                          location="bottom end"
+                        >
+                          <template #activator="{ props: menuProps }">
+                            <VChip
+                              v-bind="menuProps"
+                              size="x-small"
+                              variant="tonal"
+                              :color="getPermissionLevel(child.code!, t) === 0 ? 'grey' : 'primary'"
+                              class="permission-level-chip ml-1"
+                              @click.stop
+                            >
+                              {{ getPermissionLevel(child.code!, t) }}
+                            </VChip>
+                          </template>
+
+                          <VList density="compact">
+                            <VListItem
+                              v-for="opt in accessLevels"
+                              :key="opt.level"
+                              :value="opt.level"
+                              :active="getPermissionLevel(child.code!, t) === opt.level"
+                              @click="updatePermissionLevel(child.code!, t, opt.level)"
+                            >
+                              <VListItemTitle class="d-flex align-center">
+                                <VChip
+                                  size="x-small"
+                                  :color="opt.level === 0 ? 'grey' : 'primary'"
+                                  variant="tonal"
+                                  class="mr-2"
+                                >
+                                  {{ opt.level }}
+                                </VChip>
+                                <span class="text-caption">{{ opt.description }}</span>
+                              </VListItemTitle>
+                            </VListItem>
+                          </VList>
+                        </VMenu>
                       </div>
                     </div>
                   </div>
@@ -1113,8 +1153,12 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
-/* Removed numeric permission chips (Linux-like levels) per request */
-.permission-level-chip { display: none }
+.permission-level-chip {
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  justify-content: center;
+}
 
 .permission-check {
   min-width: 85px;
