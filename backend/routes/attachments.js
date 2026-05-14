@@ -20,13 +20,13 @@ router.get('/', getAttachments);
 router.get('/:id', getAttachmentById);
 
 // POST /attachments
-router.post('/', protect, multerUpload.single('file'), createAttachments);
+router.post('/', protect, multerUpload.single('file'), checkPermission('menu_attachments_write'), createAttachments);
 
 // PUT /attachments/:id
-router.put('/:id', protect, updateAttachments);
+router.put('/:id', protect, checkPermission('menu_attachments_write'), updateAttachments);
 
 // DELETE /attachments/:id
-router.delete('/:id', protect, deleteAttachments);
+router.delete('/:id', protect, checkPermission('menu_attachments_delete'), deleteAttachments);
 
 // GET /attachments/:id/download
 router.get('/:id/download', downloadAttachment);
