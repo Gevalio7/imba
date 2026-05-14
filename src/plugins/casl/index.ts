@@ -16,35 +16,76 @@ function getInitialRules(): Rule[] {
     const getCookie = (name: string) => document.cookie.split('; ').reduce((s, c) => { const [k, v] = c.split('='); return k === name ? decodeURIComponent(v) : s }, null as string | null)
 
     try {
-      // If cookies present but sessionStorage missing, copy from cookies/localStorage
       const cookieUser = getCookie('userData')
       const cookieToken = getCookie('accessToken')
-      if (cookieUser && !sessionStorage.getItem('userData')) sessionStorage.setItem('userData', cookieUser)
-      if (cookieToken && !sessionStorage.getItem('accessToken')) sessionStorage.setItem('accessToken', cookieToken)
-      if (!sessionStorage.getItem('userAbilityRules') && localStorage.getItem('userAbilityRules')) {
-        sessionStorage.setItem('userAbilityRules', localStorage.getItem('userAbilityRules')!)
+
+      // Validate token locally (exp) helper
+      const isJwtValid = (token: string | null) => {
+        if (!token) return false
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+          if (payload && typeof payload.exp === 'number') {
+            return payload.exp * 1000 > Date.now()
+          }
+          return true
+        } catch (e) { return false }
+      }
+
+      // If cookie token exists and looks valid, confirm with server via /api/auth/me before trusting cookies
+      let serverOk = false
+      if (cookieToken && isJwtValid(cookieToken)) {
+        try {
+          const resp = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + cookieToken } })
+          if (resp.ok) serverOk = true
+        } catch (e) {
+          serverOk = false
+        }
+      }
+
+      // Only copy cookies -> session if server confirmed token is valid
+      if (serverOk) {
+        if (cookieUser && !sessionStorage.getItem('userData')) sessionStorage.setItem('userData', cookieUser)
+        if (cookieToken && !sessionStorage.getItem('accessToken')) sessionStorage.setItem('accessToken', cookieToken)
+
+        // If there's local rules we copy them and stamp timestamp
+        const localRules = localStorage.getItem('userAbilityRules')
+        if (!sessionStorage.getItem('userAbilityRules') && localRules) {
+          sessionStorage.setItem('userAbilityRules', localRules)
+          sessionStorage.setItem('userAbilityRules_ts', String(Date.now()))
+        }
       }
     } catch (e) {
-      // ignore cookie->session sync errors
       console.warn('cookie->session sync failed', e)
     }
 
     // 1. sessionStorage (текущая вкладка, заполняется при логине)
     const session = sessionStorage.getItem('userAbilityRules')
     if (session) {
-      const parsed = JSON.parse(session)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      try {
+        const parsed = JSON.parse(session)
+        // Respect timestamp TTL (24h)
+        const ts = Number(sessionStorage.getItem('userAbilityRules_ts') || '0')
+        const TTL = 24 * 60 * 60 * 1000
+        if (Date.now() - ts > TTL) {
+          // expired - ignore and try localStorage
+        } else if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      } catch (e) {
+        // malformed -> continue to local
+      }
     }
 
     // 2. localStorage (общий между вкладками — fallback для новой вкладки)
     const local = localStorage.getItem('userAbilityRules')
     if (local) {
-      const parsed = JSON.parse(local)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Синхронизируем в sessionStorage для последующих чтений
-        sessionStorage.setItem('userAbilityRules', local)
-        return parsed
-      }
+      try {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Синхронизируем в sessionStorage для последующих чтений and stamp
+          sessionStorage.setItem('userAbilityRules', local)
+          sessionStorage.setItem('userAbilityRules_ts', String(Date.now()))
+          return parsed
+        }
+      } catch (e) { /* ignore */ }
     }
 
     return []
