@@ -7,9 +7,9 @@ const typeCategoriesController = require('../controllers/typeCategoriesControlle
 router.get('/', typeCategoriesController.getTypeCategories);
 router.get('/with-types', typeCategoriesController.getTypesWithCategories);
 router.get('/:id', typeCategoriesController.getTypeCategoryById);
-router.post('/', protect, typeCategoriesController.createTypeCategory);
-router.put('/:id', protect, typeCategoriesController.updateTypeCategory);
-router.delete('/:id', protect, typeCategoriesController.deleteTypeCategory);
+router.post('/', protect, checkPermission('menu_type_categories_write'), typeCategoriesController.createTypeCategory);
+router.put('/:id', protect, checkPermission('menu_type_categories_write'), typeCategoriesController.updateTypeCategory);
+router.delete('/:id', protect, checkPermission('menu_type_categories_delete'), typeCategoriesController.deleteTypeCategory);
 
 // Маршруты для связи типов и категорий
 router.post('/:id/categories', protect, typeCategoriesController.addCategoryToType);

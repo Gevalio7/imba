@@ -22,16 +22,16 @@ router.get('/:id', getCustomerById);
 router.get('/:id/services', getCustomerServices);
 
 // POST /customers
-router.post('/', protect, createCustomers);
+router.post('/', protect, checkPermission('menu_companies_list_write'), createCustomers);
 
 // POST /customers/:id/services/:serviceId - добавить сервис к компании
-router.post('/:id/services/:serviceId', protect, addCustomerService);
+router.post('/:id/services/:serviceId', protect, checkPermission('menu_companies_list_write'), addCustomerService);
 
 // PUT /customers/:id
-router.put('/:id', protect, updateCustomers);
+router.put('/:id', protect, checkPermission('menu_companies_list_write'), updateCustomers);
 
 // DELETE /customers/:id
-router.delete('/:id', protect, deleteCustomers);
+router.delete('/:id', protect, checkPermission('menu_companies_list_delete'), deleteCustomers);
 
 // DELETE /customers/:id/services/:serviceId - удалить сервис от компании
 router.delete('/:id/services/:serviceId', protect, removeCustomerService);
