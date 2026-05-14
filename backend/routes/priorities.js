@@ -16,12 +16,12 @@ router.get('/', getPriorities);
 router.get('/:id', getPriorityById);
 
 // POST /priorities
-router.post('/', protect, createPriorities);
+router.post('/', protect, checkPermission('menu_priorities_write'), createPriorities);
 
 // PUT /priorities/:id
-router.put('/:id', protect, updatePriorities);
+router.put('/:id', protect, checkPermission('menu_priorities_write'), updatePriorities);
 
 // DELETE /priorities/:id
-router.delete('/:id', protect, deletePriorities);
+router.delete('/:id', protect, checkPermission('menu_priorities_delete'), deletePriorities);
 
 module.exports = router;
