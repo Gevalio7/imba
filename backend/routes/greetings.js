@@ -16,12 +16,12 @@ router.get('/', getGreetings);
 router.get('/:id', getGreetingById);
 
 // POST /greetings
-router.post('/', protect, createGreetings);
+router.post('/', protect, checkPermission('menu_greetings_write'), createGreetings);
 
 // PUT /greetings/:id
-router.put('/:id', protect, updateGreetings);
+router.put('/:id', protect, checkPermission('menu_greetings_write'), updateGreetings);
 
 // DELETE /greetings/:id
-router.delete('/:id', protect, deleteGreetings);
+router.delete('/:id', protect, checkPermission('menu_greetings_delete'), deleteGreetings);
 
 module.exports = router;
