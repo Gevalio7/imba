@@ -59,38 +59,49 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
   rules.forEach(rule => {
     const subject = rule.subject
     const action = rule.action
-    
-    // Определяем тип права
+
+    // Определяем тип права и базовый subject (без суффикса)
     let type: 'read' | 'write' | 'delete' | null = null
-    
-    if (subject.endsWith('_read')) {
-      type = 'read'
-    } else if (subject.endsWith('_write')) {
-      type = 'write'
-    } else if (subject.endsWith('_delete')) {
-      type = 'delete'
-    } else if (action === 'read') {
-      type = 'read'
-    } else if (action === 'write') {
-      type = 'write'
-    } else if (action === 'delete') {
-      type = 'delete'
+    let base = subject
+
+    const m = subject.match(/^(.*)_(read|write|delete)$/)
+    if (m) {
+      base = m[1]
+      type = m[2] as 'read' | 'write' | 'delete'
+    } else if (action === 'read' || action === 'write' || action === 'delete') {
+      type = action as 'read' | 'write' | 'delete'
     }
-    
-    // Добавляем право в Map с ключом subject
-    if (!permissionsMap.has(subject)) {
-      permissionsMap.set(subject, {
-        code: subject,
-        read: false,
-        write: false,
-        delete: false
-      })
+
+    // helper to set permission entry if not exists
+    const setPerm = (key: string, t: 'read' | 'write' | 'delete' | null) => {
+      if (!permissionsMap.has(key)) {
+        permissionsMap.set(key, {
+          code: key,
+          read: false,
+          write: false,
+          delete: false
+        })
+      }
+      if (t) {
+        const p = permissionsMap.get(key)!
+        p[t] = true
+      }
     }
-    
-    const perm = permissionsMap.get(subject)!
+
+    // We need to support both variants: with and without 'menu_' prefix
+    const variants = new Set<string>()
+    variants.add(base)
+    variants.add(`menu_${base}`)
+
+    // If subject already included suffix, also include suffixed variants
     if (type) {
-      perm[type] = true
+      for (const v of Array.from(variants)) {
+        setPerm(`${v}_${type}`, type)
+      }
     }
+
+    // Also ensure the raw subject is set (backwards compatibility)
+    setPerm(subject, type)
   })
   
   // Дополнительно обрабатываем правила с action/subject для создания записей с суффиксами
@@ -109,6 +120,22 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
         if (rule.action === 'read') perm.read = true
         if (rule.action === 'write') perm.write = true
         if (rule.action === 'delete') perm.delete = true
+      }
+
+      // Also set menu_ variant for suffixed
+      const m = suffixedSubject.match(/^(.*)_(read|write|delete)$/)
+      if (m) {
+        const base = m[1]
+        const action = m[2]
+        const menuKey = `menu_${base}_${action}`
+        if (!permissionsMap.has(menuKey)) {
+          permissionsMap.set(menuKey, {
+            code: menuKey,
+            read: action === 'read',
+            write: action === 'write',
+            delete: action === 'delete'
+          })
+        }
       }
     }
   })
