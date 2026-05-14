@@ -15,8 +15,12 @@ interface AbilityRule {
 
 const PERMISSION_CACHE_TTL = 5 * 60 * 1000
 
-let permissionCacheTimestamp = 0
-let permissionLoadingPromise: Promise<void> | null = null
+// module-level singleton state shared across all composable instances
+let globalLoaded = false
+let globalLoading = false
+let globalError: string | null = null
+let globalPermissionCacheTimestamp = 0
+let globalPermissionLoadingPromise: Promise<void> | null = null
 
 function getStoredRules(): AbilityRule[] {
   if (typeof sessionStorage === 'undefined') return []
@@ -114,41 +118,36 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
 
 export function useUserPermissions() {
   const permissionsMap = ref<Map<string, Permission>>(new Map())
-  const loaded = ref(false)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  let lastLoaded = 0
+  const loaded = computed(() => globalLoaded)
+  const loading = computed(() => globalLoading)
+  const error = computed(() => globalError)
 
   const ensureLoaded = async () => {
-    if (!loaded.value && !loading.value) {
+    if (!globalLoaded && !globalLoading) {
       await loadPermissions()
-    } else if (loading.value && permissionLoadingPromise) {
-      // Если уже идет загрузка, ждем ее завершения
-      await permissionLoadingPromise
+    } else if (globalLoading && globalPermissionLoadingPromise) {
+      await globalPermissionLoadingPromise
     }
   }
 
   const loadPermissions = async () => {
     const now = Date.now()
-    
-    // Если права еще актуальны, используем кэш
-    if (now - permissionCacheTimestamp < PERMISSION_CACHE_TTL && loaded.value) {
+
+    if (now - globalPermissionCacheTimestamp < PERMISSION_CACHE_TTL && globalLoaded) {
       console.log('Using cached permissions')
       return
     }
-    
-    // Если уже идет загрузка, возвращаем существующий промис
-    if (permissionLoadingPromise) {
+
+    if (globalPermissionLoadingPromise) {
       console.log('Permissions loading already in progress, waiting...')
-      return permissionLoadingPromise
+      return globalPermissionLoadingPromise
     }
-    
-    // Начинаем новую загрузку
-    loading.value = true
-    error.value = null
-    
+
+    globalLoading = true
+    globalError = null
+
     try {
-      permissionLoadingPromise = (async () => {
+      globalPermissionLoadingPromise = (async () => {
         const rules = getStoredRules()
         console.log('Loaded rules count:', rules.length)
 
@@ -157,22 +156,22 @@ export function useUserPermissions() {
         } else {
           console.warn('No rules found in sessionStorage')
         }
-        
+
         console.log('Permissions loaded, total count:', permissionsMap.value.size)
-        
-        loaded.value = true
-        permissionCacheTimestamp = now
+
+        globalLoaded = true
+        globalPermissionCacheTimestamp = now
       })()
-      
-      await permissionLoadingPromise
-    } catch (err) {
-      error.value = 'Failed to load permissions'
+      await globalPermissionLoadingPromise
+    } catch (err: any) {
+      globalError = err?.message || 'Failed to load permissions'
       console.error('Failed to load permissions:', err)
     } finally {
-      loading.value = false
-      permissionLoadingPromise = null
+      globalLoading = false
+      globalPermissionLoadingPromise = null
     }
   }
+
 
   const canRead = (code: string): boolean => {
     // 1. Проверяем точное совпадение
