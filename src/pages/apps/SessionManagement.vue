@@ -120,7 +120,9 @@ const terminateSession = async (id: number) => {
       console.log('Terminating own session, logging out...')
       showToast('Выход из вашей сессии', 'success')
 
+      // Вызвать ту же чистку, что и общий logout: очистка cookie/session/local + сброс ability
       try {
+        // Очистим sessionStorage
         sessionStorage.removeItem('accessToken')
         sessionStorage.removeItem('userData')
         sessionStorage.removeItem('userAbilityRules')
@@ -129,22 +131,58 @@ const terminateSession = async (id: number) => {
       }
 
       try {
+        // Очистим localStorage
         localStorage.removeItem('userAbilityRules')
       } catch (e) {
         console.warn('Error clearing localStorage during terminateSession:', e)
       }
 
-      // Попытка SPA-редиректа через Vue Router с fallback
       try {
-        await router.push('/login')
-      } catch (navErr) {
-        console.error('Router navigation failed, falling back to window.location:', navErr)
+        // Очистим cookie через useCookie и document.cookie fallback
         try {
-          window.location.replace('/login')
-        } catch (e) {
-          window.location.href = '/login'
+          const cookieUserData = useCookie('userData')
+          const cookieAccessToken = useCookie('accessToken')
+          cookieUserData.value = null
+          cookieAccessToken.value = null
+        } catch (cookieErr) {
+          console.warn('useCookie not available during terminateSession:', cookieErr)
         }
+
+        if (typeof document !== 'undefined') {
+          const expire = 'Thu, 01 Jan 1970 00:00:00 GMT'
+          const path = 'path=/;'
+          const namesToRemove = ['userData', 'accessToken', 'userAbilityRules']
+          const allCookies = document.cookie ? document.cookie.split(';').map(c => c.split('=')[0].trim()) : []
+          const uniqueNames = Array.from(new Set([...namesToRemove, ...allCookies]))
+          uniqueNames.forEach(name => {
+            try {
+              document.cookie = `${name}=; ${path} expires=${expire}`
+              const hostname = location.hostname
+              document.cookie = `${name}=; Domain=${hostname}; ${path} expires=${expire}`
+              document.cookie = `${name}=; Domain=.${hostname}; ${path} expires=${expire}`
+            } catch (cErr) {
+              // ignore
+            }
+          })
+        }
+      } catch (e) {
+        console.warn('Error clearing cookies during terminateSession:', e)
       }
+
+      try {
+        const ability = useAbility()
+        ability.update([])
+      } catch (e) {
+        console.warn('Error resetting ability during terminateSession:', e)
+      }
+
+      // Принудительный редирект, чтобы guards не успели переопределить маршрут на основе оставшихся cookie
+      try {
+        window.location.replace('/login')
+      } catch (e) {
+        window.location.href = '/login'
+      }
+
     } else {
       showToast('Это не ваша сессия — остаёмся залогиненными', 'info')
     }
