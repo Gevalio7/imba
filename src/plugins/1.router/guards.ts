@@ -57,12 +57,32 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
 
 
 
+    // Если пользователь не авторизован — перенаправляем на login (чтобы не оставлять пользователя на пустой странице)
+    // Проверяем наличие токена в cookie или sessionStorage (fallback для инкогнито/новой вкладки)
+    const cookieUserData = useCookie('userData')
+    const cookieAccessToken = useCookie('accessToken')
+    const sessAccessToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('accessToken') : null
+    const isActuallyLoggedIn = !!((cookieUserData.value && cookieAccessToken.value) || sessAccessToken)
+
+    // Если маршрут публичный — продолжаем
+    if (to.meta?.public) return
+
+    // Если не авторизован и это не страница, доступная только для неавторизованных — редирект на login
+    if (!isActuallyLoggedIn && !to.meta?.unauthenticatedOnly) {
+      return {
+        name: 'login',
+        query: {
+          to: to.fullPath !== '/' ? to.fullPath : undefined,
+        }
+      }
+    }
+
     // Проверяем права доступа к маршруту (если указаны meta.action/meta.subject)
     // Проверяем права асинхронно
     try {
       const allowed = await canNavigate(to)
       if (!allowed && to.matched.length) {
-        return isLoggedIn
+        return isActuallyLoggedIn
           ? { name: 'not-authorized' }
           : {
               name: 'login',
@@ -75,7 +95,7 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
     } catch (err) {
       // В случае ошибок при загрузке прав — запрещаем доступ авторизованным пользователям
       console.error('Error checking navigation permission:', err)
-      if (isLoggedIn) return { name: 'not-authorized' }
+      if (isActuallyLoggedIn) return { name: 'not-authorized' }
       return { name: 'login', query: { to: to.fullPath !== '/' ? to.path : undefined } }
     }
   })
