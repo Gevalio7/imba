@@ -140,9 +140,20 @@ watch(props, () => {
     currentStep.value = 0
 })
 
+// Snackbar for non-blocking notifications
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref<'success'|'error'|'info'>('success')
+
+const showToast = (message: string, color: 'success'|'error'|'info' = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
 const onSubmit = () => {
-  // eslint-disable-next-line no-alert
-  alert('submitted...!!')
+  // non-blocking notification instead of alert
+  showToast('submitted')
   emit('updatedData', createAppData.value)
 }
 </script>
@@ -447,6 +458,14 @@ const onSubmit = () => {
       </VCardText>
     </VCard>
   </VDialog>
+
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="1500"
+  >
+    {{ toastMessage }}
+  </VSnackbar>
 </template>
 
 <style lang="scss">
