@@ -338,11 +338,28 @@ const menuConfig: MenuCategory[] = [
   }
 ]
 
-// Получить permission для child
+// Helpers to resolve permission keys (some categories use 'menu_' prefix, others use raw resource codes)
+const resolvePermissionKeys = (childCode: string, type: 'read' | 'write' | 'delete') => {
+  const keys = new Set<string>()
+  if (!childCode) return [] as string[]
+  // direct
+  keys.add(`${childCode}_${type}`)
+  // with menu_ prefix
+  if (!childCode.startsWith('menu_')) keys.add(`menu_${childCode}_${type}`)
+  // fallback: if childCode already has menu_ prefix, add variant without
+  if (childCode.startsWith('menu_')) keys.add(`${childCode.replace(/^menu_/, '')}_${type}`)
+  return Array.from(keys)
+}
+
+// Получить permission для child (учитываем и menu_ префикс и без него)
 const getChildPermission = (childCode: string, type: 'read' | 'write' | 'delete'): boolean => {
   if (!permissionsMap.value) return false
-  const permission = permissionsMap.value.get(`${childCode}_${type}`)
-  return permission ? permission[type] : false
+  const keys = resolvePermissionKeys(childCode, type)
+  for (const k of keys) {
+    const permission = permissionsMap.value.get(k)
+    if (permission && (permission as any)[type]) return true
+  }
+  return false
 }
 
 // Получить иконку для категории
@@ -397,7 +414,9 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
     return
   }
 
-  const key = `${childCode}_${type}`
+  // Найдём существующий ключ в permissionsMap (учитываем menu_ префиксы)
+  const candidateKeys = resolvePermissionKeys(childCode, type)
+  let key = candidateKeys.find(k => permissionsMap.value.has(k)) || `${childCode}_${type}`
   const permission = permissionsMap.value.get(key)
   if (permission) {
     const oldRead = permission.read
@@ -408,15 +427,22 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
       let permissionsToUpdate: Record<string, boolean> = { [key]: value }
 
       if (type === 'write' && value) {
-        permissionsToUpdate[`${childCode}_read`] = true
+        // ensure read is enabled
+        const readKey = resolvePermissionKeys(childCode, 'read').find(k => permissionsMap.value.has(k)) || `${childCode}_read`
+        permissionsToUpdate[readKey] = true
       } else if (type === 'delete' && value) {
-        permissionsToUpdate[`${childCode}_read`] = true
-        permissionsToUpdate[`${childCode}_write`] = true
+        const readKey = resolvePermissionKeys(childCode, 'read').find(k => permissionsMap.value.has(k)) || `${childCode}_read`
+        const writeKey = resolvePermissionKeys(childCode, 'write').find(k => permissionsMap.value.has(k)) || `${childCode}_write`
+        permissionsToUpdate[readKey] = true
+        permissionsToUpdate[writeKey] = true
       } else if (type === 'read' && !value) {
-        permissionsToUpdate[`${childCode}_write`] = false
-        permissionsToUpdate[`${childCode}_delete`] = false
+        const writeKey = resolvePermissionKeys(childCode, 'write').find(k => permissionsMap.value.has(k)) || `${childCode}_write`
+        const deleteKey = resolvePermissionKeys(childCode, 'delete').find(k => permissionsMap.value.has(k)) || `${childCode}_delete`
+        permissionsToUpdate[writeKey] = false
+        permissionsToUpdate[deleteKey] = false
       } else if (type === 'write' && !value) {
-        permissionsToUpdate[`${childCode}_delete`] = false
+        const deleteKey = resolvePermissionKeys(childCode, 'delete').find(k => permissionsMap.value.has(k)) || `${childCode}_delete`
+        permissionsToUpdate[deleteKey] = false
       }
 
       // Optimistic update: обновляем UI сразу
@@ -463,6 +489,7 @@ const updateParentState = (childCode: string) => {
   const types = ['read', 'write', 'delete'] as const
 
   types.forEach(type => {
+    // собираем дочерние ключи с учетом возможного menu_ префикса
     const allChecked = category.children.every(child =>
       getChildPermission(child.code!, type)
     )
@@ -555,23 +582,18 @@ const toggleCategory = async (category: MenuCategory, type: 'read' | 'write' | '
 const getParentState = (category: MenuCategory, type: 'read' | 'write' | 'delete') => {
   const key = `${category.category}_${type}`
   const perm = permissionsMap.value.get(key)
-  if (!perm) {
-    // Если нет родительского пермишена, вычисляем на лету
-    const allChecked = category.children.every(child =>
-      getChildPermission(child.code!, type)
-    )
-    const someChecked = category.children.some(child =>
-      getChildPermission(child.code!, type)
-    )
-    return {
-      value: allChecked,
-      indeterminate: someChecked && !allChecked
-    }
-  }
 
+  // Всегда вычисляем состояние родителя на основе дочерних флагов,
+  // чтобы UI точно отражал то, что приходит с бэка
+  const allChecked = category.children.every(child => getChildPermission(child.code!, type))
+  const someChecked = category.children.some(child => getChildPermission(child.code!, type))
+
+  if (!perm) return { value: allChecked, indeterminate: someChecked && !allChecked }
+
+  // Если есть синтетический родительский пермишен, он должен быть синхронизирован
   return {
-    value: perm[type],
-    indeterminate: (perm as any)[`${type}_indeterminate`] || false
+    value: perm[type] || allChecked,
+    indeterminate: (perm as any)[`${type}_indeterminate`] || (someChecked && !allChecked)
   }
 }
 
