@@ -565,10 +565,12 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового тип
 const addNewTypes = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+  // Навигация на страницу добавления — доступ только при наличии права записи
+  if (useGlobalPermissions().can('write','menu_types')) {
+    router.push('/apps/types/add')
+  }
 }
+
 
 // === Функционал категорий ===
 
@@ -1096,10 +1098,10 @@ const removeCategoryFromType = async (type: Types, categoryId: number) => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
+            <IconBtn v-if="$can('write','menu_types')" @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_types')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
