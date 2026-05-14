@@ -433,6 +433,7 @@ const addNewSLA = () => {
           </VBtn>
 
           <VBtn
+            v-if="$can('write','menu_sla')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewSLA"
