@@ -409,6 +409,7 @@ const addNewSystemLog = () => {
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewSystemLog"
+          v-if="$can('write','menu_system_log')"
           >
             Добавить системный журнал
           </VBtn>
