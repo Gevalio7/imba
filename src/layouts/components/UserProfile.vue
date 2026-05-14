@@ -24,6 +24,17 @@ onMounted(() => {
   userData.value = getStoredUserData()
 })
 
+// UI state for logout notifications
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref<'success'|'error'>('success')
+
+const showToast = (message: string, color: 'success'|'error' = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
 const logout = async () => {
   // Логирование состояния перед logout
   try {
@@ -33,15 +44,24 @@ const logout = async () => {
     console.warn('Logout: error reading storages', e)
   }
 
+  // Попытка завершить сессию на сервере и проверка ответа
+  let serverTerminated = false
   try {
-    // Попытка завершить сессию на сервере (не критично)
     const userData = getStoredUserData()
     if (userData) {
-      await $api('/sessionManagement/terminate-current', { method: 'POST' })
+      const res = await $api<{ message?: string }>('/sessionManagement/terminate-current', { method: 'POST' })
+      if (res && (res.message && /terminate/i.test(res.message) || res.message === 'Session terminated successfully')) {
+        serverTerminated = true
+        showToast('Сессия завершена на сервере', 'success')
+      } else {
+        console.warn('terminate-current returned unexpected response:', res)
+        showToast('Не удалось завершить сессию на сервере', 'error')
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка при завершении сессии на сервере:', error)
-    // Продолжаем logout даже при ошибке API
+    const errMsg = error?.data?.message || error?.message || 'Серверная ошибка'
+    showToast(`Ошибка завершения сессии: ${errMsg}`, 'error')
   }
 
   // Очищаем client-side хранилища
@@ -109,9 +129,11 @@ const logout = async () => {
     console.warn('Ошибка при сбросе ability:', e)
   }
 
-  // Жёсткий переход на страницу логина (принудительная перезагрузка страницы)
+  // Показать пользователю результат (даём пользователю увидеть сообщение) и затем перейти на login
   try {
-    // Используем replace, чтобы не оставлять запись в истории
+    // Даем время увидеть snackbar (если показан), но не более 1.2 секунды
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    // Жёсткий переход на страницу логина (принудительная перезагрузка страницы)
     window.location.replace('/login')
   } catch (err) {
     // Фолбэк
