@@ -11,6 +11,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 import { useAbility } from '@casl/vue'
 
+const ability = useAbility()
+
 interface Permission {
   code: string
   name: string
