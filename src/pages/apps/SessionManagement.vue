@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 // Типы данных для Управление сессией
 interface SessionManagement {
@@ -106,11 +107,26 @@ const terminateSession = async (id: number) => {
     showToast('Сессия завершена')
 
     // Если завершена своя сессия, выйти из системы
-    const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}')
+    console.log('Terminated session username:', data.username)
+    console.log('Current user login:', userData.login)
+    alert(`Завершена сессия: ${data.username}, текущий пользователь: ${userData.login}`)
     if (data.username === userData.login) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('userData')
-      window.location.href = '/login'
+      alert('Завершаем свою сессию, выходим...')
+      console.log('Terminating own session, logging out...')
+      sessionStorage.removeItem('accessToken')
+      sessionStorage.removeItem('userData')
+      sessionStorage.removeItem('userAbilityRules')
+      localStorage.removeItem('userAbilityRules')
+      // Используем router.push для SPA редиректа
+      const router = useRouter()
+      router.push('/login')
+      // Fallback на window.location
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 100)
+    } else {
+      alert('Это не ваша сессия, остаёмся залогиненными')
     }
   } catch (err) {
     console.error('Error terminating session:', err)

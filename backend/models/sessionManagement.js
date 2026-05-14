@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class SessionManagement {
   static tableName = 'session_management';
-  static fields = 'username, ipAddress, userAgent, loginTime, lastActivity, type';
+  static fields = 'username, ipAddress, userAgent, loginTime, lastActivity, type, userId';
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options;
@@ -19,10 +19,26 @@ class SessionManagement {
 
       if (q) {
         const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereClause = `WHERE ${conditions}`;
-        params.push(`%${q}%`);
-        paramIndex++;
+        const textFields = searchFields.filter(field => field !== 'userId');
+        const conditions = [];
+
+        // If q is numeric, search userId exactly
+        const numQ = parseInt(q, 10);
+        if (!isNaN(numQ)) {
+          conditions.push(`user_id = $${paramIndex}`);
+          params.push(numQ);
+          paramIndex++;
+        }
+
+        // Always search text fields with ILIKE
+        if (textFields.length > 0) {
+          const textConditions = textFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
+          conditions.push(`(${textConditions})`);
+          params.push(`%${q}%`);
+          paramIndex++;
+        }
+
+        whereClause = `WHERE ${conditions.join(' OR ')}`;
       }
 
       let orderClause = '';
@@ -82,17 +98,17 @@ class SessionManagement {
       const fieldList = this.fields.split(', ');
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
       const values = fieldList.map(field => sessionmanagement[field]);
-      
+
       // Добавляем isActive
       values.push(sessionmanagement.isActive !== undefined ? sessionmanagement.isActive : true);
-      
+
       // Преобразуем имена полей в snake_case для SQL
       const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
       const sqlFieldsSelect = fieldList.map(f => {
         const snake = toSnakeCase(f);
         return snake === f ? f : `${snake} as "${f}"`;
       }).join(', ');
-      
+
       const query = `INSERT INTO ${SessionManagement.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
       const result = await pool.query(query, values);
 
@@ -157,10 +173,10 @@ class SessionManagement {
 
 
 
-  static async terminateAllForUser(username) {
+  static async terminateAllForUser(userId) {
     try {
-      const query = `UPDATE ${SessionManagement.tableName} SET is_active = false, last_activity = CURRENT_TIMESTAMP WHERE username = $1 AND is_active = true`;
-      const result = await pool.query(query, [username]);
+      const query = `UPDATE ${SessionManagement.tableName} SET is_active = false, last_activity = CURRENT_TIMESTAMP WHERE user_id = $1 AND is_active = true`;
+      const result = await pool.query(query, [userId]);
       return result.rowCount;
     } catch (error) {
       console.error('Error in terminateAllForUser:', error);

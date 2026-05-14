@@ -37,6 +37,11 @@ const logout = async () => {
     // Продолжаем logout даже при ошибке API
   }
 
+  // Задержка 10 секунд для визуального подтверждения
+  console.log('Начинаем задержку перед logout...')
+  await new Promise(resolve => setTimeout(resolve, 10000))
+  console.log('Задержка завершена, очищаем данные...')
+
   // Очищаем sessionStorage
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.removeItem('userAbilityRules')

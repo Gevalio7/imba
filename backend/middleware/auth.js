@@ -37,8 +37,8 @@ const protect = async (req, res, next) => {
           login = entity.login;
         }
 
-        const sessions = await SessionManagement.getAll({ q: login });
-        const activeSession = sessions.sessionManagement.find(s => s.isActive && s.username === login);
+        const sessions = await SessionManagement.getAll({ q: decoded.userId.toString() });
+        const activeSession = sessions.sessionManagement.find(s => s.isActive && s.userId === decoded.userId);
 
         if (!activeSession) {
           return res.status(401).json({ message: 'Сессия истекла или была завершена' });

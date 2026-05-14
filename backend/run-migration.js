@@ -1,23 +1,15 @@
-const fs = require('fs');
-const path = require('path');
 const { pool } = require('./config/db');
+const fs = require('fs');
 
 async function runMigration() {
-  const migrationPath = path.join(__dirname, 'migrations', 'add-name-column-to-post-master-mail-accounts.sql');
-
   try {
-    console.log('🚀 Запуск миграции: add-escalation-fields-to-tickets.sql');
-
-    const sql = fs.readFileSync(migrationPath, 'utf8');
-    console.log('📄 SQL для выполнения:', sql);
-
+    const sql = fs.readFileSync('./migrations/alter-session-management-add-user-id.sql', 'utf8');
     await pool.query(sql);
-    console.log('✅ Миграция выполнена успешно');
-
+    console.log('Migration applied successfully');
   } catch (error) {
-    console.error('❌ Ошибка выполнения миграции:', error);
+    console.error('Migration failed:', error);
   } finally {
-    await pool.end();
+    pool.end();
   }
 }
 

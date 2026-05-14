@@ -168,7 +168,7 @@ const login = async (req, res) => {
     const token = generateToken(entity.id);
 
     // Автоматически завершаем все активные сессии для этого пользователя
-    await SessionManagement.terminateAllForUser(entity.login);
+    await SessionManagement.terminateAllForUser(entity.id);
 
     // Создание новой сессии
     const sessionData = {
@@ -178,7 +178,8 @@ const login = async (req, res) => {
       loginTime: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
       isActive: true,
-      type: isAgent ? 'agent' : 'user'
+      type: isAgent ? 'agent' : 'user',
+      userId: entity.id
     };
     await SessionManagement.create(sessionData);
 
