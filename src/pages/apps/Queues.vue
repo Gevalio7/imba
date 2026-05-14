@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePage({ meta: { navActiveLink: 'apps-queues', action: 'read', subject: 'menu_queues' } })
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
