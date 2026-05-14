@@ -2,6 +2,9 @@
 import { useFilters, type ColumnSetting } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+
+// CASL helpers
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 import { useRoute } from 'vue-router'
 
 // Типы данных для Очередь
