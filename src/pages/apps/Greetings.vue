@@ -322,9 +322,12 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового приветствие
 const addNewGreetings = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+  // Проверяем право на создание
+  if (useGlobalPermissions().can('write','menu_greetings')) {
+    editedItem.value = { ...defaultItem.value }
+    editedIndex.value = -1
+    editDialog.value = true
+  }
 }
 </script>
 
@@ -578,10 +581,10 @@ const addNewGreetings = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
+            <IconBtn v-if="$can('write','menu_greetings')" @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_greetings')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
