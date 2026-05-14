@@ -714,6 +714,7 @@ const addNewQueues = () => {
           </VBtn>
 
           <VBtn
+            v-if="$can('write','menu_queues')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewQueues"
@@ -998,10 +999,10 @@ const addNewQueues = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn @click="editItem(item)">
+            <IconBtn v-if="$can('write','menu_queues')" @click="editItem(item)">
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn @click="deleteItem(item)">
+            <IconBtn v-if="$can('delete','menu_queues')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
