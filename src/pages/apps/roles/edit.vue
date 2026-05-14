@@ -107,35 +107,7 @@ const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
 
-// Описания уровней доступа (Linux-подобная модель)
-const levelDescriptions = ref<Record<number, string>>({
-  777: 'Полный доступ для всех (rwx/rwx/rwx)',
-  755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
-  744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
-  700: 'Полный доступ только для владельца (rwx/---/---)',
-  666: 'Чтение и запись для всех (rw-/rw-/rw-)',
-  644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
-  600: 'Чтение и запись только для владельца (rw-/---/---)',
-  444: 'Только чтение для всех (r--/r--/r--)',
-  400: 'Только чтение для владельца (r--/---/---)',
-  0: 'Нет доступа (---)'
-})
 
-const accessLevels = computed<AccessLevelOption[]>(() =>
-  Object.entries(levelDescriptions.value)
-    .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
-    .sort((a, b) => b.level - a.level)
-)
-
-const getLevelDescription = (level: number): string => {
-  return levelDescriptions.value[level] || `Уровень ${level}`
-}
-
-const getPermissionLevel = (childCode: string, type: 'read' | 'write' | 'delete'): number => {
-  const key = `${childCode}_${type}`
-  const p = permissionsMap.value.get(key)
-  return p?.level ?? 0
-}
 
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
@@ -1093,45 +1065,7 @@ onMounted(async () => {
                           @update:model-value="(val) => setChildPermission(child.code!, t, val)"
                           @click.stop
                         />
-                        <VMenu
-                          v-if="child.code"
-                          :close-on-content-click="true"
-                          location="bottom end"
-                        >
-                          <template #activator="{ props: menuProps }">
-                            <VChip
-                              v-bind="menuProps"
-                              size="x-small"
-                              variant="tonal"
-                              :color="getPermissionLevel(child.code!, t) === 0 ? 'grey' : 'primary'"
-                              class="permission-level-chip ml-1"
-                              @click.stop
-                            >
-                              {{ getPermissionLevel(child.code!, t) }}
-                            </VChip>
-                          </template>
-                          <VList density="compact">
-                            <VListItem
-                              v-for="opt in accessLevels"
-                              :key="opt.level"
-                              :value="opt.level"
-                              :active="getPermissionLevel(child.code!, t) === opt.level"
-                              @click="updatePermissionLevel(child.code!, t, opt.level)"
-                            >
-                              <VListItemTitle class="d-flex align-center">
-                                <VChip
-                                  size="x-small"
-                                  :color="opt.level === 0 ? 'grey' : 'primary'"
-                                  variant="tonal"
-                                  class="mr-2"
-                                >
-                                  {{ opt.level }}
-                                </VChip>
-                                <span class="text-caption">{{ opt.description }}</span>
-                              </VListItemTitle>
-                            </VListItem>
-                          </VList>
-                        </VMenu>
+                        
                       </div>
                     </div>
                   </div>
@@ -1179,12 +1113,8 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
-.permission-level-chip {
-  cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  min-width: 36px;
-  justify-content: center;
-}
+/* Removed numeric permission chips (Linux-like levels) per request */
+.permission-level-chip { display: none }
 
 .permission-check {
   min-width: 85px;
