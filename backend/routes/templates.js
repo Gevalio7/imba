@@ -16,12 +16,12 @@ router.get('/', getTemplates);
 router.get('/:id', getTemplateById);
 
 // POST /templates
-router.post('/', protect, createTemplates);
+router.post('/', protect, checkPermission('menu_templates_write'), createTemplates);
 
 // PUT /templates/:id
-router.put('/:id', protect, updateTemplates);
+router.put('/:id', protect, checkPermission('menu_templates_write'), updateTemplates);
 
 // DELETE /templates/:id
-router.delete('/:id', protect, deleteTemplates);
+router.delete('/:id', protect, checkPermission('menu_templates_delete'), deleteTemplates);
 
 module.exports = router;
