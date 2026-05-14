@@ -8,6 +8,8 @@ definePage({
 import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, triggerRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
+import { useAbility } from '@casl/vue'
 
 interface Permission {
   code: string
@@ -833,6 +835,45 @@ const saveRole = async () => {
         }
       })
       showToast('Основная информация роли сохранена')
+
+      // Если мы изменили роль текущего пользователя — применяем новые правила без выхода
+      try {
+        const cookieUserData = useCookie<any>('userData')
+        const currentRoleId = cookieUserData.value?.roleId || cookieUserData.value?.roleId || null
+        // roleId.value — редактируемая роль
+        if (currentRoleId && Number(currentRoleId) === Number(roleId.value)) {
+          // Запросим у сервера актуальные правила для текущего пользователя через /auth/me (если сервер возвращает userAbilityRules)
+          try {
+            const me = await $api('/auth/me', { method: 'GET' })
+            // Если серверный endpoint /auth/me не возвращает userAbilityRules, пробуем /auth/login повторно не делаем
+            // Вместо этого вызываем специальный endpoint /sessionManagement/current если он есть — но здесь мы пробуем /sessionManagement/current
+            let newRules = null
+            try {
+              const sess = await $api('/sessionManagement/current')
+              if (sess && sess.userAbilityRules) newRules = sess.userAbilityRules
+            } catch (e) {
+              // ignore
+            }
+
+            if (!newRules && me && me.userAbilityRules) newRules = me.userAbilityRules
+
+            if (newRules && Array.isArray(newRules)) {
+              const rulesJson = JSON.stringify(newRules)
+              if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('userAbilityRules', rulesJson)
+              localStorage.setItem('userAbilityRules', rulesJson)
+              ability.update(newRules)
+              // force reload permissions map
+              const gp = useGlobalPermissions()
+              await gp.loadPermissions()
+              showToast('Права применены в текущей сессии', 'success')
+            }
+          } catch (err) {
+            console.warn('Не удалось автоматически применить новые права текущему пользователю:', err)
+          }
+        }
+      } catch (err) {
+        console.warn('Ошибка при попытке применить права для текущего пользователя:', err)
+      }
     }
   } catch (err) {
     console.error('Error saving role:', err)
