@@ -107,11 +107,19 @@ const deleteRoles = asyncHandler(async (req, res) => {
 const getAvailablePermissions = asyncHandler(async (req, res) => {
   try {
     const permissions = await Roles.syncPermissionsWithDatabase();
-    res.json({ permissions });
+    // remove numeric level fields from API response
+    const cleaned = permissions.map(p => {
+      const { level, default_level, defaultLevel, ...rest } = p
+      return rest
+    })
+    res.json({ permissions: cleaned });
   } catch (error) {
     console.error('Error in getAvailablePermissions:', error);
     // Fallback к статичным разрешениям модели
-    const permissions = Roles.getAvailablePermissions();
+    const permissions = Roles.getAvailablePermissions().map(p => {
+      const { level, default_level, defaultLevel, ...rest } = p
+      return rest
+    })
     res.json({ permissions });
   }
 });
@@ -120,11 +128,19 @@ const getAvailablePermissions = asyncHandler(async (req, res) => {
 const getAvailablePermissionsWithLevels = asyncHandler(async (req, res) => {
   try {
     const permissions = await Roles.syncPermissionsWithDatabase();
+    // return permissions WITHOUT numeric level fields (we no longer use them in frontend)
+    const cleaned = permissions.map(p => {
+      const { level, default_level, defaultLevel, ...rest } = p
+      return rest
+    })
     const levelDescriptions = Roles.getLevelDescriptions();
-    res.json({ permissions, levelDescriptions });
+    res.json({ permissions: cleaned, levelDescriptions });
   } catch (error) {
     console.error('Error in getAvailablePermissionsWithLevels:', error);
-    const permissions = Roles.getAvailablePermissions();
+    const permissions = Roles.getAvailablePermissions().map(p => {
+      const { level, default_level, defaultLevel, ...rest } = p
+      return rest
+    })
     const levelDescriptions = Roles.getLevelDescriptions();
     res.json({ permissions, levelDescriptions });
   }
@@ -148,15 +164,8 @@ const setRolePermissionLevel = asyncHandler(async (req, res) => {
   if (!permission || typeof permission !== 'string') {
     return res.status(400).json({ message: 'permission is required' });
   }
-  const numericLevel = parseInt(level, 10);
-  if (isNaN(numericLevel) || numericLevel < 0 || numericLevel > 777) {
-    return res.status(400).json({ message: 'level must be a number 0..777' });
-  }
-
-  await Roles.setPermissionLevel(roleId, permission, numericLevel);
-
-  const permissions = await Roles.getAllPermissionsWithDetails(roleId);
-  res.json({ permissions });
+  // we no longer accept numeric levels from frontend; this endpoint is deprecated
+  return res.status(410).json({ message: 'Permission level API is deprecated' });
 });
 
 // Получить разрешения роли
