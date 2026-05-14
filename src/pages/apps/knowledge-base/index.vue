@@ -424,8 +424,11 @@ const getCardImage = (index: number) => cardImages[index % cardImages.length]
                     <div class="d-flex justify-space-between align-center">
                       <span class="text-caption">{{ formatDate(article.updatedAt) }}</span>
                       <div class="d-flex gap-1">
-                        <IconBtn size="x-small" @click="editArticle(article.id)">
-                          <VIcon icon="bx-edit" size="16" />
+                        <IconBtn size="x-small" v-if="$can('write','menu_knowledge_base')" @click="editArticle(article.id)">
+                          <VIcon icon="bx-edit" />
+                        </IconBtn>
+                        <IconBtn size="x-small" color="error" v-if="$can('delete','menu_knowledge_base')" @click="deleteItem(article)">
+                          <VIcon icon="bx-trash" />
                         </IconBtn>
                         <IconBtn size="x-small" color="error" @click="deleteItem(article)">
                           <VIcon icon="bx-trash" size="16" />
