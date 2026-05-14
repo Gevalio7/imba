@@ -86,6 +86,8 @@ const permissionsMap = ref<Map<string, Permission>>(new Map())
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
+const superAdmin = ref(false)
+const superAdminUpdating = ref(false) // предотвращает рекурсию watcher
 const expandedPanels = ref([
   'menu_tickets',
   'menu_chat',
@@ -107,7 +109,35 @@ const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
 
+// Описания уровней доступа (Linux-подобная модель)
+const levelDescriptions = ref<Record<number, string>>({
+  777: 'Полный доступ для всех (rwx/rwx/rwx)',
+  755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
+  744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
+  700: 'Полный доступ только для владельца (rwx/---/---)',
+  666: 'Чтение и запись для всех (rw-/rw-/rw-)',
+  644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
+  600: 'Чтение и запись только для владельца (rw-/---/---)',
+  444: 'Только чтение для всех (r--/r--/r--)',
+  400: 'Только чтение для владельца (r--/---/---)',
+  0: 'Нет доступа (---)'
+})
 
+const accessLevels = computed<AccessLevelOption[]>(() =>
+  Object.entries(levelDescriptions.value)
+    .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
+    .sort((a, b) => b.level - a.level)
+)
+
+const getLevelDescription = (level: number): string => {
+  return levelDescriptions.value[level] || `Уровень ${level}`
+}
+
+const getPermissionLevel = (childCode: string, type: 'read' | 'write' | 'delete'): number => {
+  const key = `${childCode}_${type}`
+  const p = permissionsMap.value.get(key)
+  return p?.level ?? 0
+}
 
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
@@ -115,6 +145,79 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
+// Watcher for super admin toggle
+watch(superAdmin, async (newVal) => {
+  // Предотвращаем рекурсию при откате
+  if (superAdminUpdating.value) return
+
+  // Проверяем, что у нас есть ID роли для сохранения
+  if (!roleId.value || roleId.value === 0) {
+    superAdminUpdating.value = true
+    showToast('Сначала сохраните основную информацию роли', 'warning')
+    superAdmin.value = !newVal
+    nextTick(() => { superAdminUpdating.value = false })
+    return
+  }
+
+  try {
+    const permissionsToUpdate: Record<string, boolean> = {}
+
+    // Собираем ключи для обновления и мутируем локальное состояние
+    permissionsMap.value.forEach((perm, code) => {
+      // Пропускаем родительские permissions (синтетические для UI)
+      const isParentPermission = menuConfig.some(cat =>
+        `${cat.category}_read` === code ||
+        `${cat.category}_write` === code ||
+        `${cat.category}_delete` === code
+      )
+
+      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
+        permissionsToUpdate[code] = newVal
+        if (code.endsWith('_read')) perm.read = newVal
+        else if (code.endsWith('_write')) perm.write = newVal
+        else if (code.endsWith('_delete')) perm.delete = newVal
+      }
+    })
+
+    // Обновляем UI сразу (до API-вызова)
+    triggerRef(permissionsMap)
+    menuConfig.forEach(category => {
+      if (category.children[0]?.code) {
+        updateParentState(category.children[0].code)
+      }
+    })
+
+    console.log(`Super admin: sending ${Object.keys(permissionsToUpdate).length} permissions, value=${newVal}`)
+
+    // Отправляем запрос на сервер
+    await $api(`/roles/${roleId.value}/permissions`, {
+      method: 'PUT',
+      body: { permissions: permissionsToUpdate }
+    })
+
+    console.log(`Super admin mode ${newVal ? 'enabled' : 'disabled'} — saved`)
+  } catch (err) {
+    console.error('Failed to update super admin permissions:', err)
+    showToast('Ошибка изменения режима суперадмина', 'error')
+    // Откатываем локальное состояние
+    permissionsMap.value.forEach((perm, code) => {
+      const isParentPermission = menuConfig.some(cat =>
+        `${cat.category}_read` === code ||
+        `${cat.category}_write` === code ||
+        `${cat.category}_delete` === code
+      )
+      if (!isParentPermission && (code.endsWith('_read') || code.endsWith('_write') || code.endsWith('_delete'))) {
+        if (code.endsWith('_read')) perm.read = !newVal
+        else if (code.endsWith('_write')) perm.write = !newVal
+        else if (code.endsWith('_delete')) perm.delete = !newVal
+      }
+    })
+    triggerRef(permissionsMap)
+    superAdminUpdating.value = true
+    superAdmin.value = !newVal
+    nextTick(() => { superAdminUpdating.value = false })
+  }
+})
 
 
 
@@ -235,28 +338,11 @@ const menuConfig: MenuCategory[] = [
   }
 ]
 
-// Helpers to resolve permission keys (some categories use 'menu_' prefix, others use raw resource codes)
-const resolvePermissionKeys = (childCode: string, type: 'read' | 'write' | 'delete') => {
-  const keys = new Set<string>()
-  if (!childCode) return [] as string[]
-  // direct
-  keys.add(`${childCode}_${type}`)
-  // with menu_ prefix
-  if (!childCode.startsWith('menu_')) keys.add(`menu_${childCode}_${type}`)
-  // fallback: if childCode already has menu_ prefix, add variant without
-  if (childCode.startsWith('menu_')) keys.add(`${childCode.replace(/^menu_/, '')}_${type}`)
-  return Array.from(keys)
-}
-
-// Получить permission для child (учитываем и menu_ префикс и без него)
+// Получить permission для child
 const getChildPermission = (childCode: string, type: 'read' | 'write' | 'delete'): boolean => {
   if (!permissionsMap.value) return false
-  const keys = resolvePermissionKeys(childCode, type)
-  for (const k of keys) {
-    const permission = permissionsMap.value.get(k)
-    if (permission && (permission as any)[type]) return true
-  }
-  return false
+  const permission = permissionsMap.value.get(`${childCode}_${type}`)
+  return permission ? permission[type] : false
 }
 
 // Получить иконку для категории
@@ -311,9 +397,7 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
     return
   }
 
-  // Найдём существующий ключ в permissionsMap (учитываем menu_ префиксы)
-  const candidateKeys = resolvePermissionKeys(childCode, type)
-  let key = candidateKeys.find(k => permissionsMap.value.has(k)) || `${childCode}_${type}`
+  const key = `${childCode}_${type}`
   const permission = permissionsMap.value.get(key)
   if (permission) {
     const oldRead = permission.read
@@ -324,22 +408,15 @@ const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'd
       let permissionsToUpdate: Record<string, boolean> = { [key]: value }
 
       if (type === 'write' && value) {
-        // ensure read is enabled
-        const readKey = resolvePermissionKeys(childCode, 'read').find(k => permissionsMap.value.has(k)) || `${childCode}_read`
-        permissionsToUpdate[readKey] = true
+        permissionsToUpdate[`${childCode}_read`] = true
       } else if (type === 'delete' && value) {
-        const readKey = resolvePermissionKeys(childCode, 'read').find(k => permissionsMap.value.has(k)) || `${childCode}_read`
-        const writeKey = resolvePermissionKeys(childCode, 'write').find(k => permissionsMap.value.has(k)) || `${childCode}_write`
-        permissionsToUpdate[readKey] = true
-        permissionsToUpdate[writeKey] = true
+        permissionsToUpdate[`${childCode}_read`] = true
+        permissionsToUpdate[`${childCode}_write`] = true
       } else if (type === 'read' && !value) {
-        const writeKey = resolvePermissionKeys(childCode, 'write').find(k => permissionsMap.value.has(k)) || `${childCode}_write`
-        const deleteKey = resolvePermissionKeys(childCode, 'delete').find(k => permissionsMap.value.has(k)) || `${childCode}_delete`
-        permissionsToUpdate[writeKey] = false
-        permissionsToUpdate[deleteKey] = false
+        permissionsToUpdate[`${childCode}_write`] = false
+        permissionsToUpdate[`${childCode}_delete`] = false
       } else if (type === 'write' && !value) {
-        const deleteKey = resolvePermissionKeys(childCode, 'delete').find(k => permissionsMap.value.has(k)) || `${childCode}_delete`
-        permissionsToUpdate[deleteKey] = false
+        permissionsToUpdate[`${childCode}_delete`] = false
       }
 
       // Optimistic update: обновляем UI сразу
@@ -386,7 +463,6 @@ const updateParentState = (childCode: string) => {
   const types = ['read', 'write', 'delete'] as const
 
   types.forEach(type => {
-    // собираем дочерние ключи с учетом возможного menu_ префикса
     const allChecked = category.children.every(child =>
       getChildPermission(child.code!, type)
     )
@@ -479,18 +555,23 @@ const toggleCategory = async (category: MenuCategory, type: 'read' | 'write' | '
 const getParentState = (category: MenuCategory, type: 'read' | 'write' | 'delete') => {
   const key = `${category.category}_${type}`
   const perm = permissionsMap.value.get(key)
+  if (!perm) {
+    // Если нет родительского пермишена, вычисляем на лету
+    const allChecked = category.children.every(child =>
+      getChildPermission(child.code!, type)
+    )
+    const someChecked = category.children.some(child =>
+      getChildPermission(child.code!, type)
+    )
+    return {
+      value: allChecked,
+      indeterminate: someChecked && !allChecked
+    }
+  }
 
-  // Всегда вычисляем состояние родителя на основе дочерних флагов,
-  // чтобы UI точно отражал то, что приходит с бэка
-  const allChecked = category.children.every(child => getChildPermission(child.code!, type))
-  const someChecked = category.children.some(child => getChildPermission(child.code!, type))
-
-  if (!perm) return { value: allChecked, indeterminate: someChecked && !allChecked }
-
-  // Если есть синтетический родительский пермишен, он должен быть синхронизирован
   return {
-    value: perm[type] || allChecked,
-    indeterminate: (perm as any)[`${type}_indeterminate`] || (someChecked && !allChecked)
+    value: perm[type],
+    indeterminate: (perm as any)[`${type}_indeterminate`] || false
   }
 }
 
@@ -938,6 +1019,29 @@ onMounted(async () => {
           </VCardText>
         </VCard>
 
+        <!-- Super Admin Toggle -->
+        <VCard variant="outlined" class="mb-6">
+          <VCardTitle class="pb-3">
+            <div class="d-flex align-center">
+              <VIcon icon="bx-crown" class="mr-3" color="error" />
+              <span class="text-h6">Супер-пользователь</span>
+            </div>
+          </VCardTitle>
+          <VCardText>
+            <VSwitch
+              v-model="superAdmin"
+              label="Полный доступ ко всем разрешениям"
+              color="error"
+              inset
+              class="mb-2"
+            />
+            <p class="text-body-2 text-medium-emphasis">
+              Включение этого режима автоматически предоставит все разрешения (чтение, запись, удаление) для всех категорий.
+            </p>
+          </VCardText>
+        </VCard>
+
+
 
         <!-- Разрешения - НОВОЕ ДЕРЕВО -->
         <VCard variant="outlined">
@@ -1002,7 +1106,7 @@ onMounted(async () => {
                       density="compact"
                       hide-details
                       color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'read', val)"
+                      @update:model-value="(val) => toggleCategory(category, 'read', !!val)"
                       @click.stop
                     />
                   </div>
@@ -1014,7 +1118,7 @@ onMounted(async () => {
                       density="compact"
                       hide-details
                       color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'write', val)"
+                      @update:model-value="(val) => toggleCategory(category, 'write', !!val)"
                       @click.stop
                     />
                   </div>
@@ -1026,7 +1130,7 @@ onMounted(async () => {
                       density="compact"
                       hide-details
                       color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'delete', val)"
+                      @update:model-value="(val) => toggleCategory(category, 'delete', !!val)"
                       @click.stop
                     />
                   </div>
@@ -1062,10 +1166,9 @@ onMounted(async () => {
                           density="compact"
                           hide-details
                           color="primary"
-                          @update:model-value="(val) => setChildPermission(child.code!, t, val)"
+                          @update:model-value="(val) => setChildPermission(child.code!, t, !!val)"
                           @click.stop
                         />
-
                         <VMenu
                           v-if="child.code"
                           :close-on-content-click="true"
@@ -1083,7 +1186,6 @@ onMounted(async () => {
                               {{ getPermissionLevel(child.code!, t) }}
                             </VChip>
                           </template>
-
                           <VList density="compact">
                             <VListItem
                               v-for="opt in accessLevels"
