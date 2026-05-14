@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const multerUpload = multer({ dest: 'uploads/' });
 const { protect } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permissions');
 const {
   getAttachments,
   getAttachmentById,
