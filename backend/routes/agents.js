@@ -39,7 +39,7 @@ router.put('/:id/groups', protect, checkPermission('menu_agents_write'), updateA
 router.get('/:id/queues', protect, getAgentQueues);
 
 // PUT /agents/:id/queues - обновить очереди агента
-router.put('/:id/queues', protect, checkPermission('menu_agents_write'), updateAgentQueues;
+router.put('/:id/queues', protect, checkPermission('menu_agents_write'), updateAgentQueues);
 
 // GET /agents/:id/activities - получить активность агента
 router.get('/:id/activities', protect, getAgentActivities);
