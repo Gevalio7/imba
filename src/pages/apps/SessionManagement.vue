@@ -95,33 +95,47 @@ const deleteSessionManagement = async (id: number) => {
 }
 
 // Завершение сессии
+const router = useRouter()
 const terminateSession = async (id: number) => {
   try {
     const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement/${id}/terminate`, {
       method: 'PUT'
     })
+
     const index = sessionManagement.value.findIndex(p => p.id === id)
     if (index !== -1) {
       sessionManagement.value[index] = data
     }
+
     showToast('Сессия завершена')
 
     // Если завершена своя сессия, выйти из системы
     const userData = JSON.parse(sessionStorage.getItem('userData') || '{}')
     console.log('Terminated session username:', data.username)
     console.log('Current user login:', userData.login)
-    // Информируем пользователя через showToast вместо alert
+
     showToast(`Завершена сессия: ${data.username}`, 'success')
+
     if (data.username === userData.login) {
       console.log('Terminating own session, logging out...')
       showToast('Выход из вашей сессии', 'success')
-      sessionStorage.removeItem('accessToken')
-      sessionStorage.removeItem('userData')
-      sessionStorage.removeItem('userAbilityRules')
-      localStorage.removeItem('userAbilityRules')
+
+      try {
+        sessionStorage.removeItem('accessToken')
+        sessionStorage.removeItem('userData')
+        sessionStorage.removeItem('userAbilityRules')
+      } catch (e) {
+        console.warn('Error clearing sessionStorage during terminateSession:', e)
+      }
+
+      try {
+        localStorage.removeItem('userAbilityRules')
+      } catch (e) {
+        console.warn('Error clearing localStorage during terminateSession:', e)
+      }
+
       // Попытка SPA-редиректа через Vue Router с fallback
       try {
-        const router = useRouter()
         await router.push('/login')
       } catch (navErr) {
         console.error('Router navigation failed, falling back to window.location:', navErr)
@@ -133,10 +147,6 @@ const terminateSession = async (id: number) => {
       }
     } else {
       showToast('Это не ваша сессия — остаёмся залогиненными', 'info')
-    }
-      }
-    } else {
-      alert('Это не ваша сессия, остаёмся залогиненными')
     }
   } catch (err) {
     console.error('Error terminating session:', err)
