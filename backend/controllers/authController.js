@@ -4,6 +4,7 @@ const User = require('../models/users');
 const Agents = require('../models/agents');
 const { getAgentPermissions } = require('../middleware/permissions');
 const SessionManagement = require('../models/sessionManagement');
+const Roles = require('../models/roles');
 
 // Генерация JWT токена
 const generateToken = (userId) => {
@@ -41,6 +42,10 @@ const mapPermissionsToAbilityRules = (permissions) => {
       // action имена совпадают с типом операции (read/write/delete) — это согласовано
       // с фронтовым useUserPermissions, который различает операции по action.
       rules.push({ action: op, subject });
+      // Также добавляем variant с префиксом menu_ для обратной совместимости
+      if (!subject.startsWith('menu_')) {
+        rules.push({ action: op, subject: `menu_${subject}` });
+      }
     });
 
   if (legacy.length > 0) {
