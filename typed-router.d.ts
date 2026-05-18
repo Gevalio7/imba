@@ -46,6 +46,8 @@ declare module 'vue-router/auto-routes' {
     'apps-priorities': RouteRecordInfo<'apps-priorities', '/apps/Priorities', Record<never, never>, Record<never, never>>,
     'apps-queues': RouteRecordInfo<'apps-queues', '/apps/Queues', Record<never, never>, Record<never, never>>,
     'apps-queues-add-edit': RouteRecordInfo<'apps-queues-add-edit', '/apps/QueuesAddEdit', Record<never, never>, Record<never, never>>,
+    'apps-roles-components-permission-tree-node': RouteRecordInfo<'apps-roles-components-permission-tree-node', '/apps/roles/components/PermissionTreeNode', Record<never, never>, Record<never, never>>,
+    'apps-roles-components-role-info-card': RouteRecordInfo<'apps-roles-components-role-info-card', '/apps/roles/components/RoleInfoCard', Record<never, never>, Record<never, never>>,
     'apps-roles-edit': RouteRecordInfo<'apps-roles-edit', '/apps/roles/edit', Record<never, never>, Record<never, never>>,
     'apps-roles': RouteRecordInfo<'apps-roles', '/apps/Roles', Record<never, never>, Record<never, never>>,
     'apps-services': RouteRecordInfo<'apps-services', '/apps/Services', Record<never, never>, Record<never, never>>,

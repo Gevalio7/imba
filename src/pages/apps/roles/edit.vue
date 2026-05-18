@@ -5,59 +5,14 @@ definePage({
   },
 })
 
-import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, triggerRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 import { useAbility } from '@casl/vue'
+import { menuConfig } from '@/constants/roleMenuConfig'
+import { useRolePermissions } from '@/composables/useRolePermissions'
+import { useRoleForm } from '@/composables/useRoleForm'
 
 const ability = useAbility()
-
-interface Permission {
-  code: string
-  name: string
-  category: string
-  level: number
-  defaultLevel?: number
-  read: boolean
-  write: boolean
-  delete: boolean
-}
-
-interface ApiPermission {
-  code: string
-  name: string
-  category: string
-  level?: number
-  default_level?: number
-  is_granted?: boolean
-}
-
-interface AccessLevelOption {
-  level: number
-  description: string
-}
-
-interface Role {
-  id: number
-  name: string
-  message: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-interface MenuChild {
-  id: string
-  label: string
-  code?: string // код пермишена
-}
-
-interface MenuCategory {
-  category: string
-  label: string
-  children: MenuChild[]
-}
 
 // Route params
 const route = useRoute()
@@ -65,45 +20,20 @@ const router = useRouter()
 const roleId = ref(0)
 const isNew = computed(() => !roleId.value)
 
-// Данные роли
-const role = ref<Role>({
-  id: 0,
-  name: '',
-  message: '',
-  isActive: true,
-  createdAt: '',
-  updatedAt: ''
-})
+// Composables
+const { permissionsMap, getChildPermission, setChildPermission, updateParentState, toggleCategory, getParentState, getPermissionLevel, updatePermissionLevel, fetchPermissions } = useRolePermissions(roleId, isNew)
+const { role, fetchRole, saveRole, cancel } = useRoleForm()
 
-// Разрешения
-const permissionsMap = ref<Map<string, Permission>>(new Map())
 const loading = ref(false)
 const saving = ref(false)
-const error = ref<string | null>(null)
 const superAdmin = ref(false)
 const superAdminUpdating = ref(false)
-const expandedPanels = ref([
-  'menu_tickets',
-  'menu_chat',
-  'menu_kanban',
-  'menu_agents',
-  'menu_knowledge_base',
-  'menu_services',
-  'menu_companies',
-  'menu_roles',
-  'menu_ticket_settings',
-  'menu_email_settings',
-  'menu_system',
-  'menu_backup',
-  'menu_integrity_check'
-])
+const expandedPanels = ref(menuConfig.map(c => c.category))
 
-// Уведомления
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
 
-// Описания уровней доступа (Linux-подобная модель)
 const levelDescriptions = ref<Record<number, string>>({
   777: 'Полный доступ для всех (rwx/rwx/rwx)',
   755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
@@ -117,7 +47,7 @@ const levelDescriptions = ref<Record<number, string>>({
   0: 'Нет доступа (---)'
 })
 
-const accessLevels = computed<AccessLevelOption[]>(() =>
+const accessLevels = computed(() =>
   Object.entries(levelDescriptions.value)
     .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
     .sort((a, b) => b.level - a.level)
@@ -127,19 +57,12 @@ const getLevelDescription = (level: number): string => {
   return levelDescriptions.value[level] || `Уровень ${level}`
 }
 
-const getPermissionLevel = (childCode: string, type: 'read' | 'write' | 'delete'): number => {
-  const key = `${childCode}_${type}`
-  const p = permissionsMap.value.get(key)
-  return p?.level ?? 0
-}
-
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
   toastColor.value = color
   isToastVisible.value = true
 }
 
-// Watcher for super admin toggle
 watch(superAdmin, async (newVal) => {
   if (superAdminUpdating.value) return
 
@@ -172,21 +95,16 @@ watch(superAdmin, async (newVal) => {
     triggerRef(permissionsMap)
     menuConfig.forEach(category => {
       if (category.children[0]?.code) {
-        updateParentState(category.children[0].code)
+        updateParentState(menuConfig, category.children[0].code)
       }
     })
-
-    console.log(`Super admin: sending ${Object.keys(permissionsToUpdate).length} permissions, value=${newVal}`)
 
     await $api(`/roles/${roleId.value}/permissions`, {
       method: 'PUT',
       body: { permissions: permissionsToUpdate }
     })
-
-    console.log(`Super admin mode ${newVal ? 'enabled' : 'disabled'} — saved`)
   } catch (err) {
-    console.error('Failed to update super admin permissions:', err)
-    showToast('Ошибка изменения режима суперадмина', 'error')
+    // rollback
     permissionsMap.value.forEach((perm, code) => {
       const isParentPermission = menuConfig.some(cat =>
         `${cat.category}_read` === code ||
@@ -206,24 +124,17 @@ watch(superAdmin, async (newVal) => {
   }
 })
 
-// Конфигурация меню - ВСЕ разделы из системы (все code с префиксом menu_)
-const menuConfig: MenuCategory[] = [
-  {
-    category: 'menu_tickets',
-    label: 'Обращения',
-    children: [
-      { id: 'apps-tickets', label: 'Список обращений', code: 'menu_tickets_list' },
-      { id: 'apps-tickets-add', label: 'Создать обращение', code: 'menu_tickets_create' },
-      { id: 'apps-tickets-schedules', label: 'Расписания', code: 'menu_tickets_schedules' },
-    ]
-  },
-  {
-    category: 'menu_chat',
-    label: 'Чат',
-    children: [
-      { id: 'apps-chat', label: 'Чат', code: 'menu_chat' },
-    ]
-  },
+onMounted(async () => {
+  const id = route.query.id
+  roleId.value = id && id !== 'undefined' ? parseInt(String(id), 10) : 0
+
+  if (roleId.value) {
+    await Promise.all([fetchRole(roleId.value), fetchPermissions(menuConfig)])
+  } else {
+    await fetchPermissions(menuConfig)
+  }
+})
+
   {
     category: 'menu_kanban',
     label: 'Канбан',
