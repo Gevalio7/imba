@@ -30,13 +30,25 @@
           <VCardText>
             <VRow>
               <VCol cols="12" md="8">
-                <AppTextField v-model="role.name" label="Название роли *" placeholder="Введите название роли" :rules="[(v: string) => !!v || 'Название обязательно']" prepend-inner-icon="bx-tag" />
+                <AppTextField 
+                  v-model="role.name" 
+                  label="Название роли *" 
+                  placeholder="Введите название роли" 
+                  :rules="[(v: string) => !!v || 'Название обязательно']" 
+                  prepend-inner-icon="bx-tag" 
+                />
               </VCol>
               <VCol cols="12" md="4" class="d-flex align-center">
                 <VSwitch v-model="role.isActive" label="Роль активна" color="success" inset />
               </VCol>
               <VCol cols="12">
-                <AppTextarea v-model="role.message" label="Описание роли" placeholder="Введите описание роли" rows="3" prepend-inner-icon="bx-message-detail" />
+                <AppTextarea 
+                  v-model="role.message" 
+                  label="Описание роли" 
+                  placeholder="Введите описание роли" 
+                  rows="3" 
+                  prepend-inner-icon="bx-message-detail" 
+                />
               </VCol>
             </VRow>
           </VCardText>
@@ -50,36 +62,50 @@
             </div>
           </VCardTitle>
           <VCardText>
+            <div class="d-flex">
+              <div class="flex-1">
+
+          <VCardText>
             <div v-if="loading" class="d-flex justify-center py-8">
               <VProgressCircular indeterminate color="primary" size="64" />
             </div>
             <div v-else>
-              <div>
-                <PermissionTreeNode
-                  v-for="category in menuConfig"
-                  :key="category.category"
-                  :category="category"
-                  :permissions-map="permissionsMap"
-                  :get-child-permission="getChildPermission"
-                  :set-child-permission="setChildPermission"
-                  :get-parent-state="getParentState"
-                  :toggle-category="toggleCategory"
-                  :get-permission-level="getPermissionLevel"
-                  :update-permission-level="updatePermissionLevel"
-                  :access-levels="accessLevels"
-                />
+              <div class="d-flex">
+                <div class="left-column" style="min-width: 300px; max-width: 360px; margin-right: 24px;">
+                  <!-- left column reserved space -->
+                </div>
+                <div class="flex-1">
+                  <div>
+                    <PermissionTreeNode
+                      v-for="category in menuConfig"
+                      :key="category.category"
+                      :category="category"
+                      :child-permission="getChildPermission"
+                      :on-set-child-permission="setChildPermission"
+                      :parent-state="getParentState"
+                      :on-toggle-category="(type, value) => toggleCategory(menuConfig, category, type, value)"
+                      :permission-level="getPermissionLevel"
+                      :on-update-permission-level="updatePermissionLevel"
+                      :access-levels="accessLevels"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </VCardText>
         </VCard>
-
       </VCard>
     </VCol>
-
   </VRow>
 
   <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="3000">{{ toastMessage }}</VSnackbar>
 </template>
+
+<style scoped>
+.left-column {
+  display: block;
+}
+</style>
 
 <script setup lang="ts">
 definePage({ meta: { navActiveLink: 'apps-roles' } })
@@ -97,7 +123,15 @@ const roleId = ref<number>(route.query.id ? parseInt(String(route.query.id), 10)
 const isNew = computed(() => !roleId.value)
 
 const { role, fetchRole, saveRole, cancel } = useRoleForm()
-const { permissionsMap, getChildPermission, setChildPermission, updateParentState, toggleCategory, getParentState, getPermissionLevel, updatePermissionLevel, fetchPermissions } = useRolePermissions(roleId, isNew)
+const { 
+  getChildPermission, 
+  setChildPermission, 
+  toggleCategory, 
+  getParentState, 
+  getPermissionLevel, 
+  updatePermissionLevel, 
+  fetchPermissions 
+} = useRolePermissions(roleId, isNew)
 
 const expandedPanels = ref(menuConfig.map(c => c.category))
 const loading = ref(false)
@@ -119,7 +153,9 @@ const levelDescriptions = ref<Record<number, string>>({
 })
 
 const accessLevels = computed(() =>
-  Object.entries(levelDescriptions.value).map(([k, v]) => ({ level: parseInt(k, 10), description: v })).sort((a, b) => b.level - a.level)
+  Object.entries(levelDescriptions.value)
+    .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
+    .sort((a, b) => b.level - a.level)
 )
 
 onMounted(async () => {

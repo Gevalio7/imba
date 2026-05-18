@@ -305,6 +305,8 @@ declare global {
   const useReferenceData: typeof import('./src/composables/useReferenceData')['useReferenceData']
   const useResizeObserver: typeof import('@vueuse/core')['useResizeObserver']
   const useResponsiveLeftSidebar: typeof import('./src/@core/composable/useResponsiveSidebar')['useResponsiveLeftSidebar']
+  const useRoleForm: typeof import('./src/composables/useRoleForm')['useRoleForm']
+  const useRolePermissions: typeof import('./src/composables/useRolePermissions')['useRolePermissions']
   const useRound: typeof import('@vueuse/math')['useRound']
   const useRoute: typeof import('vue-router/auto')['useRoute']
   const useRouter: typeof import('vue-router/auto')['useRouter']
@@ -697,6 +699,8 @@ declare module 'vue' {
     readonly useReferenceData: UnwrapRef<typeof import('./src/composables/useReferenceData')['useReferenceData']>
     readonly useResizeObserver: UnwrapRef<typeof import('@vueuse/core')['useResizeObserver']>
     readonly useResponsiveLeftSidebar: UnwrapRef<typeof import('./src/@core/composable/useResponsiveSidebar')['useResponsiveLeftSidebar']>
+    readonly useRoleForm: UnwrapRef<typeof import('./src/composables/useRoleForm')['useRoleForm']>
+    readonly useRolePermissions: UnwrapRef<typeof import('./src/composables/useRolePermissions')['useRolePermissions']>
     readonly useRound: UnwrapRef<typeof import('@vueuse/math')['useRound']>
     readonly useRoute: UnwrapRef<typeof import('vue-router/auto')['useRoute']>
     readonly useRouter: UnwrapRef<typeof import('vue-router/auto')['useRouter']>

@@ -1,6 +1,6 @@
 <template>
   <VCard>
-    <VCardText class="text-center pt-12">
+    <VCardText class="pt-6">
       <VAvatar
         rounded
         :size="120"
@@ -82,7 +82,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
-
 const props = defineProps<{ role: any }>()
 </script>
+

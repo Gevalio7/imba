@@ -66,7 +66,7 @@
             <span class="text-body-2">{{ child.label }}</span>
             <div class="ml-auto d-flex gap-6 align-center">
               <div
-                v-for="t in (['read','write','delete'] as const)
+                v-for="t in (['read','write','delete'] as const)"
                 :key="t"
                 class="d-flex align-center permission-cell"
               >
@@ -128,7 +128,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
 import { categoryIcons } from '@/constants/roleMenuConfig'
 
 const props = defineProps<{
