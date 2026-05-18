@@ -62,10 +62,6 @@
             </div>
           </VCardTitle>
           <VCardText>
-            <div class="d-flex">
-              <div class="flex-1">
-
-          <VCardText>
             <div v-if="loading" class="d-flex justify-center py-8">
               <VProgressCircular indeterminate color="primary" size="64" />
             </div>
@@ -82,7 +78,7 @@
                       :category="category"
                       :child-permission="getChildPermission"
                       :on-set-child-permission="setChildPermission"
-                      :parent-state="getParentState"
+                      :parent-state="(type) => getParentState(category, type)"
                       :on-toggle-category="(type, value) => toggleCategory(menuConfig, category, type, value)"
                       :permission-level="getPermissionLevel"
                       :on-update-permission-level="updatePermissionLevel"
