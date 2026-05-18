@@ -59,16 +59,6 @@ interface MenuCategory {
   children: MenuChild[]
 }
 
-interface PermissionTreeNode {
-  id: string
-  label: string
-  category: string
-  read: boolean
-  write: boolean
-  delete: boolean
-  children?: PermissionTreeNode[]
-}
-
 // Route params
 const route = useRoute()
 const router = useRouter()
@@ -91,7 +81,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const superAdmin = ref(false)
-const superAdminUpdating = ref(false) // предотвращает рекурсию watcher
+const superAdminUpdating = ref(false)
 const expandedPanels = ref([
   'menu_tickets',
   'menu_chat',
@@ -151,10 +141,8 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Watcher for super admin toggle
 watch(superAdmin, async (newVal) => {
-  // Предотвращаем рекурсию при откате
   if (superAdminUpdating.value) return
 
-  // Проверяем, что у нас есть ID роли для сохранения
   if (!roleId.value || roleId.value === 0) {
     superAdminUpdating.value = true
     showToast('Сначала сохраните основную информацию роли', 'warning')
@@ -166,9 +154,7 @@ watch(superAdmin, async (newVal) => {
   try {
     const permissionsToUpdate: Record<string, boolean> = {}
 
-    // Собираем ключи для обновления и мутируем локальное состояние
     permissionsMap.value.forEach((perm, code) => {
-      // Пропускаем родительские permissions (синтетические для UI)
       const isParentPermission = menuConfig.some(cat =>
         `${cat.category}_read` === code ||
         `${cat.category}_write` === code ||
@@ -183,7 +169,6 @@ watch(superAdmin, async (newVal) => {
       }
     })
 
-    // Обновляем UI сразу (до API-вызова)
     triggerRef(permissionsMap)
     menuConfig.forEach(category => {
       if (category.children[0]?.code) {
@@ -193,7 +178,6 @@ watch(superAdmin, async (newVal) => {
 
     console.log(`Super admin: sending ${Object.keys(permissionsToUpdate).length} permissions, value=${newVal}`)
 
-    // Отправляем запрос на сервер
     await $api(`/roles/${roleId.value}/permissions`, {
       method: 'PUT',
       body: { permissions: permissionsToUpdate }
@@ -203,7 +187,6 @@ watch(superAdmin, async (newVal) => {
   } catch (err) {
     console.error('Failed to update super admin permissions:', err)
     showToast('Ошибка изменения режима суперадмина', 'error')
-    // Откатываем локальное состояние
     permissionsMap.value.forEach((perm, code) => {
       const isParentPermission = menuConfig.some(cat =>
         `${cat.category}_read` === code ||
@@ -223,9 +206,7 @@ watch(superAdmin, async (newVal) => {
   }
 })
 
-
-
-// Конфигурация меню - ВСЕ разделы из системы
+// Конфигурация меню - ВСЕ разделы из системы (все code с префиксом menu_)
 const menuConfig: MenuCategory[] = [
   {
     category: 'menu_tickets',
@@ -293,37 +274,37 @@ const menuConfig: MenuCategory[] = [
     category: 'menu_ticket_settings',
     label: 'Настройки Тикетов',
     children: [
-      { id: 'apps-queues', label: 'Очереди', code: 'queues' },
-      { id: 'apps-types', label: 'Типы', code: 'types' },
-      { id: 'apps-type-categories', label: 'Категории', code: 'type_categories' },
-      { id: 'apps-states', label: 'Статусы', code: 'states' },
-      { id: 'apps-priorities', label: 'Приоритеты', code: 'priorities' },
-      { id: 'apps-sla', label: 'SLA', code: 'sla' },
-      { id: 'apps-templates', label: 'Шаблоны', code: 'templates' },
-      { id: 'apps-template-queues', label: 'Очереди шаблонов', code: 'template_queues' },
-      { id: 'apps-workflows', label: 'Рабочие процессы', code: 'workflows' },
-      { id: 'apps-greetings', label: 'Приветствия', code: 'greetings' },
-      { id: 'apps-signatures', label: 'Подписи', code: 'signatures' },
-      { id: 'apps-auto-responses', label: 'Автоответы', code: 'auto_responses' },
-      { id: 'apps-attachments', label: 'Вложения', code: 'attachments' },
-      { id: 'apps-settings-ticket-settings', label: 'Конфигурация системы', code: 'tickets_system_configuration' }
+      { id: 'apps-queues', label: 'Очереди', code: 'menu_queues' },
+      { id: 'apps-types', label: 'Типы', code: 'menu_types' },
+      { id: 'apps-type-categories', label: 'Категории', code: 'menu_type_categories' },
+      { id: 'apps-states', label: 'Статусы', code: 'menu_states' },
+      { id: 'apps-priorities', label: 'Приоритеты', code: 'menu_priorities' },
+      { id: 'apps-sla', label: 'SLA', code: 'menu_sla' },
+      { id: 'apps-templates', label: 'Шаблоны', code: 'menu_templates' },
+      { id: 'apps-template-queues', label: 'Очереди шаблонов', code: 'menu_template_queues' },
+      { id: 'apps-workflows', label: 'Рабочие процессы', code: 'menu_workflows' },
+      { id: 'apps-greetings', label: 'Приветствия', code: 'menu_greetings' },
+      { id: 'apps-signatures', label: 'Подписи', code: 'menu_signatures' },
+      { id: 'apps-auto-responses', label: 'Автоответы', code: 'menu_auto_responses' },
+      { id: 'apps-attachments', label: 'Вложения', code: 'menu_attachments' },
+      { id: 'apps-settings-ticket-settings', label: 'Конфигурация системы', code: 'menu_tickets_system_configuration' }
     ]
   },
   {
     category: 'menu_email_settings',
     label: 'Настройка Почты',
     children: [
-      { id: 'apps-email-addresses', label: 'Адреса', code: 'email_addresses' },
-      { id: 'apps-post-master-mail-accounts', label: 'Почтовые аккаунты', code: 'post_master_mail_accounts' },
+      { id: 'apps-email-addresses', label: 'Адреса', code: 'menu_email_addresses' },
+      { id: 'apps-post-master-mail-accounts', label: 'Почтовые аккаунты', code: 'menu_post_master_mail_accounts' },
     ]
   },
   {
     category: 'menu_system',
     label: 'Система',
     children: [
-      { id: 'apps-calendars', label: 'Календари', code: 'calendars' },
-      { id: 'apps-session-management', label: 'Сессии', code: 'session_management' },
-      { id: 'apps-system-log', label: 'Лог', code: 'system_log' },
+      { id: 'apps-calendars', label: 'Календари', code: 'menu_calendars' },
+      { id: 'apps-session-management', label: 'Сессии', code: 'menu_session_management' },
+      { id: 'apps-system-log', label: 'Лог', code: 'menu_system_log' },
     ]
   },
   {
@@ -341,13 +322,6 @@ const menuConfig: MenuCategory[] = [
     ]
   }
 ]
-
-// Получить permission для child
-const getChildPermission = (childCode: string, type: 'read' | 'write' | 'delete'): boolean => {
-  if (!permissionsMap.value) return false
-  const permission = permissionsMap.value.get(`${childCode}_${type}`)
-  return permission ? permission[type] : false
-}
 
 // Получить иконку для категории
 const getCategoryIcon = (category: string): string => {
@@ -389,7 +363,14 @@ const getCategoryColor = (category: string): string => {
   return colors[category] || 'grey'
 }
 
-// Установить permission для child - ИСПРАВЛЕНО
+// Получить permission для child
+const getChildPermission = (childCode: string, type: 'read' | 'write' | 'delete'): boolean => {
+  if (!permissionsMap.value) return false
+  const permission = permissionsMap.value.get(`${childCode}_${type}`)
+  return permission ? permission[type] : false
+}
+
+// Установить permission для child
 const setChildPermission = async (childCode: string, type: 'read' | 'write' | 'delete', value: boolean) => {
   if (!childCode) {
     console.error('setChildPermission: childCode is undefined')
@@ -555,7 +536,7 @@ const toggleCategory = async (category: MenuCategory, type: 'read' | 'write' | '
   }
 }
 
-// Получить состояние родительского чекбокса (для indeterminate) - ИСПРАВЛЕНО
+// Получить состояние родительского чекбокса (для indeterminate)
 const getParentState = (category: MenuCategory, type: 'read' | 'write' | 'delete') => {
   const key = `${category.category}_${type}`
   const perm = permissionsMap.value.get(key)
@@ -578,21 +559,6 @@ const getParentState = (category: MenuCategory, type: 'read' | 'write' | 'delete
     indeterminate: (perm as any)[`${type}_indeterminate`] || false
   }
 }
-
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
 
 // Загрузка данных
 const fetchRole = async () => {
@@ -795,10 +761,8 @@ const saveRole = async () => {
       roleId.value = savedRole.id
 
       // Сохраняем разрешения для новой роли
-      // Формат API: { "menu_xxx_read": true, "menu_xxx_write": true, ... }
       const permissionsObj: Record<string, boolean> = {}
       permissionsMap.value.forEach((perm, code) => {
-        // Пропускаем родительские (синтетические) записи категорий
         const isParentPermission = menuConfig.some(cat =>
           `${cat.category}_read` === code ||
           `${cat.category}_write` === code ||
@@ -806,7 +770,6 @@ const saveRole = async () => {
         )
         if (isParentPermission) return
 
-        // Отправляем только записи с корректным суффиксом _read/_write/_delete
         if (code.endsWith('_read') && perm.read) {
           permissionsObj[code] = true
         } else if (code.endsWith('_write') && perm.write) {
@@ -824,7 +787,6 @@ const saveRole = async () => {
       }
 
       showToast('Роль успешно создана')
-      // После создания перенаправляем на страницу редактирования
       router.replace({ path: '/apps/roles/edit', query: { id: savedRole.id } })
     } else {
       // Обновляем существующую роль
@@ -842,13 +804,9 @@ const saveRole = async () => {
       try {
         const cookieUserData = useCookie<any>('userData')
         const currentRoleId = cookieUserData.value?.roleId || cookieUserData.value?.roleId || null
-        // roleId.value — редактируемая роль
         if (currentRoleId && Number(currentRoleId) === Number(roleId.value)) {
-          // Запросим у сервера актуальные правила для текущего пользователя через /auth/me (если сервер возвращает userAbilityRules)
           try {
             const me = await $api('/auth/me', { method: 'GET' })
-            // Если серверный endpoint /auth/me не возвращает userAbilityRules, пробуем /auth/login повторно не делаем
-            // Вместо этого вызываем специальный endpoint /sessionManagement/current если он есть — но здесь мы пробуем /sessionManagement/current
             let newRules = null
             try {
               const sess = await $api('/sessionManagement/current')
@@ -864,7 +822,6 @@ const saveRole = async () => {
               if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('userAbilityRules', rulesJson)
               localStorage.setItem('userAbilityRules', rulesJson)
               ability.update(newRules)
-              // force reload permissions map
               const gp = useGlobalPermissions()
               await gp.loadPermissions()
               showToast('Права применены в текущей сессии', 'success')
@@ -885,8 +842,6 @@ const saveRole = async () => {
   }
 }
 
-
-
 const cancel = () => {
   router.push('/apps/Roles')
 }
@@ -899,7 +854,6 @@ onMounted(async () => {
   if (roleId.value) {
     await Promise.all([fetchRole(), fetchPermissions()])
   } else {
-    // Для новой роли загружаем только доступные разрешения
     await fetchPermissions()
   }
 })
@@ -915,7 +869,6 @@ onMounted(async () => {
     >
       <VCard>
         <VCardText class="text-center pt-12">
-          <!-- Иконка роли -->
           <VAvatar
             rounded
             :size="120"
@@ -926,12 +879,10 @@ onMounted(async () => {
             <VIcon icon="bx-shield" size="60" />
           </VAvatar>
 
-          <!-- Название -->
           <h5 class="text-h5 mt-4">
             {{ role.name || 'Новая роль' }}
           </h5>
 
-          <!-- Статус -->
           <VChip
             label
             :color="role.isActive ? 'success' : 'error'"
@@ -943,7 +894,6 @@ onMounted(async () => {
         </VCardText>
 
         <VCardText>
-          <!-- Детали -->
           <h5 class="text-h5">
             Информация
           </h5>
@@ -980,7 +930,6 @@ onMounted(async () => {
           </VList>
         </VCardText>
 
-        <!-- Кнопки -->
         <VCardText class="d-flex justify-center gap-x-4">
           <VBtn
             variant="elevated"
@@ -1084,9 +1033,7 @@ onMounted(async () => {
           </VCardText>
         </VCard>
 
-
-
-        <!-- Разрешения - НОВОЕ ДЕРЕВО -->
+        <!-- Разрешения -->
         <VCard variant="outlined">
           <VCardTitle class="pb-3">
             <div class="d-flex align-center">
@@ -1121,146 +1068,144 @@ onMounted(async () => {
             <div v-if="loading" class="d-flex justify-center py-8">
               <VProgressCircular indeterminate color="primary" size="64" />
             </div>
-      <div v-else>
-        <VExpansionPanels v-model="expandedPanels" multiple variant="accordion">
-          <VExpansionPanel
-            v-for="category in menuConfig"
-            :key="category.category"
-            :value="category.category"
-            class="menu-permission-panel"
-          >
-            <VExpansionPanelTitle class="py-2">
-              <div class="d-flex align-center w-100">
-                <!-- Иконка категории -->
-                <VIcon
-                  :icon="getCategoryIcon(category.category)"
-                  class="mr-3"
-                  color="grey"
-                  size="22"
-                />
-                <span class="text-subtitle-1 font-weight-medium">{{ category.label }}</span>
-
-                <div class="ml-auto d-flex gap-6">
-                  <div class="d-flex align-center permission-check">
-                    <span class="text-caption mr-2 permission-label">Чтение</span>
-                    <VCheckbox
-                      :model-value="getParentState(category, 'read').value"
-                      :indeterminate="getParentState(category, 'read').indeterminate"
-                      density="compact"
-                      hide-details
-                      color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'read', !!val)"
-                      @click.stop
-                    />
-                  </div>
-                  <div class="d-flex align-center permission-check">
-                    <span class="text-caption mr-2 permission-label">Запись</span>
-                    <VCheckbox
-                      :model-value="getParentState(category, 'write').value"
-                      :indeterminate="getParentState(category, 'write').indeterminate"
-                      density="compact"
-                      hide-details
-                      color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'write', !!val)"
-                      @click.stop
-                    />
-                  </div>
-                  <div class="d-flex align-center permission-check">
-                    <span class="text-caption mr-2 permission-label">Удаление</span>
-                    <VCheckbox
-                      :model-value="getParentState(category, 'delete').value"
-                      :indeterminate="getParentState(category, 'delete').indeterminate"
-                      density="compact"
-                      hide-details
-                      color="primary"
-                      @update:model-value="(val) => toggleCategory(category, 'delete', !!val)"
-                      @click.stop
-                    />
-                  </div>
-                </div>
-              </div>
-            </VExpansionPanelTitle>
-
-            <VExpansionPanelText class="pl-9">
-              <VList density="comfortable" class="bg-transparent">
-                <VListItem
-                  v-for="child in category.children"
-                  :key="child.id"
-                  class="px-0 menu-child-item"
+            <div v-else>
+              <VExpansionPanels v-model="expandedPanels" multiple variant="accordion">
+                <VExpansionPanel
+                  v-for="category in menuConfig"
+                  :key="category.category"
+                  :value="category.category"
+                  class="menu-permission-panel"
                 >
-                  <div class="d-flex align-center w-100">
-                    <!-- Маленькая иконка для дочерних пунктов -->
-                    <VIcon
-                      icon="bx-dot"
-                      size="16"
-                      class="mr-2"
-                      color="grey"
-                    />
-                    <span class="text-body-2">{{ child.label }}</span>
-                    <div class="ml-auto d-flex gap-6 align-center">
-                      <div
-                        v-for="t in (['read','write','delete'] as const)"
-                        :key="t"
-                        class="d-flex align-center permission-cell"
-                      >
-                        <VCheckbox
-                          v-if="child.code"
-                          :model-value="getChildPermission(child.code!, t)"
-                          density="compact"
-                          hide-details
-                          color="primary"
-                          @update:model-value="(val) => setChildPermission(child.code!, t, !!val)"
-                          @click.stop
-                        />
-                        <VMenu
-                          v-if="child.code"
-                          :close-on-content-click="true"
-                          location="bottom end"
-                        >
-                          <template #activator="{ props: menuProps }">
-                            <VChip
-                              v-bind="menuProps"
-                              size="x-small"
-                              variant="tonal"
-                              :color="getPermissionLevel(child.code!, t) === 0 ? 'grey' : 'primary'"
-                              class="permission-level-chip ml-1"
-                              @click.stop
-                            >
-                              {{ getPermissionLevel(child.code!, t) }}
-                            </VChip>
-                          </template>
-                          <VList density="compact">
-                            <VListItem
-                              v-for="opt in accessLevels"
-                              :key="opt.level"
-                              :value="opt.level"
-                              :active="getPermissionLevel(child.code!, t) === opt.level"
-                              @click="updatePermissionLevel(child.code!, t, opt.level)"
-                            >
-                              <VListItemTitle class="d-flex align-center">
-                                <VChip
-                                  size="x-small"
-                                  :color="opt.level === 0 ? 'grey' : 'primary'"
-                                  variant="tonal"
-                                  class="mr-2"
-                                >
-                                  {{ opt.level }}
-                                </VChip>
-                                <span class="text-caption">{{ opt.description }}</span>
-                              </VListItemTitle>
-                            </VListItem>
-                          </VList>
-                        </VMenu>
+                  <VExpansionPanelTitle class="py-2">
+                    <div class="d-flex align-center w-100">
+                      <VIcon
+                        :icon="getCategoryIcon(category.category)"
+                        class="mr-3"
+                        color="grey"
+                        size="22"
+                      />
+                      <span class="text-subtitle-1 font-weight-medium">{{ category.label }}</span>
+
+                      <div class="ml-auto d-flex gap-6">
+                        <div class="d-flex align-center permission-check">
+                          <span class="text-caption mr-2 permission-label">Чтение</span>
+                          <VCheckbox
+                            :model-value="getParentState(category, 'read').value"
+                            :indeterminate="getParentState(category, 'read').indeterminate"
+                            density="compact"
+                            hide-details
+                            color="primary"
+                            @update:model-value="(val) => toggleCategory(category, 'read', !!val)"
+                            @click.stop
+                          />
+                        </div>
+                        <div class="d-flex align-center permission-check">
+                          <span class="text-caption mr-2 permission-label">Запись</span>
+                          <VCheckbox
+                            :model-value="getParentState(category, 'write').value"
+                            :indeterminate="getParentState(category, 'write').indeterminate"
+                            density="compact"
+                            hide-details
+                            color="primary"
+                            @update:model-value="(val) => toggleCategory(category, 'write', !!val)"
+                            @click.stop
+                          />
+                        </div>
+                        <div class="d-flex align-center permission-check">
+                          <span class="text-caption mr-2 permission-label">Удаление</span>
+                          <VCheckbox
+                            :model-value="getParentState(category, 'delete').value"
+                            :indeterminate="getParentState(category, 'delete').indeterminate"
+                            density="compact"
+                            hide-details
+                            color="primary"
+                            @update:model-value="(val) => toggleCategory(category, 'delete', !!val)"
+                            @click.stop
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </VListItem>
-              </VList>
-            </VExpansionPanelText>
-          </VExpansionPanel>
-        </VExpansionPanels>
-      </div>
-    </VCardText>
+                  </VExpansionPanelTitle>
+
+                  <VExpansionPanelText class="pl-9">
+                    <VList density="comfortable" class="bg-transparent">
+                      <VListItem
+                        v-for="child in category.children"
+                        :key="child.id"
+                        class="px-0 menu-child-item"
+                      >
+                        <div class="d-flex align-center w-100">
+                          <VIcon
+                            icon="bx-dot"
+                            size="16"
+                            class="mr-2"
+                            color="grey"
+                          />
+                          <span class="text-body-2">{{ child.label }}</span>
+                          <div class="ml-auto d-flex gap-6 align-center">
+                            <div
+                              v-for="t in (['read','write','delete'] as const)"
+                              :key="t"
+                              class="d-flex align-center permission-cell"
+                            >
+                              <VCheckbox
+                                v-if="child.code"
+                                :model-value="getChildPermission(child.code!, t)"
+                                density="compact"
+                                hide-details
+                                color="primary"
+                                @update:model-value="(val) => setChildPermission(child.code!, t, !!val)"
+                                @click.stop
+                              />
+                              <VMenu
+                                v-if="child.code"
+                                :close-on-content-click="true"
+                                location="bottom end"
+                              >
+                                <template #activator="{ props: menuProps }">
+                                  <VChip
+                                    v-bind="menuProps"
+                                    size="x-small"
+                                    variant="tonal"
+                                    :color="getPermissionLevel(child.code!, t) === 0 ? 'grey' : 'primary'"
+                                    class="permission-level-chip ml-1"
+                                    @click.stop
+                                  >
+                                    {{ getPermissionLevel(child.code!, t) }}
+                                  </VChip>
+                                </template>
+                                <VList density="compact">
+                                  <VListItem
+                                    v-for="opt in accessLevels"
+                                    :key="opt.level"
+                                    :value="opt.level"
+                                    :active="getPermissionLevel(child.code!, t) === opt.level"
+                                    @click="updatePermissionLevel(child.code!, t, opt.level)"
+                                  >
+                                    <VListItemTitle class="d-flex align-center">
+                                      <VChip
+                                        size="x-small"
+                                        :color="opt.level === 0 ? 'grey' : 'primary'"
+                                        variant="tonal"
+                                        class="mr-2"
+                                      >
+                                        {{ opt.level }}
+                                      </VChip>
+                                      <span class="text-caption">{{ opt.description }}</span>
+                                    </VListItemTitle>
+                                  </VListItem>
+                                </VList>
+                              </VMenu>
+                            </div>
+                          </div>
+                        </div>
+                      </VListItem>
+                    </VList>
+                  </VExpansionPanelText>
+                </VExpansionPanel>
+              </VExpansionPanels>
+            </div>
+          </VCardText>
         </VCard>
 
         <!-- Действия -->
@@ -1342,7 +1287,6 @@ onMounted(async () => {
   }
 }
 
-// Стили для чекбоксов как в меню
 :deep(.v-checkbox) {
   .v-selection-control {
     min-height: 32px;
@@ -1353,7 +1297,6 @@ onMounted(async () => {
   }
 }
 
-// Адаптация под темную тему
 :deep(.v-theme--dark) {
   .permission-label {
     color: rgba(255, 255, 255, 0.7);

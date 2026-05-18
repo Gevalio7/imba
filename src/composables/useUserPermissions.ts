@@ -55,6 +55,7 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
   permissionsMap.clear()
   
   console.log('Processing rules:', rules.length)
+  console.log('Sample rules (first 3):', JSON.stringify(rules.slice(0,3), null, 2))
   
   rules.forEach(rule => {
     const subject = rule.subject
@@ -91,7 +92,9 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
     // We need to support both variants: with and without 'menu_' prefix
     const variants = new Set<string>()
     variants.add(base)
-    variants.add(`menu_${base}`)
+    if (!base.startsWith('menu_')) {
+      variants.add(`menu_${base}`)
+    }
 
     // If subject already included suffix, also include suffixed variants
     if (type) {
@@ -127,7 +130,8 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
       if (m) {
         const base = m[1]
         const action = m[2]
-        const menuKey = `menu_${base}_${action}`
+        // Avoid creating duplicate menu_menu_... keys when base already starts with 'menu_'
+        const menuKey = base.startsWith('menu_') ? `${base}_${action}` : `menu_${base}_${action}`
         if (!permissionsMap.has(menuKey)) {
           permissionsMap.set(menuKey, {
             code: menuKey,
