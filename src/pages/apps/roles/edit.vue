@@ -14,6 +14,8 @@
         :only-own-tickets="onlyOwnTickets"
         :can-reply="canReply"
         :can-internal-notes="canInternalNotes"
+        :can-change-status="canChangeStatus"
+        :can-change-priority="canChangePriority"
         :departments-list="departmentsList"
         :companies-list="companiesList"
         @update:super-admin="superAdmin = $event"
@@ -22,6 +24,8 @@
         @update:only-own-tickets="onlyOwnTickets = $event"
         @update:can-reply="canReply = $event"
         @update:can-internal-notes="canInternalNotes = $event"
+        @update:can-change-status="canChangeStatus = $event"
+        @update:can-change-priority="canChangePriority = $event"
       />
     </VCol>
 

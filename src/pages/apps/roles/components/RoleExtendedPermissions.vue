@@ -1,7 +1,8 @@
 <template>
   <VCard class="mt-6">
     <VCardTitle class="d-flex align-center gap-3">
-      <VIcon icon="bx-crown" color="error" size="20" />
+ 
+      <VIcon icon="bx-crown" class="mr-3" color="error" />
       <span class="text-h6">Расширенные права</span>
     </VCardTitle>
 
@@ -10,7 +11,7 @@
         <VCol cols="12">
           <div class="super-admin-row d-flex align-center justify-space-between">
             <div class="d-flex align-center gap-3">
-              <VIcon icon="bx-crown" color="error" size="18" />
+
               <div>
                 <div class="text-body-1 font-weight-medium">Супер-админ</div>
                 <div class="text-caption text-medium-emphasis">Полный доступ ко всем разделам системы</div>
