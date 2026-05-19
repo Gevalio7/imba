@@ -28,7 +28,7 @@
             item-value="id"
             multiple
             chips
-            label="Отделы"
+            label="Видны обращения Отделов"
             placeholder="Все отделы"
             density="compact"
             @update:model-value="$emit('update:departments', $event)"
@@ -43,7 +43,7 @@
             item-value="id"
             multiple
             chips
-            label="Компании"
+            label="Видны обращения Компаний"
             placeholder="Все компании"
             density="compact"
             @update:model-value="$emit('update:companies', $event)"
