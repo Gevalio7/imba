@@ -1,3 +1,4 @@
+import { $api } from '@/utils/api'
 import type { App } from 'vue'
 
 import { createMongoAbility } from '@casl/ability'
@@ -34,9 +35,9 @@ function getInitialRules(): Rule[] {
       // If cookie token exists and looks valid, confirm with server via /api/auth/me before trusting cookies
       if (cookieToken && isJwtValid(cookieToken)) {
         // perform non-blocking server check; if OK, sync cookies -> session
-        fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + cookieToken } })
+        $api('/auth/me', { headers: { Authorization: 'Bearer ' + cookieToken } })
           .then(resp => {
-            if (!resp.ok) return
+            if (!resp || ('ok' in resp && !resp.ok)) return
             try {
               if (cookieUser && !sessionStorage.getItem('userData')) sessionStorage.setItem('userData', cookieUser)
               if (cookieToken && !sessionStorage.getItem('accessToken')) sessionStorage.setItem('accessToken', cookieToken)
