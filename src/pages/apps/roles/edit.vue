@@ -1,6 +1,6 @@
 <template>
   <VRow>
-    <VCol cols="12" md="5" lg="4">
+    <VCol cols="12" md="6" lg="6">
       <RoleInfoCard 
         :role="role" 
         @save="saveRole" 
@@ -25,7 +25,7 @@
       />
     </VCol>
 
-    <VCol cols="12" md="7" lg="8">
+    <VCol cols="12" md="6" lg="6">
       <VCard elevation="2" class="pa-6">
         <VCardTitle class="d-flex align-center pa-0 mb-6">
           <VBtn
