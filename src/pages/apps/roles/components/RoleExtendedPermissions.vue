@@ -1,102 +1,87 @@
 <template>
-  <VCard>
+  <VCard class="mt-6">
+    <VCardTitle>
+      Расширенные права
+    </VCardTitle>
+
     <VCardText>
-      <h5>Расширенные права</h5>
-
-      <div>
-        <div>
-          <div>
-            <span>Супер-админ</span>
-            <p>Полный доступ ко всем разделам системы</p>
+      <VRow>
+        <VCol cols="12">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <span class="text-body-1 font-weight-medium">Супер-админ</span>
+              <p class="text-caption text-medium-emphasis mt-1 mb-0">Полный доступ ко всем разделам системы</p>
+            </div>
+            <VSwitch :model-value="superAdmin" color="error" hide-details @update:model-value="$emit('update:superAdmin', $event)" />
           </div>
-          <VSwitch
-            :model-value="superAdmin"
-            @update:model-value="$emit('update:superAdmin', $event)"
+        </VCol>
+
+        <VCol cols="12">
+          <VSelect
+            :model-value="departments"
+            :items="departmentsList"
+            item-title="name"
+            item-value="id"
+            multiple
+            chips
+            label="Отделы"
+            placeholder="Все отделы"
+            density="compact"
+            @update:model-value="$emit('update:departments', $event)"
           />
-        </div>
-      </div>
+        </VCol>
 
-      <VDivider />
+        <VCol cols="12">
+          <VSelect
+            :model-value="companies"
+            :items="companiesList"
+            item-title="name"
+            item-value="id"
+            multiple
+            chips
+            label="Компании"
+            placeholder="Все компании"
+            density="compact"
+            @update:model-value="$emit('update:companies', $event)"
+          />
+        </VCol>
 
-      <div>
-        <span>Видеть заявки отдела</span>
-        <VSelect
-          :model-value="departments"
-          :items="departmentsList"
-          item-title="name"
-          item-value="id"
-          multiple
-          label="Выберите отделы"
-          placeholder="Все отделы"
-          @update:model-value="$emit('update:departments', $event)"
-        />
-        <p>Пользователь будет видеть заявки выбранных отделов</p>
-      </div>
-
-      <div>
-        <span>Видеть заявки компании</span>
-        <VSelect
-          :model-value="companies"
-          :items="companiesList"
-          item-title="name"
-          item-value="id"
-          multiple
-          label="Выберите компании"
-          placeholder="Все компании"
-          @update:model-value="$emit('update:companies', $event)"
-        />
-        <p>Пользователь будет видеть заявки выбранных компаний</p>
-      </div>
-
-      <VDivider />
-
-      <div>
-        <div>
-          <div>
-            <span>Только свои обращения</span>
-            <p>Пользователь видит только заявки, где назначен исполнителем</p>
+        <VCol cols="12" md="6">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <span class="text-body-1">Только свои обращения</span>
+              <p class="text-caption text-medium-emphasis mt-1 mb-0">Пользователь видит только заявки, где назначен исполнителем</p>
+            </div>
+            <VSwitch :model-value="onlyOwnTickets" color="primary" hide-details @update:model-value="$emit('update:onlyOwnTickets', $event)" />
           </div>
-          <VSwitch
-            :model-value="onlyOwnTickets"
-            @update:model-value="$emit('update:onlyOwnTickets', $event)"
-          />
-        </div>
-      </div>
+        </VCol>
 
-      <div>
-        <div>
-          <div>
-            <span>Отвечать на заявки</span>
-            <p>Возможность добавлять публичные комментарии</p>
+        <VCol cols="12" md="6">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <span class="text-body-1">Отвечать на заявки</span>
+              <p class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять публичные комментарии</p>
+            </div>
+            <VSwitch :model-value="canReply" color="primary" hide-details @update:model-value="$emit('update:canReply', $event)" />
           </div>
-          <VSwitch
-            :model-value="canReply"
-            @update:model-value="$emit('update:canReply', $event)"
-          />
-        </div>
-      </div>
+        </VCol>
 
-      <div>
-        <div>
-          <div>
-            <span>Внутренние заметки</span>
-            <p>Возможность добавлять внутренние комментарии (видны только сотрудникам)</p>
+        <VCol cols="12">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <span class="text-body-1">Внутренние заметки</span>
+              <p class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять внутренние комментарии (видны только сотрудникам)</p>
+            </div>
+            <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="$emit('update:canInternalNotes', $event)" />
           </div>
-          <VSwitch
-            :model-value="canInternalNotes"
-            @update:model-value="$emit('update:canInternalNotes', $event)"
-          />
-        </div>
-      </div>
+        </VCol>
+      </VRow>
     </VCardText>
   </VCard>
 </template>
 
 <script setup lang="ts">
-interface SelectItem {
-  id: number
-  name: string
-}
+interface SelectItem { id: number; name: string }
 
 defineProps<{
   superAdmin: boolean
