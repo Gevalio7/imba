@@ -63,8 +63,8 @@
         <VCol cols="12" md="6">
           <div class="option-row d-flex align-center justify-space-between">
             <div>
-              <div class="text-body-1">Отвечать на заявки</div>
-              <div class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять публичные комментарии</div>
+              <div class="text-body-1">Добавлять комментарии в обращения</div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">(видны всем)</div>
             </div>
             <VSwitch :model-value="canReply" color="primary" hide-details @update:model-value="$emit('update:canReply', $event)" />
           </div>
@@ -95,16 +95,6 @@
             <div>
               <div class="text-body-1">Внутренние заметки</div>
               <div class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять внутренние комментарии (видны только сотрудникам)</div>
-            </div>
-            <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="$emit('update:canInternalNotes', $event)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Внутренние заметки</div>
-              <div class="text-caption text-medium-emphasis">Добавлять внутренние комментарии (видны только сотрудникам)</div>
             </div>
             <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="$emit('update:canInternalNotes', $event)" />
           </div>
