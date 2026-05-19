@@ -26,16 +26,16 @@ export function useRoleForm() {
     if (!role.value.name.trim()) throw new Error('Название роли обязательно')
 
     if (isNew) {
-      const savedRole = await $api<Role>('/roles', {
-        method: 'POST',
-        body: {
-          name: role.value.name,
-          message: role.value.message,
-          isActive: role.value.isActive
-        }
-      })
-      role.value.id = savedRole.id
-      return savedRole
+    const savedRole = await $api<Role>('/roles', {
+      method: 'POST',
+      body: {
+        name: role.value.name,
+        message: role.value.message,
+        isActive: role.value.isActive
+      }
+    })
+    role.value = savedRole
+    return savedRole
     } else {
       await $api<Role>(`/roles/${role.value.id}`, {
         method: 'PUT',

@@ -1,10 +1,10 @@
 <template>
   <VRow>
-    <VCol cols="12" md="6" lg="6">
+    <VCol cols="12" md="6" lg="5">
       <RoleInfoCard 
         :role="role" 
-        @save="saveRole" 
-        @cancel="cancel" 
+        @save="saveRole"
+        @cancel="cancel"
       />
       
       <RoleExtendedPermissions
@@ -25,7 +25,7 @@
       />
     </VCol>
 
-    <VCol cols="12" md="6" lg="6">
+    <VCol cols="12" md="6" lg="7">
       <VCard elevation="2" class="pa-6">
         <VCardTitle class="d-flex align-center pa-0 mb-6">
           <VBtn
@@ -238,7 +238,7 @@
 definePage({ meta: { navActiveLink: 'apps-roles' } })
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { menuConfig, categoryIcons } from '@/constants/roleMenuConfig'
 import { useRoleForm } from '@/composables/useRoleForm'
 import { useRolePermissions } from '@/composables/useRolePermissions'
@@ -246,10 +246,11 @@ import RoleInfoCard from './components/RoleInfoCard.vue'
 import RoleExtendedPermissions from './components/RoleExtendedPermissions.vue'
 
 const route = useRoute()
+const router = useRouter()
 const roleId = ref<number>(route.query.id ? parseInt(String(route.query.id), 10) : 0)
 const isNew = computed(() => !roleId.value)
 
-const { role, fetchRole, saveRole, cancel } = useRoleForm()
+const { role, fetchRole, saveRole: saveRoleForm, cancel } = useRoleForm()
 const { 
   getChildPermission, 
   setChildPermission, 
@@ -265,6 +266,9 @@ const loading = ref(false)
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
+
+const canChangeStatus = ref(false)
+const canChangePriority = ref(false)
 
 const getCategoryIcon = (category: string): string => {
   return categoryIcons[category] || 'bx-menu'
@@ -296,6 +300,29 @@ const selectedCompanies = ref<number[]>([])
 const onlyOwnTickets = ref(false)
 const canReply = ref(true)
 const canInternalNotes = ref(false)
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
+// Обёртка сохранения роли: сначала сохранение, затем загрузка permissions для новой роли
+const saveRole = async () => {
+  try {
+    const saved = await saveRoleForm(isNew.value)
+    if (isNew.value && saved?.id) {
+      roleId.value = saved.id
+      await fetchPermissions(menuConfig)
+      showToast('Роль успешно создана, теперь можно настроить разрешения', 'success')
+      router.replace({ path: '/apps/roles/edit', query: { id: saved.id } })
+    } else {
+      showToast('Роль сохранена', 'success')
+    }
+  } catch (err: any) {
+    showToast(err?.message || 'Ошибка сохранения роли', 'error')
+  }
+}
 
 // Заглушки для списков (позже заменишь на API)
 const departmentsList = ref([
