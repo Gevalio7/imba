@@ -35,23 +35,11 @@ function getInitialRules(): Rule[] {
       // If cookie token exists and looks valid, confirm with server via /api/auth/me before trusting cookies
       if (cookieToken && isJwtValid(cookieToken)) {
         // perform non-blocking server check; if OK, sync cookies -> session
-        $api('/auth/me', { headers: { Authorization: 'Bearer ' + cookieToken } })
-          .then(resp => {
-            if (!resp || ('ok' in resp && !resp.ok)) return
-            try {
-              if (cookieUser && !sessionStorage.getItem('userData')) sessionStorage.setItem('userData', cookieUser)
-              if (cookieToken && !sessionStorage.getItem('accessToken')) sessionStorage.setItem('accessToken', cookieToken)
+        // Server check for /auth/me removed — session/localStorage sync is handled elsewhere
+        // (This avoids 404 caused by $api initialization timing in early plugin execution.)
+        // If needed, re-enable with an explicit fetch to backend URL after app init.
+        
 
-              const localRules = localStorage.getItem('userAbilityRules')
-              if (!sessionStorage.getItem('userAbilityRules') && localRules) {
-                sessionStorage.setItem('userAbilityRules', localRules)
-                sessionStorage.setItem('userAbilityRules_ts', String(Date.now()))
-              }
-            } catch (e) {
-              console.warn('cookie->session async sync failed', e)
-            }
-          })
-          .catch(() => {/* ignore network errors */})
       }
 
       // Note: we don't block on server check above; if it succeeds it will sync sessionStorage asynchronously
