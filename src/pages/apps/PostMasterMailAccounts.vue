@@ -424,6 +424,106 @@ const showToast = (message: string, color: string = 'success') => {
 }
 
 // Добавление нового PostMasterMailAccount
+const testingRowId = ref<number | null>(null)
+
+const canTestForm = computed(() => {
+  if (!editedItem.value.host || !editedItem.value.host.toString().trim()) return false
+  if (!editedItem.value.login || !editedItem.value.login.toString().trim()) return false
+  if (editedItem.value.authenticationType === 'password' && (!editedItem.value.password || !editedItem.value.password.toString().trim())) return false
+  return true
+})
+
+const testConnectionForItem = async (item: PostMasterMailAccount) => {
+  try {
+    testingRowId.value = item.id
+    const res = await $api(`/postMasterMailAccounts/${item.id}/test`, {
+      method: 'POST'
+    })
+    if (res && res.success) {
+      console.log('Test connection (item) success', item.id)
+      showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
+    } else {
+      showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
+    }
+  } catch (err: any) {
+    console.error('Error testing connection for item:', err)
+    const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
+    showToast(`Ошибка подключения: ${msg}`, 'error')
+  } finally {
+    testingRowId.value = null
+  }
+}
+
+const testConnectionForForm = async () => {
+  // Очистим предыдущие ошибки
+  error.value = null
+
+  // Нормализация
+  const rawHost = editedItem.value.host
+  const rawLogin = editedItem.value.login
+  const rawPassword = editedItem.value.password
+  const typeStr = (editedItem.value.type || '').toString().toLowerCase()
+  const protocol = typeStr.includes('imap') ? 'imap' : (typeStr.includes('pop3') ? 'pop3' : 'imap')
+
+  const host = rawHost?.toString().trim() || ''
+  let username = rawLogin?.toString().trim().replace(/,/g, '.') || ''
+  const password = rawPassword?.toString().trim() || ''
+
+  // Порт: если явно указан в editedItem.port используем его, иначе по протоколу
+  const explicitPort = (editedItem.value as any).port
+  const inferredPort = protocol === 'imap' ? 993 : 995
+  const port = explicitPort ? Number(explicitPort) : inferredPort
+
+  // Валидация
+  if (!host) {
+    showToast('Введите хост сервера', 'error')
+    return
+  }
+  if (!username) {
+    showToast('Введите логин', 'error')
+    return
+  }
+  if (!username.includes('@')) {
+    showToast('Введите корректный email (пример: user@domain.com)', 'error')
+    return
+  }
+  if (editedItem.value.authenticationType === 'password' && !password) {
+    showToast('Введите пароль', 'error')
+    return
+  }
+
+  try {
+    testingRowId.value = -1
+    const body = {
+      host,
+      port,
+      protocol,
+      username,
+      password,
+      type: 'incoming'
+    }
+
+    console.log('Testing connection (form) with', body)
+    const res = await $api(`/postMasterMailAccounts/test`, {
+      method: 'POST',
+      body
+    })
+
+    if (res && res.success) {
+      showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
+    } else {
+      showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
+    }
+  } catch (err: any) {
+    console.error('Error testing connection for form:', err)
+    const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
+    showToast(`Ошибка подключения: ${msg}`, 'error')
+  } finally {
+    testingRowId.value = null
+  }
+}
+
+
 const addNewPostMasterMailAccount = () => {
   editedItem.value = { ...defaultItem.value }
   editedIndex.value = -1
@@ -713,6 +813,17 @@ const addNewPostMasterMailAccount = () => {
             <IconBtn v-if="$can('delete','menu_post_master_mail_accounts')" @click="deleteItem(item)">
               <VIcon icon="bx-trash" />
             </IconBtn>
+
+            <VBtn
+              variant="text"
+              :disabled="testingRowId === item.id"
+              @click="testConnectionForItem(item)"
+              class="d-flex align-center"
+            >
+              <VProgressCircular v-if="testingRowId === item.id" indeterminate size="18" width="2" color="primary" />
+              <span v-else class="d-flex align-center"><VIcon icon="bx-search" class="me-1" />Тест</span>
+            </VBtn>
+
           </div>
         </template>
       </VDataTable>
@@ -908,24 +1019,35 @@ const addNewPostMasterMailAccount = () => {
           </VRow>
         </VCardText>
 
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
+          <VCardText>
+            <div class="self-align-end d-flex gap-4 justify-end">
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                :disabled="testingRowId === -1"
+                @click="testConnectionForForm"
+              >
+                <VProgressCircular v-if="testingRowId === -1" indeterminate size="18" width="2" color="primary" />
+                <span v-else>Проверить подключение</span>
+              </VBtn>
+
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="close"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="save"
+              >
+                Сохранить
+              </VBtn>
+            </div>
+          </VCardText>
+
       </VCard>
     </VDialog>
 

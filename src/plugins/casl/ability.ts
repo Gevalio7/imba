@@ -1,6 +1,6 @@
 import { createMongoAbility } from '@casl/ability'
 
-export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage'
+export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage' | 'write'
 
 // Единая модель: subject = код раздела меню (menu_<раздел>) или 'all' / 'own_profile'.
 // Используем строковый тип, т.к. перечислять все menu_* кодов нецелесообразно.
