@@ -64,9 +64,39 @@
           <div class="option-row d-flex align-center justify-space-between">
             <div>
               <div class="text-body-1">Отвечать на заявки</div>
-              <div class="text-caption text-medium-emphasis">Добавлять публичные комментарии</div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять публичные комментарии</div>
             </div>
             <VSwitch :model-value="canReply" color="primary" hide-details @update:model-value="$emit('update:canReply', $event)" />
+          </div>
+        </VCol>
+
+        <VCol cols="12" md="6">
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">Менять статус в тикете</div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">Разрешение на смену статуса обращения</div>
+            </div>
+            <VSwitch :model-value="canChangeStatus" color="primary" hide-details @update:model-value="$emit('update:canChangeStatus', $event)" />
+          </div>
+        </VCol>
+
+        <VCol cols="12" md="6">
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">Менять приоритет</div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">Разрешение на изменение приоритета тикета</div>
+            </div>
+            <VSwitch :model-value="canChangePriority" color="primary" hide-details @update:model-value="$emit('update:canChangePriority', $event)" />
+          </div>
+        </VCol>
+
+        <VCol cols="12">
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">Внутренние заметки</div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять внутренние комментарии (видны только сотрудникам)</div>
+            </div>
+            <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="$emit('update:canInternalNotes', $event)" />
           </div>
         </VCol>
 
@@ -94,6 +124,8 @@ defineProps<{
   onlyOwnTickets: boolean
   canReply: boolean
   canInternalNotes: boolean
+  canChangeStatus: boolean
+  canChangePriority: boolean
   departmentsList?: SelectItem[]
   companiesList?: SelectItem[]
 }>()
@@ -105,6 +137,8 @@ defineEmits<{
   (e: 'update:onlyOwnTickets', value: boolean): void
   (e: 'update:canReply', value: boolean): void
   (e: 'update:canInternalNotes', value: boolean): void
+  (e: 'update:canChangeStatus', value: boolean): void
+  (e: 'update:canChangePriority', value: boolean): void
 }>()
 </script>
 
