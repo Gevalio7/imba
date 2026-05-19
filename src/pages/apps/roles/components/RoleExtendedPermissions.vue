@@ -1,22 +1,26 @@
 <template>
   <VCard class="mt-6">
-    <VCardTitle>
-      Расширенные права
+    <VCardTitle class="d-flex align-center gap-3">
+      <VIcon icon="bx-crown" color="error" size="20" />
+      <span class="text-h6">Расширенные права</span>
     </VCardTitle>
 
     <VCardText>
-      <VRow>
+      <VRow class="g-4">
         <VCol cols="12">
-          <div class="d-flex align-center justify-space-between">
-            <div>
-              <span class="text-body-1 font-weight-medium">Супер-админ</span>
-              <p class="text-caption text-medium-emphasis mt-1 mb-0">Полный доступ ко всем разделам системы</p>
+          <div class="super-admin-row d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-3">
+              <VIcon icon="bx-crown" color="error" size="18" />
+              <div>
+                <div class="text-body-1 font-weight-medium">Супер-админ</div>
+                <div class="text-caption text-medium-emphasis">Полный доступ ко всем разделам системы</div>
+              </div>
             </div>
             <VSwitch :model-value="superAdmin" color="error" hide-details @update:model-value="$emit('update:superAdmin', $event)" />
           </div>
         </VCol>
 
-        <VCol cols="12">
+        <VCol cols="12" md="6">
           <VSelect
             :model-value="departments"
             :items="departmentsList"
@@ -31,7 +35,7 @@
           />
         </VCol>
 
-        <VCol cols="12">
+        <VCol cols="12" md="6">
           <VSelect
             :model-value="companies"
             :items="companiesList"
@@ -47,30 +51,30 @@
         </VCol>
 
         <VCol cols="12" md="6">
-          <div class="d-flex align-center justify-space-between">
+          <div class="option-row d-flex align-center justify-space-between">
             <div>
-              <span class="text-body-1">Только свои обращения</span>
-              <p class="text-caption text-medium-emphasis mt-1 mb-0">Пользователь видит только заявки, где назначен исполнителем</p>
+              <div class="text-body-1">Только свои обращения</div>
+              <div class="text-caption text-medium-emphasis">Показывать только заявки, где назначен исполнитель</div>
             </div>
             <VSwitch :model-value="onlyOwnTickets" color="primary" hide-details @update:model-value="$emit('update:onlyOwnTickets', $event)" />
           </div>
         </VCol>
 
         <VCol cols="12" md="6">
-          <div class="d-flex align-center justify-space-between">
+          <div class="option-row d-flex align-center justify-space-between">
             <div>
-              <span class="text-body-1">Отвечать на заявки</span>
-              <p class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять публичные комментарии</p>
+              <div class="text-body-1">Отвечать на заявки</div>
+              <div class="text-caption text-medium-emphasis">Добавлять публичные комментарии</div>
             </div>
             <VSwitch :model-value="canReply" color="primary" hide-details @update:model-value="$emit('update:canReply', $event)" />
           </div>
         </VCol>
 
         <VCol cols="12">
-          <div class="d-flex align-center justify-space-between">
+          <div class="option-row d-flex align-center justify-space-between">
             <div>
-              <span class="text-body-1">Внутренние заметки</span>
-              <p class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять внутренние комментарии (видны только сотрудникам)</p>
+              <div class="text-body-1">Внутренние заметки</div>
+              <div class="text-caption text-medium-emphasis">Добавлять внутренние комментарии (видны только сотрудникам)</div>
             </div>
             <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="$emit('update:canInternalNotes', $event)" />
           </div>
@@ -103,3 +107,14 @@ defineEmits<{
   (e: 'update:canInternalNotes', value: boolean): void
 }>()
 </script>
+
+<style scoped>
+.super-admin-row {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--v-theme-surface);
+}
+.option-row {
+  padding: 8px 0;
+}
+</style>
