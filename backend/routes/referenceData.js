@@ -20,20 +20,37 @@ const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const Templates = require('../models/templates')
 const { asyncHandler } = require('../middleware/errorHandler')
 
-const REFERENCE_DATA_CACHE_TTL = 5 * 60 * 1000
-
 let cachedData = null
 let cacheTimestamp = null
 
-const isCacheValid = () => {
-  if (!cachedData || !cacheTimestamp)
-    return false
-
-  return Date.now() - cacheTimestamp < REFERENCE_DATA_CACHE_TTL
+// Helper to clear cache programmatically
+const clearCache = () => {
+  cachedData = null
+  cacheTimestamp = null
+  console.log('🧹 Reference data cache cleared programmatically')
 }
+
+router.clearCache = clearCache
 
 router.get('/', asyncHandler(async (req, res) => {
   const { forceRefresh } = req.query
+
+  // Read TTL from system configuration (seconds). Default 300s (5min)
+  let ttlSeconds = 300
+  try {
+    const cfg = await SystemConfiguration.getAll({ isActive: true })
+    const all = cfg.systemConfiguration || []
+    const found = all.find(c => c.key === 'reference_data_cache_ttl_seconds' || c.name === 'reference_data_cache_ttl_seconds')
+    if (found && parseInt(found.value, 10) >= 0) ttlSeconds = parseInt(found.value, 10)
+  } catch (cfgErr) {
+    // fallback to default
+  }
+
+  const isCacheValid = () => {
+    if (!cachedData || !cacheTimestamp) return false
+    if (ttlSeconds === 0) return false
+    return Date.now() - cacheTimestamp < ttlSeconds * 1000
+  }
 
   if (!forceRefresh && isCacheValid())
     return res.json(cachedData)

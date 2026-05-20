@@ -14,6 +14,9 @@ const {
 // additionally expose mail fetcher run endpoint under admin
 const MailFetcherController = require('../routes/mailFetcher')
 
+// referenceData cache control
+const ReferenceDataRoute = require('./referenceData')
+
 // GET /postMasterMailAccounts - список с query params
 router.get('/', getPostMasterMailAccounts)
 
@@ -21,13 +24,34 @@ router.get('/', getPostMasterMailAccounts)
 router.get('/:id', getPostMasterMailAccountById)
 
 // POST /postMasterMailAccounts
-router.post('/', protect, createPostMasterMailAccount)
+router.post('/', protect, async (req, res, next) => {
+  try {
+    await createPostMasterMailAccount(req, res, next)
+    try { ReferenceDataRoute.clearCache() } catch (e) {}
+  } catch (err) {
+    next(err)
+  }
+})
 
 // PUT /postMasterMailAccounts/:id
-router.put('/:id', protect, updatePostMasterMailAccount)
+router.put('/:id', protect, async (req, res, next) => {
+  try {
+    await updatePostMasterMailAccount(req, res, next)
+    try { ReferenceDataRoute.clearCache() } catch (e) {}
+  } catch (err) {
+    next(err)
+  }
+})
 
 // DELETE /postMasterMailAccounts/:id
-router.delete('/:id', protect, deletePostMasterMailAccount)
+router.delete('/:id', protect, async (req, res, next) => {
+  try {
+    await deletePostMasterMailAccount(req, res, next)
+    try { ReferenceDataRoute.clearCache() } catch (e) {}
+  } catch (err) {
+    next(err)
+  }
+})
 
 // POST /postMasterMailAccounts/test - test with body params
 router.post('/test', protect, require('../controllers/postMasterMailAccountsController').testConnection)
