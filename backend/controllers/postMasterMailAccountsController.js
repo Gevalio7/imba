@@ -40,6 +40,7 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
   const data = {}
 
   // Обязательные поля
+  data.name = req.body.name
   data.type = req.body.type
   data.authenticationType = req.body.authenticationType
   data.login = req.body.login
@@ -64,6 +65,9 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
     data.isActive = req.body.isActive
 
   // Валидация обязательных полей
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
+
   if (!data.type)
     return res.status(400).json({ message: 'type is required' })
 
@@ -95,6 +99,8 @@ const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
   const data = {}
 
   // Опциональные поля
+  if (req.body.name !== undefined)
+    data.name = req.body.name
   if (req.body.type !== undefined)
     data.type = req.body.type
   if (req.body.authenticationType !== undefined)
