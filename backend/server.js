@@ -246,6 +246,60 @@ app.listen(PORT, async () => {
   setInterval(processDueSchedules, 60 * 1000); // Каждую минуту
   setTimeout(processDueSchedules, 5000); // Через 5 секунд после запуска
 
+  // Запускаем cron для сборщика почты
+  console.log('⏰ Запуск планировщика MailFetcher...');
+  const MailFetcherService = require('./services/MailFetcherService');
+  const SystemConfiguration = require('./models/systemConfiguration');
+
+  // Helper: read interval from system configuration (minutes)
+  async function getMailFetchIntervalMinutes() {
+    try {
+      const configs = await SystemConfiguration.getAll({});
+      const all = configs.systemConfiguration || [];
+      const found = all.find(c => c.key === 'mail_fetch_interval_minutes' || c.name === 'mail_fetch_interval_minutes');
+      const val = found ? found.value : null;
+      const parsed = val ? parseInt(val, 10) : 5;
+      return isNaN(parsed) ? 5 : parsed;
+    } catch (err) {
+      return 5;
+    }
+  }
+
+  let mailFetcherInterval = null;
+  async function startMailFetcherScheduler() {
+    const minutes = await getMailFetchIntervalMinutes();
+    const ms = minutes * 60 * 1000;
+    if (mailFetcherInterval) clearInterval(mailFetcherInterval);
+    mailFetcherInterval = setInterval(async () => {
+      try {
+        console.log('📩 Запуск MailFetcherService.fetchAllAccounts at', new Date().toISOString());
+        const res = await MailFetcherService.fetchAllAccounts();
+        console.log('📩 MailFetcher result', res);
+      } catch (err) {
+        console.error('❌ MailFetcher error', err);
+      }
+    }, ms);
+    // run immediately after start
+    setTimeout(() => {
+      MailFetcherService.fetchAllAccounts().catch(err => console.error('❌ MailFetcher startup error', err));
+    }, 2000);
+  }
+
+  startMailFetcherScheduler().catch(err => console.error('❌ Failed to start mail fetcher scheduler', err));
+
+  // Запускаем cron для завершения неактивных сессий
+  console.log('⏰ Запуск планировщика завершения сессий...');
+  setInterval(terminateIdleSessions, 5 * 60 * 1000); // Каждые 5 минут
+  setTimeout(terminateIdleSessions, 10000); // Через 10 секунд после запуска
+
+  // Для тестирования - запускаем сразу
+  console.log('🧪 Тестируем расписания сразу...');
+  setTimeout(() => {
+    console.log('🔥 Вызываем processDueSchedules...');
+    processDueSchedules().catch(err => console.error('❌ Ошибка в processDueSchedules:', err));
+  }, 1000);
+
+
   // Запускаем cron для завершения неактивных сессий
   console.log('⏰ Запуск планировщика завершения сессий...');
   setInterval(terminateIdleSessions, 5 * 60 * 1000); // Каждые 5 минут
