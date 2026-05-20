@@ -138,12 +138,14 @@ const fetchMailFetchLogs = async (page = 1, items = 10) => {
   }
 }
 
+const mailFetchErrorDialog = ref(false)
+const mailFetchErrorText = ref('')
+
 const openMailFetchDetails = async (id: number) => {
   try {
     const res = await $api<any>(`${API_BASE}/mailFetchLogs/${id}`)
-
-    // show modal with full errors (simple alert for now)
-    alert(res.errors || 'No details')
+    mailFetchErrorText.value = res.errors || 'No details'
+    mailFetchErrorDialog.value = true
   }
   catch (err) {
     console.error('Error fetching mail fetch details', err)
@@ -848,6 +850,19 @@ const addNewSystemLog = () => {
   >
     {{ toastMessage }}
   </VSnackbar>
+
+  <!-- Mail fetch error dialog -->
+  <VDialog v-model="mailFetchErrorDialog" max-width="800px">
+    <VCard title="Детали ошибки">
+      <VCardText>
+        <pre style="white-space: pre-wrap; word-break: break-word;">{{ mailFetchErrorText }}</pre>
+      </VCardText>
+      <VCardActions>
+        <VSpacer />
+        <VBtn color="primary" variant="elevated" @click="mailFetchErrorDialog = false">Закрыть</VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 </template>
 
 <style lang="scss" scoped>
