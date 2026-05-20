@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 
 definePage({
   meta: {
@@ -34,9 +34,9 @@ const tagInput = ref('')
 
 const addTag = () => {
   const tag = tagInput.value.trim()
-  if (tag && !article.value.tags.includes(tag)) {
+  if (tag && !article.value.tags.includes(tag))
     article.value.tags.push(tag)
-  }
+
   tagInput.value = ''
 }
 
@@ -48,8 +48,10 @@ const removeTag = (index: number) => {
 const fetchTypes = async () => {
   try {
     const data = await $api(`/types`)
+
     types.value = (data as any).types || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching types:', err)
   }
 }
@@ -57,8 +59,10 @@ const fetchTypes = async () => {
 const fetchServices = async () => {
   try {
     const data = await $api(`/services`)
+
     services.value = (data as any).services || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching services:', err)
   }
 }
@@ -67,33 +71,37 @@ const fetchServices = async () => {
 const save = async () => {
   if (!article.value.title?.trim()) {
     showToast('Заголовок обязателен для заполнения', 'error')
+
     return
   }
 
   if (!article.value.content?.trim()) {
     showToast('Содержание обязательно для заполнения', 'error')
+
     return
   }
 
   try {
     saving.value = true
-    
+
     const articleData = {
       ...article.value,
       tags: article.value.tags.length > 0 ? article.value.tags : null,
     }
-    
+
     await $api(`/knowledge-base`, {
       method: 'POST',
       body: articleData,
     })
     showToast('Статья успешно создана')
-    
+
     router.push('/apps/knowledge-base')
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error saving article:', err)
     showToast('Ошибка сохранения статьи', 'error')
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }

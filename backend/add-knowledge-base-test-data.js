@@ -3,8 +3,9 @@
  * Запустить: node add-knowledge-base-test-data.js
  */
 
-require('dotenv').config();
-const { pool } = require('./config/db');
+require('dotenv').config()
+
+const { pool } = require('./config/db')
 
 const testArticles = [
   {
@@ -205,63 +206,63 @@ const testArticles = [
     isPublished: true,
     viewsCount: 45,
   },
-];
+]
 
 async function getOrCreateCategory(categoryName) {
   // Проверяем есть ли категория
   const existing = await pool.query(
     "SELECT id FROM types WHERE name = $1",
-    [categoryName]
-  );
-  
-  if (existing.rows.length > 0) {
-    return existing.rows[0].id;
-  }
-  
+    [categoryName],
+  )
+
+  if (existing.rows.length > 0)
+    return existing.rows[0].id
+
   // Создаем новую категорию
   const result = await pool.query(
     "INSERT INTO types (name, is_active) VALUES ($1, true) RETURNING id",
-    [categoryName]
-  );
-  return result.rows[0].id;
+    [categoryName],
+  )
+
+  return result.rows[0].id
 }
 
 async function getOrCreateService(serviceName) {
   // Проверяем есть ли сервис
   const existing = await pool.query(
     "SELECT id FROM services WHERE name = $1",
-    [serviceName]
-  );
-  
-  if (existing.rows.length > 0) {
-    return existing.rows[0].id;
-  }
-  
+    [serviceName],
+  )
+
+  if (existing.rows.length > 0)
+    return existing.rows[0].id
+
   // Создаем новый сервис
   const result = await pool.query(
     "INSERT INTO services (name, is_active) VALUES ($1, true) RETURNING id",
-    [serviceName]
-  );
-  return result.rows[0].id;
+    [serviceName],
+  )
+
+  return result.rows[0].id
 }
 
 async function addTestData() {
-  const client = await pool.connect();
-  
+  const client = await pool.connect()
+
   try {
-    console.log('🚀 Начинаем добавление тестовых данных...');
-    
+    console.log('🚀 Начинаем добавление тестовых данных...')
+
     // Создаем тестового агента (или получаем существующего)
-    let agentResult = await client.query("SELECT id FROM agents LIMIT 1");
-    let createdBy = agentResult.rows[0]?.id || 1;
-    
+    const agentResult = await client.query("SELECT id FROM agents LIMIT 1")
+    const createdBy = agentResult.rows[0]?.id || 1
+
     for (const article of testArticles) {
       // Получаем или создаем категорию
-      const categoryId = await getOrCreateCategory(article.categoryName);
-      
+      const categoryId = await getOrCreateCategory(article.categoryName)
+
       // Получаем или создаем сервис
-      const serviceId = await getOrCreateService(article.serviceName);
-      
+      const serviceId = await getOrCreateService(article.serviceName)
+
       // Вставляем статью
       await client.query(
         `INSERT INTO knowledge_base 
@@ -275,23 +276,24 @@ async function addTestData() {
           serviceId,
           article.isPublished,
           article.viewsCount,
-          createdBy
-        ]
-      );
-      
-      console.log(`✅ Добавлена статья: ${article.title}`);
+          createdBy,
+        ],
+      )
+
+      console.log(`✅ Добавлена статья: ${article.title}`)
     }
-    
-    console.log('\n🎉 Все тестовые данные успешно добавлены!');
-    console.log(`📊 Всего статей: ${testArticles.length}`);
-    
-  } catch (error) {
-    console.error('❌ Ошибка при добавлении данных:', error);
-  } finally {
-    client.release();
-    await pool.end();
+
+    console.log('\n🎉 Все тестовые данные успешно добавлены!')
+    console.log(`📊 Всего статей: ${testArticles.length}`)
+  }
+  catch (error) {
+    console.error('❌ Ошибка при добавлении данных:', error)
+  }
+  finally {
+    client.release()
+    await pool.end()
   }
 }
 
 // Запуск
-addTestData();
+addTestData()

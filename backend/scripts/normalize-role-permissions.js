@@ -1,14 +1,19 @@
 const Roles = require('../models/roles')
+
 const { pool } = require('../config/db')
 
-;(async () => {
+;
+
+(async () => {
   try {
     console.log('Starting permission normalization script')
+
     const available = await Roles.getAvailablePermissions()
     const availableSet = new Set(available.map(p => p.code))
 
     const dbPermsRes = await pool.query('SELECT id, role_id, permission FROM role_permissions WHERE permission NOT LIKE $1', ['menu_%'])
     const rows = dbPermsRes.rows
+
     console.log(`Found ${rows.length} non-menu_ permission rows`)
 
     let updated = 0
@@ -30,7 +35,8 @@ const { pool } = require('../config/db')
         // update old row to newPerm
         await pool.query('UPDATE role_permissions SET permission = $1 WHERE id = $2', [newPerm, r.id])
         updated++
-      } else {
+      }
+      else {
         // delete old redundant row
         await pool.query('DELETE FROM role_permissions WHERE id = $1', [r.id])
         removed++
@@ -39,7 +45,8 @@ const { pool } = require('../config/db')
 
     console.log(`Normalization complete. Updated: ${updated}, Removed: ${removed}`)
     process.exit(0)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error in normalization script:', err)
     process.exit(2)
   }

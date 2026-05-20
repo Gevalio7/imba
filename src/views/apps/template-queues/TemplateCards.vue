@@ -11,6 +11,16 @@ interface Templates {
   updatedAt: string
 }
 
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  edit: [template: Templates]
+  delete: [template: Templates]
+  add: []
+  toggleStatus: [template: Templates, newValue: boolean | null]
+}>()
+
 // Функция для определения варианта статуса
 const resolveStatusVariant = (isActive: boolean) => {
   if (isActive)
@@ -24,16 +34,6 @@ interface Props {
   templates: Templates[]
   loading: boolean
 }
-
-const props = defineProps<Props>()
-
-// Emits
-const emit = defineEmits<{
-  edit: [template: Templates]
-  delete: [template: Templates]
-  add: []
-  toggleStatus: [template: Templates, newValue: boolean | null]
-}>()
 
 const editTemplate = (template: Templates) => {
   emit('edit', template)
@@ -72,9 +72,9 @@ const toggleStatus = (template: Templates, newValue: boolean | null) => {
 
           <VSwitch
             :model-value="template.isActive"
-            @update:model-value="(val) => toggleStatus(template, val)"
             color="primary"
             hide-details
+            @update:model-value="(val) => toggleStatus(template, val)"
           />
         </VCardText>
 
@@ -93,7 +93,10 @@ const toggleStatus = (template: Templates, newValue: boolean | null) => {
                 </a>
               </div>
             </div>
-            <IconBtn class="align-self-end" @click="deleteTemplate(template)">
+            <IconBtn
+              class="align-self-end"
+              @click="deleteTemplate(template)"
+            >
               <VIcon
                 icon="bx-trash"
                 class="text-error"

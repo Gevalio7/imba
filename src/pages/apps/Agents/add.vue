@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 
 definePage({
   meta: {
@@ -39,8 +39,6 @@ interface Queue {
   id: number
   name: string
 }
-
-
 
 const router = useRouter()
 
@@ -126,11 +124,15 @@ const notifications = ref([
 const fetchRoles = async () => {
   try {
     rolesLoading.value = true
-    const data = await $api<{ roles: Role[], total: number }>(`/roles`)
+
+    const data = await $api<{ roles: Role[]; total: number }>(`/roles`)
+
     roles.value = data.roles
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching roles:', err)
-  } finally {
+  }
+  finally {
     rolesLoading.value = false
   }
 }
@@ -139,11 +141,15 @@ const fetchRoles = async () => {
 const fetchAgentGroups = async () => {
   try {
     agentGroupsLoading.value = true
-    const data = await $api<{ agentGroups: AgentGroup[], total: number }>(`/agents-groups`)
+
+    const data = await $api<{ agentGroups: AgentGroup[]; total: number }>(`/agents-groups`)
+
     agentGroups.value = data.agentGroups
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching agent groups:', err)
-  } finally {
+  }
+  finally {
     agentGroupsLoading.value = false
   }
 }
@@ -152,11 +158,15 @@ const fetchAgentGroups = async () => {
 const fetchQueues = async () => {
   try {
     queuesLoading.value = true
-    const data = await $api<{ queues: Queue[], total: number }>(`/queues`)
+
+    const data = await $api<{ queues: Queue[]; total: number }>(`/queues`)
+
     queues.value = data.queues
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching queues:', err)
-  } finally {
+  }
+  finally {
     queuesLoading.value = false
   }
 }
@@ -165,18 +175,20 @@ const fetchQueues = async () => {
 const createAgent = async () => {
   if (!agent.value.firstName?.trim() || !agent.value.lastName?.trim()) {
     error.value = 'Имя и Фамилия обязательны для заполнения'
+
     return
   }
 
   if (!agent.value.password) {
     error.value = 'Пароль обязателен для заполнения'
+
     return
   }
 
   try {
     isSaving.value = true
     error.value = null
-    
+
     const created = await $api<Agent>(`/agents`, {
       method: 'POST',
       body: {
@@ -189,14 +201,14 @@ const createAgent = async () => {
         telegramAccount: agent.value.telegramAccount,
         isActive: agent.value.isActive,
         roleId: agent.value.roleId,
-      }
+      },
     })
 
     // Обновляем группы агента
     if (created && selectedGroupIds.value.length > 0) {
       await $api(`/agents/${(created as any).id}/groups`, {
         method: 'PUT',
-        body: { groupIds: selectedGroupIds.value }
+        body: { groupIds: selectedGroupIds.value },
       })
     }
 
@@ -204,7 +216,7 @@ const createAgent = async () => {
     if (created && selectedQueueIds.value.length > 0) {
       await $api(`/agents/${(created as any).id}/queues`, {
         method: 'PUT',
-        body: { queueIds: selectedQueueIds.value }
+        body: { queueIds: selectedQueueIds.value },
       })
     }
 
@@ -212,9 +224,11 @@ const createAgent = async () => {
     setTimeout(() => {
       router.push('/apps/Agents')
     }, 1500)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка создания агента'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
@@ -228,9 +242,11 @@ const saveNotifications = async () => {
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка сохранения настроек'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
@@ -245,7 +261,7 @@ onMounted(async () => {
   await Promise.all([
     fetchRoles(),
     fetchAgentGroups(),
-    fetchQueues()
+    fetchQueues(),
   ])
   isLoading.value = false
 })
@@ -274,8 +290,14 @@ onMounted(async () => {
   </VAlert>
 
   <!-- Загрузка -->
-  <div v-if="isLoading" class="d-flex justify-center pa-12">
-    <VProgressCircular indeterminate color="primary" />
+  <div
+    v-if="isLoading"
+    class="d-flex justify-center pa-12"
+  >
+    <VProgressCircular
+      indeterminate
+      color="primary"
+    />
   </div>
 
   <VRow v-else>
@@ -367,8 +389,8 @@ onMounted(async () => {
         <VCardText class="d-flex justify-center gap-x-4">
           <VBtn
             variant="elevated"
-            @click="createAgent"
             :loading="isSaving"
+            @click="createAgent"
           >
             Создать
           </VBtn>
@@ -596,10 +618,18 @@ onMounted(async () => {
               <VTable class="text-no-wrap">
                 <thead>
                   <tr>
-                    <th scope="col">ТИП</th>
-                    <th scope="col">EMAIL</th>
-                    <th scope="col">БРАУЗЕР</th>
-                    <th scope="col">ПРИЛОЖЕНИЕ</th>
+                    <th scope="col">
+                      ТИП
+                    </th>
+                    <th scope="col">
+                      EMAIL
+                    </th>
+                    <th scope="col">
+                      БРАУЗЕР
+                    </th>
+                    <th scope="col">
+                      ПРИЛОЖЕНИЕ
+                    </th>
                   </tr>
                 </thead>
 
@@ -612,13 +642,22 @@ onMounted(async () => {
                       {{ notification.type }}
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.email" hide-details />
+                      <VCheckbox
+                        v-model="notification.email"
+                        hide-details
+                      />
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.browser" hide-details />
+                      <VCheckbox
+                        v-model="notification.browser"
+                        hide-details
+                      />
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.app" hide-details />
+                      <VCheckbox
+                        v-model="notification.app"
+                        hide-details
+                      />
                     </td>
                   </tr>
                 </tbody>

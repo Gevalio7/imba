@@ -4,8 +4,10 @@
  * @returns True if the file is an image
  */
 export function isImageFile(filename: string): boolean {
-  if (!filename) return false
+  if (!filename)
+    return false
   const ext = filename.toLowerCase().split('.').pop() || ''
+
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
 }
 
@@ -24,12 +26,13 @@ export function isImageType(file: File): boolean {
  * @returns Formatted size like "2.5 MB"
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
+  if (bytes === 0)
+    return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 }
 
 /**
@@ -39,6 +42,7 @@ export function formatFileSize(bytes: number): string {
  */
 export function getMimeType(filename: string): string {
   const ext = filename.toLowerCase().split('.').pop()
+
   const mimeTypes: Record<string, string> = {
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -54,6 +58,7 @@ export function getMimeType(filename: string): string {
     zip: 'application/zip',
     rar: 'application/x-rar-compressed',
   }
+
   return mimeTypes[ext || ''] || 'application/octet-stream'
 }
 
@@ -63,16 +68,18 @@ export function getMimeType(filename: string): string {
  * @returns Blob URL string
  */
 export function createObjectUrl(file: File): string {
-  if (typeof window === 'undefined' || !window.URL) {
+  if (typeof window === 'undefined' || !window.URL)
     return ''
-  }
-  if (!file) {
+
+  if (!file)
     return ''
-  }
+
   try {
     return window.URL.createObjectURL(file)
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error creating object URL:', e)
+
     return ''
   }
 }

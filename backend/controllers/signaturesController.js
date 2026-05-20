@@ -1,14 +1,14 @@
-const Signatures = require('../models/signatures');
-const { asyncHandler } = require('../middleware/errorHandler');
+const Signatures = require('../models/signatures')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getSignatures = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await Signatures.getAll({
     q: searchQuery,
@@ -16,92 +16,87 @@ const getSignatures = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getSignatureById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const signatureId = parseInt(id, 10);
+  const { id } = req.params
+  const signatureId = Number.parseInt(id, 10)
 
-  if (isNaN(signatureId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(signatureId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const signature = await Signatures.getById(signatureId);
+  const signature = await Signatures.getById(signatureId)
 
-  if (!signature) {
-    return res.status(404).json({ message: 'Signature not found' });
-  }
+  if (!signature)
+    return res.status(404).json({ message: 'Signature not found' })
 
-  res.json(signature);
-});
+  res.json(signature)
+})
 
 const createSignatures = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
-  data.content = req.body.content;
-  data.comment = req.body.comment;
+  const data = {}
+
+  data.name = req.body.name
+  data.content = req.body.content
+  data.comment = req.body.comment
 
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newSignature = await Signatures.create(data);
+  const newSignature = await Signatures.create(data)
 
-  res.status(201).json(newSignature);
-});
+  res.status(201).json(newSignature)
+})
 
 const updateSignatures = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const signatureId = parseInt(id, 10);
+  const { id } = req.params
+  const signatureId = Number.parseInt(id, 10)
 
-  if (isNaN(signatureId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(signatureId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.content !== undefined) data.content = req.body.content;
-  if (req.body.comment !== undefined) data.comment = req.body.comment;
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
+  if (req.body.content !== undefined)
+    data.content = req.body.content
+  if (req.body.comment !== undefined)
+    data.comment = req.body.comment
 
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
-  const updatedSignature = await Signatures.update(signatureId, data);
+  const updatedSignature = await Signatures.update(signatureId, data)
 
-  if (!updatedSignature) {
-    return res.status(404).json({ message: 'Signature not found' });
-  }
+  if (!updatedSignature)
+    return res.status(404).json({ message: 'Signature not found' })
 
-  res.json(updatedSignature);
-});
+  res.json(updatedSignature)
+})
 
 const deleteSignatures = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const signatureId = parseInt(id, 10);
+  const { id } = req.params
+  const signatureId = Number.parseInt(id, 10)
 
-  if (isNaN(signatureId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(signatureId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await Signatures.delete(signatureId);
+  const deleted = await Signatures.delete(signatureId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'Signature not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'Signature not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 module.exports = {
   getSignatures,
@@ -109,4 +104,4 @@ module.exports = {
   createSignatures,
   updateSignatures,
   deleteSignatures,
-};
+}

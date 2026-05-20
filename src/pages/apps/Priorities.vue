@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Приоритет
 interface Priorities {
@@ -11,7 +11,6 @@ interface Priorities {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -35,14 +34,18 @@ const fetchPriorities = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching priorities from:', `${API_BASE}/priorities`)
-    const data = await $api<{ priorities: Priorities[], total: number }>(`${API_BASE}/priorities`)
+
+    const data = await $api<{ priorities: Priorities[]; total: number }>(`${API_BASE}/priorities`)
+
     console.log('Fetched priorities data:', data)
     priorities.value = data.priorities
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки приоритеты'
     console.error('Error fetching priorities:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -52,11 +55,14 @@ const createPriorities = async (item: Omit<Priorities, 'id' | 'createdAt' | 'upd
   try {
     const data = await $api<Priorities>(`${API_BASE}/priorities`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     priorities.value.unshift(data) // Добавляем в начало массива
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating priorities:', err)
     throw err
   }
@@ -67,14 +73,16 @@ const updatePriorities = async (id: number, item: Omit<Priorities, 'id' | 'creat
   try {
     const data = await $api<Priorities>(`${API_BASE}/priorities/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = priorities.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       priorities.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating priorities:', err)
     throw err
   }
@@ -84,13 +92,14 @@ const updatePriorities = async (id: number, item: Omit<Priorities, 'id' | 'creat
 const deletePriorities = async (id: number) => {
   try {
     await $api(`${API_BASE}/priorities/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = priorities.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       priorities.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting priorities:', err)
     throw err
   }
@@ -108,7 +117,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -118,6 +127,7 @@ const filteredPriorities = computed(() => {
   if (searchQuery.value.trim()) {
     // Фильтруем по поисковому запросу (по названию)
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
@@ -144,6 +154,7 @@ const clearFilters = () => {
 // Уникальные названия для фильтра
 const uniqueNames = computed(() => {
   const names = priorities.value.map(p => p.name)
+
   return [...new Set(names)].sort()
 })
 
@@ -170,13 +181,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deletePriorities(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} приоритеты`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -187,13 +199,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updatePriorities(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} приоритеты`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -222,7 +235,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -230,10 +243,9 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Ограничение количества выбранных названий
-watch(selectedNames, (value) => {
-  if (value.length > 10) {
+watch(selectedNames, value => {
+  if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
-  }
 })
 
 // Диалоги
@@ -286,6 +298,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -294,19 +307,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updatePriorities(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Приоритет успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createPriorities({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Приоритет успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения приоритет', 'error')
   }
 }
@@ -316,7 +333,8 @@ const deleteItemConfirm = async () => {
     await deletePriorities(editedItem.value.id)
     showToast('Приоритет успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления приоритет', 'error')
   }
 }
@@ -327,15 +345,17 @@ const toggleStatus = async (item: Priorities, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updatePriorities(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус приоритет изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -362,20 +382,34 @@ const addNewPriorities = () => {
 <template>
   <div>
     <VCard title="Приоритеты">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -457,7 +491,6 @@ const addNewPriorities = () => {
         </div>
       </div>
 
-
       <!-- Диалог фильтров -->
       <VDialog
         v-model="isFilterDialogOpen"
@@ -488,7 +521,10 @@ const addNewPriorities = () => {
                   </template>
                 </AppCombobox>
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -617,7 +653,7 @@ const addNewPriorities = () => {
             <div
               class="color-circle"
               :style="{ backgroundColor: item.color }"
-            ></div>
+            />
             <span>{{ item.color }}</span>
           </div>
         </template>
@@ -627,9 +663,9 @@ const addNewPriorities = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -643,10 +679,16 @@ const addNewPriorities = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_priorities')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_priorities')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_priorities')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_priorities')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>

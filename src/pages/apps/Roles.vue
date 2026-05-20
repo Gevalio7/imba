@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import RolePermissions from '@/views/apps/roles/RolePermissions.vue'
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-
-
+import RolePermissions from '@/views/apps/roles/RolePermissions.vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Роль
 interface Roles {
@@ -15,7 +13,6 @@ interface Roles {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -34,14 +31,18 @@ const fetchRoles = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching roles from:', `${API_BASE}/roles`)
-    const data = await $api<{ roles: Roles[], total: number }>(`${API_BASE}/roles`)
+
+    const data = await $api<{ roles: Roles[]; total: number }>(`${API_BASE}/roles`)
+
     console.log('Fetched roles data:', data)
     roles.value = data.roles
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки роли'
     console.error('Error fetching roles:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -51,11 +52,14 @@ const createRoles = async (item: Omit<Roles, 'id' | 'createdAt' | 'updatedAt'>) 
   try {
     const data = await $api<Roles>(`${API_BASE}/roles`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     roles.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating roles:', err)
     throw err
   }
@@ -66,14 +70,16 @@ const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'u
   try {
     const data = await $api<Roles>(`${API_BASE}/roles/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = roles.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       roles.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating roles:', err)
     throw err
   }
@@ -83,13 +89,14 @@ const updateRoles = async (id: number, item: Omit<Roles, 'id' | 'createdAt' | 'u
 const deleteRoles = async (id: number) => {
   try {
     await $api(`${API_BASE}/roles/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = roles.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       roles.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting roles:', err)
     throw err
   }
@@ -107,7 +114,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -145,13 +152,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteRoles(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} роли`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -162,13 +170,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateRoles(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} роли`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -196,7 +205,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -246,7 +255,8 @@ const deleteItemConfirm = async () => {
     await deleteRoles(editedItem.value.id)
     showToast('Роль успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления роль', 'error')
   }
 }
@@ -260,10 +270,11 @@ const toggleStatus = async (item: Roles, newValue: boolean) => {
   try {
     await updateRoles(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус роль изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -283,8 +294,6 @@ const showToast = (message: string, color: string = 'success') => {
 const addNewRoles = () => {
   router.push('/apps/roles/edit')
 }
-
-
 </script>
 
 <template>
@@ -300,159 +309,176 @@ const addNewRoles = () => {
             Управление ролями пользователей системы.
           </p>
         </div>
-
       </div>
 
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
       <template v-else>
         <!-- Табличный вид -->
-          <div class="d-flex flex-wrap gap-4 pa-6">
-            <div class="d-flex align-center">
-              <!-- Поиск -->
-              <AppTextField
-                placeholder="Поиск роли"
-                style="inline-size: 250px;"
-                class="me-3"
-              />
-            </div>
+        <div class="d-flex flex-wrap gap-4 pa-6">
+          <div class="d-flex align-center">
+            <!-- Поиск -->
+            <AppTextField
+              placeholder="Поиск роли"
+              style="inline-size: 250px;"
+              class="me-3"
+            />
+          </div>
 
-            <!-- Кнопка фильтра -->
-            <VBtn
-              variant="tonal"
-              color="secondary"
-              prepend-icon="bx-filter"
-              @click="isFilterDialogOpen = true"
-            >
-              Фильтр
-            </VBtn>
+          <!-- Кнопка фильтра -->
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            prepend-icon="bx-filter"
+            @click="isFilterDialogOpen = true"
+          >
+            Фильтр
+          </VBtn>
 
-            <!-- Кнопка массовых действий -->
-            <VMenu
-              v-model="isBulkActionsMenuOpen"
-              :close-on-content-click="false"
-            >
-              <template #activator="{ props }">
-                <VBtn
-                  variant="tonal"
-                  color="secondary"
-                  prepend-icon="bx-dots-vertical-rounded"
-                  :disabled="selectedItems.length === 0"
-                  v-bind="props"
-                >
-                  Действия ({{ selectedItems.length }})
-                </VBtn>
-              </template>
-              <VList>
-                <VListItem
-                  @click="() => {
-                    bulkDelete()
-                    isBulkActionsMenuOpen = false
-                  }"
-                >
-                  <VListItemTitle>Удалить</VListItemTitle>
-                </VListItem>
-                <VListItem
-                  @click="() => {
-                    bulkChangeStatus()
-                    isBulkActionsMenuOpen = false
-                  }"
-                >
-                  <VListItemTitle>Изменить статус</VListItemTitle>
-                </VListItem>
-              </VList>
-            </VMenu>
-
-            <VSpacer />
-            <div class="d-flex gap-4 flex-wrap align-center">
-              <AppSelect
-                v-model="itemsPerPage"
-                :items="[5, 10, 20, 25, 50]"
-              />
-              <!-- Экспорт -->
+          <!-- Кнопка массовых действий -->
+          <VMenu
+            v-model="isBulkActionsMenuOpen"
+            :close-on-content-click="false"
+          >
+            <template #activator="{ props }">
               <VBtn
                 variant="tonal"
                 color="secondary"
-                prepend-icon="bx-export"
+                prepend-icon="bx-dots-vertical-rounded"
+                :disabled="selectedItems.length === 0"
+                v-bind="props"
               >
-                Экспорт
+                Действия ({{ selectedItems.length }})
               </VBtn>
-
-              <VBtn
-                color="primary"
-                prepend-icon="bx-plus"
-                @click="addNewRoles"
+            </template>
+            <VList>
+              <VListItem
+                @click="() => {
+                  bulkDelete()
+                  isBulkActionsMenuOpen = false
+                }"
               >
-                Добавить роль
-              </VBtn>
-            </div>
-          </div>
+                <VListItemTitle>Удалить</VListItemTitle>
+              </VListItem>
+              <VListItem
+                @click="() => {
+                  bulkChangeStatus()
+                  isBulkActionsMenuOpen = false
+                }"
+              >
+                <VListItemTitle>Изменить статус</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
-          <VDivider />
-
-          <!-- Таблица -->
-          <VDataTable
-            v-model="selectedItems"
-            v-model:items-per-page="itemsPerPage"
-            v-model:page="currentPage"
-            :headers="headers"
-            :items="filteredRoles"
-            show-select
-            :hide-default-footer="true"
-            item-value="id"
-            return-object
-            no-data-text="Нет данных"
-          >
-            <!-- Активен -->
-            <template #item.isActive="{ item }">
-              <div class="d-flex align-center gap-2">
-                <VSwitch
-                  :model-value="item.isActive"
-                  @update:model-value="(val) => toggleStatus(item, !!val)"
-                  color="primary"
-                  hide-details
-                />
-                <VChip
-                  v-bind="resolveStatusVariant(item.isActive)"
-                  density="compact"
-                  label
-                  size="small"
-                />
-              </div>
-            </template>
-
-            <!-- Действия -->
-            <template #item.actions="{ item }">
-              <div class="d-flex gap-1">
-                <IconBtn v-if="$can('write','menu_roles_list')" @click="editItem(item)">
-                  <VIcon icon="bx-edit" />
-                </IconBtn>
-                <IconBtn v-if="$can('delete','menu_roles_list')" @click="deleteItem(item)">
-                  <VIcon icon="bx-trash" />
-                </IconBtn>
-              </div>
-            </template>
-          </VDataTable>
-
-          <!-- Пагинация -->
-          <div class="d-flex justify-center mt-4 pb-4">
-            <VPagination
-              v-model="currentPage"
-              :length="Math.ceil(filteredRoles.length / itemsPerPage) || 1"
-              :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          <VSpacer />
+          <div class="d-flex gap-4 flex-wrap align-center">
+            <AppSelect
+              v-model="itemsPerPage"
+              :items="[5, 10, 20, 25, 50]"
             />
+            <!-- Экспорт -->
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              prepend-icon="bx-export"
+            >
+              Экспорт
+            </VBtn>
+
+            <VBtn
+              color="primary"
+              prepend-icon="bx-plus"
+              @click="addNewRoles"
+            >
+              Добавить роль
+            </VBtn>
           </div>
-        </template>
+        </div>
+
+        <VDivider />
+
+        <!-- Таблица -->
+        <VDataTable
+          v-model="selectedItems"
+          v-model:items-per-page="itemsPerPage"
+          v-model:page="currentPage"
+          :headers="headers"
+          :items="filteredRoles"
+          show-select
+          :hide-default-footer="true"
+          item-value="id"
+          return-object
+          no-data-text="Нет данных"
+        >
+          <!-- Активен -->
+          <template #item.isActive="{ item }">
+            <div class="d-flex align-center gap-2">
+              <VSwitch
+                :model-value="item.isActive"
+                color="primary"
+                hide-details
+                @update:model-value="(val) => toggleStatus(item, !!val)"
+              />
+              <VChip
+                v-bind="resolveStatusVariant(item.isActive)"
+                density="compact"
+                label
+                size="small"
+              />
+            </div>
+          </template>
+
+          <!-- Действия -->
+          <template #item.actions="{ item }">
+            <div class="d-flex gap-1">
+              <IconBtn
+                v-if="$can('write', 'menu_roles_list')"
+                @click="editItem(item)"
+              >
+                <VIcon icon="bx-edit" />
+              </IconBtn>
+              <IconBtn
+                v-if="$can('delete', 'menu_roles_list')"
+                @click="deleteItem(item)"
+              >
+                <VIcon icon="bx-trash" />
+              </IconBtn>
+            </div>
+          </template>
+        </VDataTable>
+
+        <!-- Пагинация -->
+        <div class="d-flex justify-center mt-4 pb-4">
+          <VPagination
+            v-model="currentPage"
+            :length="Math.ceil(filteredRoles.length / itemsPerPage) || 1"
+            :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          />
+        </div>
+      </template>
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -570,10 +596,6 @@ const addNewRoles = () => {
         </VCard>
       </VDialog>
     </VCard>
-
-
-
-
 
     <!-- Диалог удаления -->
     <VDialog

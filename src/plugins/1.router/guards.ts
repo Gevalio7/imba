@@ -6,13 +6,17 @@ import { $api } from '@/utils/api'
 interface AbilityRule { action: string; subject: string }
 
 const readAbilityRulesFromSession = (): AbilityRule[] => {
-  if (typeof sessionStorage === 'undefined') return []
+  if (typeof sessionStorage === 'undefined')
+    return []
   try {
     const raw = sessionStorage.getItem('userAbilityRules')
-    if (!raw) return []
+    if (!raw)
+      return []
     const parsed = JSON.parse(raw)
+
     return Array.isArray(parsed) ? parsed : []
-  } catch {
+  }
+  catch {
     return []
   }
 }
@@ -44,18 +48,19 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
         // Перенаправляем на первый доступный пункт меню (по правам пользователя),
         // чтобы не попадать на страницу, которая скрыта в меню.
         const rules = readAbilityRulesFromSession()
+
         return getFirstAccessibleRoutePath(rules)
       }
+
       return undefined
     }
 
     // Если зашли на корень `/` — отправляем на первый доступный пункт.
     if (to.path === '/') {
       const rules = readAbilityRulesFromSession()
+
       return getFirstAccessibleRoutePath(rules)
     }
-
-
 
     // Если пользователь не авторизован — перенаправляем на login (чтобы не оставлять пользователя на пустой странице)
     // Проверяем наличие токена в cookie или sessionStorage (fallback для инкогнито/новой вкладки)
@@ -65,7 +70,8 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
     const isActuallyLoggedIn = !!((cookieUserData.value && cookieAccessToken.value) || sessAccessToken)
 
     // Если маршрут публичный — продолжаем
-    if (to.meta?.public) return
+    if (to.meta?.public)
+      return
 
     // Если не авторизован и это не страница, доступная только для неавторизованных — редирект на login
     if (!isActuallyLoggedIn && !to.meta?.unauthenticatedOnly) {
@@ -73,7 +79,7 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
         name: 'login',
         query: {
           to: to.fullPath !== '/' ? to.fullPath : undefined,
-        }
+        },
       }
     }
 
@@ -92,10 +98,13 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
               },
             }
       }
-    } catch (err) {
+    }
+    catch (err) {
       // В случае ошибок при загрузке прав — запрещаем доступ авторизованным пользователям
       console.error('Error checking navigation permission:', err)
-      if (isActuallyLoggedIn) return { name: 'not-authorized' }
+      if (isActuallyLoggedIn)
+        return { name: 'not-authorized' }
+
       return { name: 'login', query: { to: to.fullPath !== '/' ? to.path : undefined } }
     }
   })

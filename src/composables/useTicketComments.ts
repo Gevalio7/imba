@@ -1,5 +1,5 @@
-import { $api } from '@/utils/api'
 import { ref } from 'vue'
+import { $api } from '@/utils/api'
 
 export function useTicketComments(ticketId: Ref<number | null>) {
   const userData = useCookie<any>('userData')
@@ -15,10 +15,12 @@ export function useTicketComments(ticketId: Ref<number | null>) {
 
   // Загрузка комментариев
   const fetchComments = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       const data = await $api(`/ticketComments?ticketId=${ticketId.value}`)
+
       comments.value = (data as any).comments || []
     }
     catch (err) {
@@ -28,7 +30,8 @@ export function useTicketComments(ticketId: Ref<number | null>) {
 
   // Добавление комментария
   const addComment = async () => {
-    if (!newComment.value.trim() || !ticketId.value) return
+    if (!newComment.value.trim() || !ticketId.value)
+      return
 
     try {
       savingComment.value = true
@@ -64,12 +67,13 @@ export function useTicketComments(ticketId: Ref<number | null>) {
   }
 
   const saveEditComment = async (commentId: number) => {
-    if (!editingCommentContent.value.trim()) return
+    if (!editingCommentContent.value.trim())
+      return
 
     try {
       await $api(`/ticketComments/${commentId}`, {
         method: 'PUT',
-        body: { content: editingCommentContent.value }
+        body: { content: editingCommentContent.value },
       })
       editingCommentId.value = null
       editingCommentContent.value = ''
@@ -87,11 +91,12 @@ export function useTicketComments(ticketId: Ref<number | null>) {
   }
 
   const deleteComment = async () => {
-    if (!deletingCommentId.value) return
+    if (!deletingCommentId.value)
+      return
 
     try {
       await $api(`/ticketComments/${deletingCommentId.value}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
       showDeleteDialog.value = false
       deletingCommentId.value = null

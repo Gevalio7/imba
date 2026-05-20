@@ -37,18 +37,21 @@ export const routes: RouteRecordRaw[] = [
     name: 'apps-tickets-system-configuration',
     component: () => import('@/pages/apps/settings/ticket-settings/SystemConfiguration.vue'),
   },
+
   // Backup - страница резервного копирования
   {
     path: '/apps/backup',
     name: 'apps-backup',
     component: () => import('@/pages/apps/Backup.vue'),
   },
+
   // IntegrityCheck - страница контроля целостности
   {
     path: '/apps/integrity-check',
     name: 'apps-integrity-check',
     component: () => import('@/pages/apps/IntegrityCheck.vue'),
   },
+
   // QueuesAddEdit - страница создания/редактирования очереди
   {
     path: '/apps/queues/add',

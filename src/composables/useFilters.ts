@@ -68,28 +68,29 @@ const defaultPresets: FilterPreset[] = [
     id: 1,
     name: 'Активные обращения',
     filters: [
-      { id: 1, column: 'isActive', condition: 'equals', value: 'true' }
-    ]
+      { id: 1, column: 'isActive', condition: 'equals', value: 'true' },
+    ],
   },
   {
     id: 2,
     name: 'Просроченные SLA',
     filters: [
-      { id: 1, column: 'slaStatus', condition: 'equals', value: 'Просрочен' }
-    ]
+      { id: 1, column: 'slaStatus', condition: 'equals', value: 'Просрочен' },
+    ],
   },
   {
     id: 3,
     name: 'Мои обращения',
-    filters: []
-  }
+    filters: [],
+  },
 ]
 
 export function useFilters() {
   // Состояние фильтров
   const filterRows = ref<FilterRow[]>([
-    { id: 1, column: '', condition: 'contains', value: '' }
+    { id: 1, column: '', condition: 'contains', value: '' },
   ])
+
   let filterRowIdCounter = 1
 
   // Пресеты
@@ -105,10 +106,10 @@ export function useFilters() {
   const loadSavedPresets = (storageKey: string) => {
     try {
       const saved = localStorage.getItem(storageKey)
-      if (saved) {
+      if (saved)
         savedPresets.value = JSON.parse(saved)
-      }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('Error loading filter presets:', e)
     }
   }
@@ -126,9 +127,8 @@ export function useFilters() {
 
   // Удалить строку фильтра
   const removeFilterRow = (id: number) => {
-    if (filterRows.value.length > 1) {
+    if (filterRows.value.length > 1)
       filterRows.value = filterRows.value.filter(f => f.id !== id)
-    }
   }
 
   // Применить пресет
@@ -139,12 +139,15 @@ export function useFilters() {
 
   // Сохранить текущие фильтры как пресет
   const saveCurrentAsPreset = (storageKey: string) => {
-    if (!newPresetName.value.trim()) return
+    if (!newPresetName.value.trim())
+      return
+
     const newPreset: FilterPreset = {
       id: Date.now(),
       name: newPresetName.value.trim(),
-      filters: filterRows.value.filter(f => f.column && f.condition)
+      filters: filterRows.value.filter(f => f.column && f.condition),
     }
+
     savedPresets.value.push(newPreset)
     savePresets(storageKey)
     newPresetName.value = ''
@@ -153,7 +156,8 @@ export function useFilters() {
 
   // Удалить пресет
   const deletePreset = (id: number, storageKey: string) => {
-    if (id <= 3) return // Не удалять дефолтные
+    if (id <= 3)
+      return // Не удалять дефолтные
     savedPresets.value = savedPresets.value.filter(p => p.id !== id)
     savePresets(storageKey)
   }
@@ -165,62 +169,76 @@ export function useFilters() {
 
   // Получить условия для конкретной колонки
   const getConditionsForColumn = (column: ColumnSetting | undefined) => {
-    if (!column) return filterConditions
-    
-    if (column.type === 'boolean') return booleanConditions
-    if (column.type === 'date') return dateConditions
+    if (!column)
+      return filterConditions
+
+    if (column.type === 'boolean')
+      return booleanConditions
+    if (column.type === 'date')
+      return dateConditions
+
     return filterConditions
   }
 
   // Применить фильтр к записи
   const applyFilter = <T extends Record<string, any>>(
-    item: T, 
-    filter: FilterRow, 
+    item: T,
+    filter: FilterRow,
     columns: ColumnSetting[],
-    getSpecialValue?: (item: T, columnKey: string) => string
+    getSpecialValue?: (item: T, columnKey: string) => string,
   ): boolean => {
     const columnKey = filter.column
-    if (!columnKey) return true
-    
+    if (!columnKey)
+      return true
+
     const column = columns.find(c => c.key === columnKey)
     let cellValue: any = item[columnKey as keyof keyof T]
-    
+
     // Обработка special полей
     if (getSpecialValue) {
       const specialValue = getSpecialValue(item, columnKey)
-      if (specialValue !== undefined) {
+      if (specialValue !== undefined)
         cellValue = specialValue
-      }
     }
-    
+
     // Для булевых полей
     if (column?.type === 'boolean') {
-      if (filter.condition === 'is_empty') return !cellValue
-      if (filter.condition === 'is_not_empty') return cellValue
-      if (filter.condition === 'equals') return String(cellValue) === filter.value
+      if (filter.condition === 'is_empty')
+        return !cellValue
+      if (filter.condition === 'is_not_empty')
+        return cellValue
+      if (filter.condition === 'equals')
+        return String(cellValue) === filter.value
+
       return true
     }
-    
+
     // Для дат
     if (column?.type === 'date' && cellValue) {
       const cellDate = new Date(cellValue).toISOString().split('T')[0]
       const filterDate = filter.value
-      
-      if (filter.condition === 'equals') return cellDate === filterDate
-      if (filter.condition === 'greater') return cellDate > filterDate
-      if (filter.condition === 'less') return cellDate < filterDate
-      if (filter.condition === 'is_empty') return !cellValue
-      if (filter.condition === 'is_not_empty') return !!cellValue
+
+      if (filter.condition === 'equals')
+        return cellDate === filterDate
+      if (filter.condition === 'greater')
+        return cellDate > filterDate
+      if (filter.condition === 'less')
+        return cellDate < filterDate
+      if (filter.condition === 'is_empty')
+        return !cellValue
+      if (filter.condition === 'is_not_empty')
+        return !!cellValue
+
       return true
     }
-    
+
     // Для текстовых полей
     // Если значение фильтра пустое или null/undefined, пропускаем фильтр
-    if (!filter.value && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty') {
+    if (!filter.value && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty')
       return true
-    }
+
     const filterValue = filter.value?.toLowerCase() || ''
-    
+
     switch (filter.condition) {
       case 'contains':
         return String(cellValue || '').toLowerCase().includes(filterValue)
@@ -249,11 +267,12 @@ export function useFilters() {
   const filterItems = <T extends Record<string, any>>(
     items: T[],
     columns: ColumnSetting[],
-    getSpecialValue?: (item: T, columnKey: string) => string
+    getSpecialValue?: (item: T, columnKey: string) => string,
   ) => {
     const activeFilters = filterRows.value.filter(f => f.column && f.condition)
-    if (activeFilters.length === 0) return items
-    
+    if (activeFilters.length === 0)
+      return items
+
     return items.filter(item => {
       return activeFilters.every(filter => applyFilter(item, filter, columns, getSpecialValue))
     })
@@ -266,6 +285,7 @@ export function useFilters() {
     isFilterDialogOpen,
     isSavePresetDialogOpen,
     newPresetName,
+
     // Методы
     loadSavedPresets,
     addFilterRow,
@@ -276,6 +296,7 @@ export function useFilters() {
     clearAllFilters,
     getConditionsForColumn,
     filterItems,
+
     // Константы
     filterConditions,
     booleanConditions,

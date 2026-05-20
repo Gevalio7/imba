@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для PostMasterMailAccount
 interface PostMasterMailAccount {
@@ -33,7 +33,6 @@ interface Queue {
   createdAt: string
   updatedAt: string
 }
-
 
 // Данные PostMasterMailAccount
 const postMasterMailAccounts = ref<PostMasterMailAccount[]>([])
@@ -75,14 +74,18 @@ const fetchPostMasterMailAccounts = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching postMasterMailAccounts from:', `/postMasterMailAccounts`)
-    const data = await $api<{ postMasterMailAccounts: PostMasterMailAccount[], total: number }>(`/postMasterMailAccounts`)
+
+    const data = await $api<{ postMasterMailAccounts: PostMasterMailAccount[]; total: number }>(`/postMasterMailAccounts`)
+
     console.log('Fetched postMasterMailAccounts data:', data)
     postMasterMailAccounts.value = data.postMasterMailAccounts
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки почтовых аккаунтов'
     console.error('Error fetching postMasterMailAccounts:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -93,13 +96,17 @@ const fetchQueues = async () => {
     queuesLoading.value = true
     queuesError.value = null
     console.log('Fetching queues from:', `/queues`)
-    const data = await $api<{ queues: Queue[], total: number }>(`/queues`)
+
+    const data = await $api<{ queues: Queue[]; total: number }>(`/queues`)
+
     console.log('Fetched queues data:', data)
     queues.value = data.queues
-  } catch (err) {
+  }
+  catch (err) {
     queuesError.value = 'Ошибка загрузки очередей'
     console.error('Error fetching queues:', err)
-  } finally {
+  }
+  finally {
     queuesLoading.value = false
   }
 }
@@ -109,11 +116,14 @@ const createPostMasterMailAccount = async (item: Omit<PostMasterMailAccount, 'id
   try {
     const data = await $api<PostMasterMailAccount>(`/postMasterMailAccounts`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     postMasterMailAccounts.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating postMasterMailAccount:', err)
     throw err
   }
@@ -124,14 +134,16 @@ const updatePostMasterMailAccount = async (id: number, item: Omit<PostMasterMail
   try {
     const data = await $api<PostMasterMailAccount>(`/postMasterMailAccounts/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = postMasterMailAccounts.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       postMasterMailAccounts.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating postMasterMailAccount:', err)
     throw err
   }
@@ -141,13 +153,14 @@ const updatePostMasterMailAccount = async (id: number, item: Omit<PostMasterMail
 const deletePostMasterMailAccount = async (id: number) => {
   try {
     await $api(`/postMasterMailAccounts/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = postMasterMailAccounts.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       postMasterMailAccounts.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting postMasterMailAccount:', err)
     throw err
   }
@@ -171,30 +184,32 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
 const filteredPostMasterMailAccounts = computed(() => {
   let filtered = postMasterMailAccounts.value
 
-  if (statusFilter.value !== null) {
+  if (statusFilter.value !== null)
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
 
   return filtered
 })
 
 // Получение имени очереди по ID
 const getQueueName = (queueId: number | undefined) => {
-  if (!queueId) return '-'
+  if (!queueId)
+    return '-'
   const queue = queues.value.find(q => q.id === queueId)
+
   return queue ? queue.name : '-'
 }
 
 // Получение отображаемого имени типа аутентификации
 const getAuthTypeName = (authType: string) => {
   const option = authenticationTypeOptions.find(o => o.value === authType)
+
   return option ? option.title : authType
 }
 
@@ -221,13 +236,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deletePostMasterMailAccount(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} почтовых аккаунтов`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -238,13 +254,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updatePostMasterMailAccount(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} почтовых аккаунтов`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -272,7 +289,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -340,26 +357,32 @@ const save = async () => {
   // Валидация
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
   if (!editedItem.value.type?.trim()) {
     showToast('Тип протокола обязателен для заполнения', 'error')
+
     return
   }
   if (!editedItem.value.authenticationType?.trim()) {
     showToast('Тип аутентификации обязателен для заполнения', 'error')
+
     return
   }
   if (!editedItem.value.login?.trim()) {
     showToast('Логин обязателен для заполнения', 'error')
+
     return
   }
   if (!editedItem.value.host?.trim()) {
     showToast('Хост обязателен для заполнения', 'error')
+
     return
   }
   if (editedItem.value.authenticationType === 'password' && !editedItem.value.password?.trim()) {
     showToast('Пароль обязателен при выборе аутентификации по паролю', 'error')
+
     return
   }
 
@@ -368,19 +391,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updatePostMasterMailAccount(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Почтовый аккаунт успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createPostMasterMailAccount({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Почтовый аккаунт успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения почтового аккаунта', 'error')
   }
 }
@@ -390,7 +417,8 @@ const deleteItemConfirm = async () => {
     await deletePostMasterMailAccount(editedItem.value.id)
     showToast('Почтовый аккаунт успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления почтового аккаунта', 'error')
   }
 }
@@ -404,10 +432,11 @@ const toggleStatus = async (item: PostMasterMailAccount, newValue: boolean) => {
   try {
     await updatePostMasterMailAccount(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус почтового аккаунта изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -427,29 +456,40 @@ const showToast = (message: string, color: string = 'success') => {
 const testingRowId = ref<number | null>(null)
 
 const canTestForm = computed(() => {
-  if (!editedItem.value.host || !editedItem.value.host.toString().trim()) return false
-  if (!editedItem.value.login || !editedItem.value.login.toString().trim()) return false
-  if (editedItem.value.authenticationType === 'password' && (!editedItem.value.password || !editedItem.value.password.toString().trim())) return false
+  if (!editedItem.value.host || !editedItem.value.host.toString().trim())
+    return false
+  if (!editedItem.value.login || !editedItem.value.login.toString().trim())
+    return false
+  if (editedItem.value.authenticationType === 'password' && (!editedItem.value.password || !editedItem.value.password.toString().trim()))
+    return false
+
   return true
 })
 
 const testConnectionForItem = async (item: PostMasterMailAccount) => {
   try {
     testingRowId.value = item.id
+
     const res = await $api(`/postMasterMailAccounts/${item.id}/test`, {
-      method: 'POST'
+      method: 'POST',
     })
+
     if (res && res.success) {
       console.log('Test connection (item) success', item.id)
       showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
-    } else {
+    }
+    else {
       showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
     }
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error('Error testing connection for item:', err)
+
     const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
+
     showToast(`Ошибка подключения: ${msg}`, 'error')
-  } finally {
+  }
+  finally {
     testingRowId.value = null
   }
 }
@@ -466,7 +506,7 @@ const testConnectionForForm = async () => {
   const protocol = typeStr.includes('imap') ? 'imap' : (typeStr.includes('pop3') ? 'pop3' : 'imap')
 
   const host = rawHost?.toString().trim() || ''
-  let username = rawLogin?.toString().trim().replace(/,/g, '.') || ''
+  const username = rawLogin?.toString().trim().replace(/,/g, '.') || ''
   const password = rawPassword?.toString().trim() || ''
 
   // Порт: если явно указан в editedItem.port используем его, иначе по протоколу
@@ -477,23 +517,28 @@ const testConnectionForForm = async () => {
   // Валидация
   if (!host) {
     showToast('Введите хост сервера', 'error')
+
     return
   }
   if (!username) {
     showToast('Введите логин', 'error')
+
     return
   }
   if (!username.includes('@')) {
     showToast('Введите корректный email (пример: user@domain.com)', 'error')
+
     return
   }
   if (editedItem.value.authenticationType === 'password' && !password) {
     showToast('Введите пароль', 'error')
+
     return
   }
 
   try {
     testingRowId.value = -1
+
     const body = {
       host,
       port,
@@ -505,25 +550,28 @@ const testConnectionForForm = async () => {
     }
 
     console.log('Testing connection (form) with', body)
+
     const res = await $api(`/postMasterMailAccounts/test`, {
       method: 'POST',
-      body
+      body,
     })
 
-    if (res && res.success) {
+    if (res && res.success)
       showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
-    } else {
+    else
       showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
-    }
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error('Error testing connection for form:', err)
+
     const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
+
     showToast(`Ошибка подключения: ${msg}`, 'error')
-  } finally {
+  }
+  finally {
     testingRowId.value = null
   }
 }
-
 
 const addNewPostMasterMailAccount = () => {
   editedItem.value = { ...defaultItem.value }
@@ -535,20 +583,34 @@ const addNewPostMasterMailAccount = () => {
 <template>
   <div>
     <VCard title="Почтовые аккаунты PostMaster">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -628,7 +690,6 @@ const addNewPostMasterMailAccount = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -766,9 +827,9 @@ const addNewPostMasterMailAccount = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => val !== null && toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => val !== null && toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -781,7 +842,12 @@ const addNewPostMasterMailAccount = () => {
 
         <!-- Тип -->
         <template #item.type="{ item }">
-          <VChip color="info" density="compact" label size="small">
+          <VChip
+            color="info"
+            density="compact"
+            label
+            size="small"
+          >
             {{ item.type }}
           </VChip>
         </template>
@@ -808,23 +874,40 @@ const addNewPostMasterMailAccount = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_post_master_mail_accounts')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_post_master_mail_accounts')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_post_master_mail_accounts')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_post_master_mail_accounts')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
 
             <VBtn
               variant="text"
               :disabled="testingRowId === item.id"
-              @click="testConnectionForItem(item)"
               class="d-flex align-center"
+              @click="testConnectionForItem(item)"
             >
-              <VProgressCircular v-if="testingRowId === item.id" indeterminate size="18" width="2" color="primary" />
-              <span v-else class="d-flex align-center"><VIcon icon="bx-search" class="me-1" />Тест</span>
+              <VProgressCircular
+                v-if="testingRowId === item.id"
+                indeterminate
+                size="18"
+                width="2"
+                color="primary"
+              />
+              <span
+                v-else
+                class="d-flex align-center"
+              ><VIcon
+                icon="bx-search"
+                class="me-1"
+              />Тест</span>
             </VBtn>
-
           </div>
         </template>
       </VDataTable>
@@ -847,7 +930,6 @@ const addNewPostMasterMailAccount = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать почтовый аккаунт' : 'Добавить почтовый аккаунт'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -901,14 +983,21 @@ const addNewPostMasterMailAccount = () => {
             </VCol>
 
             <!-- Подсказка для Gmail -->
-            <VCol cols="12" v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')">
+            <VCol
+              v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')"
+              cols="12"
+            >
               <VAlert
                 type="info"
                 variant="tonal"
                 density="compact"
               >
                 Для Gmail используйте <strong>пароль приложения (App Password)</strong>, а не обычный пароль аккаунта.
-                <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noopener">
+                <a
+                  href="https://support.google.com/accounts/answer/185833"
+                  target="_blank"
+                  rel="noopener"
+                >
                   Инструкция по созданию
                 </a>
               </VAlert>
@@ -1008,9 +1097,7 @@ const addNewPostMasterMailAccount = () => {
             </VCol>
 
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"
@@ -1030,39 +1117,43 @@ const addNewPostMasterMailAccount = () => {
                 color="primary"
               />
             </VCol>
-
           </VRow>
         </VCardText>
 
-          <VCardText>
-            <div class="self-align-end d-flex gap-4 justify-end">
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                :disabled="testingRowId === -1"
-                @click="testConnectionForForm"
-              >
-                <VProgressCircular v-if="testingRowId === -1" indeterminate size="18" width="2" color="primary" />
-                <span v-else>Проверить подключение</span>
-              </VBtn>
+        <VCardText>
+          <div class="self-align-end d-flex gap-4 justify-end">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              :disabled="testingRowId === -1"
+              @click="testConnectionForForm"
+            >
+              <VProgressCircular
+                v-if="testingRowId === -1"
+                indeterminate
+                size="18"
+                width="2"
+                color="primary"
+              />
+              <span v-else>Проверить подключение</span>
+            </VBtn>
 
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="close"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="save"
-              >
-                Сохранить
-              </VBtn>
-            </div>
-          </VCardText>
-
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="close"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="save"
+            >
+              Сохранить
+            </VBtn>
+          </div>
+        </VCardText>
       </VCard>
     </VDialog>
 

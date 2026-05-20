@@ -1,3 +1,21 @@
+<script setup lang="ts">
+import type { TicketForm } from '@/types/ticket'
+
+interface Props {
+  ticket: TicketForm
+  saving: boolean
+  showScheduleButton?: boolean
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  save: []
+  cancel: []
+  schedule: []
+}>()
+</script>
+
 <template>
   <div class="d-flex flex-wrap justify-start justify-sm-space-between gap-y-4 gap-x-6 mb-6">
     <div class="d-flex flex-column justify-center">
@@ -19,7 +37,10 @@
         color="primary"
         @click="$emit('schedule')"
       >
-        <VIcon icon="bx-calendar" class="me-1" />
+        <VIcon
+          icon="bx-calendar"
+          class="me-1"
+        />
         Расписание
       </VBtn>
       <VBtn
@@ -38,21 +59,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import type { TicketForm } from '@/types/ticket'
-
-interface Props {
-  ticket: TicketForm
-  saving: boolean
-  showScheduleButton?: boolean
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  save: []
-  cancel: []
-  schedule: []
-}>()
-</script>

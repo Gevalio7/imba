@@ -1,109 +1,113 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class Queues {
-  static tableName = 'queues';
-  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId';
+  static tableName = 'queues'
+  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {}, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {}, isActive } = options
 
     try {
-      let whereClause = '';
-      let params = [];
-      let paramIndex = 1;
+      let whereClause = ''
+      const params = []
+      let paramIndex = 1
 
       // Обработка фильтров
-      const filterConditions = [];
+      const filterConditions = []
       if (filters.companyId) {
-        filterConditions.push(`company_id = ${paramIndex}`);
-        params.push(filters.companyId);
-        paramIndex++;
+        filterConditions.push(`company_id = ${paramIndex}`)
+        params.push(filters.companyId)
+        paramIndex++
       }
       if (filters.serviceId) {
-        filterConditions.push(`service_id = ${paramIndex}`);
-        params.push(filters.serviceId);
-        paramIndex++;
+        filterConditions.push(`service_id = ${paramIndex}`)
+        params.push(filters.serviceId)
+        paramIndex++
       }
       if (filters.slaId) {
-        filterConditions.push(`sla_id = ${paramIndex}`);
-        params.push(filters.slaId);
-        paramIndex++;
+        filterConditions.push(`sla_id = ${paramIndex}`)
+        params.push(filters.slaId)
+        paramIndex++
       }
       if (filters.workflowId) {
-        filterConditions.push(`workflow_id = ${paramIndex}`);
-        params.push(filters.workflowId);
-        paramIndex++;
+        filterConditions.push(`workflow_id = ${paramIndex}`)
+        params.push(filters.workflowId)
+        paramIndex++
       }
       if (filters.agentGroupId) {
-        filterConditions.push(`agent_group_id = ${paramIndex}`);
-        params.push(filters.agentGroupId);
-        paramIndex++;
+        filterConditions.push(`agent_group_id = ${paramIndex}`)
+        params.push(filters.agentGroupId)
+        paramIndex++
       }
       if (filters.priorityId) {
-        filterConditions.push(`priority_id = ${paramIndex}`);
-        params.push(filters.priorityId);
-        paramIndex++;
+        filterConditions.push(`priority_id = ${paramIndex}`)
+        params.push(filters.priorityId)
+        paramIndex++
       }
       if (filters.departmentId) {
-        filterConditions.push(`department_id = ${paramIndex}`);
-        params.push(filters.departmentId);
-        paramIndex++;
+        filterConditions.push(`department_id = ${paramIndex}`)
+        params.push(filters.departmentId)
+        paramIndex++
       }
 
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        filterConditions.push(`is_active = $${paramIndex}`);
-        params.push(isActive);
-        paramIndex++;
+        filterConditions.push(`is_active = $${paramIndex}`)
+        params.push(isActive)
+        paramIndex++
       }
 
       if (q) {
-        const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ');
-        filterConditions.push(`(${conditions})`);
-        params.push(`%${q}%`);
-        paramIndex++;
+        const searchFields = this.fields.split(', ')
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE ${paramIndex}`).join(' OR ')
+
+        filterConditions.push(`(${conditions})`)
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
-      if (filterConditions.length > 0) {
-        whereClause = `WHERE ${filterConditions.join(' AND ')}`;
-      }
+      if (filterConditions.length > 0)
+        whereClause = `WHERE ${filterConditions.join(' AND ')}`
 
-      let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
-      }
+      let orderClause = ''
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at'])
+      if (sortBy && sortableFields.includes(sortBy))
+        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
 
-      const offset = (page - 1) * itemsPerPage;
+      const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Queues.tableName} ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${Queues.tableName} ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(itemsPerPage, offset);
-      const dataResult = await pool.query(dataQuery, params);
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const dataQuery = `SELECT id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+
+      params.push(itemsPerPage, offset)
+
+      const dataResult = await pool.query(dataQuery, params)
 
       return {
         queues: dataResult.rows,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
@@ -111,129 +115,144 @@ class Queues {
     try {
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
       const result = await pool.query(
         `SELECT id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Queues.tableName} WHERE id = $1`,
-        [id]
-      );
+        [id],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
   static async create(queue) {
     try {
-      const fieldList = this.fields.split(', ');
-      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
+      const fieldList = this.fields.split(', ')
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ')
+
       const values = fieldList.map(field => {
         if (['executorGroupIds', 'executorAgentIds', 'observerGroupIds', 'observerAgentIds', 'approverGroupIds', 'approverAgentIds'].includes(field)) {
           // Преобразуем массивы в PostgreSQL array синтаксис
-          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null;
+          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null
         }
         if (field === 'keywords') {
           // Keywords обрабатывается отдельно как TEXT[]
-          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}` : null;
+          return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}` : null
         }
-        return queue[field] !== undefined ? queue[field] : null;
-      });
+
+        return queue[field] !== undefined ? queue[field] : null
+      })
 
       // Добавляем templateId
-      values.push(queue.templateId || null);
+      values.push(queue.templateId || null)
 
       // Добавляем isActive
-      const isActiveValue = queue.isActive !== undefined ? (queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1') : true;
-      values.push(isActiveValue);
+      const isActiveValue = queue.isActive !== undefined ? (queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1') : true
+
+      values.push(isActiveValue)
 
       // Преобразуем имена полей в snake_case для SQL
-      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ')
+
       const sqlFieldsSelect = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `INSERT INTO ${Queues.tableName} (${sqlFieldsInsert}, template_id, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      const query = `INSERT INTO ${Queues.tableName} (${sqlFieldsInsert}, template_id, is_active) VALUES (${placeholders}, $${fieldList.length + 1}, $${fieldList.length + 2}) RETURNING id, ${sqlFieldsSelect}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, queue) {
     try {
-      const fieldList = this.fields.split(', ');
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
+      const fieldList = this.fields.split(', ')
+      const updates = []
+      const values = []
+      let paramIndex = 1
 
       // Обновляем только переданные поля
       fieldList.forEach(field => {
         if (queue[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
+          updates.push(`${toSnakeCase(field)} = $${paramIndex}`)
           if (['executorGroupIds', 'executorAgentIds', 'observerGroupIds', 'observerAgentIds', 'approverGroupIds', 'approverAgentIds'].includes(field)) {
             // Преобразуем массивы в PostgreSQL array синтаксис
-            values.push(queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null);
-          } else {
-            values.push(queue[field]);
+            values.push(queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null)
           }
-          paramIndex++;
+          else {
+            values.push(queue[field])
+          }
+          paramIndex++
         }
-      });
+      })
 
       // Добавляем templateId если передан
       if (queue.templateId !== undefined) {
-        updates.push(`template_id = $${paramIndex}`);
-        values.push(queue.templateId);
-        paramIndex++;
+        updates.push(`template_id = $${paramIndex}`)
+        values.push(queue.templateId)
+        paramIndex++
       }
 
       // Добавляем isActive если передан
       if (queue.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        const isActiveValue = queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1';
-        values.push(isActiveValue);
-        paramIndex++;
+        updates.push(`is_active = $${paramIndex}`)
+
+        const isActiveValue = queue.isActive === true || queue.isActive === 1 || queue.isActive === 'true' || queue.isActive === '1'
+
+        values.push(isActiveValue)
+        paramIndex++
       }
 
       // Всегда обновляем updated_at
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       // Добавляем id в конец
-      values.push(id);
+      values.push(id)
 
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `UPDATE ${Queues.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const query = `UPDATE ${Queues.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, template_id as "templateId", created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${Queues.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${Queues.tableName} WHERE id = $1`, [id])
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 }
 
-module.exports = Queues;
+module.exports = Queues

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Категория типа
 interface TypeCategories {
@@ -12,7 +12,6 @@ interface TypeCategories {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -49,14 +48,18 @@ const fetchTypeCategories = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching type categories from:', `${API_BASE}/typeCategories`)
-    const data = await $api<{ typeCategories: TypeCategories[], total: number }>(`${API_BASE}/typeCategories`)
+
+    const data = await $api<{ typeCategories: TypeCategories[]; total: number }>(`${API_BASE}/typeCategories`)
+
     console.log('Fetched type categories data:', data)
     typeCategories.value = data.typeCategories
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки категории типов'
     console.error('Error fetching type categories:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -68,9 +71,11 @@ const createTypeCategory = async (typeCategory: Omit<TypeCategories, 'id' | 'cre
       method: 'POST',
       body: typeCategory,
     })
+
     typeCategories.value.push(newTypeCategory)
     total.value++
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating type category:', err)
     throw err
   }
@@ -83,11 +88,12 @@ const updateTypeCategory = async (id: number, typeCategory: Partial<TypeCategori
       method: 'PUT',
       body: typeCategory,
     })
+
     const index = typeCategories.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       typeCategories.value[index] = updatedTypeCategory
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating type category:', err)
     throw err
   }
@@ -101,7 +107,8 @@ const deleteTypeCategory = async (id: number) => {
     })
     typeCategories.value = typeCategories.value.filter(p => p.id !== id)
     total.value--
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting type category:', err)
     throw err
   }
@@ -114,6 +121,7 @@ const filteredTypeCategories = computed(() => {
   if (searchQuery.value.trim()) {
     // Фильтруем по поисковому запросу (по названию)
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
@@ -140,6 +148,7 @@ const clearFilters = () => {
 // Уникальные названия для фильтра
 const uniqueNames = computed(() => {
   const names = typeCategories.value.map(p => p.name)
+
   return [...new Set(names)].sort()
 })
 
@@ -166,13 +175,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteTypeCategory(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} категорий типов`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -183,13 +193,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateTypeCategory(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} категорий типов`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -222,7 +233,7 @@ const showToast = (message: string, color: string = 'success') => {
 }
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -230,10 +241,9 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Ограничение количества выбранных названий
-watch(selectedNames, (value) => {
-  if (value.length > 10) {
+watch(selectedNames, value => {
+  if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
-  }
 })
 
 // Диалоги
@@ -247,7 +257,7 @@ const defaultItem = ref<TypeCategories>({
   laborHours: 0,
   isActive: true,
   createdAt: '',
-  updatedAt: ''
+  updatedAt: '',
 })
 
 const editedItem = ref<TypeCategories>({ ...defaultItem.value })
@@ -262,7 +272,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Методы для работы с диалогами
@@ -287,7 +297,8 @@ const deleteItemConfirm = async () => {
     await deleteTypeCategory(editedItem.value.id)
     showToast('Категория типа успешно удалена')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления категории типа', 'error')
   }
 }
@@ -301,6 +312,7 @@ const closeEdit = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -309,19 +321,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateTypeCategory(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Категория типа успешно сохранена')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createTypeCategory({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Категория типа успешно добавлена')
     }
     closeEdit()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения категории типа', 'error')
   }
 }
@@ -332,15 +348,17 @@ const toggleStatus = async (item: TypeCategories, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateTypeCategory(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус категории типа изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -361,20 +379,34 @@ onMounted(() => {
 <template>
   <div>
     <VCard title="Категории типов">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -447,7 +479,7 @@ onMounted(() => {
           </VBtn>
 
           <VBtn
-            v-if="$can('write','menu_type_categories')"
+            v-if="$can('write', 'menu_type_categories')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewTypeCategories"
@@ -456,7 +488,6 @@ onMounted(() => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -488,7 +519,10 @@ onMounted(() => {
                   </template>
                 </AppCombobox>
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -621,9 +655,9 @@ onMounted(() => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -637,10 +671,16 @@ onMounted(() => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_type_categories')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_type_categories')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_type_categories')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_type_categories')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -665,7 +705,6 @@ onMounted(() => {
       <VCard :title="editedIndex > -1 ? 'Редактировать категорию типа' : 'Добавить категорию типа'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -707,9 +746,7 @@ onMounted(() => {
           </VRow>
           <VRow>
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"

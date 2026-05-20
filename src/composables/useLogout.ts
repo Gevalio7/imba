@@ -5,11 +5,14 @@ export const useLogout = () => {
   const ability = useAbility()
 
   const getStoredUserData = () => {
-    if (typeof sessionStorage === 'undefined') return null
+    if (typeof sessionStorage === 'undefined')
+      return null
     try {
       const data = sessionStorage.getItem('userData')
+
       return data ? JSON.parse(data) : null
-    } catch {
+    }
+    catch {
       return null
     }
   }
@@ -18,15 +21,19 @@ export const useLogout = () => {
     try {
       const expire = 'Thu, 01 Jan 1970 00:00:00 GMT'
       const path = 'path=/;'
+
       document.cookie = `${name}=; ${path} expires=${expire}`
       try {
         const hostname = location.hostname
+
         document.cookie = `${name}=; Domain=${hostname}; ${path} expires=${expire}`
         document.cookie = `${name}=; Domain=.${hostname}; ${path} expires=${expire}`
-      } catch (err) {
+      }
+      catch (err) {
         // ignore
       }
-    } catch (err) {
+    }
+    catch (err) {
       // ignore
     }
   }
@@ -39,13 +46,17 @@ export const useLogout = () => {
           const res = await $api<{ message?: string }>('/sessionManagement/terminate-current', { method: 'POST' })
           if (res && (res.message && /terminate/i.test(res.message) || res.message === 'Session terminated successfully')) {
             showToast('Сессия завершена на сервере', 'success')
-          } else {
+          }
+          else {
             console.warn('terminate-current returned unexpected response')
             showToast('Не удалось завершить сессию на сервере', 'error')
           }
-        } catch (err: any) {
+        }
+        catch (err: any) {
           console.error('Ошибка при завершении сессии на сервере:', err?.message || err)
+
           const errMsg = err?.data?.message || err?.message || 'Серверная ошибка'
+
           showToast(`Ошибка завершения сессии: ${errMsg}`, 'error')
         }
       }
@@ -57,10 +68,10 @@ export const useLogout = () => {
           sessionStorage.removeItem('userData')
           sessionStorage.removeItem('accessToken')
         }
-        if (typeof localStorage !== 'undefined') {
+        if (typeof localStorage !== 'undefined')
           localStorage.removeItem('userAbilityRules')
-        }
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Ошибка при очистке session/local storage')
       }
 
@@ -68,9 +79,11 @@ export const useLogout = () => {
       try {
         const cookieUserData = useCookie('userData')
         const cookieAccessToken = useCookie('accessToken')
+
         cookieUserData.value = null
         cookieAccessToken.value = null
-      } catch {
+      }
+      catch {
         // fallback to document.cookie
       }
 
@@ -79,16 +92,19 @@ export const useLogout = () => {
           const namesToRemove = ['userData', 'accessToken', 'userAbilityRules']
           const allCookies = document.cookie ? document.cookie.split(';').map(c => c.split('=')[0].trim()) : []
           const uniqueNames = Array.from(new Set([...namesToRemove, ...allCookies]))
+
           uniqueNames.forEach(n => eraseCookie(n))
         }
-      } catch {
+      }
+      catch {
         console.warn('Ошибка при попытке очистить cookie через document.cookie')
       }
 
       // Reset ability
       try {
         ability.update([])
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Ошибка при сбросе ability:')
       }
 
@@ -96,10 +112,12 @@ export const useLogout = () => {
       try {
         await new Promise(resolve => setTimeout(resolve, 1200))
         window.location.replace('/login')
-      } catch {
+      }
+      catch {
         window.location.href = '/login'
       }
-    } catch (e) {
+    }
+    catch (e) {
       // Catch-all
       console.warn('Logout failed')
       window.location.replace('/login')

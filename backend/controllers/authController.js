@@ -1,19 +1,19 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/users');
-const Agents = require('../models/agents');
-const { getAgentPermissions } = require('../middleware/permissions');
-const SessionManagement = require('../models/sessionManagement');
-const Roles = require('../models/roles');
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const User = require('../models/users')
+const Agents = require('../models/agents')
+const { getAgentPermissions } = require('../middleware/permissions')
+const SessionManagement = require('../models/sessionManagement')
+const Roles = require('../models/roles')
 
 // Генерация JWT токена
-const generateToken = (userId) => {
+const generateToken = userId => {
   return jwt.sign(
     { userId },
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: process.env.JWT_EXPIRES_IN || '24h' },
-  );
-};
+  )
+}
 
 // Маппинг разрешений на CASL правила.
 // Единая модель: разрешения имеют вид menu_<раздел>_<read|write|delete>.
@@ -25,64 +25,63 @@ const generateToken = (userId) => {
 // super_user, manage_roles, system_settings, kb_*, see_*_tickets и т.п.), молча
 // игнорируются с предупреждением в лог. Это переходный период; рекомендуется
 // очистить БД миграцией.
-const mapPermissionsToAbilityRules = (permissions) => {
-  const rules = [];
-  const legacy = [];
+const mapPermissionsToAbilityRules = permissions => {
+  const rules = []
+  const legacy = []
 
   Object.entries(permissions)
     .filter(([, value]) => value === true)
     .forEach(([permission]) => {
-      const match = permission.match(/^(.*)_(read|write|delete)$/);
+      const match = permission.match(/^(.*)_(read|write|delete)$/)
       if (!match) {
-        legacy.push(permission);
-        return;
+        legacy.push(permission)
+
+        return
       }
-      const subject = match[1];
-      const op = match[2];
+      const subject = match[1]
+      const op = match[2]
+
       // action имена совпадают с типом операции (read/write/delete) — это согласовано
       // с фронтовым useUserPermissions, который различает операции по action.
-      rules.push({ action: op, subject });
+      rules.push({ action: op, subject })
+
       // Также добавляем variant с префиксом menu_ для обратной совместимости
-      if (!subject.startsWith('menu_')) {
-        rules.push({ action: op, subject: `menu_${subject}` });
-      }
-    });
+      if (!subject.startsWith('menu_'))
+        rules.push({ action: op, subject: `menu_${subject}` })
+    })
 
   if (legacy.length > 0) {
     console.warn(
       `[auth] Ignored ${legacy.length} legacy permission(s) not matching menu_*_<read|write|delete>:`,
-      legacy.join(', ')
-    );
+      legacy.join(', '),
+    )
   }
 
-  return rules;
-};
+  return rules
+}
 
 // Регистрация нового пользователя
 const register = async (req, res) => {
   try {
-    const { login, password, firstName, lastName, email } = req.body;
+    const { login, password, firstName, lastName, email } = req.body
 
     // Валидация
-    if (!login || !password) {
-      return res.status(400).json({ message: 'Логин и пароль обязательны' });
-    }
+    if (!login || !password)
+      return res.status(400).json({ message: 'Логин и пароль обязательны' })
 
     // Проверка существования пользователя
-    const existingUser = await User.getByLogin(login);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Пользователь с таким логином уже существует' });
-    }
+    const existingUser = await User.getByLogin(login)
+    if (existingUser)
+      return res.status(400).json({ message: 'Пользователь с таким логином уже существует' })
 
     if (email) {
-      const existingEmail = await User.getByEmail(email);
-      if (existingEmail) {
-        return res.status(400).json({ message: 'Пользователь с таким email уже существует' });
-      }
+      const existingEmail = await User.getByEmail(email)
+      if (existingEmail)
+        return res.status(400).json({ message: 'Пользователь с таким email уже существует' })
     }
 
     // Хеширование пароля
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     // Создание пользователя
     const user = await User.create({
@@ -92,10 +91,10 @@ const register = async (req, res) => {
       lastName,
       email,
       isActive: true,
-    });
+    })
 
     // Генерация токена
-    const token = generateToken(user.id);
+    const token = generateToken(user.id)
 
     res.status(201).json({
       message: 'Пользователь успешно зарегистрирован',
@@ -107,73 +106,68 @@ const register = async (req, res) => {
         email: user.email,
       },
       token,
-    });
-  } catch (error) {
-    console.error('Ошибка регистрации:', error);
-    res.status(500).json({ message: 'Ошибка сервера при регистрации' });
+    })
   }
-};
+  catch (error) {
+    console.error('Ошибка регистрации:', error)
+    res.status(500).json({ message: 'Ошибка сервера при регистрации' })
+  }
+}
 
 // Вход пользователя
 const login = async (req, res) => {
   try {
-    const { login, email, password } = req.body;
+    const { login, email, password } = req.body
 
     // Валидация
-    const loginOrEmail = login || email;
-    if (!loginOrEmail || !password) {
-      return res.status(400).json({ message: 'Email/логин и пароль обязательны' });
-    }
+    const loginOrEmail = login || email
+    if (!loginOrEmail || !password)
+      return res.status(400).json({ message: 'Email/логин и пароль обязательны' })
 
     // Сначала ищем в agents
-    let agentResult = await Agents.getAll({ q: loginOrEmail });
-    let agent = null;
-    if (agentResult.agents && agentResult.agents.length > 0) {
-      agent = agentResult.agents.find(a => a.email === loginOrEmail || a.login === loginOrEmail);
-    }
+    const agentResult = await Agents.getAll({ q: loginOrEmail })
+    let agent = null
+    if (agentResult.agents && agentResult.agents.length > 0)
+      agent = agentResult.agents.find(a => a.email === loginOrEmail || a.login === loginOrEmail)
 
-    let user = null;
+    let user = null
     if (!agent) {
       // Если не найден в agents, ищем в users
-      user = await User.getByLogin(loginOrEmail);
-      if (!user) {
-        user = await User.getByEmail(loginOrEmail);
-      }
+      user = await User.getByLogin(loginOrEmail)
+      if (!user)
+        user = await User.getByEmail(loginOrEmail)
     }
 
-    let isAgent = !!agent;
+    const isAgent = !!agent
 
-    if (!user && !agent) {
-      return res.status(401).json({ message: 'Неверный email/логин или пароль' });
-    }
+    if (!user && !agent)
+      return res.status(401).json({ message: 'Неверный email/логин или пароль' })
 
-    let entity = user || agent;
-    let isActive = user ? user.is_active : agent.isActive;
-    let passwordHash = user ? user.password : agent.password;
+    const entity = user || agent
+    const isActive = user ? user.is_active : agent.isActive
+    const passwordHash = user ? user.password : agent.password
 
-    console.log('Login attempt:', { loginOrEmail, user: !!user, agent: !!agent, isActive, id: entity.id });
+    console.log('Login attempt:', { loginOrEmail, user: !!user, agent: !!agent, isActive, id: entity.id })
 
     // Проверка активности
-    if (!isActive) {
-      return res.status(403).json({ message: 'Доступ ограничен, ваша учетная запись не активна' });
-    }
+    if (!isActive)
+      return res.status(403).json({ message: 'Доступ ограничен, ваша учетная запись не активна' })
 
     // Проверка пароля
-    let isPasswordValid;
-    if (passwordHash.startsWith('$2a$') || passwordHash.startsWith('$2b$') || passwordHash.startsWith('$2y$')) {
-      isPasswordValid = await bcrypt.compare(password, passwordHash);
-    } else {
-      isPasswordValid = password === passwordHash;
-    }
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Неверный логин или пароль' });
-    }
+    let isPasswordValid
+    if (passwordHash.startsWith('$2a$') || passwordHash.startsWith('$2b$') || passwordHash.startsWith('$2y$'))
+      isPasswordValid = await bcrypt.compare(password, passwordHash)
+    else
+      isPasswordValid = password === passwordHash
+
+    if (!isPasswordValid)
+      return res.status(401).json({ message: 'Неверный логин или пароль' })
 
     // Генерация токена
-    const token = generateToken(entity.id);
+    const token = generateToken(entity.id)
 
     // Автоматически завершаем все активные сессии для этого пользователя
-    await SessionManagement.terminateAllForUser(entity.id);
+    await SessionManagement.terminateAllForUser(entity.id)
 
     // Создание новой сессии
     const sessionData = {
@@ -184,21 +178,24 @@ const login = async (req, res) => {
       lastActivity: new Date().toISOString(),
       isActive: true,
       type: isAgent ? 'agent' : 'user',
-      userId: entity.id
-    };
-    await SessionManagement.create(sessionData);
+      userId: entity.id,
+    }
+
+    await SessionManagement.create(sessionData)
 
     // Получение разрешений для агента
-    let userAbilityRules = [];
+    let userAbilityRules = []
     if (isAgent) {
-      const permissions = await getAgentPermissions(entity.id);
+      const permissions = await getAgentPermissions(entity.id)
+
       // Преобразуем разрешения в CASL правила
-      userAbilityRules = mapPermissionsToAbilityRules(permissions);
-    } else {
+      userAbilityRules = mapPermissionsToAbilityRules(permissions)
+    }
+    else {
       // Для обычных пользователей (не агентов) — минимальные права (свой профиль)
       userAbilityRules = [
         { action: 'read', subject: 'own_profile' },
-      ];
+      ]
     }
 
     res.json({
@@ -213,21 +210,21 @@ const login = async (req, res) => {
         type: isAgent ? 'agent' : 'user',
       },
       userAbilityRules,
-    });
-  } catch (error) {
-    console.error('Ошибка входа:', error);
-    res.status(500).json({ message: 'Ошибка сервера при входе' });
+    })
   }
-};
+  catch (error) {
+    console.error('Ошибка входа:', error)
+    res.status(500).json({ message: 'Ошибка сервера при входе' })
+  }
+}
 
 // Получение текущего пользователя
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.getById(req.userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
+    const user = await User.getById(req.userId)
+
+    if (!user)
+      return res.status(404).json({ message: 'Пользователь не найден' })
 
     res.json({
       id: user.id,
@@ -236,23 +233,24 @@ const getCurrentUser = async (req, res) => {
       lastName: user.last_name,
       email: user.email,
       isActive: user.is_active,
-    });
-  } catch (error) {
-    console.error('Ошибка получения пользователя:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    })
   }
-};
+  catch (error) {
+    console.error('Ошибка получения пользователя:', error)
+    res.status(500).json({ message: 'Ошибка сервера' })
+  }
+}
 
 // Обновление профиля
 const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, email } = req.body;
-    
+    const { firstName, lastName, email } = req.body
+
     const updatedUser = await User.update(req.userId, {
       firstName,
       lastName,
       email,
-    });
+    })
 
     res.json({
       message: 'Профиль обновлен',
@@ -263,41 +261,41 @@ const updateProfile = async (req, res) => {
         lastName: updatedUser.last_name,
         email: updatedUser.email,
       },
-    });
-  } catch (error) {
-    console.error('Ошибка обновления профиля:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    })
   }
-};
+  catch (error) {
+    console.error('Ошибка обновления профиля:', error)
+    res.status(500).json({ message: 'Ошибка сервера' })
+  }
+}
 
 // Изменение пароля
 const changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Текущий и новый пароль обязательны' });
-    }
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: 'Текущий и новый пароль обязательны' })
 
-    const user = await User.getById(req.userId);
-    
+    const user = await User.getById(req.userId)
+
     // Проверка текущего пароля
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Неверный текущий пароль' });
-    }
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password)
+    if (!isPasswordValid)
+      return res.status(401).json({ message: 'Неверный текущий пароль' })
 
     // Хеширование нового пароля
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    await User.update(req.userId, { password: hashedPassword });
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-    res.json({ message: 'Пароль успешно изменен' });
-  } catch (error) {
-    console.error('Ошибка изменения пароля:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    await User.update(req.userId, { password: hashedPassword })
+
+    res.json({ message: 'Пароль успешно изменен' })
   }
-};
+  catch (error) {
+    console.error('Ошибка изменения пароля:', error)
+    res.status(500).json({ message: 'Ошибка сервера' })
+  }
+}
 
 module.exports = {
   register,
@@ -305,4 +303,4 @@ module.exports = {
   getCurrentUser,
   updateProfile,
   changePassword,
-};
+}

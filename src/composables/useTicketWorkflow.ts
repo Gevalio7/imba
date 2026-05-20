@@ -1,5 +1,5 @@
-import { $api } from '@/utils/api'
 import { computed, ref } from 'vue'
+import { $api } from '@/utils/api'
 
 export function useTicketWorkflow(typeId: Ref<number | undefined>) {
   const currentWorkflow = ref<any>(null)
@@ -11,6 +11,7 @@ export function useTicketWorkflow(typeId: Ref<number | undefined>) {
     if (!typeId.value) {
       currentWorkflow.value = null
       availableStatuses.value = []
+
       return
     }
 
@@ -19,9 +20,8 @@ export function useTicketWorkflow(typeId: Ref<number | undefined>) {
 
       // Формируем URL с параметром currentStatusId если он передан
       let url = `/types/${typeId.value}/workflow`
-      if (currentStatusId !== undefined && currentStatusId !== null) {
+      if (currentStatusId !== undefined && currentStatusId !== null)
         url += `?currentStatusId=${currentStatusId}`
-      }
 
       const data = await $api(url)
 

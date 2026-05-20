@@ -1,62 +1,66 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs')
+const path = require('node:path')
 
 // Создаём директорию models, если она не существует
-const modelsDir = path.join(__dirname, 'models');
-if (!fs.existsSync(modelsDir)) {
-  fs.mkdirSync(modelsDir, { recursive: true });
-}
+const modelsDir = path.join(__dirname, 'models')
+if (!fs.existsSync(modelsDir))
+  fs.mkdirSync(modelsDir, { recursive: true })
 
 // Читаем извлечённые интерфейсы из файла
-const configPath = path.join(__dirname, 'extracted-interfaces.json');
+const configPath = path.join(__dirname, 'extracted-interfaces.json')
 if (!fs.existsSync(configPath)) {
-  console.error('Файл extracted-interfaces.json не найден!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не найден!')
+  process.exit(1)
 }
 
-let config;
+let config
 try {
-  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-} catch (error) {
-  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
-  process.exit(1);
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+}
+catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message)
+  process.exit(1)
 }
 
 if (typeof config !== 'object' || config === null) {
-  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!')
+  process.exit(1)
 }
 
-const entities = Object.keys(config);
+const entities = Object.keys(config)
 if (entities.length === 0) {
-  console.log('В extracted-interfaces.json нет сущностей для генерации моделей.');
-  process.exit(0);
+  console.log('В extracted-interfaces.json нет сущностей для генерации моделей.')
+  process.exit(0)
 }
 
 function toSnakeCase(str) {
   // Специальная обработка для sLA -> sla
-  if (str === 'sLA') {
-    return 'sla';
-  }
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  if (str === 'sLA')
+    return 'sla'
+
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 function singularize(str) {
-  if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-  if (str.endsWith('s')) return str.slice(0, -1);
-  return str;
+  if (str.endsWith('ies'))
+    return `${str.slice(0, -3)}y`
+  if (str.endsWith('s'))
+    return str.slice(0, -1)
+
+  return str
 }
 
 function generateModel(entity) {
-  const tableName = toSnakeCase(entity);
-  // Для sLA используем SLA как имя класса
-  const className = entity === 'sLA' ? 'SLA' : entity;
-  const singular = singularize(entity).toLowerCase();
-  const plural = entity.charAt(0).toLowerCase() + entity.slice(1); // Множественное число для ответа API
-  const fileName = entity.charAt(0).toLowerCase() + entity.slice(1) + '.js';
+  const tableName = toSnakeCase(entity)
 
-  const fieldList = Object.keys(config[entity]).filter(f => f !== 'isActive');
-  const fields = fieldList.join(', ');
+  // Для sLA используем SLA как имя класса
+  const className = entity === 'sLA' ? 'SLA' : entity
+  const singular = singularize(entity).toLowerCase()
+  const plural = entity.charAt(0).toLowerCase() + entity.slice(1) // Множественное число для ответа API
+  const fileName = `${entity.charAt(0).toLowerCase() + entity.slice(1)}.js`
+
+  const fieldList = Object.keys(config[entity]).filter(f => f !== 'isActive')
+  const fields = fieldList.join(', ')
 
   const code = `const { pool } = require('../config/db');
 
@@ -221,15 +225,16 @@ class ${className} {
 }
 
 module.exports = ${className};
-`;
+`
 
-  const filePath = path.join(__dirname, 'models', fileName);
-  fs.writeFileSync(filePath, code);
-  console.log(`Generated ${filePath}`);
+  const filePath = path.join(__dirname, 'models', fileName)
+
+  fs.writeFileSync(filePath, code)
+  console.log(`Generated ${filePath}`)
 }
 
 entities.forEach(entity => {
-  generateModel(entity);
-});
+  generateModel(entity)
+})
 
-console.log('All models generated.');
+console.log('All models generated.')

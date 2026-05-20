@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 
 definePage({
   meta: {
@@ -21,9 +21,9 @@ const tagInput = ref('')
 
 const addTag = () => {
   const tag = tagInput.value.trim()
-  if (tag && !article.value.tags.includes(tag)) {
+  if (tag && !article.value.tags.includes(tag))
     article.value.tags.push(tag)
-  }
+
   tagInput.value = ''
 }
 
@@ -53,8 +53,10 @@ const article = ref({
 const fetchTypes = async () => {
   try {
     const data = await $api(`/types`)
+
     types.value = (data as any).types || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching types:', err)
   }
 }
@@ -62,21 +64,25 @@ const fetchTypes = async () => {
 const fetchServices = async () => {
   try {
     const data = await $api(`/services`)
+
     services.value = (data as any).services || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching services:', err)
   }
 }
 
 // Загрузка статьи для редактирования
 const fetchArticle = async () => {
-  if (!articleId.value) return
-  
+  if (!articleId.value)
+    return
+
   try {
     loading.value = true
+
     const data = await $api(`/knowledge-base/${articleId.value}`)
     const item = data as any
-    
+
     article.value = {
       title: item.title || '',
       content: item.content || '',
@@ -86,10 +92,12 @@ const fetchArticle = async () => {
       isPublished: item.isPublished || false,
       isActive: item.isActive !== undefined ? item.isActive : true,
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching article:', err)
     showToast('Ошибка загрузки статьи', 'error')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -98,41 +106,46 @@ const fetchArticle = async () => {
 const save = async () => {
   if (!article.value.title?.trim()) {
     showToast('Заголовок обязателен для заполнения', 'error')
+
     return
   }
 
   if (!article.value.content?.trim()) {
     showToast('Содержание обязательно для заполнения', 'error')
+
     return
   }
 
   try {
     saving.value = true
-    
+
     const articleData = {
       ...article.value,
       tags: article.value.tags.length > 0 ? article.value.tags : null,
     }
-    
+
     if (isEditMode.value) {
       await $api(`/knowledge-base/${articleId.value}`, {
         method: 'PUT',
         body: articleData,
       })
       showToast('Статья успешно обновлена')
-    } else {
+    }
+    else {
       await $api(`/knowledge-base`, {
         method: 'POST',
         body: articleData,
       })
       showToast('Статья успешно создана')
     }
-    
+
     router.push('/apps/knowledge-base')
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error saving article:', err)
     showToast('Ошибка сохранения статьи', 'error')
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -159,10 +172,9 @@ onMounted(async () => {
     fetchTypes(),
     fetchServices(),
   ])
-  
-  if (isEditMode.value) {
+
+  if (isEditMode.value)
     await fetchArticle()
-  }
 })
 </script>
 
@@ -197,8 +209,14 @@ onMounted(async () => {
     </div>
 
     <VRow v-if="loading">
-      <VCol cols="12" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <VCol
+        cols="12"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </VCol>
     </VRow>
 

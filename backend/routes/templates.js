@@ -1,28 +1,30 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { checkPermission } = require('../middleware/permissions');
+const express = require('express')
+
+const router = express.Router()
+const { protect } = require('../middleware/auth')
+const { checkPermission } = require('../middleware/permissions')
+
 const {
   getTemplates,
   getTemplateById,
   createTemplates,
   updateTemplates,
   deleteTemplates,
-} = require('../controllers/templatesController');
+} = require('../controllers/templatesController')
 
 // GET /templates - список с query params
-router.get('/', getTemplates);
+router.get('/', getTemplates)
 
 // GET /templates/:id
-router.get('/:id', getTemplateById);
+router.get('/:id', getTemplateById)
 
 // POST /templates
-router.post('/', protect, checkPermission('menu_templates_write'), createTemplates);
+router.post('/', protect, checkPermission('menu_templates_write'), createTemplates)
 
 // PUT /templates/:id
-router.put('/:id', protect, checkPermission('menu_templates_write'), updateTemplates);
+router.put('/:id', protect, checkPermission('menu_templates_write'), updateTemplates)
 
 // DELETE /templates/:id
-router.delete('/:id', protect, checkPermission('menu_templates_delete'), deleteTemplates);
+router.delete('/:id', protect, checkPermission('menu_templates_delete'), deleteTemplates)
 
-module.exports = router;
+module.exports = router

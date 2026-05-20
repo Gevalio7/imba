@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { ref, watch } from 'vue'
 import AddEditGroupDialog from './AddEditGroupDialog.vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -32,8 +32,6 @@ interface Role {
   id: number
   name: string
 }
-
-
 
 // Роутер
 
@@ -68,7 +66,7 @@ const headers = [
   { title: 'Роль', key: 'role', sortable: false },
   { title: 'Агентов', key: 'agents', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Функция для определения варианта статуса
@@ -85,34 +83,41 @@ const fetchRoles = async () => {
   try {
     loadingRoles.value = true
     console.log('[AgentsGroupsTable.vue] GET /api/roles - fetching roles')
-    const data = await $api<{ roles: Role[], total: number }>(`/roles`)
+
+    const data = await $api<{ roles: Role[]; total: number }>(`/roles`)
+
     roles.value = data.roles
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching roles:', err)
-  } finally {
+  }
+  finally {
     loadingRoles.value = false
   }
 }
 
 // Получить имя роли по ID
 const getRoleName = (roleId?: number) => {
-  if (!roleId) return '-'
+  if (!roleId)
+    return '-'
   const role = roles.value.find(r => r.id === roleId)
+
   return role ? role.name : '-'
 }
 
 // Получить список ролей группы
 const getGroupRoles = (group: AgentsGroups): Role[] => {
-  if (group.roles && group.roles.length > 0) {
+  if (group.roles && group.roles.length > 0)
     return group.roles
-  }
+
   if (group.roleId) {
     const role = roles.value.find(r => r.id === group.roleId)
+
     return role ? [role] : []
   }
+
   return []
 }
-
 
 const resolveStatusVariant = (isActive: boolean) => {
   if (isActive)
@@ -165,17 +170,20 @@ const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
     // Отправляем на сервер
     await $api(`/agentsGroups/${group.id}`, {
       method: 'PUT',
-      body: { isActive: newValue }
+      body: { isActive: newValue },
     })
 
     // Показываем уведомление об успехе
     showToast(`Статус группы "${group.name}" изменен на "${newValue ? 'Активна' : 'Не активна'}"`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error toggling status:', err)
+
     // Откатываем при ошибке
     group.isActive = previousValue
     showToast('Ошибка изменения статуса группы', 'error')
-  } finally {
+  }
+  finally {
     // Убираем из загрузки
     statusLoading.value = statusLoading.value.filter(id => id !== group.id)
   }
@@ -212,10 +220,11 @@ const deleteItemConfirm = async () => {
   try {
     if (editedItem.value) {
       const deletedGroupId = editedItem.value.id
+
       deleteLoading.value.push(deletedGroupId)
 
       await $api(`/agentsGroups/${deletedGroupId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       // Только эмитим событие - не изменяем пропсы напрямую!
@@ -223,18 +232,19 @@ const deleteItemConfirm = async () => {
       closeDelete()
       showToast('Группа успешно удалена')
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting group:', err)
     showToast('Ошибка удаления группы', 'error')
-  } finally {
-    if (editedItem.value) {
+  }
+  finally {
+    if (editedItem.value)
       deleteLoading.value = deleteLoading.value.filter(id => id !== editedItem.value!.id)
-    }
   }
 }
 
 // Отслеживание изменений выбранных элементов
-watch(() => props.selectedItems, (newValue) => {
+watch(() => props.selectedItems, newValue => {
   console.log('Selected items:', newValue)
 }, { deep: true })
 
@@ -247,13 +257,25 @@ onMounted(() => {
 <template>
   <VCard>
     <!-- Индикатор загрузки -->
-    <div v-if="loading" class="d-flex justify-center pa-6">
-      <VProgressCircular indeterminate color="primary" />
+    <div
+      v-if="loading"
+      class="d-flex justify-center pa-6"
+    >
+      <VProgressCircular
+        indeterminate
+        color="primary"
+      />
     </div>
 
     <!-- Сообщение об ошибке -->
-    <div v-else-if="error" class="d-flex justify-center pa-6">
-      <VAlert type="error" class="ma-4">
+    <div
+      v-else-if="error"
+      class="d-flex justify-center pa-6"
+    >
+      <VAlert
+        type="error"
+        class="ma-4"
+      >
         {{ error }}
       </VAlert>
     </div>
@@ -262,11 +284,8 @@ onMounted(() => {
       <!-- Таблица групп -->
       <VDataTable
         :model-value="selectedItems"
-        @update:model-value="updateSelectedItems"
         :items-per-page="itemsPerPage"
-        @update:items-per-page="updateItemsPerPage"
         :page="currentPage"
-        @update:page="updatePage"
         :headers="headers"
         :items="agentsGroups"
         show-select
@@ -274,6 +293,9 @@ onMounted(() => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
+        @update:model-value="updateSelectedItems"
+        @update:items-per-page="updateItemsPerPage"
+        @update:page="updatePage"
       >
         <!-- Агентов -->
         <template #item.agents="{ item }">
@@ -289,7 +311,10 @@ onMounted(() => {
                   size="32"
                   class="text-caption font-weight-medium"
                 >
-                  <span class="text-no-wrap" style="color: #666;">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
+                  <span
+                    class="text-no-wrap"
+                    style="color: #666;"
+                  >{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
                 </VAvatar>
               </template>
               <VAvatar
@@ -298,7 +323,10 @@ onMounted(() => {
                 size="32"
                 class="text-caption font-weight-medium"
               >
-                <span class="text-no-wrap" style="color: #666;">+{{ item.agents.length - 3 }}</span>
+                <span
+                  class="text-no-wrap"
+                  style="color: #666;"
+                >+{{ item.agents.length - 3 }}</span>
               </VAvatar>
             </div>
             <span class="ml-2">{{ item.agents.length }} агентов</span>
@@ -320,7 +348,10 @@ onMounted(() => {
                 {{ role.name }}
               </VChip>
             </template>
-            <span v-else class="text-medium-emphasis">-</span>
+            <span
+              v-else
+              class="text-medium-emphasis"
+            >-</span>
           </div>
         </template>
 
@@ -330,9 +361,9 @@ onMounted(() => {
             <VSwitch
               :model-value="item.isActive"
               :disabled="statusLoading.includes(item.id)"
-              @update:model-value="(val) => toggleStatus(item, val as boolean)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val as boolean)"
             />
             <VProgressCircular
               v-if="statusLoading.includes(item.id)"
@@ -367,13 +398,12 @@ onMounted(() => {
       <div class="d-flex justify-center mt-4 pb-4">
         <VPagination
           :model-value="currentPage"
-          @update:model-value="updatePage"
           :length="Math.ceil(agentsGroups.length / itemsPerPage) || 1"
           :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
+          @update:model-value="updatePage"
         />
       </div>
     </template>
-
 
     <!-- Диалог удаления -->
     <VDialog

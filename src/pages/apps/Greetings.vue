@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Приветствие
 interface Greetings {
@@ -12,7 +12,6 @@ interface Greetings {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -29,14 +28,18 @@ const fetchGreetings = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching greetings from:', `${API_BASE}/greetings`)
-    const data = await $api<{ greetings: Greetings[], total: number }>(`${API_BASE}/greetings`)
+
+    const data = await $api<{ greetings: Greetings[]; total: number }>(`${API_BASE}/greetings`)
+
     console.log('Fetched greetings data:', data)
     greetings.value = data.greetings
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки приветствия'
     console.error('Error fetching greetings:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -46,11 +49,14 @@ const createGreetings = async (item: Omit<Greetings, 'id' | 'createdAt' | 'updat
   try {
     const data = await $api<Greetings>(`${API_BASE}/greetings`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     greetings.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating greetings:', err)
     throw err
   }
@@ -61,14 +67,16 @@ const updateGreetings = async (id: number, item: Omit<Greetings, 'id' | 'created
   try {
     const data = await $api<Greetings>(`${API_BASE}/greetings/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = greetings.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       greetings.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating greetings:', err)
     throw err
   }
@@ -78,13 +86,14 @@ const updateGreetings = async (id: number, item: Omit<Greetings, 'id' | 'created
 const deleteGreetings = async (id: number) => {
   try {
     await $api(`${API_BASE}/greetings/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = greetings.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       greetings.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting greetings:', err)
     throw err
   }
@@ -103,7 +112,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Функция для удаления HTML-тегов
@@ -146,13 +155,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteGreetings(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} приветствия`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -163,13 +173,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateGreetings(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} приветствия`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -197,7 +208,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -255,6 +266,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -263,19 +275,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateGreetings(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Приветствие успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createGreetings({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Приветствие успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения приветствие', 'error')
   }
 }
@@ -285,7 +301,8 @@ const deleteItemConfirm = async () => {
     await deleteGreetings(editedItem.value.id)
     showToast('Приветствие успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления приветствие', 'error')
   }
 }
@@ -296,15 +313,17 @@ const toggleStatus = async (item: Greetings, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateGreetings(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус приветствие изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -323,7 +342,7 @@ const showToast = (message: string, color: string = 'success') => {
 // Добавление нового приветствие
 const addNewGreetings = () => {
   // Проверяем право на создание
-  if (useGlobalPermissions().can('write','menu_greetings')) {
+  if (useGlobalPermissions().can('write', 'menu_greetings')) {
     editedItem.value = { ...defaultItem.value }
     editedIndex.value = -1
     editDialog.value = true
@@ -334,20 +353,34 @@ const addNewGreetings = () => {
 <template>
   <div>
     <VCard title="Приветствия">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -427,7 +460,6 @@ const addNewGreetings = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -565,9 +597,9 @@ const addNewGreetings = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -581,10 +613,16 @@ const addNewGreetings = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_greetings')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_greetings')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_greetings')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_greetings')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -609,7 +647,6 @@ const addNewGreetings = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать приветствие' : 'Добавить приветствие'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol cols="12">
               <AppTextField

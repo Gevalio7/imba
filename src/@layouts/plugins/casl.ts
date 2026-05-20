@@ -4,9 +4,10 @@ import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 
 export const can = (action: string | undefined, subject: string | undefined) => {
   const { can: checkPermission } = useGlobalPermissions()
-  
-  if (!action || !subject) return true
-  
+
+  if (!action || !subject)
+    return true
+
   return checkPermission(action as string, subject as string)
 }
 
@@ -14,22 +15,26 @@ export const canRead = (subject: string): boolean => {
   const { permissionsMap, loaded } = useGlobalPermissions()
 
   // Если права ещё не загружены, разрешаем (загрузка асинхронна, чтобы не моргало меню)
-  if (!loaded.value) return true
+  if (!loaded.value)
+    return true
 
   // 1. Точное совпадение
   if (permissionsMap.value.has(subject)) {
     const perm = permissionsMap.value.get(subject)!
-    if (perm.read === true) return true
+    if (perm.read === true)
+      return true
   }
 
   // 2. Совпадение с суффиксом _read (на случай если subject передан без суффикса)
   const permWithSuffix = permissionsMap.value.get(`${subject}_read`)
-  if (permWithSuffix?.read === true) return true
+  if (permWithSuffix?.read === true)
+    return true
 
   // 3. Иерархия: если subject — это «группа», ищем дочерние коды вида `${subject}_*_read`
   //    Используем строгий префикс `${subject}_`, чтобы избежать ложных срабатываний по подстроке.
   for (const [key, perm] of permissionsMap.value) {
-    if (key.startsWith(`${subject}_`) && perm.read === true) return true
+    if (key.startsWith(`${subject}_`) && perm.read === true)
+      return true
   }
 
   return false
@@ -40,10 +45,12 @@ export const canViewNavMenuGroup = (item: NavGroup) => {
   const children = item.children ?? []
 
   // Если у группы нет ни своих прав, ни детей — это не защищаемый пункт, показываем
-  if (!hasOwnPerm && children.length === 0) return true
+  if (!hasOwnPerm && children.length === 0)
+    return true
 
   // Если у группы есть свои права — проверяем их
-  if (hasOwnPerm && canRead(item.subject as string)) return true
+  if (hasOwnPerm && canRead(item.subject as string))
+    return true
 
   // Иначе показываем группу, если хотя бы один РЕАЛЬНО защищённый дочерний пункт доступен.
   // Дочерние пункты без `subject` НЕ дают видимость родительской группе,
@@ -51,10 +58,12 @@ export const canViewNavMenuGroup = (item: NavGroup) => {
   for (const child of children) {
     if ('children' in child) {
       // Вложенные группы — рекурсивно
-      if (canViewNavMenuGroup(child as unknown as NavGroup)) return true
+      if (canViewNavMenuGroup(child as unknown as NavGroup))
+        return true
       continue
     }
-    if (child.action && child.subject && canRead(child.subject as string)) return true
+    if (child.action && child.subject && canRead(child.subject as string))
+      return true
   }
 
   return false
@@ -62,10 +71,12 @@ export const canViewNavMenuGroup = (item: NavGroup) => {
 
 export const canNavigate = async (to: RouteLocationNormalized) => {
   const gp = useGlobalPermissions()
+
   // ensure permissions are loaded before making navigation decision
   try {
     await gp.ensureLoaded()
-  } catch (e) {
+  }
+  catch (e) {
     // ignore - ensureLoaded handles its own errors
   }
 

@@ -143,9 +143,9 @@ watch(props, () => {
 // Snackbar for non-blocking notifications
 const isToastVisible = ref(false)
 const toastMessage = ref('')
-const toastColor = ref<'success'|'error'|'info'>('success')
+const toastColor = ref<'success' | 'error' | 'info'>('success')
 
-const showToast = (message: string, color: 'success'|'error'|'info' = 'success') => {
+const showToast = (message: string, color: 'success' | 'error' | 'info' = 'success') => {
   toastMessage.value = message
   toastColor.value = color
   isToastVisible.value = true

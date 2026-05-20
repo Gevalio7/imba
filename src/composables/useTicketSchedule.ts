@@ -1,5 +1,5 @@
+import { reactive, ref } from 'vue'
 import { $api } from '@/utils/api'
-import { ref, reactive } from 'vue'
 import type { TicketSchedule } from '@/types/ticket'
 
 export function useTicketSchedule(ticketId: Ref<number | null>) {
@@ -20,11 +20,14 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
 
   // Загрузка расписания для тикета
   const fetchSchedule = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       loadingSchedule.value = true
+
       const data = await $api(`/ticketSchedules/ticket/${ticketId.value}`)
+
       ticketSchedule.value = (data as any).schedule || null
     }
     catch (err) {
@@ -47,7 +50,8 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
       scheduleForm.endDate = ticketSchedule.value.endDate || null
       scheduleForm.isActive = ticketSchedule.value.isActive !== false
       scheduleForm.titlePrefix = ticketSchedule.value.titlePrefix || 'Расписание (Р) '
-    } else {
+    }
+    else {
       // Создание - сбрасываем форму
       scheduleForm.scheduleType = 'daily'
       scheduleForm.scheduleTime = '09:00'
@@ -62,7 +66,8 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
 
   // Сохранить расписание
   const saveSchedule = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       const scheduleData = {
@@ -75,9 +80,10 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
         // Обновляем
         await $api(`/ticketSchedules/${ticketSchedule.value.id}`, {
           method: 'PUT',
-          body: scheduleData
+          body: scheduleData,
         })
-      } else {
+      }
+      else {
         // Создаём
         await $api('/ticketSchedules', {
           method: 'POST',
@@ -93,11 +99,12 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
 
   // Удалить расписание
   const deleteSchedule = async () => {
-    if (!ticketSchedule.value?.id) return
+    if (!ticketSchedule.value?.id)
+      return
 
     try {
       await $api(`/ticketSchedules/${ticketSchedule.value.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
       ticketSchedule.value = null
     }
@@ -109,12 +116,14 @@ export function useTicketSchedule(ticketId: Ref<number | null>) {
 
   // Запустить расписание вручную (создать тикет)
   const runScheduleNow = async () => {
-    if (!ticketSchedule.value?.id) return
+    if (!ticketSchedule.value?.id)
+      return
 
     try {
       const data = await $api(`/ticketSchedules/${ticketSchedule.value.id}/run`, {
         method: 'POST',
       })
+
       return (data as any).message || 'Тикет создан'
     }
     catch (err: any) {

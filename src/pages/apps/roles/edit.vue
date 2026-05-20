@@ -1,12 +1,133 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import RoleInfoCard from './components/RoleInfoCard.vue'
+import RoleExtendedPermissions from './components/RoleExtendedPermissions.vue'
+import { categoryIcons, menuConfig } from '@/constants/roleMenuConfig'
+import { useRoleForm } from '@/composables/useRoleForm'
+import { useRolePermissions } from '@/composables/useRolePermissions'
+
+definePage({ meta: { navActiveLink: 'apps-roles' } })
+
+const route = useRoute()
+const router = useRouter()
+const roleId = ref<number>(route.query.id ? Number.parseInt(String(route.query.id), 10) : 0)
+const isNew = computed(() => !roleId.value)
+
+const { role, fetchRole, saveRole: saveRoleForm, cancel } = useRoleForm()
+
+const {
+  getChildPermission,
+  setChildPermission,
+  toggleCategory,
+  getParentState,
+  getPermissionLevel,
+  updatePermissionLevel,
+  fetchPermissions,
+} = useRolePermissions(roleId, isNew)
+
+const expandedPanels = ref(menuConfig.map(c => c.category))
+const loading = ref(false)
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+
+const canChangeStatus = ref(false)
+const canChangePriority = ref(false)
+
+const getCategoryIcon = (category: string): string => {
+  return categoryIcons[category] || 'bx-menu'
+}
+
+const levelDescriptions = ref<Record<number, string>>({
+  777: 'Полный доступ для всех (rwx/rwx/rwx)',
+  755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
+  744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
+  700: 'Полный доступ только для владельца (rwx/---/---)',
+  666: 'Чтение и запись для всех (rw-/rw-/rw-)',
+  644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
+  600: 'Чтение и запись только для владельца (rw-/---/---)',
+  444: 'Только чтение для всех (r--/r--/r--)',
+  400: 'Только чтение для владельца (r--/---/---)',
+  0: 'Нет доступа (---)',
+})
+
+const accessLevels = computed(() =>
+  Object.entries(levelDescriptions.value)
+    .map(([k, v]) => ({ level: Number.parseInt(k, 10), description: v }))
+    .sort((a, b) => b.level - a.level),
+)
+
+// Расширенные права
+const superAdmin = ref(false)
+const selectedDepartments = ref<number[]>([])
+const selectedCompanies = ref<number[]>([])
+const onlyOwnTickets = ref(false)
+const canReply = ref(true)
+const canInternalNotes = ref(false)
+
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
+
+// Обёртка сохранения роли: сначала сохранение, затем загрузка permissions для новой роли
+const saveRole = async () => {
+  try {
+    const saved = await saveRoleForm(isNew.value)
+    if (isNew.value && saved?.id) {
+      roleId.value = saved.id
+      await fetchPermissions(menuConfig)
+      showToast('Роль успешно создана, теперь можно настроить разрешения', 'success')
+      router.replace({ path: '/apps/roles/edit', query: { id: saved.id } })
+    }
+    else {
+      showToast('Роль сохранена', 'success')
+    }
+  }
+  catch (err: any) {
+    showToast(err?.message || 'Ошибка сохранения роли', 'error')
+  }
+}
+
+// Заглушки для списков (позже заменишь на API)
+const departmentsList = ref([
+  { id: 1, name: 'Отдел продаж' },
+  { id: 2, name: 'Отдел поддержки' },
+  { id: 3, name: 'IT отдел' },
+  { id: 4, name: 'Отдел разработки' },
+  { id: 5, name: 'Бухгалтерия' },
+])
+
+const companiesList = ref([
+  { id: 1, name: 'ООО "Ромашка"' },
+  { id: 2, name: 'АО "ТехноСервис"' },
+  { id: 3, name: 'ООО "Интеграл"' },
+  { id: 4, name: 'ЗАО "Альянс"' },
+])
+
+onMounted(async () => {
+  if (roleId.value)
+    await Promise.all([fetchRole(roleId.value), fetchPermissions(menuConfig)])
+  else
+    await fetchPermissions(menuConfig)
+})
+</script>
+
 <template>
   <VRow>
-    <VCol cols="12" md="6" lg="5">
-      <RoleInfoCard 
-        :role="role" 
+    <VCol
+      cols="12"
+      md="6"
+      lg="5"
+    >
+      <RoleInfoCard
+        :role="role"
         @save="saveRole"
         @cancel="cancel"
       />
-      
+
       <RoleExtendedPermissions
         :super-admin="superAdmin"
         :departments="selectedDepartments"
@@ -29,50 +150,80 @@
       />
     </VCol>
 
-    <VCol cols="12" md="6" lg="7">
-      <VCard elevation="2" class="pa-6">
+    <VCol
+      cols="12"
+      md="6"
+      lg="7"
+    >
+      <VCard
+        elevation="2"
+        class="pa-6"
+      >
         <VCardTitle class="d-flex align-center pa-0 mb-6">
           <VBtn
             icon="bx-arrow-back"
             variant="text"
             size="small"
-            @click="cancel"
             class="mr-3"
+            @click="cancel"
           />
           <div>
-            <h1 class="text-h4 mb-1">{{ isNew ? 'Создание роли' : 'Редактирование роли' }}</h1>
-            <p class="text-body-2 text-medium-emphasis">Управляйте настройками роли и её разрешениями</p>
+            <h1 class="text-h4 mb-1">
+              {{ isNew ? 'Создание роли' : 'Редактирование роли' }}
+            </h1>
+            <p class="text-body-2 text-medium-emphasis">
+              Управляйте настройками роли и её разрешениями
+            </p>
           </div>
         </VCardTitle>
 
-        <VCard variant="outlined" class="mb-6">
+        <VCard
+          variant="outlined"
+          class="mb-6"
+        >
           <VCardTitle class="pb-3">
             <div class="d-flex align-center">
-              <VIcon icon="bx-user" class="mr-3" color="primary" />
+              <VIcon
+                icon="bx-user"
+                class="mr-3"
+                color="primary"
+              />
               <span class="text-h6">Основная информация</span>
             </div>
           </VCardTitle>
           <VCardText>
             <VRow>
-              <VCol cols="12" md="8">
-                <AppTextField 
-                  v-model="role.name" 
-                  label="Название роли *" 
-                  placeholder="Введите название роли" 
-                  :rules="[(v: string) => !!v || 'Название обязательно']" 
-                  prepend-inner-icon="bx-tag" 
+              <VCol
+                cols="12"
+                md="8"
+              >
+                <AppTextField
+                  v-model="role.name"
+                  label="Название роли *"
+                  placeholder="Введите название роли"
+                  :rules="[(v: string) => !!v || 'Название обязательно']"
+                  prepend-inner-icon="bx-tag"
                 />
               </VCol>
-              <VCol cols="12" md="4" class="d-flex align-center">
-                <VSwitch v-model="role.isActive" label="Роль активна" color="success" inset />
+              <VCol
+                cols="12"
+                md="4"
+                class="d-flex align-center"
+              >
+                <VSwitch
+                  v-model="role.isActive"
+                  label="Роль активна"
+                  color="success"
+                  inset
+                />
               </VCol>
               <VCol cols="12">
-                <AppTextarea 
-                  v-model="role.message" 
-                  label="Описание роли" 
-                  placeholder="Введите описание роли" 
-                  rows="3" 
-                  prepend-inner-icon="bx-message-detail" 
+                <AppTextarea
+                  v-model="role.message"
+                  label="Описание роли"
+                  placeholder="Введите описание роли"
+                  rows="3"
+                  prepend-inner-icon="bx-message-detail"
                 />
               </VCol>
             </VRow>
@@ -82,16 +233,31 @@
         <VCard variant="outlined">
           <VCardTitle class="pb-3">
             <div class="d-flex align-center">
-              <VIcon icon="bx-shield-check" class="mr-3" color="primary" />
+              <VIcon
+                icon="bx-shield-check"
+                class="mr-3"
+                color="primary"
+              />
               <span class="text-h6">Разрешения меню</span>
             </div>
           </VCardTitle>
           <VCardText class="pa-0">
-            <div v-if="loading" class="d-flex justify-center py-8">
-              <VProgressCircular indeterminate color="primary" size="64" />
+            <div
+              v-if="loading"
+              class="d-flex justify-center py-8"
+            >
+              <VProgressCircular
+                indeterminate
+                color="primary"
+                size="64"
+              />
             </div>
             <div v-else>
-              <VExpansionPanels v-model="expandedPanels" multiple variant="accordion">
+              <VExpansionPanels
+                v-model="expandedPanels"
+                multiple
+                variant="accordion"
+              >
                 <VExpansionPanel
                   v-for="category in menuConfig"
                   :key="category.category"
@@ -150,7 +316,10 @@
                   </VExpansionPanelTitle>
 
                   <VExpansionPanelText class="pl-9">
-                    <VList density="comfortable" class="bg-transparent">
+                    <VList
+                      density="comfortable"
+                      class="bg-transparent"
+                    >
                       <VListItem
                         v-for="child in category.children"
                         :key="child.id"
@@ -166,7 +335,7 @@
                           <span class="text-body-2">{{ child.label }}</span>
                           <div class="ml-auto d-flex gap-6 align-center">
                             <div
-                              v-for="t in (['read','write','delete'] as const)"
+                              v-for="t in (['read', 'write', 'delete'] as const)"
                               :key="t"
                               class="d-flex align-center permission-cell"
                             >
@@ -233,125 +402,14 @@
     </VCol>
   </VRow>
 
-  <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="3000">
+  <VSnackbar
+    v-model="isToastVisible"
+    :color="toastColor"
+    timeout="3000"
+  >
     {{ toastMessage }}
   </VSnackbar>
 </template>
-
-<script setup lang="ts">
-definePage({ meta: { navActiveLink: 'apps-roles' } })
-
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { menuConfig, categoryIcons } from '@/constants/roleMenuConfig'
-import { useRoleForm } from '@/composables/useRoleForm'
-import { useRolePermissions } from '@/composables/useRolePermissions'
-import RoleInfoCard from './components/RoleInfoCard.vue'
-import RoleExtendedPermissions from './components/RoleExtendedPermissions.vue'
-
-const route = useRoute()
-const router = useRouter()
-const roleId = ref<number>(route.query.id ? parseInt(String(route.query.id), 10) : 0)
-const isNew = computed(() => !roleId.value)
-
-const { role, fetchRole, saveRole: saveRoleForm, cancel } = useRoleForm()
-const { 
-  getChildPermission, 
-  setChildPermission, 
-  toggleCategory, 
-  getParentState, 
-  getPermissionLevel, 
-  updatePermissionLevel, 
-  fetchPermissions 
-} = useRolePermissions(roleId, isNew)
-
-const expandedPanels = ref(menuConfig.map(c => c.category))
-const loading = ref(false)
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const canChangeStatus = ref(false)
-const canChangePriority = ref(false)
-
-const getCategoryIcon = (category: string): string => {
-  return categoryIcons[category] || 'bx-menu'
-}
-
-const levelDescriptions = ref<Record<number, string>>({
-  777: 'Полный доступ для всех (rwx/rwx/rwx)',
-  755: 'Полный доступ для владельца, чтение/удаление для остальных (rwx/r-x/r-x)',
-  744: 'Полный доступ для владельца, только чтение для остальных (rwx/r--/r--)',
-  700: 'Полный доступ только для владельца (rwx/---/---)',
-  666: 'Чтение и запись для всех (rw-/rw-/rw-)',
-  644: 'Чтение и запись для владельца, только чтение для остальных (rw-/r--/r--)',
-  600: 'Чтение и запись только для владельца (rw-/---/---)',
-  444: 'Только чтение для всех (r--/r--/r--)',
-  400: 'Только чтение для владельца (r--/---/---)',
-  0: 'Нет доступа (---)'
-})
-
-const accessLevels = computed(() =>
-  Object.entries(levelDescriptions.value)
-    .map(([k, v]) => ({ level: parseInt(k, 10), description: v }))
-    .sort((a, b) => b.level - a.level)
-)
-
-// Расширенные права
-const superAdmin = ref(false)
-const selectedDepartments = ref<number[]>([])
-const selectedCompanies = ref<number[]>([])
-const onlyOwnTickets = ref(false)
-const canReply = ref(true)
-const canInternalNotes = ref(false)
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
-
-// Обёртка сохранения роли: сначала сохранение, затем загрузка permissions для новой роли
-const saveRole = async () => {
-  try {
-    const saved = await saveRoleForm(isNew.value)
-    if (isNew.value && saved?.id) {
-      roleId.value = saved.id
-      await fetchPermissions(menuConfig)
-      showToast('Роль успешно создана, теперь можно настроить разрешения', 'success')
-      router.replace({ path: '/apps/roles/edit', query: { id: saved.id } })
-    } else {
-      showToast('Роль сохранена', 'success')
-    }
-  } catch (err: any) {
-    showToast(err?.message || 'Ошибка сохранения роли', 'error')
-  }
-}
-
-// Заглушки для списков (позже заменишь на API)
-const departmentsList = ref([
-  { id: 1, name: 'Отдел продаж' },
-  { id: 2, name: 'Отдел поддержки' },
-  { id: 3, name: 'IT отдел' },
-  { id: 4, name: 'Отдел разработки' },
-  { id: 5, name: 'Бухгалтерия' }
-])
-
-const companiesList = ref([
-  { id: 1, name: 'ООО "Ромашка"' },
-  { id: 2, name: 'АО "ТехноСервис"' },
-  { id: 3, name: 'ООО "Интеграл"' },
-  { id: 4, name: 'ЗАО "Альянс"' }
-])
-
-onMounted(async () => {
-  if (roleId.value) {
-    await Promise.all([fetchRole(roleId.value), fetchPermissions(menuConfig)])
-  } else {
-    await fetchPermissions(menuConfig)
-  }
-})
-</script>
 
 <style scoped>
 .gap-6 {

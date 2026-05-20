@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Email адрес
 interface EmailAddresses {
@@ -25,7 +25,6 @@ interface Queue {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -46,14 +45,18 @@ const fetchEmailAddresses = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching emailAddresses from:', `${API_BASE}/emailAddresses`)
-    const data = await $api<{ emailAddresses: EmailAddresses[], total: number }>(`${API_BASE}/emailAddresses`)
+
+    const data = await $api<{ emailAddresses: EmailAddresses[]; total: number }>(`${API_BASE}/emailAddresses`)
+
     console.log('Fetched emailAddresses data:', data)
     emailAddresses.value = data.emailAddresses
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки email адреса'
     console.error('Error fetching emailAddresses:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -64,13 +67,17 @@ const fetchQueues = async () => {
     queuesLoading.value = true
     queuesError.value = null
     console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $api<{ queues: Queue[], total: number }>(`${API_BASE}/queues`)
+
+    const data = await $api<{ queues: Queue[]; total: number }>(`${API_BASE}/queues`)
+
     console.log('Fetched queues data:', data)
     queues.value = data.queues
-  } catch (err) {
+  }
+  catch (err) {
     queuesError.value = 'Ошибка загрузки очередей'
     console.error('Error fetching queues:', err)
-  } finally {
+  }
+  finally {
     queuesLoading.value = false
   }
 }
@@ -80,11 +87,14 @@ const createEmailAddresses = async (item: Omit<EmailAddresses, 'id' | 'createdAt
   try {
     const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     emailAddresses.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating emailAddresses:', err)
     throw err
   }
@@ -95,14 +105,16 @@ const updateEmailAddresses = async (id: number, item: Omit<EmailAddresses, 'id' 
   try {
     const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = emailAddresses.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       emailAddresses.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating emailAddresses:', err)
     throw err
   }
@@ -112,13 +124,14 @@ const updateEmailAddresses = async (id: number, item: Omit<EmailAddresses, 'id' 
 const deleteEmailAddresses = async (id: number) => {
   try {
     await $api(`${API_BASE}/emailAddresses/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = emailAddresses.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       emailAddresses.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting emailAddresses:', err)
     throw err
   }
@@ -138,7 +151,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -155,8 +168,10 @@ const filteredEmailAddresses = computed(() => {
 
 // Получение имени очереди по ID
 const getQueueName = (queueId: number | null) => {
-  if (!queueId) return '-'
+  if (!queueId)
+    return '-'
   const queue = queues.value.find(q => q.id === queueId)
+
   return queue ? queue.name : '-'
 }
 
@@ -183,13 +198,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteEmailAddresses(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} email адреса`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -200,13 +216,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateEmailAddresses(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} email адреса`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -234,7 +251,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -292,6 +309,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Адрес электронной почты обязателен для заполнения', 'error')
+
     return
   }
 
@@ -300,19 +318,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateEmailAddresses(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Email адрес успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createEmailAddresses({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Email адрес успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения email адрес', 'error')
   }
 }
@@ -322,7 +344,8 @@ const deleteItemConfirm = async () => {
     await deleteEmailAddresses(editedItem.value.id)
     showToast('Email адрес успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления email адрес', 'error')
   }
 }
@@ -336,10 +359,11 @@ const toggleStatus = async (item: EmailAddresses, newValue: boolean) => {
   try {
     await updateEmailAddresses(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус email адрес изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -366,20 +390,34 @@ const addNewEmailAddresses = () => {
 <template>
   <div>
     <VCard title="Email адреса">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -450,17 +488,16 @@ const addNewEmailAddresses = () => {
             Экспорт
           </VBtn>
 
-            <VBtn
-              v-if="$can('write','menu_email_addresses')"
-              color="primary"
-              prepend-icon="bx-plus"
-              @click="addNewEmailAddresses"
-            >
-              Добавить email адрес
-            </VBtn>
+          <VBtn
+            v-if="$can('write', 'menu_email_addresses')"
+            color="primary"
+            prepend-icon="bx-plus"
+            @click="addNewEmailAddresses"
+          >
+            Добавить email адрес
+          </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -598,9 +635,9 @@ const addNewEmailAddresses = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -619,10 +656,16 @@ const addNewEmailAddresses = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_email_addresses')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_email_addresses')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_email_addresses')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_email_addresses')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -647,7 +690,6 @@ const addNewEmailAddresses = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать email адрес' : 'Добавить email адрес'">
         <VCardText>
           <VRow>
-
             <!-- Адрес электронной почты -->
             <VCol
               cols="12"
@@ -660,10 +702,7 @@ const addNewEmailAddresses = () => {
             </VCol>
 
             <!-- Отображаемое имя -->
-            <VCol
-              cols="12"
-
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.message"
                 label="Отображаемое имя"

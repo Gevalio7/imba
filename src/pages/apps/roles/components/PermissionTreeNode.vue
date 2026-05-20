@@ -1,3 +1,20 @@
+<script setup lang="ts">
+import { categoryIcons } from '@/constants/roleMenuConfig'
+
+const props = defineProps<{
+  category: any
+  childPermission: (code: string, type: 'read' | 'write' | 'delete') => boolean
+  onSetChildPermission: (code: string, type: 'read' | 'write' | 'delete', val: boolean) => void
+  onToggleCategory: (type: 'read' | 'write' | 'delete', val: boolean) => void
+  parentState: (type: 'read' | 'write' | 'delete') => { value: boolean; indeterminate: boolean }
+  permissionLevel: (code: string, type: 'read' | 'write' | 'delete') => number
+  onUpdatePermissionLevel: (code: string, type: 'read' | 'write' | 'delete', level: number) => void
+  accessLevels: Array<any>
+}>()
+
+const icon = categoryIcons[props.category.category] || 'bx-menu'
+</script>
+
 <template>
   <div>
     <div class="d-flex align-center w-100">
@@ -50,7 +67,10 @@
     </div>
 
     <div class="pl-9">
-      <VList density="comfortable" class="bg-transparent">
+      <VList
+        density="comfortable"
+        class="bg-transparent"
+      >
         <VListItem
           v-for="child in category.children"
           :key="child.id"
@@ -66,7 +86,7 @@
             <span class="text-body-2">{{ child.label }}</span>
             <div class="ml-auto d-flex gap-6 align-center">
               <div
-                v-for="t in (['read','write','delete'] as const)"
+                v-for="t in (['read', 'write', 'delete'] as const)"
                 :key="t"
                 class="d-flex align-center permission-cell"
               >
@@ -126,20 +146,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { categoryIcons } from '@/constants/roleMenuConfig'
-
-const props = defineProps<{
-  category: any
-  childPermission: (code: string, type: 'read' | 'write' | 'delete') => boolean
-  onSetChildPermission: (code: string, type: 'read' | 'write' | 'delete', val: boolean) => void
-  onToggleCategory: (type: 'read' | 'write' | 'delete', val: boolean) => void
-  parentState: (type: 'read' | 'write' | 'delete') => { value: boolean; indeterminate: boolean }
-  permissionLevel: (code: string, type: 'read' | 'write' | 'delete') => number
-  onUpdatePermissionLevel: (code: string, type: 'read' | 'write' | 'delete', level: number) => void
-  accessLevels: Array<any>
-}>()
-
-const icon = categoryIcons[props.category.category] || 'bx-menu'
-</script>

@@ -1,18 +1,18 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
 import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
 import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import { $api } from '@/utils/api'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 
 // Переключатель вида групп (карточки/таблица)
 const groupsViewMode = ref<'cards' | 'table'>(
-  (localStorage.getItem('agentsGroupsViewMode') as 'cards' | 'table') || 'cards'
+  (localStorage.getItem('agentsGroupsViewMode') as 'cards' | 'table') || 'cards',
 )
 
 // Сохраняем состояние при изменении
-watch(groupsViewMode, (newValue) => {
+watch(groupsViewMode, newValue => {
   localStorage.setItem('agentsGroupsViewMode', newValue)
 })
 
@@ -21,15 +21,17 @@ const expandedPanels = ref<number[]>(
   (() => {
     try {
       const stored = localStorage.getItem('agentsGroupsExpandedPanels')
+
       return stored ? JSON.parse(stored) : []
-    } catch {
+    }
+    catch {
       return []
     }
-  })()
+  })(),
 )
 
 // Сохраняем состояние аккордеонов при изменении
-watch(expandedPanels, (newValue) => {
+watch(expandedPanels, newValue => {
   localStorage.setItem('agentsGroupsExpandedPanels', JSON.stringify(newValue))
 }, { deep: true })
 
@@ -63,8 +65,6 @@ interface Agent {
   [key: string]: any
 }
 
-
-
 // Роутер
 const router = useRouter()
 
@@ -84,9 +84,12 @@ const error = ref<string | null>(null)
 const fetchRoles = async () => {
   try {
     console.log('[AgentsGroups.vue] GET /api/roles - fetching roles')
-    const data = await $api<{ roles: Role[], total: number }>('/roles')
+
+    const data = await $api<{ roles: Role[]; total: number }>('/roles')
+
     roles.value = data.roles
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching roles:', err)
   }
 }
@@ -94,29 +97,35 @@ const fetchRoles = async () => {
 // Загрузка данных из API
 const fetchAgentsGroups = async (silent = false) => {
   try {
-    if (!silent) loading.value = true
+    if (!silent)
+      loading.value = true
     error.value = null
     console.log('[AgentsGroups.vue] GET /api/agentsGroups - fetching groups')
-    const data = await $api<{ agentsGroups: AgentsGroups[], total: number }>('/agentsGroups')
+
+    const data = await $api<{ agentsGroups: AgentsGroups[]; total: number }>('/agentsGroups')
 
     // Агенты теперь загружаются вместе с группами (includeAgents: true в контроллере)
     // Убрали лишние запросы для каждой группы - теперь все в одном ответе
     agentsGroups.value = data.agentsGroups
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки группы агентов'
     console.error('Error fetching agentsGroups:', err)
-  } finally {
-    if (!silent) loading.value = false
+  }
+  finally {
+    if (!silent)
+      loading.value = false
   }
 }
 
 // Загрузка агентов в группе
 const fetchAgentsInGroup = async (groupId: number): Promise<Agent[]> => {
   try {
-    const agents = await $api<Agent[]>(`/agentsGroups/${groupId}/agents`)
-    return agents
-  } catch (err) {
+    return await $api<Agent[]>(`/agentsGroups/${groupId}/agents`)
+  }
+  catch (err) {
     console.error('Error fetching agents in group:', err)
+
     return []
   }
 }
@@ -125,13 +134,17 @@ const fetchAgentsInGroup = async (groupId: number): Promise<Agent[]> => {
 const fetchAllAgents = async () => {
   try {
     loadingAgents.value = true
-    const data = await $api<{ agents: Agent[], total: number }>('/agents', {
-      query: { itemsPerPage: 1000 }
+
+    const data = await $api<{ agents: Agent[]; total: number }>('/agents', {
+      query: { itemsPerPage: 1000 },
     })
+
     allAgents.value = data.agents
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching all agents:', err)
-  } finally {
+  }
+  finally {
     loadingAgents.value = false
   }
 }
@@ -155,7 +168,8 @@ const deleteGroup = async (group: AgentsGroups) => {
     await $api(`/agentsGroups/${group.id}`, { method: 'DELETE' })
     await handleGroupsUpdated()
     showToast(`Группа "${group.name}" успешно удалена`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting group:', err)
     showToast('Ошибка удаления группы', 'error')
   }
@@ -177,11 +191,12 @@ const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
   try {
     await $api(`/agentsGroups/${group.id}`, {
       method: 'PUT',
-      body: { ...group, isActive: newValue }
+      body: { ...group, isActive: newValue },
     })
     group.isActive = newValue
     showToast(`Статус группы "${group.name}" изменен на "${newValue ? 'Активна' : 'Не активна'}"`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error toggling group status:', err)
     showToast('Ошибка изменения статуса группы', 'error')
   }
@@ -205,9 +220,9 @@ const bulkStatusValue = ref<number>(1)
 // Фильтрация
 const filteredGroups = computed(() => {
   let filtered = agentsGroups.value
-  if (statusFilter.value !== null) {
+  if (statusFilter.value !== null)
     filtered = filtered.filter(g => g.isActive === (statusFilter.value === 1))
-  }
+
   return filtered
 })
 
@@ -227,9 +242,9 @@ const bulkChangeStatus = () => {
 
 const confirmBulkDelete = async () => {
   try {
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await $api(`/agentsGroups/${item.id}`, { method: 'DELETE' })
-    }
+
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
 
@@ -237,7 +252,8 @@ const confirmBulkDelete = async () => {
     await handleGroupsUpdated()
 
     showToast('Выбранные группы успешно удалены')
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error bulk deleting:', err)
     showToast('Ошибка массового удаления групп', 'error')
   }
@@ -248,14 +264,17 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await $api(`/agentsGroups/${item.id}`, {
         method: 'PUT',
-        body: { ...item, isActive: bulkStatusValue.value === 1 }
+        body: { ...item, isActive: bulkStatusValue.value === 1 },
       })
+
       const group = agentsGroups.value.find(g => g.id === item.id)
-      if (group) group.isActive = bulkStatusValue.value === 1
+      if (group)
+        group.isActive = bulkStatusValue.value === 1
     }
     selectedItems.value = []
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error bulk status change:', err)
   }
 }
@@ -294,6 +313,7 @@ const closeCreateGroupDialog = () => {
 const createGroup = async () => {
   if (!newGroupName.value.trim()) {
     showToast('Название группы обязательно для заполнения', 'error')
+
     return
   }
 
@@ -304,15 +324,17 @@ const createGroup = async () => {
       body: {
         name: newGroupName.value.trim(),
         isActive: true,
-      }
+      },
     })
     showToast('Группа успешно создана')
     closeCreateGroupDialog()
     await fetchAgentsGroups(true)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating group:', err)
     showToast('Ошибка создания группы', 'error')
-  } finally {
+  }
+  finally {
     creatingGroup.value = false
   }
 }
@@ -343,8 +365,14 @@ const statusOptions = [
           variant="outlined"
           divided
         >
-          <VBtn value="cards" icon="bx-grid-alt" />
-          <VBtn value="table" icon="bx-list-ul" />
+          <VBtn
+            value="cards"
+            icon="bx-grid-alt"
+          />
+          <VBtn
+            value="table"
+            icon="bx-list-ul"
+          />
         </VBtnToggle>
       </div>
     </VCol>
@@ -352,13 +380,25 @@ const statusOptions = [
     <!-- Группы -->
     <VCol cols="12">
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
@@ -377,7 +417,10 @@ const statusOptions = [
         />
 
         <!-- Табличный вид - с VCard оберткой -->
-        <VCard v-else title="Группы агентов">
+        <VCard
+          v-else
+          title="Группы агентов"
+        >
           <!-- Табличный вид - панель инструментов -->
           <div class="d-flex flex-wrap gap-4 pa-6">
             <div class="d-flex align-center">
@@ -623,7 +666,10 @@ const statusOptions = [
         variant="accordion"
         class="expansion-panels-width-border mt-6"
       >
-        <VExpansionPanel elevation="0" :value="0">
+        <VExpansionPanel
+          elevation="0"
+          :value="0"
+        >
           <VExpansionPanelTitle
             collapse-icon="bx-minus"
             expand-icon="bx-plus"
@@ -639,16 +685,22 @@ const statusOptions = [
           </VExpansionPanelTitle>
 
           <VExpansionPanelText>
-            <div v-if="loading || allAgents.length === 0 || agentsGroups.length === 0 || roles.length === 0" class="d-flex justify-center pa-6">
-              <VProgressCircular indeterminate color="primary" />
+            <div
+              v-if="loading || allAgents.length === 0 || agentsGroups.length === 0 || roles.length === 0"
+              class="d-flex justify-center pa-6"
+            >
+              <VProgressCircular
+                indeterminate
+                color="primary"
+              />
             </div>
-            <AgentsTable 
+            <AgentsTable
               v-else
-              ref="agentsTableRef" 
+              ref="agentsTableRef"
               :initial-agents="allAgents as any"
               :initial-groups="agentsGroups as any"
               :initial-roles="roles as any"
-              @agent-updated="() => fetchAgentsGroups(true)" 
+              @agent-updated="() => fetchAgentsGroups(true)"
             />
           </VExpansionPanelText>
         </VExpansionPanel>

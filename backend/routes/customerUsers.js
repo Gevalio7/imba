@@ -1,27 +1,29 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
+const express = require('express')
+
+const router = express.Router()
+const { protect } = require('../middleware/auth')
+
 const {
   getCustomerUsers,
   getCustomerUserById,
   createCustomerUsers,
   updateCustomerUsers,
   deleteCustomerUsers,
-} = require('../controllers/customerUsersController');
+} = require('../controllers/customerUsersController')
 
 // GET /customerUsers - список с query params
-router.get('/', getCustomerUsers);
+router.get('/', getCustomerUsers)
 
 // GET /customerUsers/:id
-router.get('/:id', getCustomerUserById);
+router.get('/:id', getCustomerUserById)
 
 // POST /customerUsers
-router.post('/', protect, createCustomerUsers);
+router.post('/', protect, createCustomerUsers)
 
 // PUT /customerUsers/:id
-router.put('/:id', protect, updateCustomerUsers);
+router.put('/:id', protect, updateCustomerUsers)
 
 // DELETE /customerUsers/:id
-router.delete('/:id', protect, deleteCustomerUsers);
+router.delete('/:id', protect, deleteCustomerUsers)
 
-module.exports = router;
+module.exports = router

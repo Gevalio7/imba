@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getWebServices,
   getWebServiceById,
   createWebServices,
   updateWebServices,
   deleteWebServices,
-} = require('../controllers/webServicesController');
+} = require('../controllers/webServicesController')
 
 // GET /webServices - список с query params
-router.get('/', getWebServices);
+router.get('/', getWebServices)
 
 // GET /webServices/:id
-router.get('/:id', getWebServiceById);
+router.get('/:id', getWebServiceById)
 
 // POST /webServices
-router.post('/', createWebServices);
+router.post('/', createWebServices)
 
 // PUT /webServices/:id
-router.put('/:id', updateWebServices);
+router.put('/:id', updateWebServices)
 
 // DELETE /webServices/:id
-router.delete('/:id', deleteWebServices);
+router.delete('/:id', deleteWebServices)
 
-module.exports = router;
+module.exports = router

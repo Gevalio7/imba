@@ -1,14 +1,16 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getStatusHistory,
   getStatusStatistics,
-} = require('../controllers/ticketStatusHistoryController');
+} = require('../controllers/ticketStatusHistoryController')
 
 // GET /api/ticketStatusHistory/:ticketId - История переходов статусов
-router.get('/:ticketId', getStatusHistory);
+router.get('/:ticketId', getStatusHistory)
 
 // GET /api/ticketStatusHistory/:ticketId/statistics - Статистика по статусам
-router.get('/:ticketId/statistics', getStatusStatistics);
+router.get('/:ticketId/statistics', getStatusStatistics)
 
-module.exports = router;
+module.exports = router

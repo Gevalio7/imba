@@ -1,3 +1,27 @@
+<script setup lang="ts">
+interface Props {
+  modelValue?: any
+  filteredAuthorOptions: any[]
+  authorSearch: string
+  showCreateNewAuthor: boolean
+  canCreateCustomerUserByEmail: boolean
+  newAuthorEmail: string
+  newAuthorFirstName: string
+  newAuthorLastName: string
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'update:modelValue': [value: any]
+  'update:search': [value: string]
+  'clear': []
+  'update:newAuthorFirstName': [value: string]
+  'update:newAuthorLastName': [value: string]
+  'create-new-author': []
+}>()
+</script>
+
 <template>
   <VAutocomplete
     :model-value="modelValue"
@@ -14,10 +38,21 @@
   >
     <!-- Если показывать опцию создания -->
     <template #append-item>
-      <div v-if="showCreateNewAuthor && canCreateCustomerUserByEmail" class="pa-2">
-        <VCard variant="tonal" color="primary" class="pa-3">
+      <div
+        v-if="showCreateNewAuthor && canCreateCustomerUserByEmail"
+        class="pa-2"
+      >
+        <VCard
+          variant="tonal"
+          color="primary"
+          class="pa-3"
+        >
           <div class="text-body-2 mb-2">
-            <VIcon icon="bx-plus" size="small" class="me-1" />
+            <VIcon
+              icon="bx-plus"
+              size="small"
+              class="me-1"
+            />
             Создать нового сотрудника: <strong>{{ newAuthorEmail }}</strong>
           </div>
           <div class="d-flex gap-2">
@@ -52,27 +87,3 @@
     </template>
   </VAutocomplete>
 </template>
-
-<script setup lang="ts">
-interface Props {
-  modelValue?: any
-  filteredAuthorOptions: any[]
-  authorSearch: string
-  showCreateNewAuthor: boolean
-  canCreateCustomerUserByEmail: boolean
-  newAuthorEmail: string
-  newAuthorFirstName: string
-  newAuthorLastName: string
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:modelValue': [value: any]
-  'update:search': [value: string]
-  'clear': []
-  'update:newAuthorFirstName': [value: string]
-  'update:newAuthorLastName': [value: string]
-  'create-new-author': []
-}>()
-</script>

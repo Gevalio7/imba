@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getPostMasterFilters,
   getPostMasterFilterById,
   createPostMasterFilters,
   updatePostMasterFilters,
   deletePostMasterFilters,
-} = require('../controllers/postMasterFiltersController');
+} = require('../controllers/postMasterFiltersController')
 
 // GET /postMasterFilters - список с query params
-router.get('/', getPostMasterFilters);
+router.get('/', getPostMasterFilters)
 
 // GET /postMasterFilters/:id
-router.get('/:id', getPostMasterFilterById);
+router.get('/:id', getPostMasterFilterById)
 
 // POST /postMasterFilters
-router.post('/', createPostMasterFilters);
+router.post('/', createPostMasterFilters)
 
 // PUT /postMasterFilters/:id
-router.put('/:id', updatePostMasterFilters);
+router.put('/:id', updatePostMasterFilters)
 
 // DELETE /postMasterFilters/:id
-router.delete('/:id', deletePostMasterFilters);
+router.delete('/:id', deletePostMasterFilters)
 
-module.exports = router;
+module.exports = router

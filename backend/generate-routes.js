@@ -1,65 +1,72 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs')
+const path = require('node:path')
 
 // Создаём директорию routes, если она не существует
-const routesDir = path.join(__dirname, 'routes');
-if (!fs.existsSync(routesDir)) {
-  fs.mkdirSync(routesDir, { recursive: true });
-}
+const routesDir = path.join(__dirname, 'routes')
+if (!fs.existsSync(routesDir))
+  fs.mkdirSync(routesDir, { recursive: true })
 
 // Читаем извлечённые интерфейсы из файла
-const extractedInterfacesPath = path.join(__dirname, 'extracted-interfaces.json');
+const extractedInterfacesPath = path.join(__dirname, 'extracted-interfaces.json')
 if (!fs.existsSync(extractedInterfacesPath)) {
-  console.error('Файл extracted-interfaces.json не найден!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не найден!')
+  process.exit(1)
 }
 
-let extractedInterfaces;
+let extractedInterfaces
 try {
-  extractedInterfaces = JSON.parse(fs.readFileSync(extractedInterfacesPath, 'utf8'));
-} catch (error) {
-  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
-  process.exit(1);
+  extractedInterfaces = JSON.parse(fs.readFileSync(extractedInterfacesPath, 'utf8'))
+}
+catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message)
+  process.exit(1)
 }
 
 if (typeof extractedInterfaces !== 'object' || extractedInterfaces === null) {
-  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!')
+  process.exit(1)
 }
 
 // Получаем список сущностей из ключей объекта
-const entities = Object.keys(extractedInterfaces);
+const entities = Object.keys(extractedInterfaces)
 if (entities.length === 0) {
-  console.log('В extracted-interfaces.json нет сущностей для генерации маршрутов.');
-  process.exit(0);
+  console.log('В extracted-interfaces.json нет сущностей для генерации маршрутов.')
+  process.exit(0)
 }
 
 // Функция для получения единственного числа (совпадает с generate-controllers.js)
 function singularize(str) {
-  if (str === 'PgpKeys') return 'PgpKey';
-  if (str === 'EmailAddresses') return 'EmailAddress';
-  if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-  if (str.endsWith('s')) return str.slice(0, -1);
-  return str;
+  if (str === 'PgpKeys')
+    return 'PgpKey'
+  if (str === 'EmailAddresses')
+    return 'EmailAddress'
+  if (str.endsWith('ies'))
+    return `${str.slice(0, -3)}y`
+  if (str.endsWith('s'))
+    return str.slice(0, -1)
+
+  return str
 }
 
 // Генерируем singularMap динамически
-const singularMap = {};
-entities.forEach(entity => {
-  const singular = singularize(entity);
-  singularMap[entity] = singular;
-});
+const singularMap = {}
 
 entities.forEach(entity => {
-  const singular = singularMap[entity];
-  const plural = entity.charAt(0).toLowerCase() + entity.slice(1);
-  const controllerName = plural + 'Controller';
+  const singular = singularize(entity)
 
-  const getPlural = 'get' + entity;
-  const getById = 'get' + singular + 'ById';
-  const create = 'create' + entity;
-  const update = 'update' + entity;
-  const del = 'delete' + entity;
+  singularMap[entity] = singular
+})
+
+entities.forEach(entity => {
+  const singular = singularMap[entity]
+  const plural = entity.charAt(0).toLowerCase() + entity.slice(1)
+  const controllerName = `${plural}Controller`
+
+  const getPlural = `get${entity}`
+  const getById = `get${singular}ById`
+  const create = `create${entity}`
+  const update = `update${entity}`
+  const del = `delete${entity}`
 
   const content = `const express = require('express');
 const router = express.Router();
@@ -87,11 +94,12 @@ router.put('/:id', ${update});
 router.delete('/:id', ${del});
 
 module.exports = router;
-`;
+`
 
-  const filePath = path.join(__dirname, 'routes', plural + '.js');
-  fs.writeFileSync(filePath, content, 'utf8');
-  console.log(`Generated ${filePath}`);
-});
+  const filePath = path.join(__dirname, 'routes', `${plural}.js`)
 
-console.log('All routes generated.');
+  fs.writeFileSync(filePath, content, 'utf8')
+  console.log(`Generated ${filePath}`)
+})
+
+console.log('All routes generated.')

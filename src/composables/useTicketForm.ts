@@ -1,7 +1,7 @@
-import { $api } from '@/utils/api'
 import { computed, reactive, ref, watch } from 'vue'
-import { useReferenceData } from '@/composables/useReferenceData'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
+import { useReferenceData } from '@/composables/useReferenceData'
 import type { TicketForm } from '@/types/ticket'
 
 export function useTicketForm(ticketId: Ref<number | null>) {
@@ -43,11 +43,13 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     slaId: undefined,
     responseDeadline: undefined,
     resolutionDeadline: undefined,
+
     // Эскалация
     observerAgentIds: [],
     observerGroupIds: [],
     escalationCount: 0,
     isEscalated: false,
+
     // Начальные значения для отслеживания изменений
     initialExecutorAgentIds: [],
     initialExecutorGroupIds: [],
@@ -62,15 +64,15 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Вычисляемые сервисы - фильтруются по компании если она выбрана
   const filteredServices = computed(() => {
     // Если компания не выбрана - показываем все сервисы
-    if (!ticket.companyId) {
+    if (!ticket.companyId)
       return services.value
-    }
+
     // Фильтруем сервисы по компании
     return services.value.filter((s: any) => {
       // Сервис без компаний - показываем (глобальный)
-      if (!s.customers || s.customers.length === 0) {
+      if (!s.customers || s.customers.length === 0)
         return true
-      }
+
       // Проверяем есть ли компания в списке компаний сервиса
       return s.customers.some((c: any) => c.id === ticket.companyId)
     })
@@ -79,26 +81,28 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Вычисляемые категории - фильтруются по выбранному типу
   const filteredCategories = computed(() => {
     // Если тип не выбран - показываем пустой массив (категория скрыта)
-    if (!ticket.typeId) {
+    if (!ticket.typeId)
       return []
-    }
+
     // Находим тип и его categoryIds
     const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
-    if (!selectedType) {
+    if (!selectedType)
       return []
-    }
+
     // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
-    if (!selectedType.categoryIds || selectedType.categoryIds.length === 0) {
+    if (!selectedType.categoryIds || selectedType.categoryIds.length === 0)
       return []
-    }
+
     // Фильтруем категории по categoryIds типа
     return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
   })
 
   // Есть ли связанные категории для текущего типа
   const hasCategoriesForType = computed(() => {
-    if (!ticket.typeId) return false
+    if (!ticket.typeId)
+      return false
     const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
+
     return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
   })
 
@@ -117,6 +121,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     if (!ticket.typeId) {
       currentWorkflow.value = null
       availableStatuses.value = []
+
       return
     }
 
@@ -129,9 +134,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
       // Формируем URL с параметром currentStatusId
       let url = `/types/${ticket.typeId}/workflow`
-      if (statusForWorkflow !== undefined && statusForWorkflow !== null) {
+      if (statusForWorkflow !== undefined && statusForWorkflow !== null)
         url += `?currentStatusId=${statusForWorkflow}`
-      }
 
       const data = await $api(url)
 
@@ -158,11 +162,13 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
   // Загрузка тикета
   const fetchTicket = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       const data = await $api(`/tickets/${ticketId.value}`)
       const t = data as any
+
       ticket.id = t.id
       ticket.ticketNumber = t.ticketNumber || ''
       ticket.title = t.title || ''
@@ -171,11 +177,14 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       ticket.priorityId = t.priorityId || undefined
       ticket.queueId = t.queueId || undefined
       ticket.stateId = t.stateId || undefined
+
       // ownerId может быть числом или объектом
       if (t.ownerId) {
         const owner = customerUsers.value.find((a: any) => a.value === t.ownerId)
+
         ticket.ownerId = owner || t.ownerId
-      } else {
+      }
+      else {
         ticket.ownerId = undefined
       }
       ticket.executorAgentIds = t.executorAgentIds || []
@@ -185,20 +194,21 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       ticket.slaId = t.slaId || undefined
       ticket.responseDeadline = t.responseDeadline || undefined
       ticket.resolutionDeadline = t.resolutionDeadline || undefined
+
       // Эскалация
       ticket.observerAgentIds = t.observerAgentIds || []
       ticket.observerGroupIds = t.observerGroupIds || [] // TODO: типизировать - добавить поле в API/бэкенд
       ticket.escalationCount = t.escalationCount || 0
       ticket.isEscalated = t.isEscalated || false
+
       // Сохраняем начальные значения исполнителей для определения изменений при эскалации
       ticket.initialExecutorAgentIds = t.executorAgentIds || []
       ticket.initialExecutorGroupIds = t.executorGroupIds || []
-       description.value = t.description || ''
+      description.value = t.description || ''
 
       // Загружаем workflow если есть тип
-      if (t.typeId) {
+      if (t.typeId)
         await fetchTypeWorkflow(t.stateId)
-      }
 
       // Track original saved status for workflow validation
       originalStateId.value = t.stateId
@@ -225,6 +235,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       priorityId: ticket.priorityId ?? null,
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
+
       // ownerId может быть объектом (при использовании VAutocomplete с return-object)
       ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? ticket.ownerId.value : ticket.ownerId) ?? null,
       executorAgentIds: ticket.executorAgentIds,
@@ -234,6 +245,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       slaId: ticket.slaId ?? null,
       responseDeadline: ticket.responseDeadline ?? null,
       resolutionDeadline: ticket.resolutionDeadline ?? null,
+
       // Эскалирование
       isEscalated: ticket.isEscalated,
       escalationCount: ticket.escalationCount,
@@ -257,33 +269,33 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       })
 
       // Для нового тикета обновляем ticket.id
-      if (isCreating && response.id) {
+      if (isCreating && response.id)
         ticket.id = response.id
-      }
 
       // Обновляем оригинальный статус после успешного сохранения
-      if (!isCreating) {
+      if (!isCreating)
         originalStateId.value = ticket.stateId
-      }
 
       if (redirectAfterSave) {
         if (isCreating) {
           router.push('/apps/tickets')
-        } else {
+        }
+        else {
           await fetchTicket() // Обновляем данные включая SLA дедлайны
           router.push('/apps/tickets')
         }
-      } else {
+      }
+      else {
         // Тихое сохранение без уведомлений и перенаправления
-        if (!isCreating) {
+        if (!isCreating)
           await fetchTicket()
-        }
       }
-    } catch (error: any) {
+    }
+    catch (error: any) {
       // Если ошибка валидации перехода workflow, показываем предупреждение
-      if (error.response?.status === 403 && error.response?.data?.error === 'TRANSITION_NOT_ALLOWED') {
+      if (error.response?.status === 403 && error.response?.data?.error === 'TRANSITION_NOT_ALLOWED')
         throw new Error(`Невозможно изменить статус: переход из "${error.response.data.currentStatus?.name}" недопустим по workflow. Пожалуйста, сохраните изменения поэтапно.`)
-      }
+
       throw error
     }
     saving.value = false
@@ -291,14 +303,12 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
   // Сохранение
   const save = async () => {
-    if (!ticket.title?.trim()) {
+    if (!ticket.title?.trim())
       return
-    }
 
     // Проверка обязательности категории если тип имеет связанные категории
-    if (hasCategoriesForType.value && !ticket.categoryId) {
+    if (hasCategoriesForType.value && !ticket.categoryId)
       return
-    }
 
     try {
       saving.value = true
@@ -313,16 +323,16 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Watchers для изменения типа - очищаем категорию если она не входит в список разрешённых для нового типа
   watch(() => ticket.typeId, (newTypeId, oldTypeId) => {
     // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
-    if (oldTypeId === undefined && ticket.stateId) return
+    if (oldTypeId === undefined && ticket.stateId)
+      return
 
     if (newTypeId) {
       // Очищаем категорию если она не входит в список разрешённых для нового типа
       const selectedType = types.value.find((t: any) => t.id === newTypeId)
       if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
         // Если у типа есть связанные категории - проверяем текущую
-        if (ticket.categoryId && !selectedType.categoryIds.includes(ticket.categoryId)) {
+        if (ticket.categoryId && !selectedType.categoryIds.includes(ticket.categoryId))
           ticket.categoryId = undefined
-        }
       }
     }
   })
@@ -330,7 +340,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
   watch(() => ticket.companyId, (newCompanyId, oldCompanyId) => {
     // Пропускаем начальную загрузку
-    if (oldCompanyId === undefined) return
+    if (oldCompanyId === undefined)
+      return
 
     // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
     if (newCompanyId && ticket.serviceId) {
@@ -351,43 +362,42 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Watcher для изменения сервиса - автозаполнение SLA
   watch(() => ticket.serviceId, (newServiceId, oldServiceId) => {
     // Пропускаем начальную загрузку
-    if (oldServiceId === undefined) return
+    if (oldServiceId === undefined)
+      return
 
     // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
     if (newServiceId && !ticket.slaId) {
       const service = services.value.find((s: any) => s.id === newServiceId)
-      if (service && service.sla && service.sla.id) {
+      if (service && service.sla && service.sla.id)
         ticket.slaId = service.sla.id
-      }
     }
   })
 
   // Watcher для изменения очереди - автозаполнение полей
   watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
     // Пропускаем начальную загрузку
-    if (oldQueueId === undefined) return
+    if (oldQueueId === undefined)
+      return
 
     if (newQueueId) {
       const queue = queues.value.find((q: any) => q.id === newQueueId)
       if (queue) {
         // Автозаполняем поля из данных очереди
-        if (queue.companyId) {
+        if (queue.companyId)
           ticket.companyId = queue.companyId
-        }
-        if (queue.serviceId) {
+
+        if (queue.serviceId)
           ticket.serviceId = queue.serviceId
-        }
-        if (queue.slaId) {
+
+        if (queue.slaId)
           ticket.slaId = queue.slaId
-        }
-        if (queue.priorityId) {
+
+        if (queue.priorityId)
           ticket.priorityId = queue.priorityId
-        }
 
         // Автозаполняем исполнителя из группы очереди если не выбраны исполнители
-        if (queue.agentGroupId && ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0) {
+        if (queue.agentGroupId && ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0)
           ticket.executorGroupIds = [queue.agentGroupId]
-        }
 
         // Если у очереди есть workflow - ищем тип с этим workflow
         if (queue.workflowId) {
@@ -395,18 +405,17 @@ export function useTicketForm(ticketId: Ref<number | null>) {
             const typesData = await $api("/types")
             const typesList = (typesData as any).types || []
             const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-            if (typeWithWorkflow) {
+            if (typeWithWorkflow)
               ticket.typeId = typeWithWorkflow.id
-            }
-          } catch (err) {
+          }
+          catch (err) {
             console.error("Error finding type for workflow:", err)
           }
         }
 
         // Если у очереди есть category_id - автозаполняем категорию
-        if (queue.categoryId) {
+        if (queue.categoryId)
           ticket.categoryId = queue.categoryId
-        }
       }
     }
   })
@@ -414,22 +423,23 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Watcher для изменения автора - автозаполнение компании
   watch(() => ticket.ownerId, (newOwnerId, oldOwnerId) => {
     // Пропускаем начальную загрузку
-    if (oldOwnerId === undefined) return
+    if (oldOwnerId === undefined)
+      return
 
     // ownerId может быть объектом (с customerId) или числом
     const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : newOwnerId
     if (customerId) {
       // Автозаполняем компанию если она ещё не выбрана
-      if (!ticket.companyId) {
+      if (!ticket.companyId)
         ticket.companyId = customerId
-      }
     }
   })
 
   // Watcher для изменения типа - загружаем workflow
   watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
     // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
-    if (oldTypeId === undefined && ticket.stateId) return
+    if (oldTypeId === undefined && ticket.stateId)
+      return
 
     if (newTypeId) {
       await fetchTypeWorkflow(ticket.stateId)
@@ -438,9 +448,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       const selectedType = types.value.find((t: any) => t.id === newTypeId)
       if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
         // Если у типа есть связанные категории - проверяем текущую
-        if (ticket.categoryId && !selectedType.categoryIds.includes(ticket.categoryId)) {
+        if (ticket.categoryId && !selectedType.categoryIds.includes(ticket.categoryId))
           ticket.categoryId = undefined
-        }
       }
     }
     else {
@@ -452,7 +461,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Watcher для изменения статуса - валидируем переход но не обновляем доступные статусы
   watch(() => ticket.stateId, async (newStateId, oldStateId) => {
     // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
-    if (oldStateId === undefined) return
+    if (oldStateId === undefined)
+      return
 
     // Если статус изменился и есть оригинальный статус, проверяем валидность перехода
     if (newStateId !== originalStateId.value && originalStateId.value !== undefined) {
@@ -463,27 +473,23 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
   // Watchers для ограничения множественного выбора
   watch(() => allowMultipleExecutorGroups.value, () => {
-    if (allowMultipleExecutorGroups.value?.value === 'false' && ticket.executorGroupIds.length > 1) {
+    if (allowMultipleExecutorGroups.value?.value === 'false' && ticket.executorGroupIds.length > 1)
       ticket.executorGroupIds = [ticket.executorGroupIds[0]]
-    }
   })
 
   watch(() => allowMultipleExecutors.value, () => {
-    if (allowMultipleExecutors.value?.value === 'false' && ticket.executorAgentIds.length > 1) {
+    if (allowMultipleExecutors.value?.value === 'false' && ticket.executorAgentIds.length > 1)
       ticket.executorAgentIds = [ticket.executorAgentIds[0]]
-    }
   })
 
-  watch(() => ticket.executorGroupIds, (newVal) => {
-    if (allowMultipleExecutorGroups.value?.value === 'false' && newVal.length > 1) {
+  watch(() => ticket.executorGroupIds, newVal => {
+    if (allowMultipleExecutorGroups.value?.value === 'false' && newVal.length > 1)
       ticket.executorGroupIds = [newVal[0]]
-    }
   })
 
-  watch(() => ticket.executorAgentIds, (newVal) => {
-    if (allowMultipleExecutors.value?.value === 'false' && newVal.length > 1) {
+  watch(() => ticket.executorAgentIds, newVal => {
+    if (allowMultipleExecutors.value?.value === 'false' && newVal.length > 1)
       ticket.executorAgentIds = [newVal[0]]
-    }
   })
 
   return {

@@ -6,42 +6,42 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
       { id: 'apps-tickets', label: 'Список обращений', code: 'menu_tickets_list' },
       { id: 'apps-tickets-add', label: 'Создать обращение', code: 'menu_tickets_create' },
       { id: 'apps-tickets-schedules', label: 'Расписания', code: 'menu_tickets_schedules' },
-    ]
+    ],
   },
   {
     category: 'menu_chat',
     label: 'Чат',
     children: [
       { id: 'apps-chat', label: 'Чат', code: 'menu_chat' },
-    ]
+    ],
   },
   {
     category: 'menu_kanban',
     label: 'Канбан',
     children: [
       { id: 'apps-kanban', label: 'Канбан', code: 'menu_kanban' },
-    ]
+    ],
   },
   {
     category: 'menu_agents',
     label: 'Агенты',
     children: [
       { id: 'apps-agents', label: 'Список агентов', code: 'menu_agents' },
-    ]
+    ],
   },
   {
     category: 'menu_knowledge_base',
     label: 'База знаний',
     children: [
       { id: 'apps-knowledge-base', label: 'База знаний', code: 'menu_knowledge_base' },
-    ]
+    ],
   },
   {
     category: 'menu_services',
     label: 'Сервисы',
     children: [
       { id: 'apps-services', label: 'Сервисы', code: 'menu_services' },
-    ]
+    ],
   },
   {
     category: 'menu_companies',
@@ -51,7 +51,7 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
       { id: 'apps-customers-groups', label: 'Отделы и филиалы', code: 'menu_companies_groups' },
       { id: 'apps-customer-users', label: 'Сотрудники', code: 'menu_companies_users' },
       { id: 'apps-organization-structure', label: 'Структура компании', code: 'menu_companies_structure' },
-    ]
+    ],
   },
   {
     category: 'menu_roles',
@@ -59,7 +59,7 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
     children: [
       { id: 'apps-roles', label: 'Роли', code: 'menu_roles_list' },
       { id: 'apps-permissions', label: 'Разрешения', code: 'menu_permissions' },
-    ]
+    ],
   },
   {
     category: 'menu_ticket_settings',
@@ -78,8 +78,8 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
       { id: 'apps-signatures', label: 'Подписи', code: 'menu_signatures' },
       { id: 'apps-auto-responses', label: 'Автоответы', code: 'menu_auto_responses' },
       { id: 'apps-attachments', label: 'Вложения', code: 'menu_attachments' },
-      { id: 'apps-settings-ticket-settings', label: 'Конфигурация системы', code: 'menu_tickets_system_configuration' }
-    ]
+      { id: 'apps-settings-ticket-settings', label: 'Конфигурация системы', code: 'menu_tickets_system_configuration' },
+    ],
   },
   {
     category: 'menu_email_settings',
@@ -87,7 +87,7 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
     children: [
       { id: 'apps-email-addresses', label: 'Адреса', code: 'menu_email_addresses' },
       { id: 'apps-post-master-mail-accounts', label: 'Почтовые аккаунты', code: 'menu_post_master_mail_accounts' },
-    ]
+    ],
   },
   {
     category: 'menu_system',
@@ -96,22 +96,22 @@ export const menuConfig: Array<{ category: string; label: string; children: Arra
       { id: 'apps-calendars', label: 'Календари', code: 'menu_calendars' },
       { id: 'apps-session-management', label: 'Сессии', code: 'menu_session_management' },
       { id: 'apps-system-log', label: 'Лог', code: 'menu_system_log' },
-    ]
+    ],
   },
   {
     category: 'menu_backup',
     label: 'Резервное копирование',
     children: [
       { id: 'apps-backup', label: 'Резервное копирование', code: 'menu_backup' },
-    ]
+    ],
   },
   {
     category: 'menu_integrity_check',
     label: 'Контроль целостности',
     children: [
       { id: 'apps-integrity-check', label: 'Контроль целостности', code: 'menu_integrity_check' },
-    ]
-  }
+    ],
+  },
 ]
 
 export const categoryIcons: Record<string, string> = {
@@ -127,7 +127,7 @@ export const categoryIcons: Record<string, string> = {
   menu_email_settings: 'bx-envelope',
   menu_system: 'bx-cog',
   menu_backup: 'bx-archive',
-  menu_integrity_check: 'bx-shield'
+  menu_integrity_check: 'bx-shield',
 }
 
 export const categoryColors: Record<string, string> = {
@@ -143,5 +143,5 @@ export const categoryColors: Record<string, string> = {
   menu_email_settings: 'indigo',
   menu_system: 'brown',
   menu_backup: 'grey',
-  menu_integrity_check: 'deep-purple'
+  menu_integrity_check: 'deep-purple',
 }

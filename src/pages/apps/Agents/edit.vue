@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AgentActivityTimeline from '../../../views/apps/agents/view/AgentActivityTimeline.vue'
+import { $api } from '@/utils/api'
 
 definePage({
   meta: {
@@ -24,14 +24,6 @@ interface Agent {
   roleId?: number | null
   avatar?: string | null
 }
-
-
-
-
-
-
-
-
 
 const route = useRoute()
 const router = useRouter()
@@ -57,12 +49,6 @@ const agent = ref<Agent>({
   roleId: null,
   avatar: null,
 })
-
-
-
-
-
-
 
 // Вкладки
 const userTab = ref(null)
@@ -100,17 +86,20 @@ const handleAvatarUpload = (event: Event) => {
     // Проверка размера файла (5MB)
     if (file.size > 5 * 1024 * 1024) {
       error.value = 'Размер файла не должен превышать 5MB'
+
       return
     }
 
     // Проверка типа файла
     if (!file.type.startsWith('image/')) {
       error.value = 'Пожалуйста, выберите изображение'
+
       return
     }
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+
+    reader.onload = e => {
       agent.value.avatar = e.target?.result as string
       error.value = null // Очищаем ошибку при успешной загрузке
     }
@@ -152,44 +141,37 @@ const notifications = ref([
   },
 ])
 
-
-
-
-
-
-
-
-
-
-
 // Загрузка данных агента
 const fetchAgent = async () => {
   if (!agentId.value) {
     error.value = 'ID агента не указан'
     isLoading.value = false
+
     return
   }
 
   try {
     isLoading.value = true
+
     const data = await $api<Agent>(`/agents/${agentId.value}`)
+
     agent.value = data
 
     // Если загружаем текущего пользователя, обновляем userData в cookie
     const userData = useCookie<any>('userData')
-    if (userData.value && Number(userData.value.id) === agentId.value) {
+    if (userData.value && Number(userData.value.id) === agentId.value)
       userData.value.avatar = data.avatar
-    }
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка загрузки агента'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
 
 // Сохранение данных агента
 const saveAgent = async () => {
-
   try {
     isSaving.value = true
     error.value = null
@@ -206,7 +188,7 @@ const saveAgent = async () => {
         isActive: agent.value.isActive,
         roleId: agent.value.roleId,
         avatar: agent.value.avatar,
-      }
+      },
     }) as Agent
 
     // Обновляем локальные данные агента
@@ -214,36 +196,39 @@ const saveAgent = async () => {
 
     // Если редактируем текущего пользователя, обновляем userData в cookie
     const userData = useCookie<any>('userData')
-    if (userData.value && Number(userData.value.id) === agentId.value) {
+    if (userData.value && Number(userData.value.id) === agentId.value)
       userData.value.avatar = updatedAgent.avatar
-    }
 
     successMessage.value = 'Агент успешно обновлён'
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка обновления агента'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
-
 
 // Изменение пароля
 const changePassword = async () => {
   if (!newPassword.value) {
     error.value = 'Введите новый пароль'
+
     return
   }
 
   if (newPassword.value !== confirmPassword.value) {
     error.value = 'Пароли не совпадают'
+
     return
   }
 
   if (newPassword.value.length < 6) {
     error.value = 'Пароль должен быть не менее 6 символов'
+
     return
   }
 
@@ -253,8 +238,8 @@ const changePassword = async () => {
     await $api(`/agents/${agentId.value}`, {
       method: 'PUT',
       body: {
-        password: newPassword.value
-      }
+        password: newPassword.value,
+      },
     })
 
     newPassword.value = ''
@@ -263,9 +248,11 @@ const changePassword = async () => {
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка изменения пароля'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
@@ -279,16 +266,14 @@ const saveNotifications = async () => {
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = err.message || 'Ошибка сохранения настроек'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
-
-
-
-
 
 // Навигация назад
 const goBack = () => {
@@ -298,10 +283,12 @@ const goBack = () => {
 // Инициализация
 onMounted(async () => {
   const id = route.query.id
+
   agentId.value = id ? Number(id) : null
   if (agentId.value) {
     await fetchAgent()
-  } else {
+  }
+  else {
     error.value = 'ID агента не указан'
     isLoading.value = false
   }
@@ -331,8 +318,14 @@ onMounted(async () => {
   </VAlert>
 
   <!-- Загрузка -->
-  <div v-if="isLoading" class="d-flex justify-center pa-12">
-    <VProgressCircular indeterminate color="primary" />
+  <div
+    v-if="isLoading"
+    class="d-flex justify-center pa-12"
+  >
+    <VProgressCircular
+      indeterminate
+      color="primary"
+    />
   </div>
 
   <VRow v-else>
@@ -352,8 +345,15 @@ onMounted(async () => {
             variant="tonal"
             class="mb-4"
           >
-            <img v-if="agent.avatar" :src="agent.avatar" alt="Avatar" />
-            <span v-else class="text-h3">
+            <img
+              v-if="agent.avatar"
+              :src="agent.avatar"
+              alt="Avatar"
+            >
+            <span
+              v-else
+              class="text-h3"
+            >
               {{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}
             </span>
           </VAvatar>
@@ -443,8 +443,8 @@ onMounted(async () => {
         <VCardText class="d-flex justify-center gap-x-4">
           <VBtn
             variant="elevated"
-            @click="saveAgent"
             :loading="isSaving"
+            @click="saveAgent"
           >
             Сохранить
           </VBtn>
@@ -556,72 +556,84 @@ onMounted(async () => {
                   />
                 </VCol>
 
-                 <!-- Телеграмм акк -->
-                 <VCol
-                   cols="12"
-                   sm="6"
-                 >
-                   <AppTextField
-                     v-model="agent.telegramAccount"
-                     label="Телеграмм аккаунт"
-                     placeholder="@username"
-                   />
-                 </VCol>
+                <!-- Телеграмм акк -->
+                <VCol
+                  cols="12"
+                  sm="6"
+                >
+                  <AppTextField
+                    v-model="agent.telegramAccount"
+                    label="Телеграмм аккаунт"
+                    placeholder="@username"
+                  />
+                </VCol>
 
-                 <!-- Аватарка -->
-                 <VCol cols="12">
-                   <h6 class="text-h6 mb-3">Выберите аватарку</h6>
-                   <VRow class="ga-3">
-                     <VCol cols="auto">
-                       <VAvatar
-                         rounded
-                         :size="60"
-                         color="grey-lighten-2"
-                         variant="outlined"
-                         class="cursor-pointer"
-                         @click="agent.avatar = null"
-                       >
-                         <VIcon icon="bx-user" size="24" />
-                       </VAvatar>
-                       <div class="text-center text-caption mt-1">Без аватара</div>
-                     </VCol>
-                     <VCol
-                       v-for="(avatar, index) in availableAvatars"
-                       :key="index"
-                       cols="auto"
-                     >
-                       <VAvatar
-                         rounded
-                         :size="60"
-                         class="cursor-pointer"
-                         :class="{ 'v-avatar--selected': agent.avatar === avatar }"
-                         @click="agent.avatar = avatar"
-                       >
-                         <img :src="avatar" alt="Avatar option" />
-                       </VAvatar>
-                     </VCol>
-                   </VRow>
+                <!-- Аватарка -->
+                <VCol cols="12">
+                  <h6 class="text-h6 mb-3">
+                    Выберите аватарку
+                  </h6>
+                  <VRow class="ga-3">
+                    <VCol cols="auto">
+                      <VAvatar
+                        rounded
+                        :size="60"
+                        color="grey-lighten-2"
+                        variant="outlined"
+                        class="cursor-pointer"
+                        @click="agent.avatar = null"
+                      >
+                        <VIcon
+                          icon="bx-user"
+                          size="24"
+                        />
+                      </VAvatar>
+                      <div class="text-center text-caption mt-1">
+                        Без аватара
+                      </div>
+                    </VCol>
+                    <VCol
+                      v-for="(avatar, index) in availableAvatars"
+                      :key="index"
+                      cols="auto"
+                    >
+                      <VAvatar
+                        rounded
+                        :size="60"
+                        class="cursor-pointer"
+                        :class="{ 'v-avatar--selected': agent.avatar === avatar }"
+                        @click="agent.avatar = avatar"
+                      >
+                        <img
+                          :src="avatar"
+                          alt="Avatar option"
+                        >
+                      </VAvatar>
+                    </VCol>
+                  </VRow>
 
-                   <!-- Загрузка своей аватарки -->
-                   <VRow class="mt-4">
-                     <VCol cols="12">
-                       <h6 class="text-h6 mb-2">Или загрузите свою аватарку</h6>
-                       <VFileInput
-                         label="Выберите изображение"
-                         accept="image/*"
-                         @change="handleAvatarUpload"
-                         prepend-icon="bx-image"
-                         show-size
-                         density="compact"
-                       />
-                       <div class="text-caption text-grey mt-1">
-                         Поддерживаемые форматы: JPG, PNG, GIF. Максимальный размер: 5MB.
-                       </div>
-                     </VCol>
-                   </VRow>
-                 </VCol>
+                  <!-- Загрузка своей аватарки -->
+                  <VRow class="mt-4">
+                    <VCol cols="12">
+                      <h6 class="text-h6 mb-2">
+                        Или загрузите свою аватарку
+                      </h6>
+                      <VFileInput
+                        label="Выберите изображение"
+                        accept="image/*"
+                        prepend-icon="bx-image"
+                        show-size
+                        density="compact"
+                        @change="handleAvatarUpload"
+                      />
+                      <div class="text-caption text-grey mt-1">
+                        Поддерживаемые форматы: JPG, PNG, GIF. Максимальный размер: 5MB.
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VCol>
 
-                 <!-- Активен -->
+                <!-- Активен -->
                 <VCol
                   cols="12"
                   sm="6"
@@ -632,10 +644,6 @@ onMounted(async () => {
                     color="primary"
                   />
                 </VCol>
-
-
-
-
               </VRow>
             </VCardText>
           </VCard>
@@ -707,10 +715,18 @@ onMounted(async () => {
               <VTable class="text-no-wrap">
                 <thead>
                   <tr>
-                    <th scope="col">ТИП</th>
-                    <th scope="col">EMAIL</th>
-                    <th scope="col">БРАУЗЕР</th>
-                    <th scope="col">ПРИЛОЖЕНИЕ</th>
+                    <th scope="col">
+                      ТИП
+                    </th>
+                    <th scope="col">
+                      EMAIL
+                    </th>
+                    <th scope="col">
+                      БРАУЗЕР
+                    </th>
+                    <th scope="col">
+                      ПРИЛОЖЕНИЕ
+                    </th>
                   </tr>
                 </thead>
 
@@ -723,13 +739,22 @@ onMounted(async () => {
                       {{ notification.type }}
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.email" hide-details />
+                      <VCheckbox
+                        v-model="notification.email"
+                        hide-details
+                      />
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.browser" hide-details />
+                      <VCheckbox
+                        v-model="notification.browser"
+                        hide-details
+                      />
                     </td>
                     <td>
-                      <VCheckbox v-model="notification.app" hide-details />
+                      <VCheckbox
+                        v-model="notification.app"
+                        hide-details
+                      />
                     </td>
                   </tr>
                 </tbody>

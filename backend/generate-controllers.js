@@ -1,51 +1,56 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs')
+const path = require('node:path')
 
 // Создаём директорию controllers, если она не существует
-const controllersDir = path.join(__dirname, 'controllers');
-if (!fs.existsSync(controllersDir)) {
-  fs.mkdirSync(controllersDir, { recursive: true });
-}
+const controllersDir = path.join(__dirname, 'controllers')
+if (!fs.existsSync(controllersDir))
+  fs.mkdirSync(controllersDir, { recursive: true })
 
 // Читаем извлечённые интерфейсы из файла
-const configPath = path.join(__dirname, 'extracted-interfaces.json');
+const configPath = path.join(__dirname, 'extracted-interfaces.json')
 if (!fs.existsSync(configPath)) {
-  console.error('Файл extracted-interfaces.json не найден!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не найден!')
+  process.exit(1)
 }
 
-let config;
+let config
 try {
-  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-} catch (error) {
-  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message);
-  process.exit(1);
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+}
+catch (error) {
+  console.error('Ошибка чтения или парсинга extracted-interfaces.json:', error.message)
+  process.exit(1)
 }
 
 if (typeof config !== 'object' || config === null) {
-  console.error('Файл extracted-interfaces.json не содержит валидный объект!');
-  process.exit(1);
+  console.error('Файл extracted-interfaces.json не содержит валидный объект!')
+  process.exit(1)
 }
 
-const entities = Object.keys(config);
+const entities = Object.keys(config)
 if (entities.length === 0) {
-  console.log('В extracted-interfaces.json нет сущностей для генерации контроллеров.');
-  process.exit(0);
+  console.log('В extracted-interfaces.json нет сущностей для генерации контроллеров.')
+  process.exit(0)
 }
 
 function singularize(str) {
-  if (str === 'PgpKeys') return 'PgpKey';
-  if (str === 'EmailAddresses') return 'EmailAddress';
-  if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-  if (str.endsWith('s')) return str.slice(0, -1);
-  return str;
+  if (str === 'PgpKeys')
+    return 'PgpKey'
+  if (str === 'EmailAddresses')
+    return 'EmailAddress'
+  if (str.endsWith('ies'))
+    return `${str.slice(0, -3)}y`
+  if (str.endsWith('s'))
+    return str.slice(0, -1)
+
+  return str
 }
 
 function generateController(entity) {
-  const modelName = entity.charAt(0).toLowerCase() + entity.slice(1);
-  const singular = singularize(entity);
-  const fileName = modelName + 'Controller.js';
-  const fields = Object.keys(config[entity]).filter(field => field !== 'isActive');
+  const modelName = entity.charAt(0).toLowerCase() + entity.slice(1)
+  const singular = singularize(entity)
+  const fileName = `${modelName}Controller.js`
+  const fields = Object.keys(config[entity]).filter(field => field !== 'isActive')
 
   const code = `const ${entity} = require('../models/${modelName}');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -155,15 +160,16 @@ module.exports = {
   update${entity},
   delete${entity},
 };
-`;
+`
 
-  const filePath = path.join(__dirname, 'controllers', fileName);
-  fs.writeFileSync(filePath, code);
-  console.log(`Generated ${filePath}`);
+  const filePath = path.join(__dirname, 'controllers', fileName)
+
+  fs.writeFileSync(filePath, code)
+  console.log(`Generated ${filePath}`)
 }
 
 entities.forEach(entity => {
-  generateController(entity);
-});
+  generateController(entity)
+})
 
-console.log('All controllers generated.');
+console.log('All controllers generated.')

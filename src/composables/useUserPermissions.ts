@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { $api } from '@/utils/api'
 
 interface Permission {
@@ -23,40 +23,43 @@ let globalPermissionCacheTimestamp = 0
 let globalPermissionLoadingPromise: Promise<void> | null = null
 
 function getStoredRules(): AbilityRule[] {
-  if (typeof sessionStorage === 'undefined') return []
-  
+  if (typeof sessionStorage === 'undefined')
+    return []
+
   try {
     const data = sessionStorage.getItem('userAbilityRules')
     if (!data) {
       console.log('No userAbilityRules in sessionStorage')
+
       return []
     }
-    
+
     const parsed = JSON.parse(data)
     if (!Array.isArray(parsed)) {
       console.warn('userAbilityRules is not an array')
+
       return []
     }
-    
-    const validRules = parsed.filter(rule => 
-      rule && 
-      typeof rule.action === 'string' && 
-      typeof rule.subject === 'string'
+
+    return parsed.filter(rule =>
+      rule
+      && typeof rule.action === 'string'
+      && typeof rule.subject === 'string',
     )
-    
-    return validRules
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Failed to parse userAbilityRules from sessionStorage:', err)
+
     return []
   }
 }
 
 function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules: AbilityRule[]) {
   permissionsMap.clear()
-  
+
   console.log('Processing rules:', rules.length)
-  console.log('Sample rules (first 3):', JSON.stringify(rules.slice(0,3), null, 2))
-  
+  console.log('Sample rules (first 3):', JSON.stringify(rules.slice(0, 3), null, 2))
+
   rules.forEach(rule => {
     const subject = rule.subject
     const action = rule.action
@@ -69,7 +72,8 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
     if (m) {
       base = m[1]
       type = m[2] as 'read' | 'write' | 'delete'
-    } else if (action === 'read' || action === 'write' || action === 'delete') {
+    }
+    else if (action === 'read' || action === 'write' || action === 'delete') {
       type = action as 'read' | 'write' | 'delete'
     }
 
@@ -80,33 +84,33 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
           code: key,
           read: false,
           write: false,
-          delete: false
+          delete: false,
         })
       }
       if (t) {
         const p = permissionsMap.get(key)!
+
         p[t] = true
       }
     }
 
     // We need to support both variants: with and without 'menu_' prefix
     const variants = new Set<string>()
+
     variants.add(base)
-    if (!base.startsWith('menu_')) {
+    if (!base.startsWith('menu_'))
       variants.add(`menu_${base}`)
-    }
 
     // If subject already included suffix, also include suffixed variants
     if (type) {
-      for (const v of Array.from(variants)) {
+      for (const v of Array.from(variants))
         setPerm(`${v}_${type}`, type)
-      }
     }
 
     // Also ensure the raw subject is set (backwards compatibility)
     setPerm(subject, type)
   })
-  
+
   // Дополнительно обрабатываем правила с action/subject для создания записей с суффиксами
   rules.forEach(rule => {
     if (rule.action && rule.subject && !rule.subject.endsWith(`_${rule.action}`)) {
@@ -116,13 +120,17 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
           code: suffixedSubject,
           read: rule.action === 'read',
           write: rule.action === 'write',
-          delete: rule.action === 'delete'
+          delete: rule.action === 'delete',
         })
-      } else {
+      }
+      else {
         const perm = permissionsMap.get(suffixedSubject)!
-        if (rule.action === 'read') perm.read = true
-        if (rule.action === 'write') perm.write = true
-        if (rule.action === 'delete') perm.delete = true
+        if (rule.action === 'read')
+          perm.read = true
+        if (rule.action === 'write')
+          perm.write = true
+        if (rule.action === 'delete')
+          perm.delete = true
       }
 
       // Also set menu_ variant for suffixed
@@ -130,6 +138,7 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
       if (m) {
         const base = m[1]
         const action = m[2]
+
         // Avoid creating duplicate menu_menu_... keys when base already starts with 'menu_'
         const menuKey = base.startsWith('menu_') ? `${base}_${action}` : `menu_${base}_${action}`
         if (!permissionsMap.has(menuKey)) {
@@ -137,13 +146,13 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
             code: menuKey,
             read: action === 'read',
             write: action === 'write',
-            delete: action === 'delete'
+            delete: action === 'delete',
           })
         }
       }
     }
   })
-  
+
   console.log('Final permissions map:', Array.from(permissionsMap.keys()))
 }
 
@@ -154,11 +163,10 @@ export function useUserPermissions() {
   const error = computed(() => globalError)
 
   const ensureLoaded = async () => {
-    if (!globalLoaded && !globalLoading) {
+    if (!globalLoaded && !globalLoading)
       await loadPermissions()
-    } else if (globalLoading && globalPermissionLoadingPromise) {
+    else if (globalLoading && globalPermissionLoadingPromise)
       await globalPermissionLoadingPromise
-    }
   }
 
   const loadPermissions = async () => {
@@ -166,11 +174,13 @@ export function useUserPermissions() {
 
     if (now - globalPermissionCacheTimestamp < PERMISSION_CACHE_TTL && globalLoaded) {
       console.log('Using cached permissions')
+
       return
     }
 
     if (globalPermissionLoadingPromise) {
       console.log('Permissions loading already in progress, waiting...')
+
       return globalPermissionLoadingPromise
     }
 
@@ -180,13 +190,13 @@ export function useUserPermissions() {
     try {
       globalPermissionLoadingPromise = (async () => {
         const rules = getStoredRules()
+
         console.log('Loaded rules count:', rules.length)
 
-        if (rules.length > 0) {
+        if (rules.length > 0)
           loadPermissionsFromRules(permissionsMap.value, rules)
-        } else {
+        else
           console.warn('No rules found in sessionStorage')
-        }
 
         console.log('Permissions loaded, total count:', permissionsMap.value.size)
 
@@ -194,63 +204,72 @@ export function useUserPermissions() {
         globalPermissionCacheTimestamp = now
       })()
       await globalPermissionLoadingPromise
-    } catch (err: any) {
+    }
+    catch (err: any) {
       globalError = err?.message || 'Failed to load permissions'
       console.error('Failed to load permissions:', err)
-    } finally {
+    }
+    finally {
       globalLoading = false
       globalPermissionLoadingPromise = null
     }
   }
 
-
   const canRead = (code: string): boolean => {
     // 1. Проверяем точное совпадение
     if (permissionsMap.value.has(code)) {
       const perm = permissionsMap.value.get(code)!
-      if (perm.read === true) return true
+      if (perm.read === true)
+        return true
     }
-    
+
     // 2. Проверяем с суффиксом _read
     const permWithSuffix = permissionsMap.value.get(`${code}_read`)
-    if (permWithSuffix?.read === true) return true
-    
+    if (permWithSuffix?.read === true)
+      return true
+
     // 3. Проверяем дочерние разрешения
-    const hasChildPermission = Array.from(permissionsMap.value.keys()).some(key => 
-      key !== code && key.startsWith(`${code}_`)
+    return Array.from(permissionsMap.value.keys()).some(key =>
+      key !== code && key.startsWith(`${code}_`),
     )
-    
-    return hasChildPermission
   }
 
   const canWrite = (code: string): boolean => {
     if (permissionsMap.value.has(code)) {
       const perm = permissionsMap.value.get(code)!
+
       return perm.write === true
     }
-    
+
     const permWithSuffix = permissionsMap.value.get(`${code}_write`)
-    if (permWithSuffix?.write === true) return true
-    
+    if (permWithSuffix?.write === true)
+      return true
+
     return false
   }
 
   const canDelete = (code: string): boolean => {
     if (permissionsMap.value.has(code)) {
       const perm = permissionsMap.value.get(code)!
+
       return perm.delete === true
     }
-    
+
     const permWithSuffix = permissionsMap.value.get(`${code}_delete`)
-    if (permWithSuffix?.delete === true) return true
-    
+    if (permWithSuffix?.delete === true)
+      return true
+
     return false
   }
 
   const can = (action: string, code: string): boolean => {
-    if (action === 'read') return canRead(code)
-    if (action === 'write') return canWrite(code)
-    if (action === 'delete') return canDelete(code)
+    if (action === 'read')
+      return canRead(code)
+    if (action === 'write')
+      return canWrite(code)
+    if (action === 'delete')
+      return canDelete(code)
+
     return true
   }
 
@@ -269,6 +288,6 @@ export function useUserPermissions() {
     canWrite,
     canDelete,
     can,
-    hasAnyPermission
+    hasAnyPermission,
   }
 }

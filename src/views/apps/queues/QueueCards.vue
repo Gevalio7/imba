@@ -13,6 +13,7 @@ interface Queues {
   isActive: boolean
   createdAt: string
   updatedAt: string
+
   // Новые поля
   companyId: number | null
   serviceId: number | null
@@ -31,6 +32,16 @@ interface Queues {
   autoResponseTemplate: string
 }
 
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  edit: [queue: Queues]
+  delete: [queue: Queues]
+  add: []
+  toggleStatus: [queue: Queues, newValue: boolean | null]
+}>()
+
 // Функция для определения варианта статуса
 const resolveStatusVariant = (isActive: boolean) => {
   if (isActive)
@@ -44,16 +55,6 @@ interface Props {
   queues: Queues[]
   loading: boolean
 }
-
-const props = defineProps<Props>()
-
-// Emits
-const emit = defineEmits<{
-  edit: [queue: Queues]
-  delete: [queue: Queues]
-  add: []
-  toggleStatus: [queue: Queues, newValue: boolean | null]
-}>()
 
 const editQueue = (queue: Queues) => {
   emit('edit', queue)
@@ -74,8 +75,14 @@ const toggleStatus = (queue: Queues, newValue: boolean | null) => {
 
 <template>
   <!-- Индикатор загрузки -->
-  <div v-if="props.loading" class="d-flex justify-center pa-6">
-    <VProgressCircular indeterminate color="primary" />
+  <div
+    v-if="props.loading"
+    class="d-flex justify-center pa-6"
+  >
+    <VProgressCircular
+      indeterminate
+      color="primary"
+    />
   </div>
 
   <VRow v-else>
@@ -89,7 +96,10 @@ const toggleStatus = (queue: Queues, newValue: boolean | null) => {
     >
       <VCard>
         <VCardText class="d-flex align-center pb-4">
-          <div class="text-body-1" :class="{ 'text-success': queue.isActive, 'text-error': !queue.isActive }">
+          <div
+            class="text-body-1"
+            :class="{ 'text-success': queue.isActive, 'text-error': !queue.isActive }"
+          >
             Очередь {{ queue.isActive ? 'активна' : 'не активна' }}
           </div>
 
@@ -98,9 +108,9 @@ const toggleStatus = (queue: Queues, newValue: boolean | null) => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="queue.isActive"
-              @update:model-value="(val) => toggleStatus(queue, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(queue, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(queue.isActive)"
@@ -135,7 +145,10 @@ const toggleStatus = (queue: Queues, newValue: boolean | null) => {
                 </a>
               </div>
             </div>
-            <IconBtn class="align-self-end" @click="deleteQueue(queue)">
+            <IconBtn
+              class="align-self-end"
+              @click="deleteQueue(queue)"
+            >
               <VIcon
                 icon="bx-trash"
                 class="text-error"

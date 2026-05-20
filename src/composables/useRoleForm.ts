@@ -9,42 +9,50 @@ export function useRoleForm() {
     message: '',
     isActive: true,
     createdAt: '',
-    updatedAt: ''
+    updatedAt: '',
   })
 
   const fetchRole = async (id: number) => {
-    if (!id) return
+    if (!id)
+      return
     try {
       const data = await $api<Role>(`/roles/${id}`)
+
       role.value = data
-    } catch (err) {
+    }
+    catch (err) {
       // noop
     }
   }
 
   const saveRole = async (isNew: boolean) => {
-    if (!role.value.name.trim()) throw new Error('Название роли обязательно')
+    if (!role.value.name.trim())
+      throw new Error('Название роли обязательно')
 
     if (isNew) {
-    const savedRole = await $api<Role>('/roles', {
-      method: 'POST',
-      body: {
-        name: role.value.name,
-        message: role.value.message,
-        isActive: role.value.isActive
-      }
-    })
-    role.value = savedRole
-    return savedRole
-    } else {
+      const savedRole = await $api<Role>('/roles', {
+        method: 'POST',
+        body: {
+          name: role.value.name,
+          message: role.value.message,
+          isActive: role.value.isActive,
+        },
+      })
+
+      role.value = savedRole
+
+      return savedRole
+    }
+    else {
       await $api<Role>(`/roles/${role.value.id}`, {
         method: 'PUT',
         body: {
           name: role.value.name,
           message: role.value.message,
-          isActive: role.value.isActive
-        }
+          isActive: role.value.isActive,
+        },
       })
+
       return role.value
     }
   }

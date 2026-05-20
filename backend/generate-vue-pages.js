@@ -1,351 +1,355 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Функция для преобразования имени сущности в camelCase
 function toCamelCase(str) {
-  return str.charAt(0).toLowerCase() + str.slice(1);
+  return str.charAt(0).toLowerCase() + str.slice(1)
 }
 
 // Функция для преобразования имени сущности в camelCase для URL
 function toRouteCase(str) {
   // Преобразуем в camelCase для соответствия именам файлов роутов
-  return str.charAt(0).toLowerCase() + str.slice(1);
+  return str.charAt(0).toLowerCase() + str.slice(1)
 }
 
 // Функция для получения русского названия сущности
 function getRussianName(entityName) {
   const russianNames = {
-    'SLA': 'SLA',
-    'Priorities': 'Приоритеты',
-    'States': 'Состояния',
-    'Types': 'Типы',
-    'Queues': 'Очереди',
-    'Services': 'Сервисы',
-    'Signatures': 'Подписи',
-    'Greetings': 'Приветствия',
-    'EmailAddresses': 'Email адреса',
-    'AutoResponses': 'Автоответы',
-    'Attachments': 'Вложения',
-    'Templates': 'Шаблоны',
-    'Calendars': 'Календари',
-    'Agents': 'Агенты',
-    'AgentsGroups': 'Группы агентов',
-    'AgentsRoles': 'Роли агентов',
-    'Customers': 'Клиенты',
-    'CustomersGroups': 'Группы клиентов',
-    'CustomerUsers': 'Пользователи клиентов',
-    'CustomerUsersGroups': 'Группы пользователей клиентов',
-    'CustomerUsersServices': 'Сервисы пользователей клиентов',
-    'CustomerUsersCustomers': 'Клиенты пользователей',
-    'Roles': 'Роли',
-    'RolesGroups': 'Группы ролей',
-    'Groups': 'Группы',
-    'DynamicFields': 'Динамические поля',
-    'DynamicFieldsScreens': 'Экраны динамических полей',
-    'GenericAgent': 'Универсальный агент',
-    'ProcessManagement': 'Управление процессами',
-    'SessionManagement': 'Управление сессиями',
-    'SystemConfiguration': 'Конфигурация системы',
-    'SystemMaintenance': 'Обслуживание системы',
-    'SystemLog': 'Системный журнал',
-    'SystemFileSupport': 'Поддержка файлов системы',
-    'WebServices': 'Веб-сервисы',
-    'OAuth2': 'OAuth2',
-    'PackageManager': 'Менеджер пакетов',
-    'PerformanceLog': 'Журнал производительности',
-    'PgpKeys': 'PGP ключи',
-    'PostMasterFilters': 'Фильтры PostMaster',
-    'PostMasterMailAccounts': 'Почтовые аккаунты PostMaster',
-    'QueueAutoResponse': 'Автоответы очередей',
-    'SmimeCertificates': 'S/MIME сертификаты',
-    'SqlBox': 'SQL Box',
-    'SupportDataCollector': 'Сборщик данных поддержки',
-    'TemplateAttachments': 'Вложения шаблонов',
-    'TemplateQueues': 'Очереди шаблонов',
-    'TicketAttributeRelations': 'Связи атрибутов тикетов',
-    'TicketNotifications': 'Уведомления тикетов',
-    'Translation': 'Переводы',
-    'AdminNotification': 'Уведомления администратора',
-    'AppointmentNotifications': 'Уведомления о встречах',
-    'CommunicationLog': 'Журнал коммуникаций',
-    'GeneralCatalog': 'Общий каталог',
-    'Acl': 'ACL (Контроль доступа)'
-  };
-  
-  return russianNames[entityName] || entityName;
+    SLA: 'SLA',
+    Priorities: 'Приоритеты',
+    States: 'Состояния',
+    Types: 'Типы',
+    Queues: 'Очереди',
+    Services: 'Сервисы',
+    Signatures: 'Подписи',
+    Greetings: 'Приветствия',
+    EmailAddresses: 'Email адреса',
+    AutoResponses: 'Автоответы',
+    Attachments: 'Вложения',
+    Templates: 'Шаблоны',
+    Calendars: 'Календари',
+    Agents: 'Агенты',
+    AgentsGroups: 'Группы агентов',
+    AgentsRoles: 'Роли агентов',
+    Customers: 'Клиенты',
+    CustomersGroups: 'Группы клиентов',
+    CustomerUsers: 'Пользователи клиентов',
+    CustomerUsersGroups: 'Группы пользователей клиентов',
+    CustomerUsersServices: 'Сервисы пользователей клиентов',
+    CustomerUsersCustomers: 'Клиенты пользователей',
+    Roles: 'Роли',
+    RolesGroups: 'Группы ролей',
+    Groups: 'Группы',
+    DynamicFields: 'Динамические поля',
+    DynamicFieldsScreens: 'Экраны динамических полей',
+    GenericAgent: 'Универсальный агент',
+    ProcessManagement: 'Управление процессами',
+    SessionManagement: 'Управление сессиями',
+    SystemConfiguration: 'Конфигурация системы',
+    SystemMaintenance: 'Обслуживание системы',
+    SystemLog: 'Системный журнал',
+    SystemFileSupport: 'Поддержка файлов системы',
+    WebServices: 'Веб-сервисы',
+    OAuth2: 'OAuth2',
+    PackageManager: 'Менеджер пакетов',
+    PerformanceLog: 'Журнал производительности',
+    PgpKeys: 'PGP ключи',
+    PostMasterFilters: 'Фильтры PostMaster',
+    PostMasterMailAccounts: 'Почтовые аккаунты PostMaster',
+    QueueAutoResponse: 'Автоответы очередей',
+    SmimeCertificates: 'S/MIME сертификаты',
+    SqlBox: 'SQL Box',
+    SupportDataCollector: 'Сборщик данных поддержки',
+    TemplateAttachments: 'Вложения шаблонов',
+    TemplateQueues: 'Очереди шаблонов',
+    TicketAttributeRelations: 'Связи атрибутов тикетов',
+    TicketNotifications: 'Уведомления тикетов',
+    Translation: 'Переводы',
+    AdminNotification: 'Уведомления администратора',
+    AppointmentNotifications: 'Уведомления о встречах',
+    CommunicationLog: 'Журнал коммуникаций',
+    GeneralCatalog: 'Общий каталог',
+    Acl: 'ACL (Контроль доступа)',
+  }
+
+  return russianNames[entityName] || entityName
 }
 
 // Функция для получения русского названия в единственном числе
 function getRussianNameSingular(entityName) {
   const russianNamesSingular = {
-    'SLA': 'SLA',
-    'Priorities': 'Приоритет',
-    'States': 'Состояние',
-    'Types': 'Тип',
-    'Queues': 'Очередь',
-    'Services': 'Сервис',
-    'Signatures': 'Подпись',
-    'Greetings': 'Приветствие',
-    'EmailAddresses': 'Email адрес',
-    'AutoResponses': 'Автоответ',
-    'Attachments': 'Вложение',
-    'Templates': 'Шаблон',
-    'Calendars': 'Календарь',
-    'Agents': 'Агент',
-    'AgentsGroups': 'Группа агентов',
-    'AgentsRoles': 'Роль агентов',
-    'Customers': 'Клиент',
-    'CustomersGroups': 'Группа клиентов',
-    'CustomerUsers': 'Пользователь клиента',
-    'CustomerUsersGroups': 'Группа пользователей клиентов',
-    'CustomerUsersServices': 'Сервис пользователей клиентов',
-    'CustomerUsersCustomers': 'Клиент пользователя',
-    'Roles': 'Роль',
-    'RolesGroups': 'Группа ролей',
-    'Groups': 'Группа',
-    'DynamicFields': 'Динамическое поле',
-    'DynamicFieldsScreens': 'Экран динамических полей',
-    'GenericAgent': 'Универсальный агент',
-    'ProcessManagement': 'Управление процессом',
-    'SessionManagement': 'Управление сессией',
-    'SystemConfiguration': 'Конфигурация системы',
-    'SystemMaintenance': 'Обслуживание системы',
-    'SystemLog': 'Системный журнал',
-    'SystemFileSupport': 'Поддержка файлов системы',
-    'WebServices': 'Веб-сервис',
-    'OAuth2': 'OAuth2',
-    'PackageManager': 'Менеджер пакетов',
-    'PerformanceLog': 'Журнал производительности',
-    'PgpKeys': 'PGP ключ',
-    'PostMasterFilters': 'Фильтр PostMaster',
-    'PostMasterMailAccounts': 'Почтовый аккаунт PostMaster',
-    'QueueAutoResponse': 'Автоответ очереди',
-    'SmimeCertificates': 'S/MIME сертификат',
-    'SqlBox': 'SQL Box',
-    'SupportDataCollector': 'Сборщик данных поддержки',
-    'TemplateAttachments': 'Вложение шаблона',
-    'TemplateQueues': 'Очередь шаблона',
-    'TicketAttributeRelations': 'Связь атрибутов тикета',
-    'TicketNotifications': 'Уведомление тикета',
-    'Translation': 'Перевод',
-    'AdminNotification': 'Уведомление администратора',
-    'AppointmentNotifications': 'Уведомление о встрече',
-    'CommunicationLog': 'Журнал коммуникации',
-    'GeneralCatalog': 'Общий каталог',
-    'Acl': 'ACL (Контроль доступа)'
-  };
-  
-  return russianNamesSingular[entityName] || entityName;
+    SLA: 'SLA',
+    Priorities: 'Приоритет',
+    States: 'Состояние',
+    Types: 'Тип',
+    Queues: 'Очередь',
+    Services: 'Сервис',
+    Signatures: 'Подпись',
+    Greetings: 'Приветствие',
+    EmailAddresses: 'Email адрес',
+    AutoResponses: 'Автоответ',
+    Attachments: 'Вложение',
+    Templates: 'Шаблон',
+    Calendars: 'Календарь',
+    Agents: 'Агент',
+    AgentsGroups: 'Группа агентов',
+    AgentsRoles: 'Роль агентов',
+    Customers: 'Клиент',
+    CustomersGroups: 'Группа клиентов',
+    CustomerUsers: 'Пользователь клиента',
+    CustomerUsersGroups: 'Группа пользователей клиентов',
+    CustomerUsersServices: 'Сервис пользователей клиентов',
+    CustomerUsersCustomers: 'Клиент пользователя',
+    Roles: 'Роль',
+    RolesGroups: 'Группа ролей',
+    Groups: 'Группа',
+    DynamicFields: 'Динамическое поле',
+    DynamicFieldsScreens: 'Экран динамических полей',
+    GenericAgent: 'Универсальный агент',
+    ProcessManagement: 'Управление процессом',
+    SessionManagement: 'Управление сессией',
+    SystemConfiguration: 'Конфигурация системы',
+    SystemMaintenance: 'Обслуживание системы',
+    SystemLog: 'Системный журнал',
+    SystemFileSupport: 'Поддержка файлов системы',
+    WebServices: 'Веб-сервис',
+    OAuth2: 'OAuth2',
+    PackageManager: 'Менеджер пакетов',
+    PerformanceLog: 'Журнал производительности',
+    PgpKeys: 'PGP ключ',
+    PostMasterFilters: 'Фильтр PostMaster',
+    PostMasterMailAccounts: 'Почтовый аккаунт PostMaster',
+    QueueAutoResponse: 'Автоответ очереди',
+    SmimeCertificates: 'S/MIME сертификат',
+    SqlBox: 'SQL Box',
+    SupportDataCollector: 'Сборщик данных поддержки',
+    TemplateAttachments: 'Вложение шаблона',
+    TemplateQueues: 'Очередь шаблона',
+    TicketAttributeRelations: 'Связь атрибутов тикета',
+    TicketNotifications: 'Уведомление тикета',
+    Translation: 'Перевод',
+    AdminNotification: 'Уведомление администратора',
+    AppointmentNotifications: 'Уведомление о встрече',
+    CommunicationLog: 'Журнал коммуникации',
+    GeneralCatalog: 'Общий каталог',
+    Acl: 'ACL (Контроль доступа)',
+  }
+
+  return russianNamesSingular[entityName] || entityName
 }
 
 // Функция для генерации TypeScript интерфейса
 function generateInterface(entityName, fields) {
-  let interfaceCode = `interface ${entityName} {\n`;
-  interfaceCode += `  id: number\n`;
-  
-  for (const [fieldName, fieldType] of Object.entries(fields)) {
-    interfaceCode += `  ${fieldName}: ${fieldType}\n`;
-  }
-  
-  interfaceCode += `  createdAt: string\n`;
-  interfaceCode += `  updatedAt: string\n`;
-  interfaceCode += `}\n`;
-  
-  return interfaceCode;
+  let interfaceCode = `interface ${entityName} {\n`
+  interfaceCode += `  id: number\n`
+
+  for (const [fieldName, fieldType] of Object.entries(fields))
+    interfaceCode += `  ${fieldName}: ${fieldType}\n`
+
+  interfaceCode += `  createdAt: string\n`
+  interfaceCode += `  updatedAt: string\n`
+  interfaceCode += `}\n`
+
+  return interfaceCode
 }
 
 // Функция для генерации заголовков таблицы
 function generateHeaders(fields) {
   const headers = [
     `{ title: 'ID', key: 'id', sortable: true }`,
-  ];
-  
+  ]
+
   for (const fieldName of Object.keys(fields)) {
     // Пропускаем поле isActive (оно будет в отдельной колонке)
-    if (fieldName === 'isActive') continue;
-    
+    if (fieldName === 'isActive')
+      continue
+
     const russianFieldNames = {
-      'name': 'Название',
-      'description': 'Описание',
-      'color': 'Цвет',
-      'responseTime': 'Время ответа (ч)',
-      'resolutionTime': 'Время решения (ч)',
-      'comment': 'Комментарий',
-      'message': 'Сообщение',
-      'email': 'Email',
-      'phone': 'Телефон',
-      'address': 'Адрес',
-      'city': 'Город',
-      'country': 'Страна',
-      'zip': 'Индекс',
-      'street': 'Улица',
-      'content': 'Содержание',
-      'trigger': 'Триггер',
-      'response': 'Ответ',
-      'delay': 'Задержка',
-      'fileName': 'Имя файла',
-      'type': 'Тип',
-      'timezone': 'Часовой пояс',
-      'workHours': 'Рабочие часы',
-      'label': 'Метка',
-      'fieldType': 'Тип поля',
-      'defaultValue': 'Значение по умолчанию',
-      'isRequired': 'Обязательное',
-      'screenName': 'Имя экрана',
-      'fieldName': 'Имя поля',
-      'position': 'Позиция',
-      'triggerType': 'Тип триггера',
-      'schedule': 'Расписание',
-      'lastRun': 'Последний запуск',
-      'nextRun': 'Следующий запуск',
-      'clientId': 'ID клиента',
-      'clientSecret': 'Секрет клиента',
-      'authorizationUrl': 'URL авторизации',
-      'tokenUrl': 'URL токена',
-      'scopes': 'Области',
-      'version': 'Версия',
-      'author': 'Автор',
-      'isInstalled': 'Установлен',
-      'isUpgradable': 'Доступно обновление',
-      'processType': 'Тип процесса',
-      'lastExecuted': 'Последнее выполнение',
-      'nextExecution': 'Следующее выполнение',
-      'maxTickets': 'Макс. тикетов',
-      'priority': 'Приоритет',
-      'username': 'Имя пользователя',
-      'ipAddress': 'IP адрес',
-      'userAgent': 'User Agent',
-      'loginTime': 'Время входа',
-      'lastActivity': 'Последняя активность',
-      'value': 'Значение',
-      'configType': 'Тип конфигурации',
-      'isEditable': 'Редактируемый',
-      'startTime': 'Время начала',
-      'endTime': 'Время окончания',
-      'isScheduled': 'Запланировано',
-      'sourceAttribute': 'Исходный атрибут',
-      'targetAttribute': 'Целевой атрибут',
-      'relationType': 'Тип связи',
-      'endpoint': 'Конечная точка',
-      'method': 'Метод',
-      'lastTested': 'Последнее тестирование',
-      'permissions': 'Разрешения'
-    };
-    
-    const title = russianFieldNames[fieldName] || fieldName;
-    headers.push(`{ title: '${title}', key: '${fieldName}', sortable: true }`);
+      name: 'Название',
+      description: 'Описание',
+      color: 'Цвет',
+      responseTime: 'Время ответа (ч)',
+      resolutionTime: 'Время решения (ч)',
+      comment: 'Комментарий',
+      message: 'Сообщение',
+      email: 'Email',
+      phone: 'Телефон',
+      address: 'Адрес',
+      city: 'Город',
+      country: 'Страна',
+      zip: 'Индекс',
+      street: 'Улица',
+      content: 'Содержание',
+      trigger: 'Триггер',
+      response: 'Ответ',
+      delay: 'Задержка',
+      fileName: 'Имя файла',
+      type: 'Тип',
+      timezone: 'Часовой пояс',
+      workHours: 'Рабочие часы',
+      label: 'Метка',
+      fieldType: 'Тип поля',
+      defaultValue: 'Значение по умолчанию',
+      isRequired: 'Обязательное',
+      screenName: 'Имя экрана',
+      fieldName: 'Имя поля',
+      position: 'Позиция',
+      triggerType: 'Тип триггера',
+      schedule: 'Расписание',
+      lastRun: 'Последний запуск',
+      nextRun: 'Следующий запуск',
+      clientId: 'ID клиента',
+      clientSecret: 'Секрет клиента',
+      authorizationUrl: 'URL авторизации',
+      tokenUrl: 'URL токена',
+      scopes: 'Области',
+      version: 'Версия',
+      author: 'Автор',
+      isInstalled: 'Установлен',
+      isUpgradable: 'Доступно обновление',
+      processType: 'Тип процесса',
+      lastExecuted: 'Последнее выполнение',
+      nextExecution: 'Следующее выполнение',
+      maxTickets: 'Макс. тикетов',
+      priority: 'Приоритет',
+      username: 'Имя пользователя',
+      ipAddress: 'IP адрес',
+      userAgent: 'User Agent',
+      loginTime: 'Время входа',
+      lastActivity: 'Последняя активность',
+      value: 'Значение',
+      configType: 'Тип конфигурации',
+      isEditable: 'Редактируемый',
+      startTime: 'Время начала',
+      endTime: 'Время окончания',
+      isScheduled: 'Запланировано',
+      sourceAttribute: 'Исходный атрибут',
+      targetAttribute: 'Целевой атрибут',
+      relationType: 'Тип связи',
+      endpoint: 'Конечная точка',
+      method: 'Метод',
+      lastTested: 'Последнее тестирование',
+      permissions: 'Разрешения',
+    }
+
+    const title = russianFieldNames[fieldName] || fieldName
+
+    headers.push(`{ title: '${title}', key: '${fieldName}', sortable: true }`)
   }
-  
-  headers.push(`{ title: 'Создано', key: 'createdAt', sortable: true }`);
-  headers.push(`{ title: 'Изменено', key: 'updatedAt', sortable: true }`);
-  headers.push(`{ title: 'Активен', key: 'isActive', sortable: false }`);
-  headers.push(`{ title: 'Действия', key: 'actions', sortable: false }`);
-  
-  return headers.join(',\n  ');
+
+  headers.push(`{ title: 'Создано', key: 'createdAt', sortable: true }`)
+  headers.push(`{ title: 'Изменено', key: 'updatedAt', sortable: true }`)
+  headers.push(`{ title: 'Активен', key: 'isActive', sortable: false }`)
+  headers.push(`{ title: 'Действия', key: 'actions', sortable: false }`)
+
+  return headers.join(',\n  ')
 }
 
 // Функция для генерации полей формы редактирования
 function generateFormFields(fields) {
-  let formFields = '';
-  
+  let formFields = ''
+
   for (const [fieldName, fieldType] of Object.entries(fields)) {
     // Пропускаем системные поля
-    if (['isActive', 'createdAt', 'updatedAt', 'id'].includes(fieldName)) continue;
-    
+    if (['isActive', 'createdAt', 'updatedAt', 'id'].includes(fieldName))
+      continue
+
     const russianFieldNames = {
-      'name': 'Название',
-      'description': 'Описание',
-      'color': 'Цвет',
-      'responseTime': 'Время ответа (часы)',
-      'resolutionTime': 'Время решения (часы)',
-      'comment': 'Комментарий',
-      'message': 'Сообщение',
-      'email': 'Email',
-      'phone': 'Телефон',
-      'address': 'Адрес',
-      'city': 'Город',
-      'country': 'Страна',
-      'zip': 'Индекс',
-      'street': 'Улица',
-      'content': 'Содержание',
-      'trigger': 'Триггер',
-      'response': 'Ответ',
-      'delay': 'Задержка',
-      'fileName': 'Имя файла',
-      'type': 'Тип',
-      'timezone': 'Часовой пояс',
-      'workHours': 'Рабочие часы',
-      'label': 'Метка',
-      'fieldType': 'Тип поля',
-      'defaultValue': 'Значение по умолчанию',
-      'isRequired': 'Обязательное',
-      'screenName': 'Имя экрана',
-      'fieldName': 'Имя поля',
-      'position': 'Позиция',
-      'triggerType': 'Тип триггера',
-      'schedule': 'Расписание',
-      'lastRun': 'Последний запуск',
-      'nextRun': 'Следующий запуск',
-      'clientId': 'ID клиента',
-      'clientSecret': 'Секрет клиента',
-      'authorizationUrl': 'URL авторизации',
-      'tokenUrl': 'URL токена',
-      'scopes': 'Области',
-      'version': 'Версия',
-      'author': 'Автор',
-      'isInstalled': 'Установлен',
-      'isUpgradable': 'Доступно обновление',
-      'processType': 'Тип процесса',
-      'lastExecuted': 'Последнее выполнение',
-      'nextExecution': 'Следующее выполнение',
-      'maxTickets': 'Макс. тикетов',
-      'priority': 'Приоритет',
-      'username': 'Имя пользователя',
-      'ipAddress': 'IP адрес',
-      'userAgent': 'User Agent',
-      'loginTime': 'Время входа',
-      'lastActivity': 'Последняя активность',
-      'value': 'Значение',
-      'configType': 'Тип конфигурации',
-      'isEditable': 'Редактируемый',
-      'startTime': 'Время начала',
-      'endTime': 'Время окончания',
-      'isScheduled': 'Запланировано',
-      'sourceAttribute': 'Исходный атрибут',
-      'targetAttribute': 'Целевой атрибут',
-      'relationType': 'Тип связи',
-      'endpoint': 'Конечная точка',
-      'method': 'Метод',
-      'lastTested': 'Последнее тестирование',
-      'permissions': 'Разрешения'
-    };
-    
-    const label = russianFieldNames[fieldName] || fieldName;
-    const isRequired = fieldName === 'name' ? ' *' : '';
-    
-    // Определяем тип поля
-    let fieldComponent = 'AppTextField';
-    let fieldProps = '';
-    
-    if (fieldType.includes('number')) {
-      fieldProps = `\n                type="number"\n                min="0"`;
-      if (fieldName.includes('Time')) {
-        fieldProps += `\n                step="0.25"`;
-      }
-    } else if (fieldName === 'color') {
-      fieldProps = `\n                type="color"`;
-    } else if (fieldName.includes('description') || fieldName.includes('comment') || fieldName.includes('message') || fieldName.includes('content')) {
-      fieldComponent = 'AppTextarea';
-      fieldProps = `\n                rows="3"\n                placeholder="Введите ${label.toLowerCase()}..."`;
-    } else if (fieldType.includes('boolean')) {
-      fieldComponent = 'VSwitch';
-      fieldProps = `\n                color="primary"`;
+      name: 'Название',
+      description: 'Описание',
+      color: 'Цвет',
+      responseTime: 'Время ответа (часы)',
+      resolutionTime: 'Время решения (часы)',
+      comment: 'Комментарий',
+      message: 'Сообщение',
+      email: 'Email',
+      phone: 'Телефон',
+      address: 'Адрес',
+      city: 'Город',
+      country: 'Страна',
+      zip: 'Индекс',
+      street: 'Улица',
+      content: 'Содержание',
+      trigger: 'Триггер',
+      response: 'Ответ',
+      delay: 'Задержка',
+      fileName: 'Имя файла',
+      type: 'Тип',
+      timezone: 'Часовой пояс',
+      workHours: 'Рабочие часы',
+      label: 'Метка',
+      fieldType: 'Тип поля',
+      defaultValue: 'Значение по умолчанию',
+      isRequired: 'Обязательное',
+      screenName: 'Имя экрана',
+      fieldName: 'Имя поля',
+      position: 'Позиция',
+      triggerType: 'Тип триггера',
+      schedule: 'Расписание',
+      lastRun: 'Последний запуск',
+      nextRun: 'Следующий запуск',
+      clientId: 'ID клиента',
+      clientSecret: 'Секрет клиента',
+      authorizationUrl: 'URL авторизации',
+      tokenUrl: 'URL токена',
+      scopes: 'Области',
+      version: 'Версия',
+      author: 'Автор',
+      isInstalled: 'Установлен',
+      isUpgradable: 'Доступно обновление',
+      processType: 'Тип процесса',
+      lastExecuted: 'Последнее выполнение',
+      nextExecution: 'Следующее выполнение',
+      maxTickets: 'Макс. тикетов',
+      priority: 'Приоритет',
+      username: 'Имя пользователя',
+      ipAddress: 'IP адрес',
+      userAgent: 'User Agent',
+      loginTime: 'Время входа',
+      lastActivity: 'Последняя активность',
+      value: 'Значение',
+      configType: 'Тип конфигурации',
+      isEditable: 'Редактируемый',
+      startTime: 'Время начала',
+      endTime: 'Время окончания',
+      isScheduled: 'Запланировано',
+      sourceAttribute: 'Исходный атрибут',
+      targetAttribute: 'Целевой атрибут',
+      relationType: 'Тип связи',
+      endpoint: 'Конечная точка',
+      method: 'Метод',
+      lastTested: 'Последнее тестирование',
+      permissions: 'Разрешения',
     }
-    
+
+    const label = russianFieldNames[fieldName] || fieldName
+    const isRequired = fieldName === 'name' ? ' *' : ''
+
+    // Определяем тип поля
+    let fieldComponent = 'AppTextField'
+    let fieldProps = ''
+
+    if (fieldType.includes('number')) {
+      fieldProps = `\n                type="number"\n                min="0"`
+      if (fieldName.includes('Time'))
+        fieldProps += `\n                step="0.25"`
+    }
+    else if (fieldName === 'color') {
+      fieldProps = `\n                type="color"`
+    }
+    else if (fieldName.includes('description') || fieldName.includes('comment') || fieldName.includes('message') || fieldName.includes('content')) {
+      fieldComponent = 'AppTextarea'
+      fieldProps = `\n                rows="3"\n                placeholder="Введите ${label.toLowerCase()}..."`
+    }
+    else if (fieldType.includes('boolean')) {
+      fieldComponent = 'VSwitch'
+      fieldProps = `\n                color="primary"`
+    }
+
     formFields += `
             <!-- ${label} -->
             <VCol
@@ -357,53 +361,52 @@ function generateFormFields(fields) {
                 label="${label}${isRequired}"${fieldProps}
               />
             </VCol>
-`;
+`
   }
-  
-  return formFields;
+
+  return formFields
 }
 
 // Функция для генерации Vue компонента
 function generateVueComponent(entityName, fields) {
-  const camelCaseName = toCamelCase(entityName);
-  const routeName = toRouteCase(entityName);
-  const russianName = getRussianName(entityName);
-  const russianNameSingular = getRussianNameSingular(entityName);
-  const interfaceCode = generateInterface(entityName, fields);
-  const headers = generateHeaders(fields);
-  const formFields = generateFormFields(fields);
-  
+  const camelCaseName = toCamelCase(entityName)
+  const routeName = toRouteCase(entityName)
+  const russianName = getRussianName(entityName)
+  const russianNameSingular = getRussianNameSingular(entityName)
+  const interfaceCode = generateInterface(entityName, fields)
+  const headers = generateHeaders(fields)
+  const formFields = generateFormFields(fields)
+
   // Получаем первое поле для defaultItem
-  const firstField = Object.keys(fields)[0];
-  const firstFieldType = fields[firstField];
-  let defaultValue = "''";
-  if (firstFieldType.includes('number')) {
-    defaultValue = '0';
-  } else if (firstFieldType.includes('boolean')) {
-    defaultValue = 'false';
-  } else if (firstFieldType.includes('[]')) {
-    defaultValue = '[]';
-  }
-  
+  const firstField = Object.keys(fields)[0]
+  const firstFieldType = fields[firstField]
+  let defaultValue = "''"
+  if (firstFieldType.includes('number'))
+    defaultValue = '0'
+  else if (firstFieldType.includes('boolean'))
+    defaultValue = 'false'
+  else if (firstFieldType.includes('[]'))
+    defaultValue = '[]'
+
   // Генерируем defaultItem
-  let defaultItemFields = '';
+  let defaultItemFields = ''
   for (const [fieldName, fieldType] of Object.entries(fields)) {
-    if (['isActive', 'status'].includes(fieldName)) continue;
-    
-    let value = "''";
-    if (fieldType.includes('number')) {
-      value = fieldName.includes('Time') ? '4' : '0';
-    } else if (fieldType.includes('boolean')) {
-      value = 'false';
-    } else if (fieldType.includes('[]')) {
-      value = '[]';
-    } else if (fieldType.includes('null')) {
-      value = 'null';
-    }
-    
-    defaultItemFields += `  ${fieldName}: ${value},\n`;
+    if (['isActive', 'status'].includes(fieldName))
+      continue
+
+    let value = "''"
+    if (fieldType.includes('number'))
+      value = fieldName.includes('Time') ? '4' : '0'
+    else if (fieldType.includes('boolean'))
+      value = 'false'
+    else if (fieldType.includes('[]'))
+      value = '[]'
+    else if (fieldType.includes('null'))
+      value = 'null'
+
+    defaultItemFields += `  ${fieldName}: ${value},\n`
   }
-  
+
   return `<script setup lang="ts">
 import { $fetch } from 'ofetch'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -1067,30 +1070,30 @@ ${formFields}
   margin-block-end: 1rem;
 }
 </style>
-`;
+`
 }
 
 // Основная функция
 function main() {
-  const configPath = path.join(__dirname, 'entities-config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  
-  console.log('Начинаем генерацию Vue страниц...\n');
-  
-  let generatedCount = 0;
-  let skippedCount = 0;
-  
+  const configPath = path.join(__dirname, 'entities-config.json')
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+
+  console.log('Начинаем генерацию Vue страниц...\n')
+
+  let generatedCount = 0
+  let skippedCount = 0
+
   for (const [entityName, fields] of Object.entries(config)) {
     // Пропускаем массивы и сущности без полей
     if (Array.isArray(fields) || typeof fields !== 'object' || Object.keys(fields).length === 0) {
-      console.log(`⏭️  Пропускаем ${entityName} (нет полей или массив)`);
-      skippedCount++;
-      continue;
+      console.log(`⏭️  Пропускаем ${entityName} (нет полей или массив)`)
+      skippedCount++
+      continue
     }
-    
+
     // Генерируем Vue компонент
-    const vueComponent = generateVueComponent(entityName, fields);
-    
+    const vueComponent = generateVueComponent(entityName, fields)
+
     // Определяем путь для сохранения файла
     // Пытаемся найти существующий файл
     const possiblePaths = [
@@ -1099,38 +1102,36 @@ function main() {
       `../src/pages/apps/settings/communication-notifications/${entityName}.vue`,
       `../src/pages/apps/settings/processes-automation/${entityName}.vue`,
       `../src/pages/apps/settings/users-groups-roles/${entityName}.vue`,
-    ];
-    
-    let outputPath = null;
+    ]
+
+    let outputPath = null
     for (const possiblePath of possiblePaths) {
-      const fullPath = path.join(__dirname, possiblePath);
+      const fullPath = path.join(__dirname, possiblePath)
       if (fs.existsSync(fullPath)) {
-        outputPath = fullPath;
-        break;
+        outputPath = fullPath
+        break
       }
     }
-    
+
     // Если файл не найден, создаем в ticket-settings
-    if (!outputPath) {
-      outputPath = path.join(__dirname, `../src/pages/apps/settings/ticket-settings/${entityName}.vue`);
-    }
-    
+    if (!outputPath)
+      outputPath = path.join(__dirname, `../src/pages/apps/settings/ticket-settings/${entityName}.vue`)
+
     // Создаем директорию если не существует
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
+    const dir = path.dirname(outputPath)
+    if (!fs.existsSync(dir))
+      fs.mkdirSync(dir, { recursive: true })
+
     // Сохраняем файл
-    fs.writeFileSync(outputPath, vueComponent);
-    console.log(`✅ Сгенерирован: ${path.relative(path.join(__dirname, '..'), outputPath)}`);
-    generatedCount++;
+    fs.writeFileSync(outputPath, vueComponent)
+    console.log(`✅ Сгенерирован: ${path.relative(path.join(__dirname, '..'), outputPath)}`)
+    generatedCount++
   }
-  
-  console.log(`\n📊 Итого:`);
-  console.log(`   ✅ Сгенерировано: ${generatedCount}`);
-  console.log(`   ⏭️  Пропущено: ${skippedCount}`);
-  console.log(`\n✨ Генерация завершена!`);
+
+  console.log(`\n📊 Итого:`)
+  console.log(`   ✅ Сгенерировано: ${generatedCount}`)
+  console.log(`   ⏭️  Пропущено: ${skippedCount}`)
+  console.log(`\n✨ Генерация завершена!`)
 }
 
-main();
+main()

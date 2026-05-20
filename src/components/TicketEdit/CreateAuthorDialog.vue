@@ -1,3 +1,21 @@
+<script setup lang="ts">
+interface Props {
+  modelValue: boolean
+  email: string
+  firstName: string
+  lastName: string
+  saving: boolean
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'update:modelValue': [value: boolean]
+  cancel: []
+  create: []
+}>()
+</script>
+
 <template>
   <VDialog
     :model-value="modelValue"
@@ -49,21 +67,3 @@
     </VCard>
   </VDialog>
 </template>
-
-<script setup lang="ts">
-interface Props {
-  modelValue: boolean
-  email: string
-  firstName: string
-  lastName: string
-  saving: boolean
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:modelValue': [value: boolean]
-  cancel: []
-  create: []
-}>()
-</script>

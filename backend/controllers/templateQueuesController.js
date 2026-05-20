@@ -1,14 +1,14 @@
-const TemplateQueues = require('../models/templateQueues');
-const { asyncHandler } = require('../middleware/errorHandler');
+const TemplateQueues = require('../models/templateQueues')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getTemplateQueues = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await TemplateQueues.getAll({
     q: searchQuery,
@@ -16,90 +16,84 @@ const getTemplateQueues = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getTemplateQueueById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templatequeueId = parseInt(id, 10);
+  const { id } = req.params
+  const templatequeueId = Number.parseInt(id, 10)
 
-  if (isNaN(templatequeueId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templatequeueId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const templatequeue = await TemplateQueues.getById(templatequeueId);
+  const templatequeue = await TemplateQueues.getById(templatequeueId)
 
-  if (!templatequeue) {
-    return res.status(404).json({ message: 'TemplateQueue not found' });
-  }
+  if (!templatequeue)
+    return res.status(404).json({ message: 'TemplateQueue not found' })
 
-  res.json(templatequeue);
-});
+  res.json(templatequeue)
+})
 
 const createTemplateQueues = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
-  data.message = req.body.message;
-  
+  const data = {}
+
+  data.name = req.body.name
+  data.message = req.body.message
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newTemplateQueue = await TemplateQueues.create(data);
+  const newTemplateQueue = await TemplateQueues.create(data)
 
-  res.status(201).json(newTemplateQueue);
-});
+  res.status(201).json(newTemplateQueue)
+})
 
 const updateTemplateQueues = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templatequeueId = parseInt(id, 10);
+  const { id } = req.params
+  const templatequeueId = Number.parseInt(id, 10)
 
-  if (isNaN(templatequeueId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templatequeueId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
-  
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
+  if (req.body.message !== undefined)
+    data.message = req.body.message
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
-  const updatedTemplateQueue = await TemplateQueues.update(templatequeueId, data);
+  const updatedTemplateQueue = await TemplateQueues.update(templatequeueId, data)
 
-  if (!updatedTemplateQueue) {
-    return res.status(404).json({ message: 'TemplateQueue not found' });
-  }
+  if (!updatedTemplateQueue)
+    return res.status(404).json({ message: 'TemplateQueue not found' })
 
-  res.json(updatedTemplateQueue);
-});
+  res.json(updatedTemplateQueue)
+})
 
 const deleteTemplateQueues = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templatequeueId = parseInt(id, 10);
+  const { id } = req.params
+  const templatequeueId = Number.parseInt(id, 10)
 
-  if (isNaN(templatequeueId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templatequeueId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await TemplateQueues.delete(templatequeueId);
+  const deleted = await TemplateQueues.delete(templatequeueId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'TemplateQueue not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'TemplateQueue not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 module.exports = {
   getTemplateQueues,
@@ -107,4 +101,4 @@ module.exports = {
   createTemplateQueues,
   updateTemplateQueues,
   deleteTemplateQueues,
-};
+}

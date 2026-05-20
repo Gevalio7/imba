@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Конфигурация системы
 interface SystemConfiguration {
@@ -15,7 +15,6 @@ interface SystemConfiguration {
   updatedAt: string
 }
 
-
 // Данные конфигурация системы
 const systemConfiguration = ref<SystemConfiguration[]>([])
 const total = ref(0)
@@ -28,14 +27,18 @@ const fetchSystemConfiguration = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching systemConfiguration from:', `/systemConfiguration`)
-    const data = await $api<{ systemConfiguration: SystemConfiguration[], total: number }>(`/systemConfiguration`)
+
+    const data = await $api<{ systemConfiguration: SystemConfiguration[]; total: number }>(`/systemConfiguration`)
+
     console.log('Fetched systemConfiguration data:', data)
     systemConfiguration.value = data.systemConfiguration
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки конфигурация системы'
     console.error('Error fetching systemConfiguration:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -45,11 +48,14 @@ const createSystemConfiguration = async (item: Omit<SystemConfiguration, 'id' | 
   try {
     const data = await $api<SystemConfiguration>(`/systemConfiguration`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     systemConfiguration.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating systemConfiguration:', err)
     throw err
   }
@@ -60,14 +66,16 @@ const updateSystemConfiguration = async (id: number, item: Omit<SystemConfigurat
   try {
     const data = await $api<SystemConfiguration>(`/systemConfiguration/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = systemConfiguration.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       systemConfiguration.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating systemConfiguration:', err)
     throw err
   }
@@ -77,13 +85,14 @@ const updateSystemConfiguration = async (id: number, item: Omit<SystemConfigurat
 const deleteSystemConfiguration = async (id: number) => {
   try {
     await $api(`/systemConfiguration/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = systemConfiguration.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       systemConfiguration.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting systemConfiguration:', err)
     throw err
   }
@@ -104,7 +113,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -142,13 +151,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteSystemConfiguration(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} конфигурация системы`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -159,13 +169,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateSystemConfiguration(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} конфигурация системы`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -193,7 +204,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -253,6 +264,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -261,19 +273,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateSystemConfiguration(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Конфигурация системы успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createSystemConfiguration({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Конфигурация системы успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения конфигурация системы', 'error')
   }
 }
@@ -283,7 +299,8 @@ const deleteItemConfirm = async () => {
     await deleteSystemConfiguration(editedItem.value.id)
     showToast('Конфигурация системы успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления конфигурация системы', 'error')
   }
 }
@@ -294,15 +311,17 @@ const toggleStatus = async (item: SystemConfiguration, newValue: boolean | null)
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateSystemConfiguration(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус конфигурация системы изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -329,20 +348,34 @@ const addNewSystemConfiguration = () => {
 <template>
   <div>
     <VCard title="Конфигурация системы">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -422,7 +455,6 @@ const addNewSystemConfiguration = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -560,9 +592,9 @@ const addNewSystemConfiguration = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -576,10 +608,16 @@ const addNewSystemConfiguration = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_tickets_system_configuration')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_tickets_system_configuration')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_tickets_system_configuration')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_tickets_system_configuration')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -604,7 +642,6 @@ const addNewSystemConfiguration = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать конфигурация системы' : 'Добавить конфигурация системы'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -617,10 +654,7 @@ const addNewSystemConfiguration = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.description"
                 label="Описание"
@@ -630,10 +664,7 @@ const addNewSystemConfiguration = () => {
             </VCol>
 
             <!-- Значение -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.value"
                 label="Значение"
@@ -641,10 +672,7 @@ const addNewSystemConfiguration = () => {
             </VCol>
 
             <!-- Тип конфигурации -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.configType"
                 label="Тип конфигурации"
@@ -652,10 +680,7 @@ const addNewSystemConfiguration = () => {
             </VCol>
 
             <!-- Редактируемый -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <VSwitch
                 v-model="editedItem.isEditable"
                 label="Редактируемый"

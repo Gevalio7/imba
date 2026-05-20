@@ -4,7 +4,7 @@ export function useImagePreview() {
   const imagePreview = ref<{ show: boolean; src: string; filename: string }>({
     show: false,
     src: '',
-    filename: ''
+    filename: '',
   })
 
   const imageZoom = ref(100)
@@ -14,7 +14,7 @@ export function useImagePreview() {
     imagePreview.value = {
       show: true,
       src: `/uploads/${attachment.filename}`,
-      filename: attachment.filename
+      filename: attachment.filename,
     }
   }
 
@@ -26,16 +26,14 @@ export function useImagePreview() {
 
   // Увеличить изображение
   const zoomIn = () => {
-    if (imageZoom.value < 300) {
+    if (imageZoom.value < 300)
       imageZoom.value += 25
-    }
   }
 
   // Уменьшить изображение
   const zoomOut = () => {
-    if (imageZoom.value > 25) {
+    if (imageZoom.value > 25)
       imageZoom.value -= 25
-    }
   }
 
   // Сбросить зум
@@ -50,13 +48,15 @@ export function useImagePreview() {
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
+
       link.href = url
       link.download = imagePreview.value.filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-    } catch (err) {
+    }
+    catch (err) {
       console.error('Error downloading image:', err)
     }
   }

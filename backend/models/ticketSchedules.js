@@ -1,36 +1,36 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class TicketSchedules {
-  static tableName = 'ticket_schedules';
+  static tableName = 'ticket_schedules'
 
   // Получить все расписания
   static async getAll(options = {}) {
-    const { ticketId, isActive } = options;
+    const { ticketId, isActive } = options
 
     try {
-      let whereClause = '';
-      let params = [];
-      let paramIndex = 1;
+      let whereClause = ''
+      const params = []
+      let paramIndex = 1
 
       if (ticketId) {
-        whereClause = `WHERE ticket_id = $${paramIndex}`;
-        params.push(ticketId);
-        paramIndex++;
+        whereClause = `WHERE ticket_id = $${paramIndex}`
+        params.push(ticketId)
+        paramIndex++
       }
 
       if (isActive !== undefined) {
-        if (whereClause) {
-          whereClause += ` AND is_active = $${paramIndex}`;
-        } else {
-          whereClause = `WHERE is_active = $${paramIndex}`;
-        }
-        params.push(isActive);
-        paramIndex++;
+        if (whereClause)
+          whereClause += ` AND is_active = $${paramIndex}`
+        else
+          whereClause = `WHERE is_active = $${paramIndex}`
+
+        params.push(isActive)
+        paramIndex++
       }
 
       const query = `
@@ -67,13 +67,15 @@ class TicketSchedules {
         LEFT JOIN tickets t ON ts.ticket_id = t.id
         ${whereClause}
         ORDER BY ts.created_at DESC
-      `;
+      `
 
-      const result = await pool.query(query, params);
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      const result = await pool.query(query, params)
+
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
@@ -113,12 +115,14 @@ class TicketSchedules {
         FROM ${TicketSchedules.tableName} ts
         LEFT JOIN tickets t ON ts.ticket_id = t.id
         WHERE ts.id = $1`,
-        [id]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+        [id],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
@@ -156,19 +160,22 @@ class TicketSchedules {
           ts.updated_at as "updatedAt"
         FROM ${TicketSchedules.tableName} ts
         WHERE ts.ticket_id = $1`,
-        [ticketId]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getByTicketId:', error);
-      throw error;
+        [ticketId],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getByTicketId:', error)
+      throw error
     }
   }
 
   // Получить активные расписания для выполнения (с истёкшим временем next_run_at)
   static async getDueSchedules() {
     try {
-      console.log('🔍 Выполняем запрос getDueSchedules...');
+      console.log('🔍 Выполняем запрос getDueSchedules...')
+
       const result = await pool.query(
         `SELECT 
           id,
@@ -190,15 +197,17 @@ class TicketSchedules {
           AND next_run_at IS NOT NULL
           AND next_run_at <= CURRENT_TIMESTAMP
           AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-        ORDER BY next_run_at ASC`);
-      console.log(`📊 getDueSchedules нашел ${result.rows.length} расписаний`);
-      if (result.rows.length > 0) {
-        console.log(`🎯 Найденные расписания:`, result.rows.map(r => ({ id: r.id, ticketId: r.ticketId, next_run_at: r.nextRunAt })));
-      }
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getDueSchedules:', error);
-      throw error;
+        ORDER BY next_run_at ASC`)
+
+      console.log(`📊 getDueSchedules нашел ${result.rows.length} расписаний`)
+      if (result.rows.length > 0)
+        console.log(`🎯 Найденные расписания:`, result.rows.map(r => ({ id: r.id, ticketId: r.ticketId, next_run_at: r.nextRunAt })))
+
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getDueSchedules:', error)
+      throw error
     }
   }
 
@@ -206,7 +215,7 @@ class TicketSchedules {
   static async create(schedule) {
     try {
       // Сначала рассчитываем следующую дату выполнения
-      const nextRunAt = calculateNextRunAt(schedule);
+      const nextRunAt = calculateNextRunAt(schedule)
 
       const query = `
         INSERT INTO ${TicketSchedules.tableName} (
@@ -220,7 +229,7 @@ class TicketSchedules {
           schedule_day_of_month as "scheduleDayOfMonth", start_date as "startDate",
           end_date as "endDate", is_active as "isActive", title_prefix as "titlePrefix", next_run_at as "nextRunAt",
           created_at as "createdAt", updated_at as "updatedAt"
-      `;
+      `
 
       const values = [
         schedule.ticketId || null,
@@ -246,22 +255,24 @@ class TicketSchedules {
         schedule.companyId || null,
         schedule.serviceId || null,
         schedule.slaId || null,
-      ];
+      ]
 
-      const result = await pool.query(query, values);
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   // Обновить расписание
   static async update(id, schedule) {
     try {
-      const updates = [];
-      const values = [id];
-      let paramIndex = 2;
+      const updates = []
+      const values = [id]
+      let paramIndex = 2
 
       const fieldMap = {
         ticketId: 'ticket_id',
@@ -286,31 +297,32 @@ class TicketSchedules {
         companyId: 'company_id',
         serviceId: 'service_id',
         slaId: 'sla_id',
-      };
+      }
 
       Object.entries(fieldMap).forEach(([field, column]) => {
         if (schedule[field] !== undefined) {
-          updates.push(`${column} = $${paramIndex}`);
-          values.push(schedule[field]);
-          paramIndex++;
+          updates.push(`${column} = $${paramIndex}`)
+          values.push(schedule[field])
+          paramIndex++
         }
-      });
+      })
 
       // Если меняются параметры расписания - пересчитываем next_run_at
-      if (schedule.scheduleType || schedule.scheduleTime || schedule.scheduleDays || 
-          schedule.scheduleDayOfMonth || schedule.startDate || schedule.endDate) {
+      if (schedule.scheduleType || schedule.scheduleTime || schedule.scheduleDays
+          || schedule.scheduleDayOfMonth || schedule.startDate || schedule.endDate) {
         // Получаем текущее расписание
-        const current = await TicketSchedules.getById(id);
+        const current = await TicketSchedules.getById(id)
         if (current) {
-          const merged = { ...current, ...schedule };
-          const nextRunAt = calculateNextRunAt(merged);
-          updates.push(`next_run_at = $${paramIndex}`);
-          values.push(nextRunAt);
-          paramIndex++;
+          const merged = { ...current, ...schedule }
+          const nextRunAt = calculateNextRunAt(merged)
+
+          updates.push(`next_run_at = $${paramIndex}`)
+          values.push(nextRunAt)
+          paramIndex++
         }
       }
 
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       const query = `
         UPDATE ${TicketSchedules.tableName} 
@@ -321,36 +333,41 @@ class TicketSchedules {
           schedule_day_of_month as "scheduleDayOfMonth", start_date as "startDate",
           end_date as "endDate", is_active as "isActive", title_prefix as "titlePrefix", next_run_at as "nextRunAt",
           updated_at as "updatedAt"
-      `;
+      `
 
-      const result = await pool.query(query, values);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   // Обновить время последнего и следующего запуска
   static async updateRunTime(id, lastRunAt, nextRunAt) {
     try {
-      console.log(`⏰ updateRunTime: id=${id}, lastRunAt=${lastRunAt}, nextRunAt=${nextRunAt}`);
-      console.log(`🔧 SQL params: [${id}, ${lastRunAt}, ${nextRunAt}]`);
+      console.log(`⏰ updateRunTime: id=${id}, lastRunAt=${lastRunAt}, nextRunAt=${nextRunAt}`)
+      console.log(`🔧 SQL params: [${id}, ${lastRunAt}, ${nextRunAt}]`)
 
       const result = await pool.query(
         `UPDATE ${TicketSchedules.tableName}
          SET last_run_at = $2, next_run_at = $3, updated_at = CURRENT_TIMESTAMP
          WHERE id = $1
          RETURNING id, last_run_at as "lastRunAt", next_run_at as "nextRunAt"`,
-        [id, lastRunAt, nextRunAt]
-      );
-      console.log(`✅ updateRunTime result: ${JSON.stringify(result.rows[0])}`);
-      console.log(`🔍 Raw result:`, result.rows[0]);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('❌ Error in updateRunTime:', error);
-      console.error('❌ SQL Error details:', error);
-      throw error;
+        [id, lastRunAt, nextRunAt],
+      )
+
+      console.log(`✅ updateRunTime result: ${JSON.stringify(result.rows[0])}`)
+      console.log(`🔍 Raw result:`, result.rows[0])
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('❌ Error in updateRunTime:', error)
+      console.error('❌ SQL Error details:', error)
+      throw error
     }
   }
 
@@ -360,18 +377,20 @@ class TicketSchedules {
       // Сначала отвязываем все тикеты от этого расписания
       await pool.query(
         `UPDATE tickets SET created_by_schedule_id = NULL WHERE created_by_schedule_id = $1`,
-        [id]
-      );
+        [id],
+      )
 
       // Теперь удаляем само расписание
       const result = await pool.query(
         `DELETE FROM ${TicketSchedules.tableName} WHERE id = $1 RETURNING id`,
-        [id]
-      );
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+        [id],
+      )
+
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 
@@ -380,107 +399,109 @@ class TicketSchedules {
     try {
       const result = await pool.query(
         `DELETE FROM ${TicketSchedules.tableName} WHERE ticket_id = $1 RETURNING id`,
-        [ticketId]
-      );
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in deleteByTicketId:', error);
-      throw error;
+        [ticketId],
+      )
+
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in deleteByTicketId:', error)
+      throw error
     }
   }
 }
 
 // Функция для расчёта следующей даты выполнения
 function calculateNextRunAt(schedule) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  const [hours, minutes] = (schedule.scheduleTime || '09:00').split(':').map(Number);
-  
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  const [hours, minutes] = (schedule.scheduleTime || '09:00').split(':').map(Number)
+
   // Дата начала
-  let startDate = schedule.startDate ? new Date(schedule.startDate) : today;
-  if (schedule.startDate && schedule.startDate > today) {
-    startDate = new Date(schedule.startDate);
-  }
-  
+  let startDate = schedule.startDate ? new Date(schedule.startDate) : today
+  if (schedule.startDate && schedule.startDate > today)
+    startDate = new Date(schedule.startDate)
+
   // Дата окончания
-  const endDate = schedule.endDate ? new Date(schedule.endDate) : null;
-  
-  let nextDate = new Date(today);
-  nextDate.setHours(hours, minutes, 0, 0);
-  
+  const endDate = schedule.endDate ? new Date(schedule.endDate) : null
+
+  const nextDate = new Date(today)
+
+  nextDate.setHours(hours, minutes, 0, 0)
+
   // Если время уже прошло сегодня - начинаем с завтра
-  if (nextDate <= now) {
-    nextDate.setDate(nextDate.getDate() + 1);
-  }
-  
-  const scheduleType = schedule.scheduleType || 'daily';
-  const scheduleDays = schedule.scheduleDays || [];
-  const scheduleDayOfMonth = schedule.scheduleDayOfMonth;
-  
+  if (nextDate <= now)
+    nextDate.setDate(nextDate.getDate() + 1)
+
+  const scheduleType = schedule.scheduleType || 'daily'
+  const scheduleDays = schedule.scheduleDays || []
+  const scheduleDayOfMonth = schedule.scheduleDayOfMonth
+
   // Проверяем даты в течение года
-  const maxIterations = 366;
-  let iterations = 0;
-  
+  const maxIterations = 366
+  let iterations = 0
+
   while (iterations < maxIterations) {
     // Проверяем дату окончания
-    if (endDate && nextDate > endDate) {
-      return null;
-    }
-    
+    if (endDate && nextDate > endDate)
+      return null
+
     // Проверяем дату начала
     if (nextDate < startDate) {
-      nextDate.setDate(nextDate.getDate() + 1);
-      iterations++;
-      continue;
+      nextDate.setDate(nextDate.getDate() + 1)
+      iterations++
+      continue
     }
-    
-    let isValidDate = false;
-    
+
+    let isValidDate = false
+
     switch (scheduleType) {
       case 'daily':
-        isValidDate = true;
-        break;
-        
+        isValidDate = true
+      break;
+
       case 'weekly':
         if (scheduleDays && scheduleDays.length > 0) {
-          // JavaScript: 0=Вс, 1=Пн... PostgreSQL: 1=Пн, 7=Вс
-          const dayOfWeek = nextDate.getDay();
+        // JavaScript: 0=Вс, 1=Пн... PostgreSQL: 1=Пн, 7=Вс
+          const dayOfWeek = nextDate.getDay()
+
           // Конвертируем: 0(Вс)->7, 1(Пн)->1, ..., 6(Сб)->6
-          const pgDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
-          isValidDate = scheduleDays.includes(pgDayOfWeek);
-        } else {
-          isValidDate = true;
-        }
+        const pgDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
+
+        isValidDate = scheduleDays.includes(pgDayOfWeek)
+      }
+        else {
+          isValidDate = true
+      }
         break;
-        
+
       case 'monthly':
-        if (scheduleDayOfMonth) {
-          isValidDate = nextDate.getDate() === scheduleDayOfMonth;
-        } else {
-          isValidDate = true;
-        }
-        break;
+        if (scheduleDayOfMonth)
+        isValidDate = nextDate.getDate() === scheduleDayOfMonth
+        else
+        isValidDate = true
+
+      break;
     }
-    
-    if (isValidDate) {
-      return nextDate;
-    }
-    
-    nextDate.setDate(nextDate.getDate() + 1);
-    iterations++;
+
+    if (isValidDate)
+      return nextDate
+
+    nextDate.setDate(nextDate.getDate() + 1)
+    iterations++
   }
-  
-  return null;
+
+  return null
 }
 
-module.exports = TicketSchedules;
-module.exports.calculateNextRunAt = calculateNextRunAt;
+module.exports = TicketSchedules
+module.exports.calculateNextRunAt = calculateNextRunAt
 
 // ========== Логи расписаний ==========
 
 class TicketScheduleLogs {
-  static tableName = 'ticket_schedule_logs';
+  static tableName = 'ticket_schedule_logs'
 
   // Получить логи для расписания
   static async getByScheduleId(scheduleId, limit = 50) {
@@ -500,12 +521,14 @@ class TicketScheduleLogs {
         WHERE schedule_id = $1
         ORDER BY executed_at DESC
         LIMIT $2`,
-        [scheduleId, limit]
-      );
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getByScheduleId logs:', error);
-      throw error;
+        [scheduleId, limit],
+      )
+
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getByScheduleId logs:', error)
+      throw error
     }
   }
 
@@ -519,7 +542,8 @@ class TicketScheduleLogs {
         RETURNING id, schedule_id as "scheduleId", executed_at as "executedAt", 
           created_ticket_id as "createdTicketId", created_ticket_number as "createdTicketNumber",
           status, error_message as "errorMessage", details, created_at as "createdAt"
-      `;
+      `
+
       const values = [
         log.scheduleId || null,
         log.executedAt || new Date(),
@@ -528,14 +552,17 @@ class TicketScheduleLogs {
         log.status || 'success',
         log.errorMessage || null,
         log.details || null,
-      ];
-      const result = await pool.query(query, values);
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create log:', error);
-      throw error;
+      ]
+
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create log:', error)
+      throw error
     }
   }
 }
 
-module.exports.TicketScheduleLogs = TicketScheduleLogs;
+module.exports.TicketScheduleLogs = TicketScheduleLogs

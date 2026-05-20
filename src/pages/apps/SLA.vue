@@ -1,29 +1,28 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для SLA
 interface SLA {
-   id: number
-   name: string
-   description: string
-   type: string // тип SLA
-   responseTime: number // в минутах - время первого ответа
-   resolutionTime: number // в минутах - время обновления
-   solutionTime: number // в минутах - время решения
-   minIncidentTime: number // в минутах - минимальное время между инцидентами
-   responseNotification: number // процент уведомления для первого ответа
-   updateNotification: number // процент уведомления для обновления
-   solutionNotification: number // процент уведомления для решения
-   calendarId?: number
-   calendarName?: string
-   serviceIds?: number[]
-   serviceNames?: string[]
-   isActive: boolean
-   createdAt: string
-   updatedAt: string
+  id: number
+  name: string
+  description: string
+  type: string // тип SLA
+  responseTime: number // в минутах - время первого ответа
+  resolutionTime: number // в минутах - время обновления
+  solutionTime: number // в минутах - время решения
+  minIncidentTime: number // в минутах - минимальное время между инцидентами
+  responseNotification: number // процент уведомления для первого ответа
+  updateNotification: number // процент уведомления для обновления
+  solutionNotification: number // процент уведомления для решения
+  calendarId?: number
+  calendarName?: string
+  serviceIds?: number[]
+  serviceNames?: string[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -46,11 +45,14 @@ const fetchCalendars = async () => {
   console.log('fetchCalendars called')
   try {
     console.log('Fetching calendars from:', `${API_BASE}/calendars`)
+
     const data = await $api(`${API_BASE}/calendars`)
+
     console.log('Fetched calendars:', data)
     calendars.value = data.calendars || []
     console.log('Calendars set to:', calendars.value)
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching calendars:', err)
   }
 }
@@ -58,11 +60,14 @@ const fetchCalendars = async () => {
 const fetchServices = async () => {
   try {
     console.log('Fetching services from:', `${API_BASE}/services`)
+
     const data = await $api(`${API_BASE}/services`)
+
     console.log('Fetched services:', data)
     services.value = data.services || []
     console.log('Services set to:', services.value)
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching services:', err)
   }
 }
@@ -73,14 +78,18 @@ const fetchSLA = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching sla from:', `${API_BASE}/sla`)
-    const data = await $api<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+
+    const data = await $api<{ sla: SLA[]; total: number }>(`${API_BASE}/sla`)
+
     console.log('Fetched sla data:', data)
     sLA.value = data.sla
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки sla'
     console.error('Error fetching sLA:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -90,11 +99,14 @@ const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     const data = await $api<SLA>(`${API_BASE}/sla`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     sLA.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating sla:', err)
     throw err
   }
@@ -105,14 +117,16 @@ const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updat
   try {
     const data = await $api<SLA>(`${API_BASE}/sla/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = sLA.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       sLA.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating sla:', err)
     throw err
   }
@@ -122,13 +136,14 @@ const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updat
 const deleteSLA = async (id: number) => {
   try {
     await $api(`${API_BASE}/sla/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = sLA.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       sLA.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting sla:', err)
     throw err
   }
@@ -143,19 +158,19 @@ onMounted(async () => {
 })
 
 const headers = [
-   { title: 'ID', key: 'id', sortable: true },
-   { title: 'Название', key: 'name', sortable: true },
-   { title: 'Описание', key: 'description', sortable: true },
-   { title: 'Эскалация - время первого ответа (мин)', key: 'responseTime', sortable: true },
-   { title: 'Эскалация - время обновления (мин)', key: 'resolutionTime', sortable: true },
-   { title: 'Эскалация - время решения (мин)', key: 'solutionTime', sortable: true },
-   { title: 'Мин. время между инцидентами (мин)', key: 'minIncidentTime', sortable: true },
-   { title: 'Календарь', key: 'calendarName', sortable: true },
-   { title: 'Сервисы', key: 'serviceNames', sortable: false },
-   { title: 'Создано', key: 'createdAt', sortable: true },
-   { title: 'Изменено', key: 'updatedAt', sortable: true },
-   { title: 'Активен', key: 'isActive', sortable: false },
-   { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Название', key: 'name', sortable: true },
+  { title: 'Описание', key: 'description', sortable: true },
+  { title: 'Эскалация - время первого ответа (мин)', key: 'responseTime', sortable: true },
+  { title: 'Эскалация - время обновления (мин)', key: 'resolutionTime', sortable: true },
+  { title: 'Эскалация - время решения (мин)', key: 'solutionTime', sortable: true },
+  { title: 'Мин. время между инцидентами (мин)', key: 'minIncidentTime', sortable: true },
+  { title: 'Календарь', key: 'calendarName', sortable: true },
+  { title: 'Сервисы', key: 'serviceNames', sortable: false },
+  { title: 'Создано', key: 'createdAt', sortable: true },
+  { title: 'Изменено', key: 'updatedAt', sortable: true },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -172,7 +187,9 @@ const filteredSLA = computed(() => {
 
 // Форматирование сервисов для отображения
 const formatServices = (serviceNames?: string[]) => {
-  if (!serviceNames || serviceNames.length === 0) return '-'
+  if (!serviceNames || serviceNames.length === 0)
+    return '-'
+
   return serviceNames.join(', ')
 }
 
@@ -199,13 +216,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteSLA(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} sla`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -216,13 +234,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateSLA(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} sla`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -250,7 +269,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -261,22 +280,22 @@ watch(selectedItems, (newValue) => {
 const deleteDialog = ref(false)
 
 const editedItem = ref<SLA>({
-   id: -1,
-   name: '',
-   description: '',
-   type: '',
-   responseTime: 15,
-   resolutionTime: 4,
-   solutionTime: 0,
-   minIncidentTime: 10,
-   responseNotification: 20,
-   updateNotification: 80,
-   solutionNotification: 80,
-   calendarId: undefined,
-   serviceIds: [],
-   createdAt: '',
-   updatedAt: '',
-   isActive: true,
+  id: -1,
+  name: '',
+  description: '',
+  type: '',
+  responseTime: 15,
+  resolutionTime: 4,
+  solutionTime: 0,
+  minIncidentTime: 10,
+  responseNotification: 20,
+  updateNotification: 80,
+  solutionNotification: 80,
+  calendarId: undefined,
+  serviceIds: [],
+  createdAt: '',
+  updatedAt: '',
+  isActive: true,
 })
 
 // Опции статуса
@@ -287,26 +306,27 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SLA) => {
-   router.push(`/apps/SLA-${item.id}`)
+  router.push(`/apps/SLA-${item.id}`)
 }
 
 const deleteItem = (item: SLA) => {
-   editedItem.value = { ...item }
-   deleteDialog.value = true
+  editedItem.value = { ...item }
+  deleteDialog.value = true
 }
 
 const closeDelete = () => {
-   deleteDialog.value = false
+  deleteDialog.value = false
 }
 
 const deleteItemConfirm = async () => {
-   try {
-     await deleteSLA(editedItem.value.id)
-     showToast('SLA успешно удален')
-     closeDelete()
-   } catch (err) {
-     showToast('Ошибка удаления sla', 'error')
-   }
+  try {
+    await deleteSLA(editedItem.value.id)
+    showToast('SLA успешно удален')
+    closeDelete()
+  }
+  catch (err) {
+    showToast('Ошибка удаления sla', 'error')
+  }
 }
 
 // Переключение статуса
@@ -315,15 +335,17 @@ const toggleStatus = async (item: SLA, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateSLA(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус sla изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -341,27 +363,41 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового sla
 const addNewSLA = () => {
-   router.push('/apps/SLA-new')
+  router.push('/apps/SLA-new')
 }
 </script>
 
 <template>
   <div>
     <VCard title="SLA">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -433,7 +469,7 @@ const addNewSLA = () => {
           </VBtn>
 
           <VBtn
-            v-if="$can('write','menu_sla')"
+            v-if="$can('write', 'menu_sla')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewSLA"
@@ -442,7 +478,6 @@ const addNewSLA = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -590,9 +625,9 @@ const addNewSLA = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -606,10 +641,16 @@ const addNewSLA = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_sla')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_sla')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_sla')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_sla')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>

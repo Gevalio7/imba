@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getGeneralCatalog,
   getGeneralCatalogById,
   createGeneralCatalog,
   updateGeneralCatalog,
   deleteGeneralCatalog,
-} = require('../controllers/generalCatalogController');
+} = require('../controllers/generalCatalogController')
 
 // GET /generalCatalog - список с query params
-router.get('/', getGeneralCatalog);
+router.get('/', getGeneralCatalog)
 
 // GET /generalCatalog/:id
-router.get('/:id', getGeneralCatalogById);
+router.get('/:id', getGeneralCatalogById)
 
 // POST /generalCatalog
-router.post('/', createGeneralCatalog);
+router.post('/', createGeneralCatalog)
 
 // PUT /generalCatalog/:id
-router.put('/:id', updateGeneralCatalog);
+router.put('/:id', updateGeneralCatalog)
 
 // DELETE /generalCatalog/:id
-router.delete('/:id', deleteGeneralCatalog);
+router.delete('/:id', deleteGeneralCatalog)
 
-module.exports = router;
+module.exports = router

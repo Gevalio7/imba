@@ -1,3 +1,18 @@
+<script setup lang="ts">
+interface Props {
+  title: string
+  description: string
+  loading?: boolean
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'update:title': [value: string]
+  'update:description': [value: string]
+}>()
+</script>
+
 <template>
   <VCard class="mb-6">
     <VCardTitle class="d-flex align-center px-6 py-4">
@@ -40,18 +55,3 @@
     </VCardText>
   </VCard>
 </template>
-
-<script setup lang="ts">
-interface Props {
-  title: string
-  description: string
-  loading?: boolean
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:title': [value: string]
-  'update:description': [value: string]
-}>()
-</script>

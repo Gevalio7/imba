@@ -1,4 +1,4 @@
-const { pool } = require('./config/db');
+const { pool } = require('./config/db')
 
 /**
  * Скрипт для создания тестовых агентов с группами и ролями
@@ -6,40 +6,43 @@ const { pool } = require('./config/db');
  */
 
 async function addAgentsWithGroups() {
-  const client = await pool.connect();
-  
+  const client = await pool.connect()
+
   try {
-    console.log('🔄 Начало создания тестовых данных агентов...');
-    
-    await client.query('BEGIN');
+    console.log('🔄 Начало создания тестовых данных агентов...')
+
+    await client.query('BEGIN')
 
     // 1. Создаем роли если их нет
     const roles = [
       { name: 'Администратор', icon: 'mdi-shield-crown' },
       { name: 'Менеджер', icon: 'mdi-account-tie' },
       { name: 'Специалист', icon: 'mdi-headset' },
-      { name: 'Младший специалист', icon: 'mdi-account' }
-    ];
-    
-    console.log('📋 Создание ролей...');
-    const roleIds = {};
-    
+      { name: 'Младший специалист', icon: 'mdi-account' },
+    ]
+
+    console.log('📋 Создание ролей...')
+
+    const roleIds = {}
+
     for (const role of roles) {
       const existingRole = await client.query(
         'SELECT id FROM roles WHERE name = $1',
-        [role.name]
-      );
-      
+        [role.name],
+      )
+
       if (existingRole.rows.length === 0) {
         const result = await client.query(
           'INSERT INTO roles (name, icon) VALUES ($1, $2) RETURNING id',
-          [role.name, role.icon]
-        );
-        roleIds[role.name] = result.rows[0].id;
-        console.log(`  ✅ Создана роль: ${role.name}`);
-      } else {
-        roleIds[role.name] = existingRole.rows[0].id;
-        console.log(`  ⚠️ Роль уже существует: ${role.name}`);
+          [role.name, role.icon],
+        )
+
+        roleIds[role.name] = result.rows[0].id
+        console.log(`  ✅ Создана роль: ${role.name}`)
+      }
+      else {
+        roleIds[role.name] = existingRole.rows[0].id
+        console.log(`  ⚠️ Роль уже существует: ${role.name}`)
       }
     }
 
@@ -49,28 +52,31 @@ async function addAgentsWithGroups() {
       { name: 'Вторая линия поддержки', role: 'Менеджер', is_active: true },
       { name: 'Технический отдел', role: 'Администратор', is_active: true },
       { name: 'Отдел продаж', role: 'Менеджер', is_active: true },
-      { name: 'Менеджеры проектов', role: 'Менеджер', is_active: true }
-    ];
-    
-    console.log('📋 Создание групп агентов...');
-    const groupIds = {};
-    
+      { name: 'Менеджеры проектов', role: 'Менеджер', is_active: true },
+    ]
+
+    console.log('📋 Создание групп агентов...')
+
+    const groupIds = {}
+
     for (const group of groups) {
       const existingGroup = await client.query(
         'SELECT id FROM agents_groups WHERE name = $1',
-        [group.name]
-      );
-      
+        [group.name],
+      )
+
       if (existingGroup.rows.length === 0) {
         const result = await client.query(
           'INSERT INTO agents_groups (name, role_id, is_active) VALUES ($1, $2, $3) RETURNING id',
-          [group.name, roleIds[group.role], group.is_active]
-        );
-        groupIds[group.name] = result.rows[0].id;
-        console.log(`  ✅ Создана группа: ${group.name} (роль: ${group.role})`);
-      } else {
-        groupIds[group.name] = existingGroup.rows[0].id;
-        console.log(`  ⚠️ Группа уже существует: ${group.name}`);
+          [group.name, roleIds[group.role], group.is_active],
+        )
+
+        groupIds[group.name] = result.rows[0].id
+        console.log(`  ✅ Создана группа: ${group.name} (роль: ${group.role})`)
+      }
+      else {
+        groupIds[group.name] = existingGroup.rows[0].id
+        console.log(`  ⚠️ Группа уже существует: ${group.name}`)
       }
     }
 
@@ -91,29 +97,32 @@ async function addAgentsWithGroups() {
       { first_name: 'Павел', last_name: 'Соловьев', login: 'soloviev', email: 'soloviev@dreamdesc.ru', mobile: '+7 (999) 100-13-13', telegram: '@soloviev', active: true },
       { first_name: 'Юлия', last_name: 'Васильева', login: 'vasilieva', email: 'vasilieva@dreamdesc.ru', mobile: '+7 (999) 100-14-14', telegram: '@vasilieva', active: true },
       { first_name: 'Артем', last_name: 'Зайцев', login: 'zaitsev', email: 'zaitsev@dreamdesc.ru', mobile: '+7 (999) 100-15-15', telegram: '@zaitsev', active: true },
-      { first_name: 'Светлана', last_name: 'Павлова', login: 'pavlova', email: 'pavlova@dreamdesc.ru', mobile: '+7 (999) 100-16-16', telegram: '@pavlova', active: true }
-    ];
-    
-    console.log('📋 Создание агентов...');
-    const agentIds = {};
-    
+      { first_name: 'Светлана', last_name: 'Павлова', login: 'pavlova', email: 'pavlova@dreamdesc.ru', mobile: '+7 (999) 100-16-16', telegram: '@pavlova', active: true },
+    ]
+
+    console.log('📋 Создание агентов...')
+
+    const agentIds = {}
+
     for (const agent of agents) {
       const existingAgent = await client.query(
         'SELECT id FROM agents WHERE login = $1',
-        [agent.login]
-      );
-      
+        [agent.login],
+      )
+
       if (existingAgent.rows.length === 0) {
         const result = await client.query(
           `INSERT INTO agents (first_name, last_name, login, password, email, mobile_phone, telegram_account, is_active)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-          [agent.first_name, agent.last_name, agent.login, 'password123', agent.email, agent.mobile, agent.telegram, agent.active]
-        );
-        agentIds[agent.login] = result.rows[0].id;
-        console.log(`  ✅ Создан агент: ${agent.first_name} ${agent.last_name}`);
-      } else {
-        agentIds[agent.login] = existingAgent.rows[0].id;
-        console.log(`  ⚠️ Агент уже существует: ${agent.first_name} ${agent.last_name}`);
+          [agent.first_name, agent.last_name, agent.login, 'password123', agent.email, agent.mobile, agent.telegram, agent.active],
+        )
+
+        agentIds[agent.login] = result.rows[0].id
+        console.log(`  ✅ Создан агент: ${agent.first_name} ${agent.last_name}`)
+      }
+      else {
+        agentIds[agent.login] = existingAgent.rows[0].id
+        console.log(`  ⚠️ Агент уже существует: ${agent.first_name} ${agent.last_name}`)
       }
     }
 
@@ -135,44 +144,46 @@ async function addAgentsWithGroups() {
       { agent_login: 'vasilieva', group_name: 'Менеджеры проектов' },
       { agent_login: 'zaitsev', group_name: 'Технический отдел' },
       { agent_login: 'pavlova', group_name: 'Первая линия поддержки' },
+
       // Дополнительные связи
       { agent_login: 'ivanov', group_name: 'Отдел продаж' },
       { agent_login: 'petrova', group_name: 'Технический отдел' },
-      { agent_login: 'sidorov', group_name: 'Менеджеры проектов' }
-    ];
-    
-    console.log('📋 Связывание агентов с группами...');
-    
+      { agent_login: 'sidorov', group_name: 'Менеджеры проектов' },
+    ]
+
+    console.log('📋 Связывание агентов с группами...')
+
     for (const relation of agentGroupRelations) {
-      const agentId = agentIds[relation.agent_login];
-      const groupId = groupIds[relation.group_name];
-      
+      const agentId = agentIds[relation.agent_login]
+      const groupId = groupIds[relation.group_name]
+
       if (agentId && groupId) {
         await client.query(
           `INSERT INTO agents_groups_agents (agent_id, agents_group_id) 
            VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [agentId, groupId]
-        );
-        console.log(`  ✅ ${relation.agent_login} → ${relation.group_name}`);
+          [agentId, groupId],
+        )
+        console.log(`  ✅ ${relation.agent_login} → ${relation.group_name}`)
       }
     }
 
-    await client.query('COMMIT');
-    
-    console.log('\n✅ Все тестовые данные агентов созданы успешно!');
-    console.log('   - Ролей: ' + Object.keys(roleIds).length);
-    console.log('   - Групп: ' + Object.keys(groupIds).length);
-    console.log('   - Агентов: ' + Object.keys(agentIds).length);
-    console.log('   - Связей агент-группа: ' + agentGroupRelations.length);
-    
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('❌ Ошибка:', err.message);
-    throw err;
-  } finally {
-    client.release();
-    await pool.end();
+    await client.query('COMMIT')
+
+    console.log('\n✅ Все тестовые данные агентов созданы успешно!')
+    console.log(`   - Ролей: ${Object.keys(roleIds).length}`)
+    console.log(`   - Групп: ${Object.keys(groupIds).length}`)
+    console.log(`   - Агентов: ${Object.keys(agentIds).length}`)
+    console.log(`   - Связей агент-группа: ${agentGroupRelations.length}`)
+  }
+  catch (err) {
+    await client.query('ROLLBACK')
+    console.error('❌ Ошибка:', err.message)
+    throw err
+  }
+  finally {
+    client.release()
+    await pool.end()
   }
 }
 
-addAgentsWithGroups();
+addAgentsWithGroups()

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Компания
 interface Customers {
@@ -23,6 +23,7 @@ const itemsPerPage = ref(10)
 const paginationLength = computed(() => {
   const total = filteredCustomers.value.length
   const perPage = itemsPerPage.value
+
   return Math.ceil(total / perPage) || 1
 })
 
@@ -44,23 +45,23 @@ watch(itemsPerPage, () => {
 // ========== КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ ==========
 const filteredCustomers = computed(() => {
   let filtered = customers.value
-  
+
   // Фильтр по статусу
-  if (statusFilter.value !== null) {
+  if (statusFilter.value !== null)
     filtered = filtered.filter(c => c.isActive === (statusFilter.value === 1))
-  }
-  
+
   // Поиск по названию, городу, улице
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim()
-    filtered = filtered.filter(c => 
-      c.name?.toLowerCase().includes(query) ||
-      c.city?.toLowerCase().includes(query) ||
-      c.street?.toLowerCase().includes(query) ||
-      c.comment?.toLowerCase().includes(query)
+
+    filtered = filtered.filter(c =>
+      c.name?.toLowerCase().includes(query)
+      || c.city?.toLowerCase().includes(query)
+      || c.street?.toLowerCase().includes(query)
+      || c.comment?.toLowerCase().includes(query),
     )
   }
-  
+
   return filtered
 })
 
@@ -78,13 +79,17 @@ const fetchCustomers = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $api<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+
+    const data = await $api<{ customers: Customers[]; total: number }>(`${API_BASE}/customers`)
+
     customers.value = data.customers
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки компании'
     console.error('Error fetching customers:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -94,11 +99,14 @@ const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updat
   try {
     const data = await $api<Customers>(`${API_BASE}/customers`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     customers.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating customers:', err)
     throw err
   }
@@ -109,14 +117,16 @@ const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'created
   try {
     const data = await $api<Customers>(`${API_BASE}/customers/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = customers.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       customers.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating customers:', err)
     throw err
   }
@@ -126,13 +136,14 @@ const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'created
 const deleteCustomers = async (id: number) => {
   try {
     await $api(`${API_BASE}/customers/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = customers.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       customers.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting customers:', err)
     throw err
   }
@@ -154,7 +165,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Сброс фильтров компаний
@@ -174,13 +185,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteCustomers(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} компаний`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -191,21 +203,22 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateCustomers(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} компаний`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
 
 const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive) {
+  if (isActive)
     return { color: 'primary', text: 'Активен' }
-  }
+
   return { color: 'error', text: 'Не активен' }
 }
 
@@ -274,6 +287,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -282,19 +296,21 @@ const save = async () => {
       // Обновление существующего
       await updateCustomers(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
       showToast('Компания успешно сохранена')
-    } else {
+    }
+    else {
       // Добавление нового
       await createCustomers({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
       showToast('Компания успешно добавлена')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения компании', 'error')
   }
 }
@@ -304,7 +320,8 @@ const deleteItemConfirm = async () => {
     await deleteCustomers(editedItem.value.id)
     showToast('Компания успешно удалена')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления компании', 'error')
   }
 }
@@ -314,10 +331,11 @@ const toggleStatus = async (item: Customers, newValue: boolean) => {
   try {
     await updateCustomers(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус компании изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -344,20 +362,34 @@ const addNewCustomers = () => {
 <template>
   <div>
     <VCard title="Компании">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -431,17 +463,16 @@ const addNewCustomers = () => {
             Экспорт
           </VBtn>
 
-            <VBtn
-              v-if="$can('write','menu_companies_list')"
-              color="primary"
-              prepend-icon="bx-plus"
-              @click="addNewCustomers"
-            >
-              Добавить компанию
-            </VBtn>
+          <VBtn
+            v-if="$can('write', 'menu_companies_list')"
+            color="primary"
+            prepend-icon="bx-plus"
+            @click="addNewCustomers"
+          >
+            Добавить компанию
+          </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -565,9 +596,7 @@ const addNewCustomers = () => {
       <VDataTable
         v-model="selectedItems"
         :items-per-page="itemsPerPage"
-        @update:items-per-page="(val) => itemsPerPage = val"
         :page="currentPage"
-        @update:page="(val) => currentPage = val"
         :headers="headers"
         :items="filteredCustomers"
         :items-length="filteredCustomers.length"
@@ -576,15 +605,17 @@ const addNewCustomers = () => {
         item-value="id"
         return-object
         no-data-text="Нет данных"
+        @update:items-per-page="(val) => itemsPerPage = val"
+        @update:page="(val) => currentPage = val"
       >
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val ?? false)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val ?? false)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -598,10 +629,16 @@ const addNewCustomers = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_companies_list')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_companies_list')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_companies_list')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_companies_list')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -626,7 +663,6 @@ const addNewCustomers = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать компанию' : 'Добавить компанию'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -639,10 +675,7 @@ const addNewCustomers = () => {
             </VCol>
 
             <!-- Улица -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.street"
                 label="Улица"
@@ -650,10 +683,7 @@ const addNewCustomers = () => {
             </VCol>
 
             <!-- Индекс -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.zip"
                 label="Индекс"
@@ -661,10 +691,7 @@ const addNewCustomers = () => {
             </VCol>
 
             <!-- Город -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextField
                 v-model="editedItem.city"
                 label="Город"
@@ -672,10 +699,7 @@ const addNewCustomers = () => {
             </VCol>
 
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"

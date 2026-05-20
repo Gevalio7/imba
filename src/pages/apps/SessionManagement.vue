@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 
 // Типы данных для Управление сессией
 interface SessionManagement {
@@ -16,7 +16,6 @@ interface SessionManagement {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -33,14 +32,18 @@ const fetchSessionManagement = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching sessionManagement from:', `${API_BASE}/sessionManagement`)
-    const data = await $api<{ sessionManagement: SessionManagement[], total: number }>(`${API_BASE}/sessionManagement`)
+
+    const data = await $api<{ sessionManagement: SessionManagement[]; total: number }>(`${API_BASE}/sessionManagement`)
+
     console.log('Fetched sessionManagement data:', data)
     sessionManagement.value = data.sessionManagement
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки управление сессиями'
     console.error('Error fetching sessionManagement:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -50,11 +53,14 @@ const createSessionManagement = async (item: Omit<SessionManagement, 'id' | 'cre
   try {
     const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     sessionManagement.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating sessionManagement:', err)
     throw err
   }
@@ -65,14 +71,16 @@ const updateSessionManagement = async (id: number, item: Omit<SessionManagement,
   try {
     const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = sessionManagement.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       sessionManagement.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating sessionManagement:', err)
     throw err
   }
@@ -82,13 +90,14 @@ const updateSessionManagement = async (id: number, item: Omit<SessionManagement,
 const deleteSessionManagement = async (id: number) => {
   try {
     await $api(`${API_BASE}/sessionManagement/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = sessionManagement.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       sessionManagement.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting sessionManagement:', err)
     throw err
   }
@@ -96,21 +105,22 @@ const deleteSessionManagement = async (id: number) => {
 
 // Завершение сессии
 const router = useRouter()
+
 const terminateSession = async (id: number) => {
   try {
     const data = await $api<SessionManagement>(`${API_BASE}/sessionManagement/${id}/terminate`, {
-      method: 'PUT'
+      method: 'PUT',
     })
 
     const index = sessionManagement.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       sessionManagement.value[index] = data
-    }
 
     showToast('Сессия завершена')
 
     // Если завершена своя сессия, выйти из системы
     const userData = JSON.parse(sessionStorage.getItem('userData') || '{}')
+
     console.log('Terminated session username:', data.username)
     console.log('Current user login:', userData.login)
 
@@ -126,14 +136,16 @@ const terminateSession = async (id: number) => {
         sessionStorage.removeItem('accessToken')
         sessionStorage.removeItem('userData')
         sessionStorage.removeItem('userAbilityRules')
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Error clearing sessionStorage during terminateSession:', e)
       }
 
       try {
         // Очистим localStorage
         localStorage.removeItem('userAbilityRules')
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Error clearing localStorage during terminateSession:', e)
       }
 
@@ -142,9 +154,11 @@ const terminateSession = async (id: number) => {
         try {
           const cookieUserData = useCookie('userData')
           const cookieAccessToken = useCookie('accessToken')
+
           cookieUserData.value = null
           cookieAccessToken.value = null
-        } catch (cookieErr) {
+        }
+        catch (cookieErr) {
           console.warn('useCookie not available during terminateSession:', cookieErr)
         }
 
@@ -154,39 +168,48 @@ const terminateSession = async (id: number) => {
           const namesToRemove = ['userData', 'accessToken', 'userAbilityRules']
           const allCookies = document.cookie ? document.cookie.split(';').map(c => c.split('=')[0].trim()) : []
           const uniqueNames = Array.from(new Set([...namesToRemove, ...allCookies]))
+
           uniqueNames.forEach(name => {
             try {
               document.cookie = `${name}=; ${path} expires=${expire}`
+
               const hostname = location.hostname
+
               document.cookie = `${name}=; Domain=${hostname}; ${path} expires=${expire}`
               document.cookie = `${name}=; Domain=.${hostname}; ${path} expires=${expire}`
-            } catch (cErr) {
+            }
+            catch (cErr) {
               // ignore
             }
           })
         }
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Error clearing cookies during terminateSession:', e)
       }
 
       try {
         const ability = useAbility()
+
         ability.update([])
-      } catch (e) {
+      }
+      catch (e) {
         console.warn('Error resetting ability during terminateSession:', e)
       }
 
       // Принудительный редирект, чтобы guards не успели переопределить маршрут на основе оставшихся cookie
       try {
         window.location.replace('/login')
-      } catch (e) {
+      }
+      catch (e) {
         window.location.href = '/login'
       }
-
-    } else {
+    }
+    else {
       showToast('Это не ваша сессия — остаёмся залогиненными', 'info')
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error terminating session:', err)
     showToast('Ошибка завершения сессии', 'error')
   }
@@ -196,11 +219,12 @@ const terminateSession = async (id: number) => {
 const terminateAllSessions = async () => {
   try {
     await $api(`${API_BASE}/sessionManagement/terminate-all`, {
-      method: 'POST'
+      method: 'POST',
     })
     showToast('Сессии завершены')
     fetchSessionManagement()
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error terminating all sessions:', err)
     showToast('Ошибка завершения всех сессий', 'error')
   }
@@ -222,7 +246,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -234,9 +258,8 @@ const filteredSessionManagement = computed(() => {
     filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
   }
 
-  if (typeFilter.value !== null) {
+  if (typeFilter.value !== null)
     filtered = filtered.filter(p => p.type === typeFilter.value)
-  }
 
   return filtered
 })
@@ -248,13 +271,12 @@ const clearFilters = () => {
 
 // Массовые действия
 
-
-
 const confirmBulkTerminateAll = async () => {
   try {
     await terminateAllSessions()
     isBulkTerminateAllDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка завершения сессий', 'error')
   }
 }
@@ -280,14 +302,6 @@ const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkTerminateAllDialogOpen = ref(false)
 
-
-
-
-
-
-
-
-
 // Уведомления
 const isToastVisible = ref(false)
 const toastMessage = ref('')
@@ -298,27 +312,39 @@ const showToast = (message: string, color: string = 'success') => {
   toastColor.value = color
   isToastVisible.value = true
 }
-
-
 </script>
 
 <template>
   <div>
     <VCard title="Управление сессиями">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -379,11 +405,8 @@ const showToast = (message: string, color: string = 'success') => {
           >
             Экспорт
           </VBtn>
-
-
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -447,10 +470,6 @@ const showToast = (message: string, color: string = 'success') => {
         </VCard>
       </VDialog>
 
-
-
-
-
       <!-- Диалог завершения всех сессий -->
       <VDialog
         v-model="isBulkTerminateAllDialogOpen"
@@ -504,8 +523,15 @@ const showToast = (message: string, color: string = 'success') => {
         <!-- Активен -->
         <template #item.isActive="{ item }">
           <div class="d-flex align-center gap-2">
-            <VIcon v-if="!item.isActive" icon="bx-door-closed" color="error" />
-            <span v-if="!item.isActive" class="text-error">Завершено</span>
+            <VIcon
+              v-if="!item.isActive"
+              icon="bx-door-closed"
+              color="error"
+            />
+            <span
+              v-if="!item.isActive"
+              class="text-error"
+            >Завершено</span>
             <VChip
               v-else
               v-bind="resolveStatusVariant(item.isActive)"
@@ -519,7 +545,11 @@ const showToast = (message: string, color: string = 'success') => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="item.isActive" @click="terminateSession(item.id)" color="warning">
+            <IconBtn
+              v-if="item.isActive"
+              color="warning"
+              @click="terminateSession(item.id)"
+            >
               <VIcon icon="bx-door-open" />
             </IconBtn>
           </div>
@@ -535,8 +565,6 @@ const showToast = (message: string, color: string = 'success') => {
         />
       </div>
     </VCard>
-
-
   </div>
 
   <!-- Уведомления -->

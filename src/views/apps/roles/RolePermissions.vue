@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
-import { computed, onMounted, ref, watch } from 'vue';
 
 // Пропсы
 interface Props {
@@ -40,49 +40,57 @@ const categories = [
 
 // Загрузка разрешений
 const fetchPermissions = async () => {
-  if (!props.roleId) return
-  
+  if (!props.roleId)
+    return
+
   try {
     loading.value = true
     error.value = null
-    
+
     const data = await $api<{ permissions: Permission[] }>(
-      `/roles/${props.roleId}/permissions`
+      `/roles/${props.roleId}/permissions`,
     )
+
     permissions.value = data.permissions
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки разрешений'
     console.error('Error fetching permissions:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
 // Сохранение разрешений
 const savePermissions = async () => {
-  if (!props.roleId) return
-  
+  if (!props.roleId)
+    return
+
   try {
     saving.value = true
     error.value = null
-    
+
     // Преобразуем в объект
     const permissionsObj: Record<string, boolean> = {}
+
     permissions.value.forEach(p => {
       permissionsObj[p.code] = p.is_granted
     })
-    
+
     await $api(`/roles/${props.roleId}/permissions`, {
       method: 'PUT',
-      body: { permissions: permissionsObj }
+      body: { permissions: permissionsObj },
     })
-    
+
     emit('saved')
     emit('update:permissions', permissionsObj)
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка сохранения разрешений'
     console.error('Error saving permissions:', err)
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -90,9 +98,8 @@ const savePermissions = async () => {
 // Переключение разрешения
 const togglePermission = (code: string) => {
   const perm = permissions.value.find(p => p.code === code)
-  if (perm) {
+  if (perm)
     perm.is_granted = !perm.is_granted
-  }
 }
 
 // Получить разрешения по категории
@@ -103,36 +110,46 @@ const getPermissionsByCategory = (category: string) => {
 // Сгруппированные разрешения
 const groupedPermissions = computed(() => {
   const groups: Record<string, Permission[]> = {}
+
   categories.forEach(cat => {
     groups[cat.key] = permissions.value.filter(p => p.category === cat.key)
   })
+
   return groups
 })
 
 // Загрузка при изменении roleId
-watch(() => props.roleId, (newId) => {
-  if (newId) {
+watch(() => props.roleId, newId => {
+  if (newId)
     fetchPermissions()
-  }
 }, { immediate: true })
 
 // Инициализация
 onMounted(() => {
-  if (props.roleId) {
+  if (props.roleId)
     fetchPermissions()
-  }
 })
 </script>
 
 <template>
   <div>
     <!-- Индикатор загрузки -->
-    <div v-if="loading" class="d-flex justify-center pa-6">
-      <VProgressCircular indeterminate color="primary" />
+    <div
+      v-if="loading"
+      class="d-flex justify-center pa-6"
+    >
+      <VProgressCircular
+        indeterminate
+        color="primary"
+      />
     </div>
 
     <!-- Сообщение об ошибке -->
-    <VAlert v-else-if="error" type="error" class="ma-4">
+    <VAlert
+      v-else-if="error"
+      type="error"
+      class="ma-4"
+    >
       {{ error }}
     </VAlert>
 
@@ -152,7 +169,10 @@ onMounted(() => {
             </VCardTitle>
             <VDivider />
             <VCardText>
-              <div v-if="groupedPermissions[category.key]?.length === 0" class="text-medium-emphasis">
+              <div
+                v-if="groupedPermissions[category.key]?.length === 0"
+                class="text-medium-emphasis"
+              >
                 Нет доступных разрешений
               </div>
               <div
@@ -163,10 +183,10 @@ onMounted(() => {
                 <span>{{ perm.name }}</span>
                 <VSwitch
                   :model-value="perm.is_granted"
-                  @update:model-value="togglePermission(perm.code)"
                   color="primary"
                   hide-details
                   density="compact"
+                  @update:model-value="togglePermission(perm.code)"
                 />
               </div>
             </VCardText>

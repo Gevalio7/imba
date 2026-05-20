@@ -1,27 +1,29 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
+const express = require('express')
+
+const router = express.Router()
+const { protect } = require('../middleware/auth')
+
 const {
   getAutoResponses,
   getAutoResponseById,
   createAutoResponses,
   updateAutoResponses,
   deleteAutoResponses,
-} = require('../controllers/autoResponsesController');
+} = require('../controllers/autoResponsesController')
 
 // GET /autoResponses - список с query params
-router.get('/', getAutoResponses);
+router.get('/', getAutoResponses)
 
 // GET /autoResponses/:id
-router.get('/:id', getAutoResponseById);
+router.get('/:id', getAutoResponseById)
 
 // POST /autoResponses
-router.post('/', protect, createAutoResponses);
+router.post('/', protect, createAutoResponses)
 
 // PUT /autoResponses/:id
-router.put('/:id', protect, updateAutoResponses);
+router.put('/:id', protect, updateAutoResponses)
 
 // DELETE /autoResponses/:id
-router.delete('/:id', protect, deleteAutoResponses);
+router.delete('/:id', protect, deleteAutoResponses)
 
-module.exports = router;
+module.exports = router

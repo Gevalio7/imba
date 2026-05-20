@@ -1,47 +1,3 @@
-<template>
-  <AppSelect
-    :model-value="modelValue"
-    :items="statusOptions"
-    item-title="title"
-    item-value="value"
-    label="Статус"
-    :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
-
-    :persistent-hint="availableStatuses.length > 0"
-    clearable
-    @update:model-value="$emit('update:modelValue', $event)"
-  >
-    <template #selection="{ item }">
-      <VChip
-        v-if="item.raw.color"
-        :color="item.raw.color"
-        density="compact"
-        label
-        size="small"
-      >
-        {{ item.title }}
-      </VChip>
-      <span v-else>{{ item.title }}</span>
-    </template>
-    <template #item="{ props, item }">
-      <VListItem v-bind="props">
-        <template #prepend>
-          <VChip
-            v-if="item.raw.color"
-            :color="item.raw.color"
-            density="compact"
-            label
-            size="small"
-            class="mr-2"
-          >
-            &nbsp;
-          </VChip>
-        </template>
-      </VListItem>
-    </template>
-  </AppSelect>
-</template>
-
 <script setup lang="ts">
 interface Props {
   modelValue?: number
@@ -90,3 +46,47 @@ const statusOptions = computed(() => {
   }))
 })
 </script>
+
+<template>
+  <AppSelect
+    :model-value="modelValue"
+    :items="statusOptions"
+    item-title="title"
+    item-value="value"
+    label="Статус"
+    :placeholder="availableStatuses.length > 0 ? 'Выберите статус из доступных' : 'Выберите статус'"
+
+    :persistent-hint="availableStatuses.length > 0"
+    clearable
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
+    <template #selection="{ item }">
+      <VChip
+        v-if="item.raw.color"
+        :color="item.raw.color"
+        density="compact"
+        label
+        size="small"
+      >
+        {{ item.title }}
+      </VChip>
+      <span v-else>{{ item.title }}</span>
+    </template>
+    <template #item="{ props, item }">
+      <VListItem v-bind="props">
+        <template #prepend>
+          <VChip
+            v-if="item.raw.color"
+            :color="item.raw.color"
+            density="compact"
+            label
+            size="small"
+            class="mr-2"
+          >
+            &nbsp;
+          </VChip>
+        </template>
+      </VListItem>
+    </template>
+  </AppSelect>
+</template>

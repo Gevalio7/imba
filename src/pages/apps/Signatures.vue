@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Подпись
 interface Signatures {
@@ -12,7 +12,6 @@ interface Signatures {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -36,14 +35,18 @@ const fetchSignatures = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching signatures from:', `${API_BASE}/signatures`)
-    const data = await $api<{ signatures: Signatures[], total: number }>(`${API_BASE}/signatures`)
+
+    const data = await $api<{ signatures: Signatures[]; total: number }>(`${API_BASE}/signatures`)
+
     console.log('Fetched signatures data:', data)
     signatures.value = data.signatures
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки подписи'
     console.error('Error fetching signatures:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -53,11 +56,14 @@ const createSignatures = async (item: Omit<Signatures, 'id' | 'createdAt' | 'upd
   try {
     const data = await $api<Signatures>(`${API_BASE}/signatures`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     signatures.value.unshift(data) // Добавляем в начало массива
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating signatures:', err)
     throw err
   }
@@ -68,14 +74,16 @@ const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'creat
   try {
     const data = await $api<Signatures>(`${API_BASE}/signatures/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = signatures.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       signatures.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating signatures:', err)
     throw err
   }
@@ -85,13 +93,14 @@ const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'creat
 const deleteSignatures = async (id: number) => {
   try {
     await $api(`${API_BASE}/signatures/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = signatures.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       signatures.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting signatures:', err)
     throw err
   }
@@ -110,7 +119,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Функция для удаления HTML-тегов
@@ -125,6 +134,7 @@ const filteredSignatures = computed(() => {
   if (searchQuery.value.trim()) {
     // Фильтруем по поисковому запросу (по названию)
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
@@ -151,6 +161,7 @@ const clearFilters = () => {
 // Уникальные названия для фильтра
 const uniqueNames = computed(() => {
   const names = signatures.value.map(p => p.name)
+
   return [...new Set(names)].sort()
 })
 
@@ -177,13 +188,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteSignatures(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} подписи`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -194,13 +206,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateSignatures(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} подписи`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -229,7 +242,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -237,10 +250,9 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Ограничение количества выбранных названий
-watch(selectedNames, (value) => {
-  if (value.length > 10) {
+watch(selectedNames, value => {
+  if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
-  }
 })
 
 // Диалоги
@@ -294,6 +306,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -302,19 +315,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateSignatures(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Подпись успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createSignatures({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Подпись успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения подпись', 'error')
   }
 }
@@ -324,7 +341,8 @@ const deleteItemConfirm = async () => {
     await deleteSignatures(editedItem.value.id)
     showToast('Подпись успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления подпись', 'error')
   }
 }
@@ -335,15 +353,17 @@ const toggleStatus = async (item: Signatures, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateSignatures(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус подпись изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -370,20 +390,34 @@ const addNewSignatures = () => {
 <template>
   <div>
     <VCard title="Подписи">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -465,7 +499,6 @@ const addNewSignatures = () => {
         </div>
       </div>
 
-
       <!-- Диалог фильтров -->
       <VDialog
         v-model="isFilterDialogOpen"
@@ -496,7 +529,10 @@ const addNewSignatures = () => {
                   </template>
                 </AppCombobox>
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -624,9 +660,9 @@ const addNewSignatures = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -640,10 +676,16 @@ const addNewSignatures = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_signatures')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_signatures')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_signatures')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_signatures')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -668,7 +710,6 @@ const addNewSignatures = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать подпись' : 'Добавить подпись'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol cols="12">
               <AppTextField

@@ -1,28 +1,30 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { checkPermission } = require('../middleware/permissions');
+const express = require('express')
+
+const router = express.Router()
+const { protect } = require('../middleware/auth')
+const { checkPermission } = require('../middleware/permissions')
+
 const {
   getSla,
   getSlaById,
   createSla,
   updateSla,
   deleteSla,
-} = require('../controllers/slaController');
+} = require('../controllers/slaController')
 
 // GET /sla - список с query params
-router.get('/', getSla);
+router.get('/', getSla)
 
 // GET /sla/:id
-router.get('/:id', getSlaById);
+router.get('/:id', getSlaById)
 
 // POST /sla
-router.post('/', protect, checkPermission('menu_sla_write'), createSla);
+router.post('/', protect, checkPermission('menu_sla_write'), createSla)
 
 // PUT /sla/:id
-router.put('/:id', protect, checkPermission('menu_sla_write'), updateSla);
+router.put('/:id', protect, checkPermission('menu_sla_write'), updateSla)
 
 // DELETE /sla/:id
-router.delete('/:id', protect, checkPermission('menu_sla_delete'), deleteSla);
+router.delete('/:id', protect, checkPermission('menu_sla_delete'), deleteSla)
 
-module.exports = router;
+module.exports = router

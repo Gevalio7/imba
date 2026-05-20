@@ -1,3 +1,34 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useShareMenu } from '@/composables/useShareMenu'
+import { createObjectUrl, isImageFile, isImageType } from '@/utils/fileUtils'
+import type { TicketAttachment } from '@/types/ticket'
+
+interface Props {
+  ticketNumber: string
+  existingAttachments: TicketAttachment[]
+  newAttachments: File[]
+}
+
+const props = defineProps<Props>()
+
+defineEmits<{
+  preview: [attachment: TicketAttachment]
+  download: [attachment: TicketAttachment]
+  delete: [attachmentId: number]
+  'download-all': []
+  'remove-new': [index: number]
+  'file-select': [event: Event]
+}>()
+
+const showShareMenu = ref(false)
+
+const { shareToTelegram, shareToMail, shareToEmail } = useShareMenu(
+  () => props.ticketNumber,
+  () => props.existingAttachments,
+)
+</script>
+
 <template>
   <VCard class="mb-6">
     <VCardTitle class="d-flex align-center px-6 py-4">
@@ -7,9 +38,14 @@
     </VCardTitle>
     <VCardText>
       <!-- Существующие вложения -->
-      <div v-if="existingAttachments.length > 0" class="mb-4">
+      <div
+        v-if="existingAttachments.length > 0"
+        class="mb-4"
+      >
         <div class="d-flex justify-space-between align-center mb-2">
-          <p class="text-body-2 mb-0">Прикрепленные файлы:</p>
+          <p class="text-body-2 mb-0">
+            Прикрепленные файлы:
+          </p>
           <div class="d-flex gap-2">
             <VMenu
               v-model="showShareMenu"
@@ -28,7 +64,10 @@
                   <VIcon icon="bx-share" />
                 </VBtn>
               </template>
-              <VList density="compact" nav>
+              <VList
+                density="compact"
+                nav
+              >
                 <VListItem
                   prepend-icon="bxl-telegram"
                   title="Telegram"
@@ -54,7 +93,10 @@
               color="primary"
               @click="$emit('download-all')"
             >
-              <VIcon icon="bx-download" class="me-1" />
+              <VIcon
+                icon="bx-download"
+                class="me-1"
+              />
               Скачать все
             </VBtn>
           </div>
@@ -78,7 +120,10 @@
             >
               <template #placeholder>
                 <div class="d-flex align-center justify-center fill-height bg-surface-variant">
-                  <VProgressCircular indeterminate size="20" />
+                  <VProgressCircular
+                    indeterminate
+                    size="20"
+                  />
                 </div>
               </template>
             </VImg>
@@ -91,7 +136,11 @@
               width="80"
               @click="$emit('preview', attachment)"
             >
-              <VIcon icon="bx-file" size="32" color="grey" />
+              <VIcon
+                icon="bx-file"
+                size="32"
+                color="grey"
+              />
             </VCard>
 
             <!-- Кнопка скачивания -->
@@ -102,7 +151,10 @@
               class="attachment-download-btn"
               @click.stop="$emit('download', attachment)"
             >
-              <VIcon icon="bx-download" size="14" />
+              <VIcon
+                icon="bx-download"
+                size="14"
+              />
             </VBtn>
 
             <!-- Кнопка удаления -->
@@ -113,11 +165,17 @@
               class="attachment-delete-btn"
               @click.stop="$emit('delete', attachment.id)"
             >
-              <VIcon icon="bx-x" size="14" />
+              <VIcon
+                icon="bx-x"
+                size="14"
+              />
             </VBtn>
 
             <!-- Название файла -->
-            <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+            <div
+              class="text-caption text-truncate text-center mt-1"
+              style="max-width: 80px;"
+            >
               {{ attachment.filename }}
             </div>
           </div>
@@ -125,8 +183,13 @@
       </div>
 
       <!-- Новые файлы для загрузки -->
-      <div v-if="newAttachments.length > 0" class="mb-4">
-        <p class="text-body-2 mb-2">Новые файлы:</p>
+      <div
+        v-if="newAttachments.length > 0"
+        class="mb-4"
+      >
+        <p class="text-body-2 mb-2">
+          Новые файлы:
+        </p>
         <div class="attachments-grid d-flex flex-wrap gap-2">
           <div
             v-for="(file, index) in newAttachments"
@@ -145,7 +208,10 @@
             >
               <template #placeholder>
                 <div class="d-flex align-center justify-center fill-height bg-surface-variant">
-                  <VProgressCircular indeterminate size="20" />
+                  <VProgressCircular
+                    indeterminate
+                    size="20"
+                  />
                 </div>
               </template>
             </VImg>
@@ -157,7 +223,11 @@
               height="80"
               width="80"
             >
-              <VIcon icon="bx-file" size="32" color="grey" />
+              <VIcon
+                icon="bx-file"
+                size="32"
+                color="grey"
+              />
             </VCard>
 
             <!-- Кнопка удаления -->
@@ -168,11 +238,17 @@
               class="attachment-delete-btn"
               @click="$emit('remove-new', index)"
             >
-              <VIcon icon="bx-x" size="14" />
+              <VIcon
+                icon="bx-x"
+                size="14"
+              />
             </VBtn>
 
             <!-- Название файла -->
-            <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+            <div
+              class="text-caption text-truncate text-center mt-1"
+              style="max-width: 80px;"
+            >
               {{ file.name }}
             </div>
           </div>
@@ -209,37 +285,6 @@
     </VCardText>
   </VCard>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-import { useShareMenu } from '@/composables/useShareMenu'
-import { isImageFile, isImageType, createObjectUrl } from '@/utils/fileUtils'
-import type { TicketAttachment } from '@/types/ticket'
-
-interface Props {
-  ticketNumber: string
-  existingAttachments: TicketAttachment[]
-  newAttachments: File[]
-}
-
-const props = defineProps<Props>()
-
-const showShareMenu = ref(false)
-
-const { shareToTelegram, shareToMail, shareToEmail } = useShareMenu(
-  () => props.ticketNumber,
-  () => props.existingAttachments
-)
-
-defineEmits<{
-  preview: [attachment: TicketAttachment]
-  download: [attachment: TicketAttachment]
-  delete: [attachmentId: number]
-  'download-all': []
-  'remove-new': [index: number]
-  'file-select': [event: Event]
-}>()
-</script>
 
 <style lang="scss" scoped>
 .drop-zone {

@@ -1,3 +1,45 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import CommentItem from './CommentItem.vue'
+import CommentForm from './CommentForm.vue'
+import HistoryTimeline from './HistoryTimeline.vue'
+import type { Article, TicketComment } from '@/types/ticket'
+
+interface Props {
+  comments: TicketComment[]
+  newComment: string
+  isInternalComment: boolean
+  savingComment: boolean
+  editingCommentId: number | null
+  editingCommentContent: string
+  historyChanges: any[]
+  loadingHistory: boolean
+  approvalHistory: any[]
+  loadingApproval: boolean
+  statusHistory: any[]
+  loadingStatusHistory: boolean
+  showQuickAnswers: boolean
+  quickAnswersLoading: boolean
+  quickAnswers: Article[]
+}
+
+const props = defineProps<Props>()
+
+defineEmits<{
+  'update:newComment': [value: string]
+  'update:isInternalComment': [value: boolean]
+  'add-comment': []
+  'start-edit-comment': [comment: TicketComment]
+  'save-edit-comment': [commentId: number, content: string]
+  'cancel-edit-comment': []
+  'delete-comment': [commentId: number]
+  'open-quick-answers': []
+  'insert-quick-answer': [article: Article]
+}>()
+
+const activeTab = ref('comments')
+</script>
+
 <template>
   <VCard class="mb-6">
     <VTabs v-model="activeTab">
@@ -118,48 +160,6 @@
     </VCardText>
   </VCard>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-import type { TicketComment, Article } from '@/types/ticket'
-import CommentItem from './CommentItem.vue'
-import CommentForm from './CommentForm.vue'
-import HistoryTimeline from './HistoryTimeline.vue'
-
-interface Props {
-  comments: TicketComment[]
-  newComment: string
-  isInternalComment: boolean
-  savingComment: boolean
-  editingCommentId: number | null
-  editingCommentContent: string
-  historyChanges: any[]
-  loadingHistory: boolean
-  approvalHistory: any[]
-  loadingApproval: boolean
-  statusHistory: any[]
-  loadingStatusHistory: boolean
-  showQuickAnswers: boolean
-  quickAnswersLoading: boolean
-  quickAnswers: Article[]
-}
-
-const props = defineProps<Props>()
-
-const activeTab = ref('comments')
-
-defineEmits<{
-  'update:newComment': [value: string]
-  'update:isInternalComment': [value: boolean]
-  'add-comment': []
-  'start-edit-comment': [comment: TicketComment]
-  'save-edit-comment': [commentId: number, content: string]
-  'cancel-edit-comment': []
-  'delete-comment': [commentId: number]
-  'open-quick-answers': []
-  'insert-quick-answer': [article: Article]
-}>()
-</script>
 
 <style lang="scss" scoped>
 .comments-list {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-const { isAuthenticated, userData, userAbilities } = useUser()
-
 defineOptions({
   name: 'AuthProvider',
 })
+
+const { isAuthenticated, userData, userAbilities } = useUser()
 </script>
 
 <template>

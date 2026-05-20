@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getTranslation,
   getTranslationById,
   createTranslation,
   updateTranslation,
   deleteTranslation,
-} = require('../controllers/translationController');
+} = require('../controllers/translationController')
 
 // GET /translation - список с query params
-router.get('/', getTranslation);
+router.get('/', getTranslation)
 
 // GET /translation/:id
-router.get('/:id', getTranslationById);
+router.get('/:id', getTranslationById)
 
 // POST /translation
-router.post('/', createTranslation);
+router.post('/', createTranslation)
 
 // PUT /translation/:id
-router.put('/:id', updateTranslation);
+router.put('/:id', updateTranslation)
 
 // DELETE /translation/:id
-router.delete('/:id', deleteTranslation);
+router.delete('/:id', deleteTranslation)
 
-module.exports = router;
+module.exports = router

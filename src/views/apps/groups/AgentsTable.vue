@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 
 // Типы данных для Агент
 interface Agents {
@@ -17,7 +17,7 @@ interface Agents {
   createdAt: string
   updatedAt: string
   avatar?: string | null
-  groups?: Array<{id: number, roleId?: number}>
+  groups?: Array<{ id: number; roleId?: number }>
 }
 
 // Тип для роли
@@ -51,8 +51,6 @@ interface Agent {
   avatar?: string | null
 }
 
-
-
 // Props - для получения данных из родителя
 interface Props {
   initialAgents?: Agents[]
@@ -63,8 +61,13 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   initialAgents: () => [],
   initialGroups: () => [],
-  initialRoles: () => []
+  initialRoles: () => [],
 })
+
+// Эмиты
+const emit = defineEmits<{
+  (e: 'agent-updated'): void
+}>()
 
 // Роутер для навигации
 const router = useRouter()
@@ -91,54 +94,60 @@ const availableGroups = ref<{ id: number; name: string; isActive: boolean; roleI
 const fetchRoles = async () => {
   try {
     console.log('[AgentsTable.vue] GET /api/roles - fetching roles')
-    const data = await $api<{ roles: { id: number; name: string; icon?: string }[], total: number }>('/roles')
+
+    const data = await $api<{ roles: { id: number; name: string; icon?: string }[]; total: number }>('/roles')
+
     rolesMap.value.clear()
     data.roles.forEach(role => {
       rolesMap.value.set(role.id, { name: role.name, icon: role.icon })
     })
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching roles:', err)
   }
 }
+
 const selectedGroupIds = ref<number[]>([])
 
 // Загрузка данных из API
 const fetchAgents = async (silent = false) => {
   try {
-    if (!silent) {
+    if (!silent)
       loading.value = true
-    } else {
+    else
       tableLoading.value = true
-    }
+
     error.value = null
-    
+
     // Формируем параметры запроса с пагинацией И фильтрами
     const query: Record<string, any> = {
       page: currentPage.value,
       itemsPerPage: itemsPerPage.value,
       q: searchQuery.value || undefined,
     }
-    
+
     // Передаём фильтр статуса на сервер
-    if (statusFilter.value !== null) {
+    if (statusFilter.value !== null)
       query.isActive = statusFilter.value === 1
-    }
-    
+
     console.log('[AgentsTable.vue] GET /api/agents - fetching agents')
-    const data = await $api<{ agents: Agents[], total: number }>('/agents', {
+
+    const data = await $api<{ agents: Agents[]; total: number }>('/agents', {
       query,
     })
+
     agents.value = data.agents
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки агентов'
     console.error('Error fetching agents:', err)
-  } finally {
-    if (!silent) {
+  }
+  finally {
+    if (!silent)
       loading.value = false
-    } else {
+    else
       tableLoading.value = false
-    }
   }
 }
 
@@ -146,7 +155,9 @@ const fetchAgents = async (silent = false) => {
 const fetchGroupsStatus = async () => {
   try {
     console.log('[AgentsTable.vue] GET /api/agentsGroups - fetching groups')
+
     const response = await $api(`/agentsGroups`)
+
     console.log('📋 Groups API response:', response)
     console.log('📊 Type:', typeof response)
     console.log('🔍 Has agentsGroups:', !!response.agentsGroups)
@@ -154,37 +165,38 @@ const fetchGroupsStatus = async () => {
     // Извлекаем массив в зависимости от структуры ответа
     let groupsData = []
 
-    if (Array.isArray(response)) {
+    if (Array.isArray(response))
       groupsData = response
-    } else if (response.agentsGroups) {
+    else if (response.agentsGroups)
       groupsData = response.agentsGroups
-    } else if (response.data) {
+    else if (response.data)
       groupsData = response.data
-    }
 
     console.log('✅ Groups data:', groupsData)
 
     groupsStatusMap.value.clear()
     availableGroups.value = []
-    
+
     groupsData.forEach((group: any) => {
-      console.log('[DEBUG] AgentsTable - group data:', { id: group.id, name: group.name, roleId: group.roleId, roles: group.roles, isActive: group.isActive });
+      console.log('[DEBUG] AgentsTable - group data:', { id: group.id, name: group.name, roleId: group.roleId, roles: group.roles, isActive: group.isActive })
       groupsStatusMap.value.set(group.id, {
         name: group.name,
         isActive: group.isActive,
         roleId: group.roleId,
-        roles: group.roles || []
+        roles: group.roles || [],
       })
+
       // Добавляем в список доступных групп
       availableGroups.value.push({
         id: group.id,
         name: group.name,
         isActive: group.isActive,
         roleId: group.roleId,
-        roles: group.roles || []
+        roles: group.roles || [],
       })
     })
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching groups status:', err)
   }
 }
@@ -194,11 +206,14 @@ const createAgents = async (item: Omit<Agents, 'id' | 'createdAt' | 'updatedAt'>
   try {
     const data = await $api<Agents>('/agents', {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     agents.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating agents:', err)
     throw err
   }
@@ -209,7 +224,7 @@ const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'cr
   try {
     const data = await $api<Agents>(`/agents/${id}`, {
       method: 'PUT',
-      body: updates
+      body: updates,
     })
 
     const index = agents.value.findIndex(p => p.id === id)
@@ -218,14 +233,16 @@ const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'cr
       const existingAgent = agents.value[index]
 
       agents.value[index] = {
-        ...existingAgent,  // сохраняем старые данные (включая groups!)
-        ...data,           // перезаписываем обновленными данными
+        ...existingAgent, // сохраняем старые данные (включая groups!)
+        ...data, // перезаписываем обновленными данными
         // Явно гарантируем сохранение groups
-        groups: data.groups ?? existingAgent.groups
+        groups: data.groups ?? existingAgent.groups,
       }
     }
+
     return agents.value[index]
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating agent:', err)
     throw err
   }
@@ -235,9 +252,12 @@ const updateAgents = async (id: number, updates: Partial<Omit<Agents, 'id' | 'cr
 const deleteAgents = async (id: number) => {
   try {
     await $api(`/agents/${id}`, { method: 'DELETE' })
+
     const index = agents.value.findIndex(p => p.id === id)
-    if (index !== -1) agents.value.splice(index, 1)
-  } catch (err) {
+    if (index !== -1)
+      agents.value.splice(index, 1)
+  }
+  catch (err) {
     console.error('Error deleting agents:', err)
   }
 }
@@ -250,36 +270,37 @@ onMounted(async () => {
       rolesMap.value.set(role.id, { name: role.name })
     })
   }
-  
+
   if (props.initialGroups.length > 0) {
     props.initialGroups.forEach((group: any) => {
       groupsStatusMap.value.set(group.id, {
         name: group.name,
         isActive: group.isActive,
         roleId: group.roleId,
-        roles: group.roles || []
+        roles: group.roles || [],
       })
       availableGroups.value.push({
         id: group.id,
         name: group.name,
         isActive: group.isActive,
         roleId: group.roleId,
-        roles: group.roles || []
+        roles: group.roles || [],
       })
     })
   }
-  
+
   // Загружаем данные - если есть initialAgents используем их, иначе запрашиваем
   if (props.initialAgents.length > 0) {
     agents.value = props.initialAgents
     total.value = props.initialAgents.length
     loading.value = false
-  } else {
+  }
+  else {
     // Загружаем данные с сервера
     await Promise.all([
       fetchAgents(),
       props.initialGroups.length === 0 ? fetchGroupsStatus() : Promise.resolve(),
-      props.initialRoles.length === 0 ? fetchRoles() : Promise.resolve()
+      props.initialRoles.length === 0 ? fetchRoles() : Promise.resolve(),
     ])
   }
 })
@@ -296,7 +317,7 @@ const headers = [
   { title: 'Роль', key: 'role', sortable: true },
   { title: 'Группы', key: 'groups', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Пагинация
@@ -338,12 +359,13 @@ const bulkChangeStatus = () => {
 
 const confirmBulkDelete = async () => {
   try {
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteAgents(item.id)
-    }
+
     selectedItems.value = []
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error bulk delete:', err)
   }
 }
@@ -351,32 +373,35 @@ const confirmBulkDelete = async () => {
 const confirmBulkAddToGroup = async () => {
   if (!bulkAddToGroupId.value) {
     showToast('Выберите группу', 'error')
+
     return
   }
 
   try {
     bulkAddToGroupLoading.value = true
-    
+
     // Добавляем каждого выбранного агента в группу
     for (const agent of selectedItems.value) {
       await $api(`/agentsGroups/${bulkAddToGroupId.value}/agents`, {
         method: 'POST',
-        body: { agentId: agent.id }
+        body: { agentId: agent.id },
       })
     }
-    
+
     showToast(`Агенты (${selectedItems.value.length}) добавлены в группу`)
     selectedItems.value = []
     isBulkAddToGroupDialogOpen.value = false
     bulkAddToGroupId.value = null
     emit('agent-updated')
-    
+
     // Обновить данные
     await fetchAgents(true)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error bulk add to group:', err)
     showToast('Ошибка добавления агентов в группу', 'error')
-  } finally {
+  }
+  finally {
     bulkAddToGroupLoading.value = false
   }
 }
@@ -398,23 +423,25 @@ const confirmBulkStatusChange = async () => {
     // Отправляем на сервер
     await Promise.all(
       selectedItems.value.map(item =>
-        updateAgents(item.id, { isActive: bulkStatusValue.value === 1 })
-      )
+        updateAgents(item.id, { isActive: bulkStatusValue.value === 1 }),
+      ),
     )
 
     selectedItems.value = []
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error bulk status change:', err)
+
     // Откатываем при ошибке
     const previousStates = new Map<number, boolean>()
     for (const item of selectedItems.value) {
       const agentIndex = agents.value.findIndex(a => a.id === item.id)
-      if (agentIndex !== -1) {
+      if (agentIndex !== -1)
         agents.value[agentIndex].isActive = previousStates.get(item.id) ?? item.isActive
-      }
     }
-  } finally {
+  }
+  finally {
     bulkStatusLoading.value = false
   }
 }
@@ -429,34 +456,39 @@ const resolveStatusVariant = (isActive: boolean) => {
 // Получить статус группы по id
 const getGroupStatus = (groupId: number) => {
   const group = groupsStatusMap.value.get(groupId)
+
   return { isActive: group?.isActive ?? true }
 }
 
 // Определить цвет для группы
 const getGroupColor = (groupId: number) => {
   const { isActive } = getGroupStatus(groupId)
+
   return isActive ? 'primary' : 'grey'
 }
 
 // Определить вариант для группы
 const getGroupVariant = (groupId: number) => {
   const { isActive } = getGroupStatus(groupId)
+
   return isActive ? 'flat' : 'outlined'
 }
 
 // Определить иконку для группы
 const getGroupIcon = (groupId: number) => {
   const { isActive } = getGroupStatus(groupId)
+
   return isActive ? undefined : 'bx-pause-circle'
 }
 
 // Получить все уникальные роли агента из его групп
-const getAgentRoles = (agentGroups: Array<{id: number, roleId?: number}> | undefined): Role[] => {
-  if (!agentGroups || agentGroups.length === 0) return []
-  
+const getAgentRoles = (agentGroups: Array<{ id: number; roleId?: number }> | undefined): Role[] => {
+  if (!agentGroups || agentGroups.length === 0)
+    return []
+
   const roleIds = new Set<number>()
   const roles: Role[] = []
-  
+
   agentGroups.forEach(group => {
     // Сначала проверяем роли из groupsStatusMap (новый формат с несколькими ролями)
     const groupData = groupsStatusMap.value.get(group.id)
@@ -467,7 +499,8 @@ const getAgentRoles = (agentGroups: Array<{id: number, roleId?: number}> | undef
           roles.push(role)
         }
       })
-    } else if (group.roleId && !roleIds.has(group.roleId)) {
+    }
+    else if (group.roleId && !roleIds.has(group.roleId)) {
       // Обратная совместимость: одна роль через roleId
       const roleData = rolesMap.value.get(group.roleId)
       if (roleData) {
@@ -476,20 +509,22 @@ const getAgentRoles = (agentGroups: Array<{id: number, roleId?: number}> | undef
       }
     }
   })
-  
+
   return roles
 }
 
 // Получить роли группы для отображения в чипе
 const getGroupRolesForDisplay = (groupId: number): Role[] => {
   const groupData = groupsStatusMap.value.get(groupId)
-  if (groupData?.roles && groupData.roles.length > 0) {
+  if (groupData?.roles && groupData.roles.length > 0)
     return groupData.roles
-  }
+
   if (groupData?.roleId) {
     const roleData = rolesMap.value.get(groupData.roleId)
+
     return roleData ? [{ id: groupData.roleId, name: roleData.name }] : []
   }
+
   return []
 }
 
@@ -534,7 +569,7 @@ const statusOptions = [
 ]
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('Selected items:', newValue)
 }, { deep: true })
 
@@ -549,10 +584,10 @@ watch(itemsPerPage, () => {
 
 // Отслеживание изменений поискового запроса с debounce
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
-watch(searchQuery, (newValue) => {
-  if (searchTimeout) {
+watch(searchQuery, newValue => {
+  if (searchTimeout)
     clearTimeout(searchTimeout)
-  }
+
   searchTimeout = setTimeout(() => {
     currentPage.value = 1 // Сброс на первую страницу при поиске
     fetchAgents(true)
@@ -572,12 +607,14 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   const previousValue = item.isActive
   const agentIndex = agents.value.findIndex(a => a.id === item.id)
 
-  if (agentIndex === -1) return
+  if (agentIndex === -1)
+    return
 
   try {
     // Добавляем в загрузку
@@ -591,12 +628,15 @@ const toggleStatus = async (item: Agents, newValue: boolean | null) => {
 
     // Показываем уведомление об успехе
     showToast(`Статус агента "${item.firstName} ${item.lastName}" изменен на "${newValue ? 'Активен' : 'Не активен'}"`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error toggling status:', err)
+
     // Откатываем при ошибке
     agents.value[agentIndex].isActive = previousValue
     showToast('Ошибка изменения статуса агента', 'error')
-  } finally {
+  }
+  finally {
     // Убираем из загрузки
     statusLoading.value = statusLoading.value.filter(id => id !== item.id)
   }
@@ -615,7 +655,8 @@ const deleteItemConfirm = async () => {
     deleteDialog.value = false
     editedIndex.value = -1
     editedItem.value = { ...defaultItem.value }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting:', err)
   }
 }
@@ -633,7 +674,8 @@ const updateSelectedGroups = () => {
     selectedGroupIds.value = editedItem.value.groups
       .map(g => g.id)
       .filter((id): id is number => typeof id === 'number')
-  } else {
+  }
+  else {
     selectedGroupIds.value = []
   }
   console.log('🔄 Selected groups updated:', selectedGroupIds.value)
@@ -663,25 +705,27 @@ const openAddToGroupDialog = (agent: Agents) => {
 const addAgentToGroup = async () => {
   if (!selectedAgentForGroup.value || !selectedGroupForAgent.value) {
     showToast('Выберите группу', 'error')
+
     return
   }
 
   try {
     await $api(`/agentsGroups/${selectedGroupForAgent.value}/agents`, {
       method: 'POST',
-      body: { agentId: selectedAgentForGroup.value.id }
+      body: { agentId: selectedAgentForGroup.value.id },
     })
-    
+
     // Обновить данные агента
     await fetchAgents(true)
-    
+
     showToast(`Агент добавлен в группу`)
     addToGroupDialog.value = false
     selectedAgentForGroup.value = null
     selectedGroupForAgent.value = null
     emit('agent-updated')
     selectedGroupForAgent.value = null
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error adding agent to group:', err)
     showToast('Ошибка добавления агента в группу', 'error')
   }
@@ -694,9 +738,8 @@ const close = () => {
 }
 
 const save = async () => {
-  if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim()) {
+  if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim())
     return
-  }
 
   try {
     if (editedIndex.value > -1) {
@@ -709,23 +752,25 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
 
       // Сохраняем группы агента
       await $api(`/agents/${editedItem.value.id}/groups`, {
         method: 'PUT',
-        body: { groupIds: selectedGroupIds.value }
+        body: { groupIds: selectedGroupIds.value },
       })
 
       // Обновляем локальные данные агента
       const agent = agents.value.find(a => a.id === editedItem.value.id)
       if (agent) {
         Object.assign(agent, editedItem.value)
+
         // Обновляем отображаемые группы в новом формате {id, roleId}
         agent.groups = selectedGroupIds.value
           .map(id => {
             const group = availableGroups.value.find(g => g.id === id)
+
             return group ? { id: group.id, roleId: group.roleId ?? undefined } : null
           })
           .filter((g): g is { id: number; roleId: number | undefined } => g !== null)
@@ -733,7 +778,8 @@ const save = async () => {
 
       // Генерируем событие для обновления списка групп (счётчики агентов)
       emit('agent-updated')
-    } else {
+    }
+    else {
       // Создаем нового агента
       const newAgent = await createAgents({
         firstName: editedItem.value.firstName,
@@ -743,14 +789,14 @@ const save = async () => {
         email: editedItem.value.email,
         mobilePhone: editedItem.value.mobilePhone,
         telegramAccount: editedItem.value.telegramAccount,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
 
       // Сохраняем группы для нового агента
       if (selectedGroupIds.value.length > 0) {
         await $api(`/agents/${newAgent.id}/groups`, {
           method: 'PUT',
-          body: { groupIds: selectedGroupIds.value }
+          body: { groupIds: selectedGroupIds.value },
         })
       }
 
@@ -761,39 +807,49 @@ const save = async () => {
       emit('agent-updated')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error saving:', err)
   }
 }
 
-// Эмиты
-const emit = defineEmits<{
-  (e: 'agent-updated'): void
-}>()
-
 // Экспортируем методы для родительского компонента
 defineExpose({
-  refresh: fetchAgents
+  refresh: fetchAgents,
 })
-
 </script>
 
 <template>
   <div>
     <VCard title="Агенты">
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -1030,8 +1086,8 @@ defineExpose({
 
       <!-- Таблица -->
       <VDataTable
-        class="agents-table"
         v-model="selectedItems"
+        class="agents-table"
         :items-per-page="itemsPerPage"
         :page="currentPage"
         :headers="headers"
@@ -1077,7 +1133,10 @@ defineExpose({
               </VChip>
             </div>
           </template>
-          <span v-else class="text-disabled">—</span>
+          <span
+            v-else
+            class="text-disabled"
+          >—</span>
         </template>
 
         <!-- Группы -->
@@ -1115,7 +1174,10 @@ defineExpose({
                 </VTooltip>
               </VChip>
             </template>
-            <span v-else class="text-disabled">—</span>
+            <span
+              v-else
+              class="text-disabled"
+            >—</span>
           </div>
         </template>
 
@@ -1125,9 +1187,9 @@ defineExpose({
             <VSwitch
               :model-value="item.isActive"
               :disabled="statusLoading.includes(item.id)"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VProgressCircular
               v-if="statusLoading.includes(item.id)"
@@ -1181,7 +1243,10 @@ defineExpose({
         <VCardText>
           <VRow>
             <!-- Имя -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.firstName"
                 label="Имя *"
@@ -1189,7 +1254,10 @@ defineExpose({
             </VCol>
 
             <!-- Фамилия -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.lastName"
                 label="Фамилия *"
@@ -1197,7 +1265,10 @@ defineExpose({
             </VCol>
 
             <!-- Логин -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.login"
                 label="Логин"
@@ -1205,7 +1276,10 @@ defineExpose({
             </VCol>
 
             <!-- Пароль -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.password"
                 label="Пароль"
@@ -1214,7 +1288,10 @@ defineExpose({
             </VCol>
 
             <!-- Email -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.email"
                 label="Email"
@@ -1222,7 +1299,10 @@ defineExpose({
             </VCol>
 
             <!-- Мобильный телефон -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.mobilePhone"
                 label="Мобильный телефон"
@@ -1230,7 +1310,10 @@ defineExpose({
             </VCol>
 
             <!-- Телеграмм акк -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedItem.telegramAccount"
                 label="Телеграмм акк"
@@ -1238,7 +1321,10 @@ defineExpose({
             </VCol>
 
             <!-- Активен -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSwitch
                 v-model="editedItem.isActive"
                 label="Активен"
@@ -1303,7 +1389,10 @@ defineExpose({
                         class="me-2"
                       />
                     </template>
-                    <template v-if="!item.raw.isActive" #subtitle>
+                    <template
+                      v-if="!item.raw.isActive"
+                      #subtitle
+                    >
                       <span class="text-caption text-grey">Неактивная группа</span>
                     </template>
                   </VListItem>
@@ -1377,7 +1466,10 @@ defineExpose({
     >
       <VCard title="Добавить агента в группу">
         <VCardText>
-          <p v-if="selectedAgentForGroup" class="mb-4">
+          <p
+            v-if="selectedAgentForGroup"
+            class="mb-4"
+          >
             Агент: <strong>{{ selectedAgentForGroup.firstName }} {{ selectedAgentForGroup.lastName }}</strong>
           </p>
           <AppSelect

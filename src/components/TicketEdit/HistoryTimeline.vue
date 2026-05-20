@@ -1,3 +1,63 @@
+<script setup lang="ts">
+import { formatDateTime } from '@/utils/slaFormatter'
+
+interface Props {
+  items: any[]
+  loading: boolean
+  type: 'changes' | 'approval' | 'status'
+  emptyMessage: string
+}
+
+defineProps<Props>()
+
+// Функция форматирования интервала времени
+const formatTimeInStatus = (interval: string | Record<string, number> | null) => {
+  if (!interval)
+    return '-'
+
+  let days = 0
+  let hours = 0
+  let minutes = 0
+  let seconds = 0
+
+  // PostgreSQL pg driver возвращает interval как объект
+  if (typeof interval === 'object') {
+    days = interval.days || 0
+    hours = interval.hours || 0
+    minutes = interval.minutes || 0
+    seconds = interval.seconds || 0
+  }
+  else if (typeof interval === 'string') {
+    // Парсим PostgreSQL interval формат строки
+    const match = interval.match(/(?:(\d+)\s*days?\s*)?(?:(\d+):(\d+):(\d+))?/)
+    if (match) {
+      days = Number.parseInt(match[1] || '0')
+      hours = Number.parseInt(match[2] || '0')
+      minutes = Number.parseInt(match[3] || '0')
+      seconds = Number.parseInt(match[4] || '0')
+    }
+    else {
+      return interval
+    }
+  }
+  else {
+    return '-'
+  }
+
+  const parts: string[] = []
+  if (days > 0)
+    parts.push(`${days} дн.`)
+  if (hours > 0)
+    parts.push(`${hours} ч.`)
+  if (minutes > 0)
+    parts.push(`${minutes} мин.`)
+  if (seconds > 0 && parts.length === 0)
+    parts.push(`${seconds} сек.`)
+
+  return parts.length > 0 ? parts.join(' ') : 'менее 1 мин.'
+}
+</script>
+
 <template>
   <div>
     <div
@@ -25,7 +85,10 @@
         class="history-item pa-3 mb-2 rounded border"
       >
         <!-- Для изменений -->
-        <div v-if="type === 'changes'" class="d-flex justify-space-between align-start">
+        <div
+          v-if="type === 'changes'"
+          class="d-flex justify-space-between align-start"
+        >
           <div>
             <div class="text-body-1 font-weight-medium">
               {{ item.fieldDisplayName }}
@@ -56,7 +119,10 @@
         </div>
 
         <!-- Для согласования -->
-        <div v-else-if="type === 'approval'" class="d-flex justify-space-between align-start">
+        <div
+          v-else-if="type === 'approval'"
+          class="d-flex justify-space-between align-start"
+        >
           <div>
             <div class="text-body-1 font-weight-medium">
               {{ item.action || 'Согласование' }}
@@ -80,7 +146,10 @@
         </div>
 
         <!-- Для статусов -->
-        <div v-else-if="type === 'status'" class="d-flex justify-space-between align-start">
+        <div
+          v-else-if="type === 'status'"
+          class="d-flex justify-space-between align-start"
+        >
           <div class="flex-grow-1">
             <div class="d-flex align-center gap-2 mb-1">
               <!-- Из статуса -->
@@ -92,7 +161,10 @@
               >
                 {{ item.fromStatusName }}
               </VChip>
-              <span v-else class="text-caption text-medium-emphasis">Новый</span>
+              <span
+                v-else
+                class="text-caption text-medium-emphasis"
+              >Новый</span>
 
               <!-- Стрелка -->
               <VIcon
@@ -120,7 +192,11 @@
               v-if="item.actionLabel"
               class="text-body-2 mt-1"
             >
-              <VIcon icon="bx-label" size="14" class="me-1" />
+              <VIcon
+                icon="bx-label"
+                size="14"
+                class="me-1"
+              />
               {{ item.actionLabel }}
             </div>
           </div>
@@ -139,61 +215,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { formatDateTime } from '@/utils/slaFormatter'
-
-interface Props {
-  items: any[]
-  loading: boolean
-  type: 'changes' | 'approval' | 'status'
-  emptyMessage: string
-}
-
-defineProps<Props>()
-
-// Функция форматирования интервала времени
-const formatTimeInStatus = (interval: string | Record<string, number> | null) => {
-  if (!interval) return '-'
-
-  let days = 0
-  let hours = 0
-  let minutes = 0
-  let seconds = 0
-
-  // PostgreSQL pg driver возвращает interval как объект
-  if (typeof interval === 'object') {
-    days = interval.days || 0
-    hours = interval.hours || 0
-    minutes = interval.minutes || 0
-    seconds = interval.seconds || 0
-  }
-  else if (typeof interval === 'string') {
-    // Парсим PostgreSQL interval формат строки
-    const match = interval.match(/(?:(\d+)\s*days?\s*)?(?:(\d+):(\d+):(\d+))?/)
-    if (match) {
-      days = parseInt(match[1] || '0')
-      hours = parseInt(match[2] || '0')
-      minutes = parseInt(match[3] || '0')
-      seconds = parseInt(match[4] || '0')
-    }
-    else {
-      return interval
-    }
-  }
-  else {
-    return '-'
-  }
-
-  const parts: string[] = []
-  if (days > 0) parts.push(`${days} дн.`)
-  if (hours > 0) parts.push(`${hours} ч.`)
-  if (minutes > 0) parts.push(`${minutes} мин.`)
-  if (seconds > 0 && parts.length === 0) parts.push(`${seconds} сек.`)
-
-   return parts.length > 0 ? parts.join(' ') : 'менее 1 мин.'
-}
-</script>
 
 <style lang="scss" scoped>
 .history-list {

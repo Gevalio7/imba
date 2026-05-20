@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для резервного копирования
 interface Backup {
@@ -59,7 +59,7 @@ const scheduleSettings = ref<ScheduleSettings>({
     enabled: false,
     schedule: '0 3 * * *',
     retentionDays: 7,
-  }
+  },
 })
 
 const scheduleDialog = ref(false)
@@ -75,22 +75,26 @@ const fetchBackups = async () => {
   try {
     loading.value = true
     error.value = null
+
     const response = await $api<{ data: Backup[]; pagination: Pagination }>(
       `/backup`,
       {
         query: {
           page: currentPage.value,
           limit: itemsPerPage.value,
-          type: filterType.value
-        }
-      }
+          type: filterType.value,
+        },
+      },
     )
+
     backups.value = response.data
     total.value = response.pagination.total
-  } catch (err: any) {
+  }
+  catch (err: any) {
     error.value = 'Ошибка загрузки списка бэкапов'
     console.error('Error fetching backups:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -99,8 +103,10 @@ const fetchBackups = async () => {
 const fetchScheduleSettings = async () => {
   try {
     const data = await $api<ScheduleSettings>(`/backup/settings`)
+
     scheduleSettings.value = data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching schedule settings:', err)
   }
 }
@@ -110,16 +116,20 @@ const createDatabaseBackup = async () => {
   try {
     creatingBackup.value = true
     backupTypeCreating.value = 'database'
+
     const result = await $api<{ success: boolean; backup: Backup }>(`/backup/database`, {
-      method: 'POST'
+      method: 'POST',
     })
+
     backups.value.unshift(result.backup)
     total.value++
     showToast('Бэкап базы данных успешно создан')
     await fetchBackups()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast(err.message || 'Ошибка при создании бэкапа базы данных', 'error')
-  } finally {
+  }
+  finally {
     creatingBackup.value = false
     backupTypeCreating.value = null
   }
@@ -130,16 +140,20 @@ const createFilesystemBackup = async () => {
   try {
     creatingBackup.value = true
     backupTypeCreating.value = 'filesystem'
+
     const result = await $api<{ success: boolean; backup: Backup }>(`/backup/filesystem`, {
-      method: 'POST'
+      method: 'POST',
     })
+
     backups.value.unshift(result.backup)
     total.value++
     showToast('Бэкап файловой системы успешно создан')
     await fetchBackups()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast(err.message || 'Ошибка при создании бэкапа файловой системы', 'error')
-  } finally {
+  }
+  finally {
     creatingBackup.value = false
     backupTypeCreating.value = null
   }
@@ -147,17 +161,17 @@ const createFilesystemBackup = async () => {
 
 // Удаление бэкапа
 const deleteBackup = async (backup: Backup) => {
-  if (!confirm(`Вы уверены, что хотите удалить бэкап ${backup.filename}?`)) {
+  if (!confirm(`Вы уверены, что хотите удалить бэкап ${backup.filename}?`))
     return
-  }
 
   try {
     await $api(`/backup/${backup.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     showToast('Бэкап успешно удален')
     await fetchBackups()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast(err.message || 'Ошибка при удалении бэкапа', 'error')
   }
 }
@@ -172,14 +186,15 @@ const confirmBulkDelete = async () => {
     const count = selectedItems.value.length
     for (const itemId of selectedItems.value) {
       await $api(`/backup/${itemId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
     }
     selectedItems.value = []
     showToast(`Удалено ${count} бэкапов`)
     isBulkDeleteDialogOpen.value = false
     await fetchBackups()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -191,13 +206,15 @@ const downloadBackup = async (backup: Backup) => {
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
+
     a.href = url
     a.download = backup.filename
     document.body.appendChild(a)
     a.click()
     window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast(err.message || 'Ошибка при скачивании бэкапа', 'error')
   }
 }
@@ -208,13 +225,15 @@ const saveSchedule = async () => {
     savingSchedule.value = true
     await $api(`/backup/settings`, {
       method: 'POST',
-      body: scheduleSettings.value
+      body: scheduleSettings.value,
     })
     showToast('Настройки расписания сохранены')
     scheduleDialog.value = false
-  } catch (err: any) {
+  }
+  catch (err: any) {
     showToast(err.message || 'Ошибка при сохранении настроек', 'error')
-  } finally {
+  }
+  finally {
     savingSchedule.value = false
   }
 }
@@ -222,12 +241,13 @@ const saveSchedule = async () => {
 // Форматирование даты
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
+
   return date.toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -250,20 +270,21 @@ watch(filterType, () => {
   fetchBackups()
 })
 
-//watch(itemsPerPage, () => {
+// watch(itemsPerPage, () => {
 //  currentPage.value = 1
 //  fetchBackups()
-//})
+// })
 
 // Функция для получения понятного текста расписания
 const getScheduleText = (cron: string) => {
   const option = scheduleOptions.find(o => o.value === cron)
+
   return option ? option.title : cron
 }
 
-//watch(currentPage, () => {
+// watch(currentPage, () => {
 //  fetchBackups()
-//})
+// })
 
 watch(itemsPerPage, () => {
   currentPage.value = 1
@@ -293,7 +314,7 @@ const headers = [
   { title: 'Имя файла', key: 'filename', sortable: true },
   { title: 'Размер', key: 'size', sortable: true },
   { title: 'Дата создания', key: 'createdAt', sortable: true },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация на клиенте
@@ -302,6 +323,7 @@ const filteredBackups = computed(() => {
 
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(b => b.filename.toLowerCase().includes(query))
   }
 
@@ -313,15 +335,17 @@ const stats = computed(() => ({
   total: total.value,
   database: backups.value.filter(b => b.type === 'database').length,
   filesystem: backups.value.filter(b => b.type === 'filesystem').length,
-  totalSize: backups.value.reduce((sum, b) => sum + b.size, 0)
+  totalSize: backups.value.reduce((sum, b) => sum + b.size, 0),
 }))
 
 const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B'
+  if (bytes === 0)
+    return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 }
 
 // Toast уведомления
@@ -346,57 +370,113 @@ onMounted(() => {
   <div>
     <VRow class="match-height">
       <!-- Статистика -->
-      <VCol cols="12" md="3">
+      <VCol
+        cols="12"
+        md="3"
+      >
         <VCard class="pa-4">
           <div class="d-flex align-center justify-space-between">
             <div>
-              <p class="text-body-2 mb-1">Всего бэкапов</p>
-              <h3 class="text-h4 font-weight-bold">{{ stats.total }}</h3>
+              <p class="text-body-2 mb-1">
+                Всего бэкапов
+              </p>
+              <h3 class="text-h4 font-weight-bold">
+                {{ stats.total }}
+              </h3>
             </div>
-            <VAvatar color="primary" variant="tonal" size="48">
-              <VIcon icon="bx-archive" size="24" />
+            <VAvatar
+              color="primary"
+              variant="tonal"
+              size="48"
+            >
+              <VIcon
+                icon="bx-archive"
+                size="24"
+              />
             </VAvatar>
           </div>
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="3">
+      <VCol
+        cols="12"
+        md="3"
+      >
         <VCard class="pa-4">
           <div class="d-flex align-center justify-space-between">
             <div>
-              <p class="text-body-2 mb-1">Базы данных</p>
-              <h3 class="text-h4 font-weight-bold">{{ stats.database }}</h3>
+              <p class="text-body-2 mb-1">
+                Базы данных
+              </p>
+              <h3 class="text-h4 font-weight-bold">
+                {{ stats.database }}
+              </h3>
             </div>
-            <VAvatar color="success" variant="tonal" size="48">
-              <VIcon icon="bx-data" size="24" />
+            <VAvatar
+              color="success"
+              variant="tonal"
+              size="48"
+            >
+              <VIcon
+                icon="bx-data"
+                size="24"
+              />
             </VAvatar>
           </div>
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="3">
+      <VCol
+        cols="12"
+        md="3"
+      >
         <VCard class="pa-4">
           <div class="d-flex align-center justify-space-between">
             <div>
-              <p class="text-body-2 mb-1">Файловые системы</p>
-              <h3 class="text-h4 font-weight-bold">{{ stats.filesystem }}</h3>
+              <p class="text-body-2 mb-1">
+                Файловые системы
+              </p>
+              <h3 class="text-h4 font-weight-bold">
+                {{ stats.filesystem }}
+              </h3>
             </div>
-            <VAvatar color="warning" variant="tonal" size="48">
-              <VIcon icon="bx-folder" size="24" />
+            <VAvatar
+              color="warning"
+              variant="tonal"
+              size="48"
+            >
+              <VIcon
+                icon="bx-folder"
+                size="24"
+              />
             </VAvatar>
           </div>
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="3">
+      <VCol
+        cols="12"
+        md="3"
+      >
         <VCard class="pa-4">
           <div class="d-flex align-center justify-space-between">
             <div>
-              <p class="text-body-2 mb-1">Общий размер</p>
-              <h3 class="text-h4 font-weight-bold">{{ formatBytes(stats.totalSize) }}</h3>
+              <p class="text-body-2 mb-1">
+                Общий размер
+              </p>
+              <h3 class="text-h4 font-weight-bold">
+                {{ formatBytes(stats.totalSize) }}
+              </h3>
             </div>
-            <VAvatar color="info" variant="tonal" size="48">
-              <VIcon icon="bx-hdd" size="24" />
+            <VAvatar
+              color="info"
+              variant="tonal"
+              size="48"
+            >
+              <VIcon
+                icon="bx-hdd"
+                size="24"
+              />
             </VAvatar>
           </div>
         </VCard>
@@ -405,7 +485,10 @@ onMounted(() => {
 
     <VRow class="mt-4">
       <!-- Панель управления бэкапами -->
-      <VCol cols="12" lg="8">
+      <VCol
+        cols="12"
+        lg="8"
+      >
         <VCard title="Резервные копии">
           <!-- Кнопки управления -->
           <div class="d-flex flex-wrap gap-4 pa-6">
@@ -492,12 +575,21 @@ onMounted(() => {
           </div>
 
           <!-- Индикатор загрузки -->
-          <div v-if="loading" class="d-flex justify-center pa-6">
-            <VProgressCircular indeterminate color="primary" />
+          <div
+            v-if="loading"
+            class="d-flex justify-center pa-6"
+          >
+            <VProgressCircular
+              indeterminate
+              color="primary"
+            />
           </div>
 
           <!-- Сообщение об ошибке -->
-          <div v-else-if="error" class="d-flex justify-center pa-6">
+          <div
+            v-else-if="error"
+            class="d-flex justify-center pa-6"
+          >
             <VAlert type="error">
               {{ error }}
             </VAlert>
@@ -529,8 +621,8 @@ onMounted(() => {
             <!-- Имя файла -->
             <template #item.filename="{ item }">
               <div class="d-flex align-center gap-2">
-                <VIcon 
-                  :icon="item.type === 'database' ? 'bx-data' : 'bx-folder'" 
+                <VIcon
+                  :icon="item.type === 'database' ? 'bx-data' : 'bx-folder'"
                   size="20"
                   :color="getBackupTypeColor(item.type)"
                 />
@@ -553,11 +645,18 @@ onMounted(() => {
               <div class="d-flex gap-1">
                 <IconBtn @click="downloadBackup(item)">
                   <VIcon icon="bx-download" />
-                  <VTooltip activator="parent">Скачать</VTooltip>
+                  <VTooltip activator="parent">
+                    Скачать
+                  </VTooltip>
                 </IconBtn>
-                <IconBtn color="error" @click="deleteBackup(item)">
+                <IconBtn
+                  color="error"
+                  @click="deleteBackup(item)"
+                >
                   <VIcon icon="bx-trash" />
-                  <VTooltip activator="parent">Удалить</VTooltip>
+                  <VTooltip activator="parent">
+                    Удалить
+                  </VTooltip>
                 </IconBtn>
               </div>
             </template>
@@ -575,13 +674,22 @@ onMounted(() => {
       </VCol>
 
       <!-- Информация о расписании -->
-      <VCol cols="12" lg="4">
-        <VCard title="Настройки расписания" class="mb-4">
+      <VCol
+        cols="12"
+        lg="4"
+      >
+        <VCard
+          title="Настройки расписания"
+          class="mb-4"
+        >
           <VCardText>
             <div class="d-flex flex-column gap-4">
               <div class="d-flex align-center justify-space-between">
                 <div class="d-flex align-center gap-2">
-                  <VIcon icon="bx-data" color="primary" />
+                  <VIcon
+                    icon="bx-data"
+                    color="primary"
+                  />
                   <span>База данных</span>
                 </div>
                 <VSwitch
@@ -591,17 +699,27 @@ onMounted(() => {
                   @update:model-value="scheduleDialog = true"
                 />
               </div>
-              
-              <div v-if="scheduleSettings.database.enabled" class="ps-6">
-                <p class="text-body-2 text-medium-emphasis">Расписание: {{ getScheduleText(scheduleSettings.database.schedule) }}</p>
-                <p class="text-body-2 text-medium-emphasis">Хранение: {{ scheduleSettings.database.retentionDays }} дней</p>
+
+              <div
+                v-if="scheduleSettings.database.enabled"
+                class="ps-6"
+              >
+                <p class="text-body-2 text-medium-emphasis">
+                  Расписание: {{ getScheduleText(scheduleSettings.database.schedule) }}
+                </p>
+                <p class="text-body-2 text-medium-emphasis">
+                  Хранение: {{ scheduleSettings.database.retentionDays }} дней
+                </p>
               </div>
 
               <VDivider />
 
               <div class="d-flex align-center justify-space-between">
                 <div class="d-flex align-center gap-2">
-                  <VIcon icon="bx-folder" color="secondary" />
+                  <VIcon
+                    icon="bx-folder"
+                    color="secondary"
+                  />
                   <span>Файловая система</span>
                 </div>
                 <VSwitch
@@ -612,18 +730,25 @@ onMounted(() => {
                 />
               </div>
 
-              <div v-if="scheduleSettings.filesystem.enabled" class="ps-6">
-                <p class="text-body-2 text-medium-emphasis">Расписание: {{ getScheduleText(scheduleSettings.filesystem.schedule) }}</p>
-                <p class="text-body-2 text-medium-emphasis">Хранение: {{ scheduleSettings.filesystem.retentionDays }} дней</p>
+              <div
+                v-if="scheduleSettings.filesystem.enabled"
+                class="ps-6"
+              >
+                <p class="text-body-2 text-medium-emphasis">
+                  Расписание: {{ getScheduleText(scheduleSettings.filesystem.schedule) }}
+                </p>
+                <p class="text-body-2 text-medium-emphasis">
+                  Хранение: {{ scheduleSettings.filesystem.retentionDays }} дней
+                </p>
               </div>
             </div>
           </VCardText>
-          
+
           <VCardActions>
-            <VBtn 
-              variant="tonal" 
-              color="warning" 
-              block 
+            <VBtn
+              variant="tonal"
+              color="warning"
+              block
               @click="scheduleDialog = true"
             >
               Настроить расписание
@@ -636,19 +761,33 @@ onMounted(() => {
           <VCardText>
             <div class="d-flex flex-column gap-3">
               <div class="d-flex align-start gap-2">
-                <VIcon icon="bx-info-circle" color="primary" size="20" class="mt-1" />
+                <VIcon
+                  icon="bx-info-circle"
+                  color="primary"
+                  size="20"
+                  class="mt-1"
+                />
                 <div>
-                  <p class="text-body-2 font-weight-medium mb-1">Ручное создание</p>
+                  <p class="text-body-2 font-weight-medium mb-1">
+                    Ручное создание
+                  </p>
                   <p class="text-body-2 text-medium-emphasis">
                     Нажмите соответствующую кнопку для создания бэкапа базы данных или файловой системы.
                   </p>
                 </div>
               </div>
-              
+
               <div class="d-flex align-start gap-2">
-                <VIcon icon="bx-time" color="warning" size="20" class="mt-1" />
+                <VIcon
+                  icon="bx-time"
+                  color="warning"
+                  size="20"
+                  class="mt-1"
+                />
                 <div>
-                  <p class="text-body-2 font-weight-medium mb-1">Автоматическое расписание</p>
+                  <p class="text-body-2 font-weight-medium mb-1">
+                    Автоматическое расписание
+                  </p>
                   <p class="text-body-2 text-medium-emphasis">
                     Настройте расписание для автоматического создания бэкапов в указанное время.
                   </p>
@@ -656,9 +795,16 @@ onMounted(() => {
               </div>
 
               <div class="d-flex align-start gap-2">
-                <VIcon icon="bx-download" color="success" size="20" class="mt-1" />
+                <VIcon
+                  icon="bx-download"
+                  color="success"
+                  size="20"
+                  class="mt-1"
+                />
                 <div>
-                  <p class="text-body-2 font-weight-medium mb-1">Скачивание</p>
+                  <p class="text-body-2 font-weight-medium mb-1">
+                    Скачивание
+                  </p>
                   <p class="text-body-2 text-medium-emphasis">
                     Все бэкапы хранятся локально и могут быть скачаны в любой момент.
                   </p>
@@ -671,22 +817,33 @@ onMounted(() => {
     </VRow>
 
     <!-- Диалог настроек расписания -->
-    <VDialog v-model="scheduleDialog" max-width="600px">
+    <VDialog
+      v-model="scheduleDialog"
+      max-width="600px"
+    >
       <VCard title="Настройки расписания">
         <VCardText>
           <VRow>
             <!-- База данных -->
             <VCol cols="12">
-              <h4 class="text-h6 mb-4">База данных</h4>
+              <h4 class="text-h6 mb-4">
+                База данных
+              </h4>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSwitch
                 v-model="scheduleSettings.database.enabled"
                 label="Включить автоматический бэкап"
                 color="primary"
               />
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="scheduleSettings.database.retentionDays"
                 label="Хранение (дней)"
@@ -709,16 +866,24 @@ onMounted(() => {
 
             <!-- Файловая система -->
             <VCol cols="12">
-              <h4 class="text-h6 mb-4">Файловая система</h4>
+              <h4 class="text-h6 mb-4">
+                Файловая система
+              </h4>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSwitch
                 v-model="scheduleSettings.filesystem.enabled"
                 label="Включить автоматический бэкап"
                 color="primary"
               />
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="scheduleSettings.filesystem.retentionDays"
                 label="Хранение (дней)"

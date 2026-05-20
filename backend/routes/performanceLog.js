@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getPerformanceLog,
   getPerformanceLogById,
   createPerformanceLog,
   updatePerformanceLog,
   deletePerformanceLog,
-} = require('../controllers/performanceLogController');
+} = require('../controllers/performanceLogController')
 
 // GET /performanceLog - список с query params
-router.get('/', getPerformanceLog);
+router.get('/', getPerformanceLog)
 
 // GET /performanceLog/:id
-router.get('/:id', getPerformanceLogById);
+router.get('/:id', getPerformanceLogById)
 
 // POST /performanceLog
-router.post('/', createPerformanceLog);
+router.post('/', createPerformanceLog)
 
 // PUT /performanceLog/:id
-router.put('/:id', updatePerformanceLog);
+router.put('/:id', updatePerformanceLog)
 
 // DELETE /performanceLog/:id
-router.delete('/:id', deletePerformanceLog);
+router.delete('/:id', deletePerformanceLog)
 
-module.exports = router;
+module.exports = router

@@ -1,8 +1,8 @@
-const { pool } = require('./config/db');
+const { pool } = require('./config/db')
 
 async function add10AgentsTestData() {
   try {
-    console.log('🔄 Добавление 10 тестовых агентов...');
+    console.log('🔄 Добавление 10 тестовых агентов...')
 
     // 10 новых тестовых агентов
     const agents = [
@@ -14,7 +14,7 @@ async function add10AgentsTestData() {
         email: 'popov@example.com',
         mobile_phone: '+7 (999) 111-11-11',
         telegram_account: '@popov_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Анна',
@@ -24,7 +24,7 @@ async function add10AgentsTestData() {
         email: 'sokolova@example.com',
         mobile_phone: '+7 (999) 222-22-22',
         telegram_account: '@sokolova_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Михаил',
@@ -34,7 +34,7 @@ async function add10AgentsTestData() {
         email: 'lebedev@example.com',
         mobile_phone: '+7 (999) 333-33-33',
         telegram_account: '@lebedev_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Виктория',
@@ -44,7 +44,7 @@ async function add10AgentsTestData() {
         email: 'kozlova@example.com',
         mobile_phone: '+7 (999) 444-44-44',
         telegram_account: '@kozlova_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Николай',
@@ -54,7 +54,7 @@ async function add10AgentsTestData() {
         email: 'novikov_n@example.com',
         mobile_phone: '+7 (999) 555-55-55',
         telegram_account: '@novikov_n_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Кристина',
@@ -64,7 +64,7 @@ async function add10AgentsTestData() {
         email: 'volkova@example.com',
         mobile_phone: '+7 (999) 666-66-66',
         telegram_account: '@volkova_agent',
-        is_active: false
+        is_active: false,
       },
       {
         first_name: 'Павел',
@@ -74,7 +74,7 @@ async function add10AgentsTestData() {
         email: 'soloviev@example.com',
         mobile_phone: '+7 (999) 777-77-77',
         telegram_account: '@soloviev_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Юлия',
@@ -84,7 +84,7 @@ async function add10AgentsTestData() {
         email: 'vasilieva_y@example.com',
         mobile_phone: '+7 (999) 888-88-88',
         telegram_account: '@vasilieva_y_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Артем',
@@ -94,7 +94,7 @@ async function add10AgentsTestData() {
         email: 'zaitsev@example.com',
         mobile_phone: '+7 (999) 999-99-99',
         telegram_account: '@zaitsev_agent',
-        is_active: true
+        is_active: true,
       },
       {
         first_name: 'Светлана',
@@ -104,32 +104,35 @@ async function add10AgentsTestData() {
         email: 'pavlova@example.com',
         mobile_phone: '+7 (999) 000-00-00',
         telegram_account: '@pavlova_agent',
-        is_active: true
-      }
-    ];
+        is_active: true,
+      },
+    ]
 
-    let addedCount = 0;
+    let addedCount = 0
     for (const agent of agents) {
       const result = await pool.query(`INSERT INTO agents (first_name, last_name, login, password, email, mobile_phone, telegram_account, is_active)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (login) DO NOTHING
         RETURNING id`,
-        [agent.first_name, agent.last_name, agent.login, agent.password, agent.email, agent.mobile_phone, agent.telegram_account, agent.is_active]
-      );
+      [agent.first_name, agent.last_name, agent.login, agent.password, agent.email, agent.mobile_phone, agent.telegram_account, agent.is_active],
+      )
+
       if (result.rowCount > 0) {
-        addedCount++;
-        console.log(`✅ Добавлен агент: ${agent.first_name} ${agent.last_name}`);
-      } else {
-        console.log(`⚠️ Агент с логином "${agent.login}" уже существует`);
+        addedCount++
+        console.log(`✅ Добавлен агент: ${agent.first_name} ${agent.last_name}`)
+      }
+      else {
+        console.log(`⚠️ Агент с логином "${agent.login}" уже существует`)
       }
     }
 
-    console.log(`✅ Добавлено ${addedCount} новых агентов из 10`);
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ Ошибка:', err);
-    process.exit(1);
+    console.log(`✅ Добавлено ${addedCount} новых агентов из 10`)
+    process.exit(0)
+  }
+  catch (err) {
+    console.error('❌ Ошибка:', err)
+    process.exit(1)
   }
 }
 
-add10AgentsTestData();
+add10AgentsTestData()

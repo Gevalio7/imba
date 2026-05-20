@@ -1,13 +1,13 @@
-const { pool } = require('./config/db');
-const Priorities = require('./models/priorities');
+const { pool } = require('./config/db')
+const Priorities = require('./models/priorities')
 
 async function initPrioritiesTable() {
   try {
-    console.log('🔄 Проверка и наполнение таблицы priorities тестовыми данными...');
+    console.log('🔄 Проверка и наполнение таблицы priorities тестовыми данными...')
 
     // Получаем существующие приоритеты
-    const existingData = await pool.query('SELECT name FROM priorities');
-    const existingNames = existingData.rows.map(row => row.name);
+    const existingData = await pool.query('SELECT name FROM priorities')
+    const existingNames = existingData.rows.map(row => row.name)
 
     // Тестовые данные для приоритетов
     const testPriorities = [
@@ -21,30 +21,32 @@ async function initPrioritiesTable() {
       { name: 'Блокирующий', color: '#343a40', isActive: true },
       { name: 'Нормальный', color: '#007bff', isActive: true },
       { name: 'Минимальный', color: '#6c757d', isActive: true },
-    ];
+    ]
 
-    let addedCount = 0;
+    let addedCount = 0
 
-    console.log('📝 Вставка тестовых данных...');
+    console.log('📝 Вставка тестовых данных...')
 
     for (const priority of testPriorities) {
       if (!existingNames.includes(priority.name)) {
-        await Priorities.create(priority);
-        console.log(`   ✅ Добавлен приоритет: ${priority.name}`);
-        addedCount++;
-      } else {
-        console.log(`   ℹ️  Приоритет "${priority.name}" уже существует, пропускаем`);
+        await Priorities.create(priority)
+        console.log(`   ✅ Добавлен приоритет: ${priority.name}`)
+        addedCount++
+      }
+      else {
+        console.log(`   ℹ️  Приоритет "${priority.name}" уже существует, пропускаем`)
       }
     }
 
-    console.log('✅ Наполнение таблицы priorities завершено успешно');
-    console.log(`   Добавлено ${addedCount} новых тестовых записей`);
+    console.log('✅ Наполнение таблицы priorities завершено успешно')
+    console.log(`   Добавлено ${addedCount} новых тестовых записей`)
 
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Ошибка наполнения таблицы priorities:', error);
-    process.exit(1);
+    process.exit(0)
+  }
+  catch (error) {
+    console.error('❌ Ошибка наполнения таблицы priorities:', error)
+    process.exit(1)
   }
 }
 
-initPrioritiesTable();
+initPrioritiesTable()

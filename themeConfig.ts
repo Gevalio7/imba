@@ -1,7 +1,7 @@
-import { defineThemeConfig } from '@core'
-import { Skins } from '@core/enums'
 import { breakpointsVuetifyV3 } from '@vueuse/core'
 import { VIcon } from 'vuetify/components/VIcon'
+import { defineThemeConfig } from '@core'
+import { Skins } from '@core/enums'
 
 // ❗ Logo SVG must be imported with ?raw suffix
 import logo from '@images/logo.svg?raw'
@@ -29,7 +29,7 @@ export const { themeConfig, layoutConfig } = defineThemeConfig({
           i18nLang: 'ru',
           isRTL: false,
         },
-  
+
       ],
     },
     theme: 'system',

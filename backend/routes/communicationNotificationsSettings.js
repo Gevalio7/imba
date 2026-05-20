@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getCommunicationNotificationsSettings,
   getCommunicationNotificationsSettingById,
   createCommunicationNotificationsSettings,
   updateCommunicationNotificationsSettings,
   deleteCommunicationNotificationsSettings,
-} = require('../controllers/communicationNotificationsSettingsController');
+} = require('../controllers/communicationNotificationsSettingsController')
 
 // GET /communicationNotificationsSettings - список с query params
-router.get('/', getCommunicationNotificationsSettings);
+router.get('/', getCommunicationNotificationsSettings)
 
 // GET /communicationNotificationsSettings/:id
-router.get('/:id', getCommunicationNotificationsSettingById);
+router.get('/:id', getCommunicationNotificationsSettingById)
 
 // POST /communicationNotificationsSettings
-router.post('/', createCommunicationNotificationsSettings);
+router.post('/', createCommunicationNotificationsSettings)
 
 // PUT /communicationNotificationsSettings/:id
-router.put('/:id', updateCommunicationNotificationsSettings);
+router.put('/:id', updateCommunicationNotificationsSettings)
 
 // DELETE /communicationNotificationsSettings/:id
-router.delete('/:id', deleteCommunicationNotificationsSettings);
+router.delete('/:id', deleteCommunicationNotificationsSettings)
 
-module.exports = router;
+module.exports = router

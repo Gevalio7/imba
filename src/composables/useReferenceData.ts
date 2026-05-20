@@ -1,5 +1,5 @@
+import { reactive, ref } from 'vue'
 import { $api } from '@/utils/api'
-import { ref, reactive } from 'vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -47,12 +47,12 @@ const CACHE_TTL = 30 * 1000 // 30 seconds
 
 export function useReferenceData() {
   const fetchAll = async (forceRefresh = false) => {
-    if (isLoading.value) return
+    if (isLoading.value)
+      return
 
     if (!forceRefresh && isLoaded.value && lastFetch.value) {
-      if (Date.now() - lastFetch.value < CACHE_TTL) {
+      if (Date.now() - lastFetch.value < CACHE_TTL)
         return
-      }
     }
 
     isLoading.value = true
@@ -78,12 +78,14 @@ export function useReferenceData() {
       data.workflows = result.workflows || []
       data.postMasterMailAccounts = result.postMasterMailAccounts || []
       data.templates = result.templates || []
-      
+
       isLoaded.value = true
       lastFetch.value = Date.now()
-    } catch (err) {
+    }
+    catch (err) {
       console.error('Error loading reference data:', err)
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }

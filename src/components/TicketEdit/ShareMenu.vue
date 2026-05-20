@@ -1,3 +1,18 @@
+<script setup lang="ts">
+interface Props {
+  modelValue: boolean
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'update:modelValue': [value: boolean]
+  'share-telegram': []
+  'share-mail': []
+  'share-email': []
+}>()
+</script>
+
 <template>
   <VMenu
     :model-value="modelValue"
@@ -5,7 +20,10 @@
     location="bottom end"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <VList density="compact" nav>
+    <VList
+      density="compact"
+      nav
+    >
       <VListItem
         prepend-icon="bxl-telegram"
         title="Telegram"
@@ -24,18 +42,3 @@
     </VList>
   </VMenu>
 </template>
-
-<script setup lang="ts">
-interface Props {
-  modelValue: boolean
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:modelValue': [value: boolean]
-  'share-telegram': []
-  'share-mail': []
-  'share-email': []
-}>()
-</script>

@@ -1,14 +1,14 @@
-const AgentsGroups = require('../models/agentsGroups');
-const { asyncHandler } = require('../middleware/errorHandler');
+const AgentsGroups = require('../models/agentsGroups')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getAgentsGroups = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await AgentsGroups.getAll({
     q: searchQuery,
@@ -17,159 +17,150 @@ const getAgentsGroups = asyncHandler(async (req, res) => {
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
     includeAgents: true, // Оптимизация: загружаем агентов вместе с группами одним запросом
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getAgentsGroupById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const agentsgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const agentsgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(agentsgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(agentsgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const agentsgroup = await AgentsGroups.getById(agentsgroupId);
+  const agentsgroup = await AgentsGroups.getById(agentsgroupId)
 
-  if (!agentsgroup) {
-    return res.status(404).json({ message: 'AgentsGroup not found' });
-  }
+  if (!agentsgroup)
+    return res.status(404).json({ message: 'AgentsGroup not found' })
 
-  res.json(agentsgroup);
-});
+  res.json(agentsgroup)
+})
 
 const createAgentsGroups = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
+  const data = {}
+
+  data.name = req.body.name
 
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Поддержка нескольких ролей (roleIds) и одной роли (roleId) для обратной совместимости
-  console.log('[DEBUG] createAgentsGroups - roleIds from request:', req.body.roleIds);
-  console.log('[DEBUG] createAgentsGroups - roleId from request:', req.body.roleId);
-  
-  if (req.body.roleIds !== undefined && Array.isArray(req.body.roleIds)) {
-    data.roleIds = req.body.roleIds;
-  } else if (req.body.roleId !== undefined) {
-    data.roleId = req.body.roleId;
-  }
+  console.log('[DEBUG] createAgentsGroups - roleIds from request:', req.body.roleIds)
+  console.log('[DEBUG] createAgentsGroups - roleId from request:', req.body.roleId)
+
+  if (req.body.roleIds !== undefined && Array.isArray(req.body.roleIds))
+    data.roleIds = req.body.roleIds
+  else if (req.body.roleId !== undefined)
+    data.roleId = req.body.roleId
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newAgentsGroup = await AgentsGroups.create(data);
-  console.log('[DEBUG] createAgentsGroups - created group with roles:', newAgentsGroup.roles);
+  const newAgentsGroup = await AgentsGroups.create(data)
+
+  console.log('[DEBUG] createAgentsGroups - created group with roles:', newAgentsGroup.roles)
 
   // Добавляем агентов в группу, если они переданы
   if (req.body.agents && Array.isArray(req.body.agents) && req.body.agents.length > 0) {
-    for (const agentId of req.body.agents) {
-      await AgentsGroups.addAgent(newAgentsGroup.id, agentId);
-    }
+    for (const agentId of req.body.agents)
+      await AgentsGroups.addAgent(newAgentsGroup.id, agentId)
   }
 
-  res.status(201).json(newAgentsGroup);
-});
+  res.status(201).json(newAgentsGroup)
+})
 
 const updateAgentsGroups = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const agentsgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const agentsgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(agentsgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(agentsgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
 
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Поддержка нескольких ролей (roleIds) и одной роли (roleId) для обратной совместимости
-  console.log('[DEBUG] updateAgentsGroups - roleIds from request:', req.body.roleIds);
-  console.log('[DEBUG] updateAgentsGroups - roleId from request:', req.body.roleId);
-  
-  if (req.body.roleIds !== undefined) {
-    data.roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : [];
-  } else if (req.body.roleId !== undefined) {
-    data.roleId = req.body.roleId;
-  }
+  console.log('[DEBUG] updateAgentsGroups - roleIds from request:', req.body.roleIds)
+  console.log('[DEBUG] updateAgentsGroups - roleId from request:', req.body.roleId)
 
-  console.log('[DEBUG] updateAgentsGroups - data to update:', data);
-  const updatedAgentsGroup = await AgentsGroups.update(agentsgroupId, data);
-  console.log('[DEBUG] updateAgentsGroups - updated group:', updatedAgentsGroup);
+  if (req.body.roleIds !== undefined)
+    data.roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : []
+  else if (req.body.roleId !== undefined)
+    data.roleId = req.body.roleId
 
-  if (!updatedAgentsGroup) {
-    return res.status(404).json({ message: 'AgentsGroup not found' });
-  }
+  console.log('[DEBUG] updateAgentsGroups - data to update:', data)
 
-  res.json(updatedAgentsGroup);
-});
+  const updatedAgentsGroup = await AgentsGroups.update(agentsgroupId, data)
+
+  console.log('[DEBUG] updateAgentsGroups - updated group:', updatedAgentsGroup)
+
+  if (!updatedAgentsGroup)
+    return res.status(404).json({ message: 'AgentsGroup not found' })
+
+  res.json(updatedAgentsGroup)
+})
 
 const deleteAgentsGroups = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const agentsgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const agentsgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(agentsgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(agentsgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await AgentsGroups.delete(agentsgroupId);
+  const deleted = await AgentsGroups.delete(agentsgroupId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'AgentsGroup not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'AgentsGroup not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 const getAgentsInGroup = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const groupId = parseInt(id, 10);
+  const { id } = req.params
+  const groupId = Number.parseInt(id, 10)
 
-  if (isNaN(groupId)) {
-    return res.status(400).json({ message: 'Invalid group ID' });
-  }
+  if (isNaN(groupId))
+    return res.status(400).json({ message: 'Invalid group ID' })
 
-  const agents = await AgentsGroups.getAgents(groupId);
-  res.json(agents);
-});
+  const agents = await AgentsGroups.getAgents(groupId)
+
+  res.json(agents)
+})
 
 const addAgentToGroup = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { agentId } = req.body;
-  const groupId = parseInt(id, 10);
-  const agentIdNum = parseInt(agentId, 10);
+  const { id } = req.params
+  const { agentId } = req.body
+  const groupId = Number.parseInt(id, 10)
+  const agentIdNum = Number.parseInt(agentId, 10)
 
-  if (isNaN(groupId) || isNaN(agentIdNum)) {
-    return res.status(400).json({ message: 'Invalid IDs' });
-  }
+  if (isNaN(groupId) || isNaN(agentIdNum))
+    return res.status(400).json({ message: 'Invalid IDs' })
 
-  await AgentsGroups.addAgent(groupId, agentIdNum);
-  console.log('[DEBUG] addAgentToGroup - agent', agentIdNum, 'added to group', groupId);
-  
-  res.status(201).json({ message: 'Agent added to group' });
-});
+  await AgentsGroups.addAgent(groupId, agentIdNum)
+  console.log('[DEBUG] addAgentToGroup - agent', agentIdNum, 'added to group', groupId)
+
+  res.status(201).json({ message: 'Agent added to group' })
+})
 
 const removeAgentFromGroup = asyncHandler(async (req, res) => {
-  const { id, agentId } = req.params;
-  const groupId = parseInt(id, 10);
-  const agentIdNum = parseInt(agentId, 10);
+  const { id, agentId } = req.params
+  const groupId = Number.parseInt(id, 10)
+  const agentIdNum = Number.parseInt(agentId, 10)
 
-  if (isNaN(groupId) || isNaN(agentIdNum)) {
-    return res.status(400).json({ message: 'Invalid IDs' });
-  }
+  if (isNaN(groupId) || isNaN(agentIdNum))
+    return res.status(400).json({ message: 'Invalid IDs' })
 
-  await AgentsGroups.removeAgent(groupId, agentIdNum);
-  res.status(204).send();
-});
+  await AgentsGroups.removeAgent(groupId, agentIdNum)
+  res.status(204).send()
+})
 
 module.exports = {
   getAgentsGroups,
@@ -180,4 +171,4 @@ module.exports = {
   getAgentsInGroup,
   addAgentToGroup,
   removeAgentFromGroup,
-};
+}

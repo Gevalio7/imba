@@ -1,5 +1,5 @@
-import { $api } from '@/utils/api'
 import { ref } from 'vue'
+import { $api } from '@/utils/api'
 
 export function useTicketHistory(ticketId: Ref<number | null>) {
   // История изменений
@@ -16,11 +16,14 @@ export function useTicketHistory(ticketId: Ref<number | null>) {
 
   // Загрузка истории изменений
   const fetchHistory = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       loadingHistory.value = true
+
       const data = await $api(`/ticketHistory?ticketId=${ticketId.value}`)
+
       historyChanges.value = (data as any).history || []
     }
     catch (err) {
@@ -33,11 +36,14 @@ export function useTicketHistory(ticketId: Ref<number | null>) {
 
   // Загрузка истории согласования
   const fetchApprovalHistory = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       loadingApproval.value = true
+
       const data = await $api(`/ticketHistory/approval/${ticketId.value}`)
+
       approvalHistory.value = (data as any).approvals || []
     }
     catch (err) {
@@ -50,11 +56,14 @@ export function useTicketHistory(ticketId: Ref<number | null>) {
 
   // Загрузка истории переходов статусов
   const fetchStatusHistory = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       loadingStatusHistory.value = true
+
       const data = await $api(`/ticketStatusHistory/${ticketId.value}`)
+
       statusHistory.value = (data as any).history || []
     }
     catch (err) {
@@ -67,7 +76,8 @@ export function useTicketHistory(ticketId: Ref<number | null>) {
 
   // Загрузка всей истории сразу
   const fetchAllHistory = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     await Promise.all([
       fetchHistory(),

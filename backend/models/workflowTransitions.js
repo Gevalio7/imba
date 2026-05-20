@@ -1,50 +1,49 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class WorkflowTransitions {
-  static tableName = 'workflow_transitions';
-  static fields = 'workflowId, sourceStatusId, targetStatusId, actionLabel, sortOrder';
+  static tableName = 'workflow_transitions'
+  static fields = 'workflowId, sourceStatusId, targetStatusId, actionLabel, sortOrder'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, workflowId } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, workflowId } = options
 
     try {
-      let whereClause = '';
-      let params = [];
-      let paramIndex = 1;
+      let whereClause = ''
+      const params = []
+      let paramIndex = 1
 
       // Фильтр по воркфлоу
       if (workflowId) {
-        whereClause = `WHERE wt.workflow_id = $${paramIndex}`;
-        params.push(workflowId);
-        paramIndex++;
+        whereClause = `WHERE wt.workflow_id = $${paramIndex}`
+        params.push(workflowId)
+        paramIndex++
       }
 
       // Поиск по названию действия
       if (q) {
-        whereClause = whereClause 
-          ? `${whereClause} AND wt.action_label ILIKE $${paramIndex}` 
-          : `WHERE wt.action_label ILIKE $${paramIndex}`;
-        params.push(`%${q}%`);
-        paramIndex++;
+        whereClause = whereClause
+          ? `${whereClause} AND wt.action_label ILIKE $${paramIndex}`
+          : `WHERE wt.action_label ILIKE $${paramIndex}`
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
-      let orderClause = 'ORDER BY wt.sort_order ASC, wt.id ASC';
-      const sortableFields = ['id', 'actionLabel', 'sortOrder', 'createdAt'];
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY wt.${toSnakeCase(sortBy)} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
-      }
+      let orderClause = 'ORDER BY wt.sort_order ASC, wt.id ASC'
+      const sortableFields = ['id', 'actionLabel', 'sortOrder', 'createdAt']
+      if (sortBy && sortableFields.includes(sortBy))
+        orderClause = `ORDER BY wt.${toSnakeCase(sortBy)} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
 
-      const offset = (page - 1) * itemsPerPage;
+      const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${WorkflowTransitions.tableName} wt ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${WorkflowTransitions.tableName} wt ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data with related info
       const dataQuery = `
@@ -70,17 +69,20 @@ class WorkflowTransitions {
         ${orderClause}
         LIMIT $${paramIndex}
         OFFSET $${paramIndex + 1}
-      `;
-      params.push(itemsPerPage, offset);
-      const dataResult = await pool.query(dataQuery, params);
+      `
+
+      params.push(itemsPerPage, offset)
+
+      const dataResult = await pool.query(dataQuery, params)
 
       return {
         transitions: dataResult.rows,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
@@ -106,13 +108,14 @@ class WorkflowTransitions {
         LEFT JOIN states ss ON wt.source_status_id = ss.id
         LEFT JOIN states ts ON wt.target_status_id = ts.id
         WHERE wt.id = $1`,
-        [id]
-      );
+        [id],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
@@ -123,11 +126,12 @@ class WorkflowTransitions {
         `SELECT COALESCE(MAX(sort_order), 0) as max_order 
          FROM ${WorkflowTransitions.tableName} 
          WHERE workflow_id = $1`,
-        [transition.workflowId]
-      );
-      const sortOrder = transition.sortOrder !== undefined 
-        ? transition.sortOrder 
-        : maxOrderResult.rows[0].max_order + 1;
+        [transition.workflowId],
+      )
+
+      const sortOrder = transition.sortOrder !== undefined
+        ? transition.sortOrder
+        : maxOrderResult.rows[0].max_order + 1
 
       const query = `
         INSERT INTO ${WorkflowTransitions.tableName} (
@@ -143,7 +147,8 @@ class WorkflowTransitions {
           sort_order as "sortOrder",
           is_active as "isActive",
           created_at as "createdAt"
-      `;
+      `
+
       const result = await pool.query(query, [
         transition.workflowId,
         transition.sourceStatusId || null,
@@ -151,62 +156,62 @@ class WorkflowTransitions {
         transition.actionLabel,
         transition.isActive !== undefined ? transition.isActive : true,
         sortOrder,
-      ]);
+      ])
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, transition) {
     try {
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
+      const updates = []
+      const values = []
+      let paramIndex = 1
 
       if (transition.workflowId !== undefined) {
-        updates.push(`workflow_id = $${paramIndex}`);
-        values.push(transition.workflowId);
-        paramIndex++;
+        updates.push(`workflow_id = $${paramIndex}`)
+        values.push(transition.workflowId)
+        paramIndex++
       }
 
       if (transition.sourceStatusId !== undefined) {
-        updates.push(`source_status_id = $${paramIndex}`);
-        values.push(transition.sourceStatusId || null);
-        paramIndex++;
+        updates.push(`source_status_id = $${paramIndex}`)
+        values.push(transition.sourceStatusId || null)
+        paramIndex++
       }
 
       if (transition.targetStatusId !== undefined) {
-        updates.push(`target_status_id = $${paramIndex}`);
-        values.push(transition.targetStatusId);
-        paramIndex++;
+        updates.push(`target_status_id = $${paramIndex}`)
+        values.push(transition.targetStatusId)
+        paramIndex++
       }
 
       if (transition.actionLabel !== undefined) {
-        updates.push(`action_label = $${paramIndex}`);
-        values.push(transition.actionLabel);
-        paramIndex++;
+        updates.push(`action_label = $${paramIndex}`)
+        values.push(transition.actionLabel)
+        paramIndex++
       }
 
       if (transition.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(transition.isActive);
-        paramIndex++;
+        updates.push(`is_active = $${paramIndex}`)
+        values.push(transition.isActive)
+        paramIndex++
       }
 
       if (transition.sortOrder !== undefined) {
-        updates.push(`sort_order = $${paramIndex}`);
-        values.push(transition.sortOrder);
-        paramIndex++;
+        updates.push(`sort_order = $${paramIndex}`)
+        values.push(transition.sortOrder)
+        paramIndex++
       }
 
-      if (updates.length === 0) {
-        return this.getById(id);
-      }
+      if (updates.length === 0)
+        return this.getById(id)
 
-      values.push(id);
+      values.push(id)
 
       const query = `
         UPDATE ${WorkflowTransitions.tableName} 
@@ -221,27 +226,30 @@ class WorkflowTransitions {
           sort_order as "sortOrder",
           is_active as "isActive",
           created_at as "createdAt"
-      `;
-      const result = await pool.query(query, values);
+      `
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   static async delete(id) {
     try {
       const result = await pool.query(
-        `DELETE FROM ${WorkflowTransitions.tableName} WHERE id = $1`, 
-        [id]
-      );
+        `DELETE FROM ${WorkflowTransitions.tableName} WHERE id = $1`,
+        [id],
+      )
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 
@@ -273,13 +281,14 @@ class WorkflowTransitions {
           AND wt.is_active = true
           AND (wt.source_status_id = $2 OR ($2 IS NULL AND wt.source_status_id IS NULL))
         ORDER BY wt.sort_order ASC, wt.id ASC`,
-        [workflowId, currentStatusId]
-      );
+        [workflowId, currentStatusId],
+      )
 
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getAvailableTransitions:', error);
-      throw error;
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getAvailableTransitions:', error)
+      throw error
     }
   }
 
@@ -288,7 +297,7 @@ class WorkflowTransitions {
    * @param {number} workflowId - ID воркфлоу
    * @param {number|null} sourceStatusId - Исходный статус
    * @param {number} targetStatusId - Целевой статус
-   * @returns {Object|null} Переход если валиден, null если нет
+   * @returns {object | null} Переход если валиден, null если нет
    */
   static async validateTransition(workflowId, sourceStatusId, targetStatusId) {
     try {
@@ -304,20 +313,21 @@ class WorkflowTransitions {
           AND wt.is_active = true
           AND (wt.source_status_id = $2 OR ($2 IS NULL AND wt.source_status_id IS NULL))
           AND wt.target_status_id = $3`,
-        [workflowId, sourceStatusId, targetStatusId]
-      );
+        [workflowId, sourceStatusId, targetStatusId],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in validateTransition:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in validateTransition:', error)
+      throw error
     }
   }
 
   /**
    * Получить начальный статус для воркфлоу
    * @param {number} workflowId - ID воркфлоу
-   * @returns {Object|null} Начальный статус
+   * @returns {object | null} Начальный статус
    */
   static async getInitialTransition(workflowId) {
     try {
@@ -335,23 +345,24 @@ class WorkflowTransitions {
           AND wt.is_active = true
         ORDER BY wt.sort_order ASC
         LIMIT 1`,
-        [workflowId]
-      );
+        [workflowId],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getInitialTransition:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getInitialTransition:', error)
+      throw error
     }
   }
 
   // Массовое создание переходов
   static async bulkCreate(transitions) {
-    const client = await pool.connect();
+    const client = await pool.connect()
     try {
-      await client.query('BEGIN');
+      await client.query('BEGIN')
 
-      const results = [];
+      const results = []
       for (const transition of transitions) {
         const result = await client.query(
           `INSERT INTO ${WorkflowTransitions.tableName} (
@@ -373,21 +384,25 @@ class WorkflowTransitions {
             transition.actionLabel,
             transition.isActive !== undefined ? transition.isActive : true,
             transition.sortOrder || 0,
-          ]
-        );
-        results.push(result.rows[0]);
+          ],
+        )
+
+        results.push(result.rows[0])
       }
 
-      await client.query('COMMIT');
-      return results;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Error in bulkCreate:', error);
-      throw error;
-    } finally {
-      client.release();
+      await client.query('COMMIT')
+
+      return results
+    }
+    catch (error) {
+      await client.query('ROLLBACK')
+      console.error('Error in bulkCreate:', error)
+      throw error
+    }
+    finally {
+      client.release()
     }
   }
 }
 
-module.exports = WorkflowTransitions;
+module.exports = WorkflowTransitions

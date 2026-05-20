@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getProcessesAutomationSettings,
   getProcessesAutomationSettingById,
   createProcessesAutomationSettings,
   updateProcessesAutomationSettings,
   deleteProcessesAutomationSettings,
-} = require('../controllers/processesAutomationSettingsController');
+} = require('../controllers/processesAutomationSettingsController')
 
 // GET /processesAutomationSettings - список с query params
-router.get('/', getProcessesAutomationSettings);
+router.get('/', getProcessesAutomationSettings)
 
 // GET /processesAutomationSettings/:id
-router.get('/:id', getProcessesAutomationSettingById);
+router.get('/:id', getProcessesAutomationSettingById)
 
 // POST /processesAutomationSettings
-router.post('/', createProcessesAutomationSettings);
+router.post('/', createProcessesAutomationSettings)
 
 // PUT /processesAutomationSettings/:id
-router.put('/:id', updateProcessesAutomationSettings);
+router.put('/:id', updateProcessesAutomationSettings)
 
 // DELETE /processesAutomationSettings/:id
-router.delete('/:id', deleteProcessesAutomationSettings);
+router.delete('/:id', deleteProcessesAutomationSettings)
 
-module.exports = router;
+module.exports = router

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Вложение
 interface Attachments {
@@ -13,7 +13,6 @@ interface Attachments {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -30,14 +29,18 @@ const fetchAttachments = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching attachments from:', `${API_BASE}/attachments`)
-    const data = await $api<{ attachments: Attachments[], total: number }>(`${API_BASE}/attachments`)
+
+    const data = await $api<{ attachments: Attachments[]; total: number }>(`${API_BASE}/attachments`)
+
     console.log('Fetched attachments data:', data)
     attachments.value = data.attachments
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки вложения'
     console.error('Error fetching attachments:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -47,27 +50,35 @@ const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'u
   try {
     if (file) {
       const formData = new FormData()
+
       formData.append('name', item.name)
       formData.append('fileName', item.fileName)
       formData.append('type', item.type.toString())
       formData.append('comment', item.comment)
       formData.append('isActive', item.isActive.toString())
       formData.append('file', file)
+
       const data = await $api<Attachments>(`${API_BASE}/attachments`, {
         method: 'POST',
-        body: formData
+        body: formData,
       })
+
       attachments.value.push(data)
-      return data
-    } else {
-      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
-        method: 'POST',
-        body: item
-      })
-      attachments.value.push(data)
+
       return data
     }
-  } catch (err) {
+    else {
+      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
+        method: 'POST',
+        body: item,
+      })
+
+      attachments.value.push(data)
+
+      return data
+    }
+  }
+  catch (err) {
     console.error('Error creating attachments:', err)
     throw err
   }
@@ -78,14 +89,16 @@ const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'cre
   try {
     const data = await $api<Attachments>(`${API_BASE}/attachments/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = attachments.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       attachments.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating attachments:', err)
     throw err
   }
@@ -95,13 +108,14 @@ const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'cre
 const deleteAttachments = async (id: number) => {
   try {
     await $api(`${API_BASE}/attachments/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = attachments.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       attachments.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting attachments:', err)
     throw err
   }
@@ -121,7 +135,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -159,13 +173,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteAttachments(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} вложения`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -176,13 +191,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateAttachments(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} вложения`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -210,7 +226,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -270,9 +286,8 @@ const close = () => {
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
   selectedFile.value = null
-  if (fileInput.value) {
+  if (fileInput.value)
     fileInput.value.value = ''
-  }
 }
 
 const closeDelete = () => {
@@ -284,6 +299,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -292,19 +308,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateAttachments(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Вложение успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createAttachments({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       }, selectedFile.value)
+
       showToast('Вложение успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения вложение', 'error')
   }
 }
@@ -314,7 +334,8 @@ const deleteItemConfirm = async () => {
     await deleteAttachments(editedItem.value.id)
     showToast('Вложение успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления вложение', 'error')
   }
 }
@@ -325,15 +346,17 @@ const toggleStatus = async (item: Attachments, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateAttachments(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус вложение изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -358,10 +381,15 @@ const addNewAttachments = () => {
 }
 
 const getFileType = (file: File): number => {
-  if (file.type.startsWith('image/')) return 1
-  if (file.type.startsWith('video/')) return 2
-  if (file.type === 'application/pdf') return 3
-  if (file.type.startsWith('text/')) return 4
+  if (file.type.startsWith('image/'))
+    return 1
+  if (file.type.startsWith('video/'))
+    return 2
+  if (file.type === 'application/pdf')
+    return 3
+  if (file.type.startsWith('text/'))
+    return 4
+
   return 0
 }
 
@@ -372,13 +400,16 @@ const handleFileSelect = (event: Event) => {
     // Проверка размера файла (20 МБ)
     if (file.size > 20 * 1024 * 1024) {
       showToast('Файл слишком большой. Максимальный размер: 20 МБ', 'error')
+
       return
     }
+
     // Проверка типа файла
     const allowedTypes = ['image/', 'video/', 'application/pdf', 'text/']
     const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.type === 'application/pdf')
     if (!isAllowed) {
       showToast('Недопустимый тип файла. Разрешены: изображения, видео, PDF, текстовые файлы', 'error')
+
       return
     }
     selectedFile.value = file
@@ -411,23 +442,25 @@ const clearFile = () => {
   selectedFile.value = null
   editedItem.value.fileName = ''
   editedItem.value.type = 0
-  if (fileInput.value) {
+  if (fileInput.value)
     fileInput.value.value = ''
-  }
 }
 
 const downloadItem = async (item: Attachments) => {
   try {
     const response = await fetch(`${API_BASE}/attachments/${item.id}/download`)
-    if (!response.ok) throw new Error('Download failed')
+    if (!response.ok)
+      throw new Error('Download failed')
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
+
     a.href = url
     a.download = item.fileName
     a.click()
     window.URL.revokeObjectURL(url)
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка скачивания файла', 'error')
   }
 }
@@ -436,20 +469,34 @@ const downloadItem = async (item: Attachments) => {
 <template>
   <div>
     <VCard title="Вложения">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -529,7 +576,6 @@ const downloadItem = async (item: Attachments) => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -672,9 +718,9 @@ const downloadItem = async (item: Attachments) => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -691,10 +737,16 @@ const downloadItem = async (item: Attachments) => {
             <IconBtn @click="downloadItem(item)">
               <VIcon icon="bx-download" />
             </IconBtn>
-            <IconBtn v-if="$can('write','menu_attachments')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_attachments')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_attachments')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_attachments')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -719,7 +771,6 @@ const downloadItem = async (item: Attachments) => {
       <VCard :title="editedIndex > -1 ? 'Редактировать вложение' : 'Добавить вложение'">
         <VCardText>
           <VRow>
-
             <!-- Выбор файла -->
             <VCol cols="12">
               <div>
@@ -738,8 +789,11 @@ const downloadItem = async (item: Attachments) => {
                     accept="image/*,video/*,.pdf,text/*"
                     style="display: none;"
                     @change="handleFileSelect"
-                  />
-                  <span v-if="selectedFile || (editedIndex > -1 && editedItem.fileName)" class="text-body-2 text-truncate">{{ selectedFile ? selectedFile.name : editedItem.fileName }}</span>
+                  >
+                  <span
+                    v-if="selectedFile || (editedIndex > -1 && editedItem.fileName)"
+                    class="text-body-2 text-truncate"
+                  >{{ selectedFile ? selectedFile.name : editedItem.fileName }}</span>
                   <VBtn
                     v-if="selectedFile || (editedIndex > -1 && editedItem.fileName)"
                     color="error"
@@ -763,7 +817,10 @@ const downloadItem = async (item: Attachments) => {
             </VCol>
 
             <!-- Имя файла -->
-            <VCol v-if="!selectedFile" cols="12">
+            <VCol
+              v-if="!selectedFile"
+              cols="12"
+            >
               <AppTextField
                 v-model="editedItem.fileName"
                 label="Имя файла"
@@ -783,10 +840,7 @@ const downloadItem = async (item: Attachments) => {
             </VCol>
 
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"

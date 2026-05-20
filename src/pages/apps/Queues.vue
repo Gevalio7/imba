@@ -1,12 +1,13 @@
 <script setup lang="ts">
-definePage({ meta: { navActiveLink: 'apps-queues', action: 'read', subject: 'menu_queues' } })
-import { useFilters, type ColumnSetting } from '@/composables/useFilters'
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { type ColumnSetting, useFilters } from '@/composables/useFilters'
+import { $api } from '@/utils/api'
 
 // CASL helpers
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
-import { useRoute } from 'vue-router'
+
+definePage({ meta: { navActiveLink: 'apps-queues', action: 'read', subject: 'menu_queues' } })
 
 // Типы данных для Очередь
 interface Queues {
@@ -41,7 +42,6 @@ interface Queues {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -97,14 +97,18 @@ const loadColumnSettings = (): ColumnSetting[] => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as ColumnSetting[]
+
       return availableColumns.map(col => {
         const savedCol = parsed.find((s: ColumnSetting) => s.key === col.key)
+
         return savedCol ? { ...col, visible: savedCol.visible } : col
       })
     }
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error loading column settings:', e)
   }
+
   return [...availableColumns]
 }
 
@@ -116,25 +120,30 @@ const visibleHeaders = computed(() => {
 })
 
 // Сохранение настроек колонок
-watch(columnSettings, (newSettings) => {
+watch(columnSettings, newSettings => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error saving column settings:', e)
   }
 }, { deep: true })
 
 // Методы для работы с колонками
 const moveColumnUp = (index: number) => {
-  if (index <= 0) return
+  if (index <= 0)
+    return
   const temp = columnSettings.value[index]
+
   columnSettings.value[index] = columnSettings.value[index - 1]
   columnSettings.value[index - 1] = temp
 }
 
 const moveColumnDown = (index: number) => {
-  if (index >= columnSettings.value.length - 1) return
+  if (index >= columnSettings.value.length - 1)
+    return
   const temp = columnSettings.value[index]
+
   columnSettings.value[index] = columnSettings.value[index + 1]
   columnSettings.value[index + 1] = temp
 }
@@ -155,12 +164,13 @@ const referenceData = ref<ReferenceData>({
   types: [],
   typeCategories: [],
   postMasterMailAccounts: [],
-  templates: []
+  templates: [],
 })
 
 const fetchReferenceData = async () => {
   try {
     const data = await $api<ReferenceData>(`${API_BASE}/referenceData`)
+
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -173,95 +183,124 @@ const fetchReferenceData = async () => {
       types: data.types || [],
       typeCategories: data.typeCategories || [],
       postMasterMailAccounts: data.postMasterMailAccounts || [],
-      templates: data.templates || []
+      templates: data.templates || [],
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching reference data:', err)
   }
 }
 
 const getServiceName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const service = referenceData.value.services.find(s => s.id === id)
+
   return service?.name || '-'
 }
 
 const getSlaName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const sla = referenceData.value.sla.find(s => s.id === id)
+
   return sla?.name || '-'
 }
 
 const getWorkflowName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const workflows = referenceData.value.workflows.find(w => w.id === id)
+
   return workflows?.name || '-'
 }
 
 const getAgentGroupName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const group = referenceData.value.agentGroups.find(g => g && g.id === id)
+
   return group?.name || '-'
 }
 
 const getPriorityName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const priority = referenceData.value.priorities.find(p => p && p.id === id)
+
   return priority?.name || '-'
 }
 
 const getPriorityColor = (id: number | null) => {
-  if (!id) return 'grey'
+  if (!id)
+    return 'grey'
   const priority = referenceData.value.priorities.find(p => p && p.id === id)
+
   return priority?.color || 'grey'
 }
 
 const priorityOptions = computed(() =>
-  referenceData.value.priorities.map(p => ({ title: p.name, value: p.id }))
+  referenceData.value.priorities.map(p => ({ title: p.name, value: p.id })),
 )
 
 const getCompanyName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const company = referenceData.value.customers.find(c => c && c.id === id)
+
   return company?.name || '-'
 }
 
 const getDepartmentName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const department = referenceData.value.customersGroups.find(d => d && d.id === id)
+
   return department?.name || '-'
 }
 
 const getAgentNames = (ids: number[] | null) => {
-  if (!ids || ids.length === 0) return '-'
+  if (!ids || ids.length === 0)
+    return '-'
+
   const names = ids.map(id => {
     const agent = referenceData.value.agents.find(a => a && a.id === id)
+
     return agent ? `${agent.firstName} ${agent.lastName}` : `Агент ${id}`
   })
+
   return names.join(', ')
 }
 
 const getTypeName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const type = referenceData.value.types.find(t => t && t.id === id)
+
   return type?.name || '-'
 }
 
 const getCategoryName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const category = referenceData.value.typeCategories.find(c => c && c.id === id)
+
   return category?.name || '-'
 }
 
 const getPostMasterMailAccountName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const account = referenceData.value.postMasterMailAccounts.find(a => a && a.id === id)
+
   return account?.name || '-'
 }
 
 const getTemplateName = (id: number | null) => {
-  if (!id) return '-'
+  if (!id)
+    return '-'
   const template = referenceData.value.templates.find(t => t && t.id === id)
+
   return template?.name || '-'
 }
 
@@ -281,14 +320,18 @@ const fetchQueues = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching queues from:', `${API_BASE}/queues`)
-    const data = await $api<{ queues: Queues[], total: number }>(`${API_BASE}/queues`)
+
+    const data = await $api<{ queues: Queues[]; total: number }>(`${API_BASE}/queues`)
+
     console.log('Fetched queues data:', data)
     queues.value = data.queues
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки очереди'
     console.error('Error fetching queues:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -298,11 +341,14 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
   try {
     const data = await $api<Queues>(`${API_BASE}/queues`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     queues.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating queues:', err)
     throw err
   }
@@ -313,14 +359,16 @@ const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 
   try {
     const data = await $api<Queues>(`${API_BASE}/queues/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       queues.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating queues:', err)
     throw err
   }
@@ -330,23 +378,23 @@ const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 
 const deleteQueues = async (id: number) => {
   try {
     await $api(`${API_BASE}/queues/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       queues.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting queues:', err)
     throw err
   }
 }
 
 // Watcher для обновления данных при возврате со страницы редактирования
-watch(() => route.query.refresh, (newVal) => {
-  if (newVal) {
+watch(() => route.query.refresh, newVal => {
+  if (newVal)
     fetchQueues()
-  }
 })
 
 // Инициализация
@@ -382,7 +430,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -420,13 +468,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteQueues(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} очереди`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -437,13 +486,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateQueues(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} очереди`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -471,7 +521,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -549,31 +599,36 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
-    try {
-      // Подготавливаем данные для отправки
-      const dataToSave = {
-        ...editedItem.value,
-        keywords: editedItem.value.keywords
-          ? editedItem.value.keywords.join(', ')
-          : null
-      }
-
-      if (editedIndex.value > -1) {
-        // Обновление существующего
-        const updated = await updateQueues(editedItem.value.id, dataToSave)
-        showToast('Очередь успешно сохранена')
-      } else {
-        // Добавление нового
-        const created = await createQueues(dataToSave)
-        showToast('Очередь успешно добавлена')
-      }
-      close()
-    } catch (err) {
-      showToast('Ошибка сохранения очереди', 'error')
+  try {
+    // Подготавливаем данные для отправки
+    const dataToSave = {
+      ...editedItem.value,
+      keywords: editedItem.value.keywords
+        ? editedItem.value.keywords.join(', ')
+        : null,
     }
+
+    if (editedIndex.value > -1) {
+      // Обновление существующего
+      const updated = await updateQueues(editedItem.value.id, dataToSave)
+
+      showToast('Очередь успешно сохранена')
+    }
+    else {
+      // Добавление нового
+      const created = await createQueues(dataToSave)
+
+      showToast('Очередь успешно добавлена')
+    }
+    close()
+  }
+  catch (err) {
+    showToast('Ошибка сохранения очереди', 'error')
+  }
 }
 
 const deleteItemConfirm = async () => {
@@ -581,7 +636,8 @@ const deleteItemConfirm = async () => {
     await deleteQueues(editedItem.value.id)
     showToast('Очередь успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления очередь', 'error')
   }
 }
@@ -592,15 +648,17 @@ const toggleStatus = async (item: Queues, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateQueues(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус очередь изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -625,20 +683,34 @@ const addNewQueues = () => {
 <template>
   <div>
     <VCard title="Очереди">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -718,7 +790,7 @@ const addNewQueues = () => {
           </VBtn>
 
           <VBtn
-            v-if="$can('write','menu_queues')"
+            v-if="$can('write', 'menu_queues')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewQueues"
@@ -727,7 +799,6 @@ const addNewQueues = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -875,8 +946,6 @@ const addNewQueues = () => {
           {{ getWorkflowName(item.workflowId) }}
         </template>
 
-
-
         <!-- Организация -->
         <template #item.companyId="{ item }">
           {{ getCompanyName(item.companyId) }}
@@ -899,7 +968,10 @@ const addNewQueues = () => {
 
         <!-- Ключевые слова -->
         <template #item.keywords="{ item }">
-          <div v-if="item.keywords && Array.isArray(item.keywords)" class="d-flex flex-wrap gap-1">
+          <div
+            v-if="item.keywords && Array.isArray(item.keywords)"
+            class="d-flex flex-wrap gap-1"
+          >
             <VChip
               v-for="keyword in item.keywords"
               :key="keyword"
@@ -911,7 +983,10 @@ const addNewQueues = () => {
               {{ keyword }}
             </VChip>
           </div>
-          <span v-else class="text-disabled">-</span>
+          <span
+            v-else
+            class="text-disabled"
+          >-</span>
         </template>
 
         <!-- Почтовый аккаунт -->
@@ -951,7 +1026,11 @@ const addNewQueues = () => {
 
         <!-- Приоритет (справочник) -->
         <template #item.priorityId="{ item }">
-          <VChip v-if="item.priorityId" :color="getPriorityColor(item.priorityId)" size="small">
+          <VChip
+            v-if="item.priorityId"
+            :color="getPriorityColor(item.priorityId)"
+            size="small"
+          >
             {{ getPriorityName(item.priorityId) }}
           </VChip>
           <span v-else>-</span>
@@ -987,9 +1066,9 @@ const addNewQueues = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -1003,10 +1082,16 @@ const addNewQueues = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_queues')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_queues')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_queues')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_queues')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -1031,7 +1116,6 @@ const addNewQueues = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать очередь' : 'Добавить очередь'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -1044,10 +1128,7 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.description"
                 label="Описание"
@@ -1127,7 +1208,10 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Группы исполнителей -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedItem.executorGroupIds"
                 label="Группы исполнителей"
@@ -1140,7 +1224,10 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Исполнители -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedItem.executorAgentIds"
                 label="Исполнители"
@@ -1153,7 +1240,10 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Наблюдатели -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedItem.observerAgentIds"
                 label="Наблюдатели"
@@ -1166,7 +1256,10 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Группы согласующих -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedItem.approverGroupIds"
                 label="Группы согласующих"
@@ -1179,7 +1272,10 @@ const addNewQueues = () => {
             </VCol>
 
             <!-- Согласующие -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedItem.approverAgentIds"
                 label="Согласующие"
@@ -1255,11 +1351,20 @@ const addNewQueues = () => {
   </div>
 
   <!-- Диалог настроек колонок -->
-  <VDialog v-model="isColumnsDialogOpen" max-width="600px">
+  <VDialog
+    v-model="isColumnsDialogOpen"
+    max-width="600px"
+  >
     <VCard title="Настройка колонок">
       <VCardText>
         <div class="d-flex justify-end mb-4">
-          <VBtn variant="text" size="small" @click="resetColumnSettings">Сбросить</VBtn>
+          <VBtn
+            variant="text"
+            size="small"
+            @click="resetColumnSettings"
+          >
+            Сбросить
+          </VBtn>
         </div>
         <VList>
           <VListItem
@@ -1278,14 +1383,14 @@ const addNewQueues = () => {
             <template #append>
               <div class="d-flex gap-1">
                 <IconBtn
-                  @click="moveColumnUp(index)"
                   :disabled="index === 0"
+                  @click="moveColumnUp(index)"
                 >
                   <VIcon icon="bx-chevron-up" />
                 </IconBtn>
                 <IconBtn
-                  @click="moveColumnDown(index)"
                   :disabled="index === columnSettings.length - 1"
+                  @click="moveColumnDown(index)"
                 >
                   <VIcon icon="bx-chevron-down" />
                 </IconBtn>
@@ -1296,7 +1401,9 @@ const addNewQueues = () => {
       </VCardText>
       <VCardActions>
         <VSpacer />
-        <VBtn @click="isColumnsDialogOpen = false">Закрыть</VBtn>
+        <VBtn @click="isColumnsDialogOpen = false">
+          Закрыть
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

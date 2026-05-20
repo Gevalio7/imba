@@ -148,16 +148,32 @@ const editPermission = (name: string) => {
       </VCard>
 
       <!-- Permission Edit Dialog -->
-      <VDialog v-model="isPermissionDialogVisible" max-width="500">
+      <VDialog
+        v-model="isPermissionDialogVisible"
+        max-width="500"
+      >
         <VCard>
           <VCardTitle>Edit Permission</VCardTitle>
           <VCardText>
-            <VTextField v-model="permissionName" label="Permission Name" />
+            <VTextField
+              v-model="permissionName"
+              label="Permission Name"
+            />
           </VCardText>
           <VCardActions>
             <VSpacer />
-            <VBtn variant="text" @click="isPermissionDialogVisible = false">Cancel</VBtn>
-            <VBtn color="primary" @click="isPermissionDialogVisible = false">Save</VBtn>
+            <VBtn
+              variant="text"
+              @click="isPermissionDialogVisible = false"
+            >
+              Cancel
+            </VBtn>
+            <VBtn
+              color="primary"
+              @click="isPermissionDialogVisible = false"
+            >
+              Save
+            </VBtn>
           </VCardActions>
         </VCard>
       </VDialog>

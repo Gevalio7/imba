@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useAuthorSearch } from '@/composables/useAuthorSearch'
 
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
+
     // route-level permission meta for router guard
     action: 'write',
     subject: 'menu_tickets_create',
@@ -49,16 +50,16 @@ const getQueueById = (queueId: number) => {
 const fetchTypeWorkflow = async (typeId: number) => {
   try {
     loadingWorkflow.value = true
+
     const data = await $api(`/types/${typeId}/workflow`)
-    
+
     currentWorkflow.value = (data as any).workflow
     initialStatus.value = (data as any).initialStatus
     availableStatuses.value = (data as any).availableStatuses || []
-    
+
     // Автоматически устанавливаем начальный статус если есть
-    if (initialStatus.value) {
+    if (initialStatus.value)
       ticket.value.stateId = initialStatus.value.id
-    }
   }
   catch (err) {
     console.error('Error fetching type workflow:', err)
@@ -96,18 +97,17 @@ const ticket = ref({
 watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
   if (newTypeId) {
     await fetchTypeWorkflow(newTypeId)
-    
+
     // Автоподстановка категории при выборе типа
     const selectedType = types.value.find((t: any) => t.id === newTypeId)
     if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
       // Если у типа только одна категория - автоподставляем
-      if (selectedType.categoryIds.length === 1) {
+      if (selectedType.categoryIds.length === 1)
         ticket.value.categoryId = selectedType.categoryIds[0]
-      }
+
       // Если у типа несколько категорий - не сбрасываем уже выбранную (если она в списке)
-      else if (ticket.value.categoryId && !selectedType.categoryIds.includes(ticket.value.categoryId)) {
+      else if (ticket.value.categoryId && !selectedType.categoryIds.includes(ticket.value.categoryId))
         ticket.value.categoryId = undefined
-      }
     }
   }
   else {
@@ -122,43 +122,39 @@ watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
 // Watcher для изменения очереди - автозаполнение полей
 watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
   // Пропускаем только если это не реальное изменение
-  if (oldQueueId === undefined && newQueueId === undefined) {
+  if (oldQueueId === undefined && newQueueId === undefined)
     return
-  }
 
   // Обрабатываем изменение, если newQueueId отличается от oldQueueId
   if (newQueueId !== oldQueueId && newQueueId) {
     const queue = getQueueById(newQueueId)
     if (queue) {
       // Автозаполняем поля из данных очереди
-      if (queue.companyId) {
+      if (queue.companyId)
         ticket.value.companyId = queue.companyId
-      }
-      if (queue.serviceId) {
+
+      if (queue.serviceId)
         ticket.value.serviceId = queue.serviceId
-      }
-      if (queue.slaId) {
+
+      if (queue.slaId)
         ticket.value.slaId = queue.slaId
-      }
-      if (queue.priorityId) {
+
+      if (queue.priorityId)
         ticket.value.priorityId = queue.priorityId
-      }
 
       // Автозаполняем исполнителей из очереди если не выбраны
-      if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0) {
+      if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0)
         ticket.value.executorGroupIds = [...queue.executorGroupIds]
-      }
-      if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0) {
+
+      if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0)
         ticket.value.executorAgentIds = [...queue.executorAgentIds]
-      }
 
       // Автозаполняем наблюдателей из очереди если не выбраны
-      if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0) {
+      if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0)
         ticket.value.observerGroupIds = [...queue.observerGroupIds]
-      }
-      if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0) {
+
+      if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0)
         ticket.value.observerAgentIds = [...queue.observerAgentIds]
-      }
 
       // Если у очереди есть workflow - ищем тип с этим workflow
       if (queue.workflowId) {
@@ -166,18 +162,17 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
           const typesData = await $api('/types')
           const typesList = (typesData as any).types || []
           const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-          if (typeWithWorkflow) {
+          if (typeWithWorkflow)
             ticket.value.typeId = typeWithWorkflow.id
-          }
-        } catch (err) {
+        }
+        catch (err) {
           console.error('Error finding type for workflow:', err)
         }
       }
 
       // Если у очереди есть category_id - автозаполняем категорию
-      if (queue.categoryId) {
+      if (queue.categoryId)
         ticket.value.categoryId = queue.categoryId
-      }
     }
   }
 })
@@ -185,7 +180,8 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
 // Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
 watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
   // Пропускаем начальную загрузку
-  if (oldCompanyId === undefined) return
+  if (oldCompanyId === undefined)
+    return
 
   // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
   if (newCompanyId && ticket.value.serviceId) {
@@ -206,28 +202,28 @@ watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
 // Watcher для изменения сервиса - автозаполнение SLA
 watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
   // Пропускаем начальную загрузку
-  if (oldServiceId === undefined) return
+  if (oldServiceId === undefined)
+    return
 
   // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
   if (newServiceId && !ticket.value.slaId) {
     const service = services.value.find((s: any) => s && s.id === newServiceId)
-    if (service && service.sla && typeof service.sla === 'object' && service.sla.id) {
+    if (service && service.sla && typeof service.sla === 'object' && service.sla.id)
       ticket.value.slaId = service.sla.id
-    }
   }
 })
 
 // Watcher для изменения автора - автозаполнение компании
 watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
   // Пропускаем начальную загрузку
-  if (oldOwnerId === undefined) return
+  if (oldOwnerId === undefined)
+    return
 
   // Если выбран сотрудник (число), находим его customerId
   if (typeof newOwnerId === 'number') {
     const selectedUser = customerUsers.value.find((u: any) => u && u.id === newOwnerId)
-    if (selectedUser && selectedUser.customerId && !ticket.value.companyId) {
+    if (selectedUser && selectedUser.customerId && !ticket.value.companyId)
       ticket.value.companyId = selectedUser.customerId
-    }
   }
 })
 
@@ -237,9 +233,8 @@ const uploadingFiles = ref(false)
 
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.files) {
+  if (target.files)
     attachments.value = [...attachments.value, ...Array.from(target.files)]
-  }
 }
 
 const removeAttachment = (index: number) => {
@@ -247,12 +242,13 @@ const removeAttachment = (index: number) => {
 }
 
 const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
+  if (bytes === 0)
+    return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 }
 
 // Агенты для выбора
@@ -280,7 +276,8 @@ const showCreateAuthorDialog = ref(false)
 
 // Проверка - является ли введенный текст email
 const isEmail = (text: string) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+
   return emailRegex.test(text)
 }
 
@@ -294,21 +291,14 @@ const handleAuthorSelect = (value: any) => {
       newAuthorData.value.email = value.trim()
       showCreateAuthorDialog.value = true
       ticket.value.ownerId = null
-    } else {
+    }
+    else {
       ticket.value.ownerId = null
       authorSearch.value = ''
       showToast('Создание сотрудника по email отключено в настройках', 'error')
     }
   }
 }
-  
-
-
-
-
-
-
-
 
 // Группы агентов для выбора
 const agentGroupOptions = computed(() => {
@@ -335,16 +325,18 @@ const assignToMe = () => {
   const currentAgent = agents.value.find((a: any) => a && a.login === userData.value?.login)
   if (currentAgent) {
     // Добавляем себя как исполнителя
-    if (!ticket.value.executorAgentIds.includes(currentAgent.id)) {
+    if (!ticket.value.executorAgentIds.includes(currentAgent.id))
       ticket.value.executorAgentIds = [...ticket.value.executorAgentIds, currentAgent.id]
-    }
+
     // Добавляем группы, в которые входит пользователь
     if (currentAgent.groups && Array.isArray(currentAgent.groups) && currentAgent.groups.length > 0) {
       const groupIds = currentAgent.groups.filter((g: any) => g).map((g: any) => g.id).filter((id: number) => !ticket.value.executorGroupIds.includes(id))
+
       ticket.value.executorGroupIds = [...ticket.value.executorGroupIds, ...groupIds]
     }
     showToast('Вы назначены исполнителем')
-  } else {
+  }
+  else {
     showToast('Вы не являетесь агентом', 'error')
   }
 }
@@ -359,7 +351,7 @@ const statusOptions = computed(() => {
       color: s.color,
     }))
   }
-  
+
   // Если нет workflow - возвращаем все статусы
   return states.value.map((s: any) => ({
     title: s.name,
@@ -370,22 +362,24 @@ const statusOptions = computed(() => {
 
 // Вычисляемый выбранный SLA для отображения дедлайнов
 const selectedSla = computed(() => {
-  if (!ticket.value.slaId) return null
+  if (!ticket.value.slaId)
+    return null
+
   return slaList.value.find(s => s.id === ticket.value.slaId)
 })
 
 // Вычисляемые сервисы - фильтруются по компании если она выбрана
 const filteredServices = computed(() => {
   // Если компания не выбрана - показываем все сервисы
-  if (!ticket.value.companyId) {
+  if (!ticket.value.companyId)
     return services.value
-  }
+
   // Фильтруем сервисы по компании
   return services.value.filter((s: any) => {
     // Сервис без компаний - показываем (глобальный)
-    if (!s.customers || !Array.isArray(s.customers) || s.customers.length === 0) {
+    if (!s.customers || !Array.isArray(s.customers) || s.customers.length === 0)
       return true
-    }
+
     // Проверяем есть ли компания в списке компаний сервиса
     return s.customers.some((c: any) => c && typeof c === 'object' && c.id === ticket.value.companyId)
   })
@@ -394,75 +388,93 @@ const filteredServices = computed(() => {
 // Вычисляемые категории - фильтруются по выбранному типу
 const filteredCategories = computed(() => {
   // Если тип не выбран - показываем пустой массив (категория скрыта)
-  if (!ticket.value.typeId) {
+  if (!ticket.value.typeId)
     return []
-  }
+
   // Находим тип и его categoryIds
   const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
-  if (!selectedType) {
+  if (!selectedType)
     return []
-  }
+
   // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
-  if (!selectedType.categoryIds || selectedType.categoryIds.length === 0) {
+  if (!selectedType.categoryIds || selectedType.categoryIds.length === 0)
     return []
-  }
+
   // Фильтруем категории по categoryIds типа
   return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
 })
 
 // Есть ли связанные категории для текущего типа
 const hasCategoriesForType = computed(() => {
-  if (!ticket.value.typeId) return false
+  if (!ticket.value.typeId)
+    return false
   const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+
   return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
 })
 
 // Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
 const formatSlaTime = (value: number | null | undefined, isHours: boolean = false) => {
-  if (!value) return '-'
+  if (!value)
+    return '-'
   if (isHours) {
     // Для responseTime - это часы
-    if (value < 1) return `${Math.round(value * 60)} мин`
-    if (value < 24) return `${value}ч`
+    if (value < 1)
+      return `${Math.round(value * 60)} мин`
+    if (value < 24)
+      return `${value}ч`
     const days = Math.floor(value / 24)
     const hours = Math.round(value % 24)
+
     return hours > 0 ? `${days}д ${hours}ч` : `${days}д`
-  } else {
+  }
+  else {
     // Для solutionTime - это минуты
-    if (value < 60) return `${value} мин`
+    if (value < 60)
+      return `${value} мин`
     const hours = Math.floor(value / 60)
     const mins = value % 60
-    if (hours < 24) return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`
+    if (hours < 24)
+      return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`
     const days = Math.floor(hours / 24)
     const remainingHours = hours % 24
+
     return remainingHours > 0 ? `${days}д ${remainingHours}ч` : `${days}д`
   }
 }
 
 // Расчёт дедлайнов (responseTime - часы, solutionTime - минуты)
 const responseDeadline = computed(() => {
-  if (!selectedSla.value?.responseTime) return null
+  if (!selectedSla.value?.responseTime)
+    return null
   const date = new Date()
+
   // responseTime в часах, поэтому умножаем на 60*60*1000
   date.setTime(date.getTime() + selectedSla.value.responseTime * 60 * 60 * 1000)
+
   return date
 })
 
 const resolutionDeadline = computed(() => {
-  if (!selectedSla.value?.solutionTime) return null
+  if (!selectedSla.value?.solutionTime)
+    return null
   const date = new Date()
+
   // solutionTime в минутах
   date.setMinutes(date.getMinutes() + selectedSla.value.solutionTime)
+
   return date
 })
 
 const formatDeadline = (date: Date | null) => {
-  if (!date) return '-'
+  if (!date)
+    return '-'
+
   return date.toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -482,7 +494,8 @@ const refreshData = async () => {
   try {
     await refreshReferenceData()
     showToast('Справочные данные обновлены', 'success')
-  } catch (error) {
+  }
+  catch (error) {
     showToast('Ошибка обновления данных', 'error')
   }
 }
@@ -493,6 +506,7 @@ const performSave = async () => {
     // Подготавливаем данные для отправки
     const ticketData = {
       ...ticket.value,
+
       // ownerId теперь всегда number или null (строки обрабатываются в save)
       ownerId: typeof ticket.value.ownerId === 'number' ? ticket.value.ownerId : null,
       description: description.value,
@@ -512,9 +526,8 @@ const performSave = async () => {
     const newTicketId = (result as any).id || (result as any).ticket?.id
 
     // Загружаем вложения если есть
-    if (attachments.value.length > 0 && newTicketId) {
+    if (attachments.value.length > 0 && newTicketId)
       await uploadAttachments(newTicketId)
-    }
 
     showToast('Обращение успешно создан')
     router.push('/apps/tickets')
@@ -530,22 +543,24 @@ const performSave = async () => {
 const save = async () => {
   if (!ticket.value.title?.trim()) {
     showToast('Заголовок обязателен для заполнения', 'error')
+
     return
   }
 
   if (!ticket.value.queueId) {
     showToast('Очередь обязательна для заполнения', 'error')
+
     return
   }
 
   if (!ticket.value.ownerId) {
     showToast('Автор обязателен для заполнения', 'error')
+
     return
   }
 
-  if (ticket.value.ownerId === '') {
+  if (ticket.value.ownerId === '')
     ticket.value.ownerId = null
-  }
 
   try {
     saving.value = true
@@ -562,6 +577,7 @@ const save = async () => {
 const createAuthorFromDialog = async () => {
   if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
     showToast('Введите корректный email', 'error')
+
     return
   }
 
@@ -580,7 +596,8 @@ const createAuthorFromDialog = async () => {
     showToast('Сотрудник создан', 'success')
 
     await performSave()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error('Error creating customer user:', err)
     showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
     saving.value = false
@@ -589,9 +606,10 @@ const createAuthorFromDialog = async () => {
 
 // Создание сотрудника напрямую из no-data
 const createNewUserFromNoData = async () => {
-  console.log('createNewUserFromNoData called, search="' + authorSearch.value + '"')
+  console.log(`createNewUserFromNoData called, search="${authorSearch.value}"`)
   if (!authorSearch.value || !isEmail(authorSearch.value)) {
     showToast('Введите корректный email', 'error')
+
     return
   }
 
@@ -610,6 +628,7 @@ const createNewUserFromNoData = async () => {
     console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
 
     const createdUserId = (newUser as any).id
+
     ticket.value.ownerId = createdUserId
     console.log('ticket.ownerId set to:', ticket.value.ownerId)
 
@@ -618,7 +637,8 @@ const createNewUserFromNoData = async () => {
 
     showToast('Сотрудник создан', 'success')
     saving.value = false
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error('Error creating customer user:', err)
     showToast(err.data?.message || 'Ошибка создания сотрудника', 'error')
     saving.value = false
@@ -638,12 +658,13 @@ const cancelCreateAuthor = () => {
 const uploadAttachments = async (ticketId: number) => {
   try {
     uploadingFiles.value = true
-    
+
     for (const file of attachments.value) {
       const formData = new FormData()
+
       formData.append('file', file)
       formData.append('ticketId', ticketId.toString())
-      
+
       await $api('/ticketAttachments', {
         method: 'POST',
         body: formData,
@@ -685,29 +706,32 @@ onMounted(async () => {
         </div>
       </div>
 
-       <div class="d-flex gap-4 align-center flex-wrap">
-         <VBtn
-           variant="tonal"
-           color="secondary"
-           @click="cancel"
-         >
-           Отмена
-         </VBtn>
-         <VBtn
-           variant="outlined"
-           color="primary"
-           @click="refreshData"
-           :loading="refLoading"
-         >
-           <VIcon icon="bx-refresh" class="me-2" />
-           Обновить данные
-         </VBtn>
-         <VBtn
-           :loading="saving"
-           @click="save"
-         >
-           Создать обращение
-         </VBtn>
+      <div class="d-flex gap-4 align-center flex-wrap">
+        <VBtn
+          variant="tonal"
+          color="secondary"
+          @click="cancel"
+        >
+          Отмена
+        </VBtn>
+        <VBtn
+          variant="outlined"
+          color="primary"
+          :loading="refLoading"
+          @click="refreshData"
+        >
+          <VIcon
+            icon="bx-refresh"
+            class="me-2"
+          />
+          Обновить данные
+        </VBtn>
+        <VBtn
+          :loading="saving"
+          @click="save"
+        >
+          Создать обращение
+        </VBtn>
       </div>
     </div>
 
@@ -857,8 +881,14 @@ onMounted(async () => {
                 density="comfortable"
               >
                 <template #append-inner>
-                  <span v-if="!ticket.typeId" class="text-caption text-medium-emphasis">(выберите тип)</span>
-                  <span v-else-if="!hasCategoriesForType" class="text-caption text-error">(нет категорий)</span>
+                  <span
+                    v-if="!ticket.typeId"
+                    class="text-caption text-medium-emphasis"
+                  >(выберите тип)</span>
+                  <span
+                    v-else-if="!hasCategoriesForType"
+                    class="text-caption text-error"
+                  >(нет категорий)</span>
                 </template>
               </AppSelect>
 
@@ -948,13 +978,13 @@ onMounted(async () => {
 
               <VAutocomplete
                 v-model="ticket.ownerId"
+                v-model:search="authorSearch"
                 :items="filteredAuthorOptions"
                 item-title="title"
                 item-value="value"
                 :error="!ticket.ownerId"
                 label="Автор"
                 placeholder="Введите имя или email для поиска..."
-                v-model:search="authorSearch"
                 clearable
                 allow-custom
                 :menu-props="{ location: 'top' }"
@@ -975,11 +1005,21 @@ onMounted(async () => {
                 </template>
                 <template #no-data>
                   <div>
-                    <div v-if="showCreateIconInNoData" class="px-4 py-2 cursor-pointer" @click="createNewUserFromNoData">
-                      <VIcon icon="bx-magic" class="me-2" />
+                    <div
+                      v-if="showCreateIconInNoData"
+                      class="px-4 py-2 cursor-pointer"
+                      @click="createNewUserFromNoData"
+                    >
+                      <VIcon
+                        icon="bx-magic"
+                        class="me-2"
+                      />
                       Создать сотрудника "{{ newAuthorData.firstName }} {{ newAuthorData.lastName }}"
                     </div>
-                    <div v-else class="px-4 py-2">
+                    <div
+                      v-else
+                      class="px-4 py-2"
+                    >
                       Нет данных
                     </div>
                   </div>
@@ -998,52 +1038,52 @@ onMounted(async () => {
                 density="comfortable"
               />
 
-               <!-- Исполнители -->
-               <AppSelect
-                 v-model="ticket.executorAgentIds"
-                 :items="agentOptions"
-                 label="Исполнители"
-                 placeholder="Выберите исполнителей"
-                 multiple
-                 chips
-                 clearable
-                 density="comfortable"
-               >
-                 <template #append-inner>
-                   <VBtn
-                     variant="text"
-                     size="small"
-                     color="primary"
-                     @click="assignToMe"
-                   >
-                     Назначить на себя
-                   </VBtn>
-                 </template>
-               </AppSelect>
+              <!-- Исполнители -->
+              <AppSelect
+                v-model="ticket.executorAgentIds"
+                :items="agentOptions"
+                label="Исполнители"
+                placeholder="Выберите исполнителей"
+                multiple
+                chips
+                clearable
+                density="comfortable"
+              >
+                <template #append-inner>
+                  <VBtn
+                    variant="text"
+                    size="small"
+                    color="primary"
+                    @click="assignToMe"
+                  >
+                    Назначить на себя
+                  </VBtn>
+                </template>
+              </AppSelect>
 
-               <!-- Группы наблюдателей -->
-               <AppSelect
-                 v-model="ticket.observerGroupIds"
-                 :items="observerGroupOptions"
-                 label="Группы наблюдателей"
-                 placeholder="Выберите группы наблюдателей"
-                 multiple
-                 chips
-                 clearable
-                 clear-icon="bx-x"
-               />
+              <!-- Группы наблюдателей -->
+              <AppSelect
+                v-model="ticket.observerGroupIds"
+                :items="observerGroupOptions"
+                label="Группы наблюдателей"
+                placeholder="Выберите группы наблюдателей"
+                multiple
+                chips
+                clearable
+                clear-icon="bx-x"
+              />
 
-               <!-- Наблюдатели -->
-               <AppSelect
-                 v-model="ticket.observerAgentIds"
-                 :items="agentOptions"
-                 label="Наблюдатели"
-                 placeholder="Выберите наблюдателей"
-                 multiple
-                 chips
-                 clearable
-                 density="comfortable"
-               />
+              <!-- Наблюдатели -->
+              <AppSelect
+                v-model="ticket.observerAgentIds"
+                :items="agentOptions"
+                label="Наблюдатели"
+                placeholder="Выберите наблюдателей"
+                multiple
+                chips
+                clearable
+                density="comfortable"
+              />
 
               <AppSelect
                 v-model="ticket.companyId"
@@ -1115,7 +1155,10 @@ onMounted(async () => {
     </VSnackbar>
 
     <!-- Модальное окно создания сотрудника -->
-    <VDialog v-model="showCreateAuthorDialog" max-width="500px">
+    <VDialog
+      v-model="showCreateAuthorDialog"
+      max-width="500px"
+    >
       <VCard title="Создание нового сотрудника">
         <VCardText>
           <div class="text-body-1 mb-3">
@@ -1142,8 +1185,20 @@ onMounted(async () => {
         </VCardText>
         <VCardActions>
           <VSpacer />
-          <VBtn color="grey" variant="outlined" @click="cancelCreateAuthor">Отмена</VBtn>
-          <VBtn color="primary" variant="elevated" @click="createAuthorFromDialog">Создать</VBtn>
+          <VBtn
+            color="grey"
+            variant="outlined"
+            @click="cancelCreateAuthor"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="elevated"
+            @click="createAuthorFromDialog"
+          >
+            Создать
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

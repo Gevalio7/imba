@@ -16,8 +16,10 @@
     <!-- 👉 Footer: right content -->
     <span class="d-md-flex gap-x-4 text-primary d-none">
       <!-- Можно добавить свои ссылки -->
-      <!-- <a href="#" target="noopener noreferrer">Documentation</a>
-      <a href="#" target="noopener noreferrer">Support</a> -->
+      <!--
+        <a href="#" target="noopener noreferrer">Documentation</a>
+        <a href="#" target="noopener noreferrer">Support</a>
+      -->
     </span>
   </div>
 </template>

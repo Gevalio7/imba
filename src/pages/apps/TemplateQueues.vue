@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
 import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
 import { $api } from '@/utils/api'
-import { computed, onMounted, ref, watch } from 'vue'
 
 // Типы данных для Шаблон
 interface Templates {
@@ -25,6 +25,7 @@ interface Queues {
   isActive: boolean
   createdAt: string
   updatedAt: string
+
   // Новые поля
   companyId: number | null
   serviceId: number | null
@@ -70,7 +71,6 @@ interface Priorities {
   value: number
 }
 
-
 // Данные шаблонов
 const templates = ref<Templates[]>([])
 const templatesTotal = ref(0)
@@ -89,14 +89,18 @@ const fetchTemplates = async () => {
     templatesLoading.value = true
     templatesError.value = null
     console.log('Fetching templates from:', `/templates`)
-    const data = await $api<{ templates: Templates[], total: number }>(`/templates`)
+
+    const data = await $api<{ templates: Templates[]; total: number }>(`/templates`)
+
     console.log('Fetched templates data:', data)
     templates.value = data.templates
     templatesTotal.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     templatesError.value = 'Ошибка загрузки шаблонов'
     console.error('Error fetching templates:', err)
-  } finally {
+  }
+  finally {
     templatesLoading.value = false
   }
 }
@@ -107,14 +111,18 @@ const fetchQueues = async () => {
     queuesLoading.value = true
     queuesError.value = null
     console.log('Fetching queues from:', `/queues`)
-    const data = await $api<{ queues: Queues[], total: number }>(`/queues`)
+
+    const data = await $api<{ queues: Queues[]; total: number }>(`/queues`)
+
     console.log('Fetched queues data:', data)
     queues.value = data.queues
     queuesTotal.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     queuesError.value = 'Ошибка загрузки очередей'
     console.error('Error fetching queues:', err)
-  } finally {
+  }
+  finally {
     queuesLoading.value = false
   }
 }
@@ -131,8 +139,10 @@ const agentsGroups = ref<any[]>([])
 const fetchCompanies = async () => {
   try {
     const data = await $api(`/customers`)
+
     companies.value = data.customers || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching companies:', err)
   }
 }
@@ -140,8 +150,10 @@ const fetchCompanies = async () => {
 const fetchServices = async () => {
   try {
     const data = await $api(`/services`)
+
     services.value = data.services || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching services:', err)
   }
 }
@@ -149,8 +161,10 @@ const fetchServices = async () => {
 const fetchSla = async () => {
   try {
     const data = await $api(`/sla`)
+
     slaList.value = data.sla || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching SLA:', err)
   }
 }
@@ -158,8 +172,10 @@ const fetchSla = async () => {
 const fetchWorkflows = async () => {
   try {
     const data = await $api(`/workflows`)
+
     workflows.value = data.workflows || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching workflows:', err)
   }
 }
@@ -167,8 +183,10 @@ const fetchWorkflows = async () => {
 const fetchPriorities = async () => {
   try {
     const data = await $api(`/priorities`)
+
     prioritiesList.value = data.priorities || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching priorities:', err)
   }
 }
@@ -176,8 +194,10 @@ const fetchPriorities = async () => {
 const fetchAgentsGroups = async () => {
   try {
     const data = await $api(`/agentsGroups`)
+
     agentsGroups.value = data.agentsGroups || []
-  } catch (err) {
+  }
+  catch (err) {
     console.log('Error fetching agentsGroups:', err)
   }
 }
@@ -187,11 +207,14 @@ const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updat
   try {
     const data = await $api<Templates>(`/templates`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     templates.value.unshift(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating templates:', err)
     throw err
   }
@@ -202,14 +225,16 @@ const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id'
   try {
     const data = await $api<Templates>(`/templates/${id}`, {
       method: 'PUT',
-      body: updates
+      body: updates,
     })
+
     const index = templates.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       templates.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating templates:', err)
     throw err
   }
@@ -219,13 +244,14 @@ const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id'
 const deleteTemplates = async (id: number) => {
   try {
     await $api(`/templates/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = templates.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       templates.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting templates:', err)
     throw err
   }
@@ -236,11 +262,14 @@ const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>
   try {
     const data = await $api<Queues>(`/queues`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     queues.value.unshift(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating queues:', err)
     throw err
   }
@@ -251,14 +280,16 @@ const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'cr
   try {
     const data = await $api<Queues>(`/queues/${id}`, {
       method: 'PUT',
-      body: updates
+      body: updates,
     })
+
     const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       queues.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating queues:', err)
     throw err
   }
@@ -268,13 +299,14 @@ const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'cr
 const deleteQueues = async (id: number) => {
   try {
     await $api(`/queues/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       queues.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting queues:', err)
     throw err
   }
@@ -300,7 +332,7 @@ const templatesHeaders = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Headers для очередей
@@ -314,7 +346,7 @@ const queuesHeaders = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация шаблонов
@@ -323,12 +355,13 @@ const filteredTemplates = computed(() => {
 
   if (templatesSearchQuery.value.trim()) {
     const query = templatesSearchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
-  if (templatesStatusFilter.value !== null) {
+  if (templatesStatusFilter.value !== null)
     filtered = filtered.filter(p => p.isActive === (templatesStatusFilter.value === 1))
-  }
+
   return filtered
 })
 
@@ -336,17 +369,18 @@ const filteredTemplates = computed(() => {
 const filteredQueues = computed(() => {
   let filtered = queues.value.map(queue => ({
     ...queue,
-    templateName: templates.value.find(t => t.id === queue.templateId)?.name || 'Не указан'
+    templateName: templates.value.find(t => t.id === queue.templateId)?.name || 'Не указан',
   }))
 
   if (queuesSearchQuery.value.trim()) {
     const query = queuesSearchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
-  if (queuesStatusFilter.value !== null) {
+  if (queuesStatusFilter.value !== null)
     filtered = filtered.filter(p => p.isActive === (queuesStatusFilter.value === 1))
-  }
+
   return filtered
 })
 
@@ -377,13 +411,14 @@ const templatesBulkChangeStatus = () => {
 const confirmTemplatesBulkDelete = async () => {
   try {
     const count = templatesSelectedItems.value.length
-    for (const item of templatesSelectedItems.value) {
+    for (const item of templatesSelectedItems.value)
       await deleteTemplates(item.id)
-    }
+
     templatesSelectedItems.value = []
     showToast(`Удалено ${count} шаблонов`)
     isTemplatesBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -394,13 +429,14 @@ const confirmTemplatesBulkStatusChange = async () => {
     for (const item of templatesSelectedItems.value) {
       await updateTemplates(item.id, {
         ...item,
-        isActive: templatesBulkStatusValue.value === 1
+        isActive: templatesBulkStatusValue.value === 1,
       })
     }
     templatesSelectedItems.value = []
     showToast(`Статус изменен для ${count} шаблонов`)
     isTemplatesBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -417,13 +453,14 @@ const queuesBulkChangeStatus = () => {
 const confirmQueuesBulkDelete = async () => {
   try {
     const count = queuesSelectedItems.value.length
-    for (const item of queuesSelectedItems.value) {
+    for (const item of queuesSelectedItems.value)
       await deleteQueues(item.id)
-    }
+
     queuesSelectedItems.value = []
     showToast(`Удалено ${count} очередей`)
     isQueuesBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -434,13 +471,14 @@ const confirmQueuesBulkStatusChange = async () => {
     for (const item of queuesSelectedItems.value) {
       await updateQueues(item.id, {
         ...item,
-        isActive: queuesBulkStatusValue.value === 1
+        isActive: queuesBulkStatusValue.value === 1,
       })
     }
     queuesSelectedItems.value = []
     showToast(`Статус изменен для ${count} очередей`)
     isQueuesBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -503,6 +541,7 @@ const defaultQueuesItem = ref<Queues>({
   createdAt: '',
   updatedAt: '',
   isActive: true,
+
   // Новые поля
   companyId: null,
   serviceId: null,
@@ -584,6 +623,7 @@ const closeTemplatesDelete = () => {
 const saveTemplates = async () => {
   if (!editedTemplatesItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -591,18 +631,22 @@ const saveTemplates = async () => {
     if (editedTemplatesIndex.value > -1) {
       const updated = await updateTemplates(editedTemplatesItem.value.id, {
         ...editedTemplatesItem.value,
-        isActive: editedTemplatesItem.value.isActive
+        isActive: editedTemplatesItem.value.isActive,
       })
+
       showToast('Шаблон успешно сохранен')
-    } else {
+    }
+    else {
       const created = await createTemplates({
         ...editedTemplatesItem.value,
-        isActive: editedTemplatesItem.value.isActive
+        isActive: editedTemplatesItem.value.isActive,
       })
+
       showToast('Шаблон успешно добавлен')
     }
     closeTemplates()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения шаблона', 'error')
   }
 }
@@ -612,20 +656,23 @@ const deleteTemplatesItemConfirm = async () => {
     await deleteTemplates(editedTemplatesItem.value.id)
     showToast('Шаблон успешно удален')
     closeTemplatesDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления шаблона', 'error')
   }
 }
 
 const toggleTemplatesStatus = async (item: Templates, newValue: boolean | null) => {
-  if (newValue === null) return
+  if (newValue === null)
+    return
   try {
     await updateTemplates(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус шаблона изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -658,6 +705,7 @@ const closeQueuesDelete = () => {
 const saveQueues = async () => {
   if (!editedQueuesItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -665,18 +713,22 @@ const saveQueues = async () => {
     if (editedQueuesIndex.value > -1) {
       const updated = await updateQueues(editedQueuesItem.value.id, {
         ...editedQueuesItem.value,
-        isActive: editedQueuesItem.value.isActive
+        isActive: editedQueuesItem.value.isActive,
       })
+
       showToast('Очередь успешно сохранена')
-    } else {
+    }
+    else {
       const created = await createQueues({
         ...editedQueuesItem.value,
-        isActive: editedQueuesItem.value.isActive
+        isActive: editedQueuesItem.value.isActive,
       })
+
       showToast('Очередь успешно добавлена')
     }
     closeQueues()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения очереди', 'error')
   }
 }
@@ -686,20 +738,23 @@ const deleteQueuesItemConfirm = async () => {
     await deleteQueues(editedQueuesItem.value.id)
     showToast('Очередь успешно удалена')
     closeQueuesDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления очереди', 'error')
   }
 }
 
 const toggleQueuesStatus = async (item: Queues, newValue: boolean | null) => {
-  if (newValue === null) return
+  if (newValue === null)
+    return
   try {
     await updateQueues(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус очереди изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -717,7 +772,7 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление новых элементов
 const addNewTemplates = () => {
-  if (useGlobalPermissions().can('write','menu_templates')) {
+  if (useGlobalPermissions().can('write', 'menu_templates')) {
     editedTemplatesItem.value = { ...defaultTemplatesItem.value }
     editedTemplatesIndex.value = -1
     templatesEditDialog.value = true
@@ -725,7 +780,7 @@ const addNewTemplates = () => {
 }
 
 const addNewQueues = () => {
-  if (useGlobalPermissions().can('write','menu_queues')) {
+  if (useGlobalPermissions().can('write', 'menu_queues')) {
     editedQueuesItem.value = { ...defaultQueuesItem.value }
     editedQueuesIndex.value = -1
     queuesEditDialog.value = true
@@ -748,18 +803,17 @@ const newKeyword = ref('')
 
 const addKeyword = () => {
   if (newKeyword.value.trim() && !editedQueuesItem.value.keywords?.includes(newKeyword.value.trim())) {
-    if (!editedQueuesItem.value.keywords) {
+    if (!editedQueuesItem.value.keywords)
       editedQueuesItem.value.keywords = []
-    }
+
     editedQueuesItem.value.keywords.push(newKeyword.value.trim())
     newKeyword.value = ''
   }
 }
 
 const removeKeyword = (index: number) => {
-  if (editedQueuesItem.value.keywords) {
+  if (editedQueuesItem.value.keywords)
     editedQueuesItem.value.keywords.splice(index, 1)
-  }
 }
 
 // Для email конфига
@@ -772,13 +826,12 @@ const emailConfig = ref({
 })
 
 // Синхронизация emailConfig с editedQueuesItem
-watch(() => editedQueuesItem.value.emailConfig, (newVal) => {
-  if (newVal) {
+watch(() => editedQueuesItem.value.emailConfig, newVal => {
+  if (newVal)
     emailConfig.value = { ...newVal }
-  }
 }, { deep: true })
 
-watch(emailConfig, (newVal) => {
+watch(emailConfig, newVal => {
   editedQueuesItem.value.emailConfig = { ...newVal }
 }, { deep: true })
 </script>
@@ -811,14 +864,23 @@ watch(emailConfig, (newVal) => {
           variant="outlined"
           divided
         >
-          <VBtn value="cards" icon="bx-grid-alt" />
-          <VBtn value="table" icon="bx-list-ul" />
+          <VBtn
+            value="cards"
+            icon="bx-grid-alt"
+          />
+          <VBtn
+            value="table"
+            icon="bx-list-ul"
+          />
         </VBtnToggle>
       </div>
     </VCol>
 
     <!-- Карточный вид -->
-    <VCol v-if="templatesViewMode === 'cards'" cols="12">
+    <VCol
+      v-if="templatesViewMode === 'cards'"
+      cols="12"
+    >
       <TemplateCards
         :templates="filteredTemplates"
         :loading="templatesLoading"
@@ -830,21 +892,39 @@ watch(emailConfig, (newVal) => {
     </VCol>
 
     <!-- Табличный вид -->
-    <VCol v-else cols="12">
+    <VCol
+      v-else
+      cols="12"
+    >
       <VCard title="Шаблоны">
         <!-- Индикатор загрузки -->
-        <div v-if="templatesLoading" class="d-flex justify-center pa-6">
-          <VProgressCircular indeterminate color="primary" />
+        <div
+          v-if="templatesLoading"
+          class="d-flex justify-center pa-6"
+        >
+          <VProgressCircular
+            indeterminate
+            color="primary"
+          />
         </div>
 
         <!-- Сообщение об ошибке -->
-        <div v-else-if="templatesError" class="d-flex justify-center pa-6">
-          <VAlert type="error" class="ma-4">
+        <div
+          v-else-if="templatesError"
+          class="d-flex justify-center pa-6"
+        >
+          <VAlert
+            type="error"
+            class="ma-4"
+          >
             {{ templatesError }}
           </VAlert>
         </div>
 
-        <div v-else class="d-flex flex-wrap gap-4 pa-6">
+        <div
+          v-else
+          class="d-flex flex-wrap gap-4 pa-6"
+        >
           <div class="d-flex align-center">
             <!-- Поиск -->
             <AppTextField
@@ -1062,9 +1142,9 @@ watch(emailConfig, (newVal) => {
             <div class="d-flex align-center gap-2">
               <VSwitch
                 :model-value="item.isActive"
-                @update:model-value="(val: boolean | null) => toggleTemplatesStatus(item, val)"
                 color="primary"
                 hide-details
+                @update:model-value="(val: boolean | null) => toggleTemplatesStatus(item, val)"
               />
               <VChip
                 v-bind="resolveStatusVariant(item.isActive)"
@@ -1083,12 +1163,18 @@ watch(emailConfig, (newVal) => {
           <!-- Действия -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_templates')" @click="editTemplatesItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn v-if="$can('delete','menu_templates')" @click="deleteTemplatesItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
+              <IconBtn
+                v-if="$can('write', 'menu_templates')"
+                @click="editTemplatesItem(item)"
+              >
+                <VIcon icon="bx-edit" />
+              </IconBtn>
+              <IconBtn
+                v-if="$can('delete', 'menu_templates')"
+                @click="deleteTemplatesItem(item)"
+              >
+                <VIcon icon="bx-trash" />
+              </IconBtn>
             </div>
           </template>
         </VDataTable>
@@ -1121,14 +1207,23 @@ watch(emailConfig, (newVal) => {
           variant="outlined"
           divided
         >
-          <VBtn value="cards" icon="bx-grid-alt" />
-          <VBtn value="table" icon="bx-list-ul" />
+          <VBtn
+            value="cards"
+            icon="bx-grid-alt"
+          />
+          <VBtn
+            value="table"
+            icon="bx-list-ul"
+          />
         </VBtnToggle>
       </div>
     </VCol>
 
     <!-- Карточный вид очередей -->
-    <VCol v-if="queuesViewMode === 'cards'" cols="12">
+    <VCol
+      v-if="queuesViewMode === 'cards'"
+      cols="12"
+    >
       <QueueCards
         :queues="filteredQueues"
         :loading="queuesLoading"
@@ -1140,22 +1235,39 @@ watch(emailConfig, (newVal) => {
     </VCol>
 
     <!-- Табличный вид очередей -->
-    <VCol v-else cols="12">
+    <VCol
+      v-else
+      cols="12"
+    >
       <VCard title="Очереди">
-
         <!-- Индикатор загрузки -->
-        <div v-if="queuesLoading" class="d-flex justify-center pa-6">
-          <VProgressCircular indeterminate color="primary" />
+        <div
+          v-if="queuesLoading"
+          class="d-flex justify-center pa-6"
+        >
+          <VProgressCircular
+            indeterminate
+            color="primary"
+          />
         </div>
 
         <!-- Сообщение об ошибке -->
-        <div v-else-if="queuesError" class="d-flex justify-center pa-6">
-          <VAlert type="error" class="ma-4">
+        <div
+          v-else-if="queuesError"
+          class="d-flex justify-center pa-6"
+        >
+          <VAlert
+            type="error"
+            class="ma-4"
+          >
             {{ queuesError }}
           </VAlert>
         </div>
 
-        <div v-else class="d-flex flex-wrap gap-4 pa-6">
+        <div
+          v-else
+          class="d-flex flex-wrap gap-4 pa-6"
+        >
           <div class="d-flex align-center">
             <!-- Поиск -->
             <AppTextField
@@ -1373,9 +1485,9 @@ watch(emailConfig, (newVal) => {
             <div class="d-flex align-center gap-2">
               <VSwitch
                 :model-value="item.isActive"
-                @update:model-value="(val: boolean | null) => toggleQueuesStatus(item, val)"
                 color="primary"
                 hide-details
+                @update:model-value="(val: boolean | null) => toggleQueuesStatus(item, val)"
               />
               <VChip
                 v-bind="resolveStatusVariant(item.isActive)"
@@ -1389,12 +1501,18 @@ watch(emailConfig, (newVal) => {
           <!-- Действия -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_queues')" @click="editQueuesItem(item)">
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn v-if="$can('delete','menu_queues')" @click="deleteQueuesItem(item)">
-              <VIcon icon="bx-trash" />
-            </IconBtn>
+              <IconBtn
+                v-if="$can('write', 'menu_queues')"
+                @click="editQueuesItem(item)"
+              >
+                <VIcon icon="bx-edit" />
+              </IconBtn>
+              <IconBtn
+                v-if="$can('delete', 'menu_queues')"
+                @click="deleteQueuesItem(item)"
+              >
+                <VIcon icon="bx-trash" />
+              </IconBtn>
             </div>
           </template>
         </VDataTable>
@@ -1419,7 +1537,10 @@ watch(emailConfig, (newVal) => {
         <VCardText>
           <VRow>
             <!-- Название -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedTemplatesItem.name"
                 label="Название *"
@@ -1437,7 +1558,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Активен -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSwitch
                 v-model="editedTemplatesItem.isActive"
                 label="Активен"
@@ -1504,7 +1628,10 @@ watch(emailConfig, (newVal) => {
         <VCardText>
           <VRow>
             <!-- Название -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedQueuesItem.name"
                 label="Название *"
@@ -1512,7 +1639,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Шаблон -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.templateId"
                 :items="templateOptions"
@@ -1523,7 +1653,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Компания -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.companyId"
                 :items="companyOptions"
@@ -1534,7 +1667,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Сервис -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.serviceId"
                 :items="serviceOptions"
@@ -1545,7 +1681,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- SLA -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.slaId"
                 :items="slaOptions"
@@ -1556,7 +1695,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Workflow -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.workflowId"
                 :items="workflowOptions"
@@ -1567,7 +1709,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Группа агентов -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.agentGroupId"
                 :items="agentsGroupsOptions"
@@ -1578,7 +1723,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Приоритет (связь) -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppSelect
                 v-model="editedQueuesItem.priorityId"
                 :items="priorityIdOptions"
@@ -1599,7 +1747,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Макс. тикетов -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedQueuesItem.maxTickets"
                 label="Макс. тикетов"
@@ -1609,7 +1760,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Приоритет (число) -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <AppTextField
                 v-model="editedQueuesItem.priority"
                 label="Приоритет (число)"
@@ -1648,7 +1802,10 @@ watch(emailConfig, (newVal) => {
                   </VBtn>
                 </template>
               </VTextField>
-              <div v-if="editedQueuesItem.keywords?.length" class="mt-2">
+              <div
+                v-if="editedQueuesItem.keywords?.length"
+                class="mt-2"
+              >
                 <VChip
                   v-for="(keyword, index) in editedQueuesItem.keywords"
                   :key="index"
@@ -1673,17 +1830,28 @@ watch(emailConfig, (newVal) => {
 
             <!-- Email настройки -->
             <VCol cols="12">
-              <VCard variant="outlined" class="pa-4">
-                <h4 class="mb-4">Настройки email</h4>
+              <VCard
+                variant="outlined"
+                class="pa-4"
+              >
+                <h4 class="mb-4">
+                  Настройки email
+                </h4>
                 <VRow>
-                  <VCol cols="12" sm="6">
+                  <VCol
+                    cols="12"
+                    sm="6"
+                  >
                     <AppTextField
                       v-model="emailConfig.host"
                       label="SMTP хост"
                       placeholder="smtp.example.com"
                     />
                   </VCol>
-                  <VCol cols="12" sm="6">
+                  <VCol
+                    cols="12"
+                    sm="6"
+                  >
                     <AppTextField
                       v-model="emailConfig.port"
                       label="SMTP порт"
@@ -1691,14 +1859,20 @@ watch(emailConfig, (newVal) => {
                       placeholder="587"
                     />
                   </VCol>
-                  <VCol cols="12" sm="6">
+                  <VCol
+                    cols="12"
+                    sm="6"
+                  >
                     <AppTextField
                       v-model="emailConfig.username"
                       label="SMTP пользователь"
                       placeholder="user@example.com"
                     />
                   </VCol>
-                  <VCol cols="12" sm="6">
+                  <VCol
+                    cols="12"
+                    sm="6"
+                  >
                     <AppTextField
                       v-model="emailConfig.password"
                       label="SMTP пароль"
@@ -1718,7 +1892,10 @@ watch(emailConfig, (newVal) => {
             </VCol>
 
             <!-- Активен -->
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSwitch
                 v-model="editedQueuesItem.isActive"
                 label="Активен"

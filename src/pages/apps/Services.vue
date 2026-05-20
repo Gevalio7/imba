@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Сервис
 interface Services {
@@ -52,7 +52,6 @@ interface SLA {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -95,14 +94,18 @@ const fetchServices = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching services from:', `${API_BASE}/services`)
-    const data = await $api<{ services: Services[], total: number }>(`${API_BASE}/services`)
+
+    const data = await $api<{ services: Services[]; total: number }>(`${API_BASE}/services`)
+
     console.log('Fetched services data:', data)
     services.value = data.services
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки сервисы'
     console.error('Error fetching services:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -112,11 +115,14 @@ const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updated
   try {
     const data = await $api<Services>(`${API_BASE}/services`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     services.value.unshift(data) // Добавляем в начало массива
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating services:', err)
     throw err
   }
@@ -127,14 +133,16 @@ const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt
   try {
     const data = await $api<Services>(`${API_BASE}/services/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       services.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating services:', err)
     throw err
   }
@@ -144,13 +152,14 @@ const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt
 const deleteServices = async (id: number) => {
   try {
     await $api(`${API_BASE}/services/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       services.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting services:', err)
     throw err
   }
@@ -167,11 +176,15 @@ onMounted(() => {
 const fetchCustomers = async () => {
   try {
     customersLoading.value = true
-    const data = await $api<{ customers: Customers[], total: number }>(`${API_BASE}/customers`)
+
+    const data = await $api<{ customers: Customers[]; total: number }>(`${API_BASE}/customers`)
+
     customers.value = data.customers || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching customers:', err)
-  } finally {
+  }
+  finally {
     customersLoading.value = false
   }
 }
@@ -180,11 +193,15 @@ const fetchCustomers = async () => {
 const fetchSLAs = async () => {
   try {
     slasLoading.value = true
-    const data = await $api<{ sla: SLA[], total: number }>(`${API_BASE}/sla`)
+
+    const data = await $api<{ sla: SLA[]; total: number }>(`${API_BASE}/sla`)
+
     slas.value = data.sla || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching SLAs:', err)
-  } finally {
+  }
+  finally {
     slasLoading.value = false
   }
 }
@@ -200,7 +217,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -210,6 +227,7 @@ const filteredServices = computed(() => {
   if (searchQuery.value.trim()) {
     // Фильтруем по поисковому запросу (по названию)
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
@@ -242,6 +260,7 @@ const clearFilters = () => {
 // Уникальные названия для фильтра
 const uniqueNames = computed(() => {
   const names = services.value.map(p => p.name)
+
   return [...new Set(names)].sort()
 })
 
@@ -268,13 +287,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteServices(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} сервисы`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -285,13 +305,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateServices(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} сервисы`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -321,7 +342,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -329,10 +350,9 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Ограничение количества выбранных названий
-watch(selectedNames, (value) => {
-  if (value.length > 10) {
+watch(selectedNames, value => {
+  if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
-  }
 })
 
 // Диалоги
@@ -371,27 +391,34 @@ const typeOptions = [
   'Составление отчетов',
   'Управление ИТ',
   'Эксплуатация',
-  'Ит'
+  'Ит',
 ]
 
 // Методы
 const editItem = async (item: Services) => {
   editedIndex.value = services.value.indexOf(item)
-  
+
   // Загружаем полные данные сервиса с сервера
   try {
     const fullItem = await $api<Services>(`${API_BASE}/services/${item.id}`)
+
     editedItem.value = { ...fullItem }
+
     // Устанавливаем выбранные компании
     selectedCustomerIds.value = fullItem.customers?.map(c => c.id) || []
+
     // Устанавливаем существующие вложения
     existingAttachments.value = fullItem.attachments || []
+
     // Очищаем загружаемые файлы
     uploadedFiles.value = []
+
     // Устанавливаем выбранный SLA (связь 1 к 1)
     selectedSLAId.value = fullItem.sla?.id || null
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error loading service details:', err)
+
     // Fallback к локальным данным
     editedItem.value = { ...item }
     selectedCustomerIds.value = item.customers?.map(c => c.id) || []
@@ -399,7 +426,7 @@ const editItem = async (item: Services) => {
     uploadedFiles.value = []
     selectedSLAId.value = item.sla?.id || null
   }
-  
+
   editDialog.value = true
 }
 
@@ -428,13 +455,14 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
   try {
     // Извлекаем ID компаний из объектов (VCombobox может возвращать объекты вместо ID)
-    const customerIds = selectedCustomerIds.value.map((item: any) => 
-      typeof item === 'object' && item !== null ? item.id : item
+    const customerIds = selectedCustomerIds.value.map((item: any) =>
+      typeof item === 'object' && item !== null ? item.id : item,
     )
 
     // Извлекаем ID SLA из объекта (связь 1 к 1)
@@ -446,35 +474,35 @@ const save = async () => {
       comment: editedItem.value.comment || '',
       type: editedItem.value.type || '',
       isActive: editedItem.value.isActive,
-      customerIds: customerIds,
-      slaId: slaId
+      customerIds,
+      slaId,
     }
 
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updateServices(editedItem.value.id, serviceData)
-      
+
       // Загрузка новых файлов если есть
-      if (uploadedFiles.value.length > 0) {
+      if (uploadedFiles.value.length > 0)
         await uploadFiles(editedItem.value.id)
-      }
-      
+
       showToast('Сервис успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createServices(serviceData)
-      
+
       // Загрузка файлов для нового сервиса
-      if (uploadedFiles.value.length > 0 && created.id) {
+      if (uploadedFiles.value.length > 0 && created.id)
         await uploadFiles(created.id)
-      }
-      
+
       // Перезагружаем данные что бы получить актуальный список с сервера
       await fetchServices()
       showToast('Сервис успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения сервис', 'error')
   }
 }
@@ -483,18 +511,20 @@ const save = async () => {
 const uploadFiles = async (serviceId: number) => {
   try {
     const formData = new FormData()
-    uploadedFiles.value.forEach((file) => {
+
+    uploadedFiles.value.forEach(file => {
       formData.append('files', file)
     })
-    
+
     await $api(`${API_BASE}/services/${serviceId}/attachments`, {
       method: 'POST',
-      body: formData
+      body: formData,
     })
-    
+
     // Перезагружаем данные после загрузки файлов
     await fetchServices()
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error uploading files:', err)
     showToast('Ошибка загрузки файлов', 'error')
   }
@@ -504,12 +534,14 @@ const uploadFiles = async (serviceId: number) => {
 const removeAttachment = async (attachmentId: number) => {
   try {
     await $api(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachmentId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     // Удаляем из списка существующих вложений
     existingAttachments.value = existingAttachments.value.filter(a => a.id !== attachmentId)
     showToast('Файл удален')
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error removing attachment:', err)
     showToast('Ошибка удаления файла', 'error')
   }
@@ -519,18 +551,21 @@ const removeAttachment = async (attachmentId: number) => {
 const downloadAttachment = async (attachment: Attachment) => {
   try {
     const response = await fetch(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachment.id}/download`)
-    if (!response.ok) throw new Error('Download failed')
-    
+    if (!response.ok)
+      throw new Error('Download failed')
+
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
+
     link.href = url
     link.download = attachment.fileName
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error downloading file:', err)
     showToast('Ошибка скачивания файла', 'error')
   }
@@ -541,7 +576,8 @@ const deleteItemConfirm = async () => {
     await deleteServices(editedItem.value.id)
     showToast('Сервис успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления сервис', 'error')
   }
 }
@@ -552,15 +588,17 @@ const toggleStatus = async (item: Services, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateServices(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус сервис изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -591,20 +629,34 @@ const addNewServices = () => {
 <template>
   <div>
     <VCard title="Сервисы">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -686,7 +738,6 @@ const addNewServices = () => {
         </div>
       </div>
 
-
       <!-- Диалог фильтров -->
       <VDialog
         v-model="isFilterDialogOpen"
@@ -717,7 +768,10 @@ const addNewServices = () => {
                   </template>
                 </AppCombobox>
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppCombobox
                   v-model="selectedTypes"
                   :items="typeOptions"
@@ -728,7 +782,10 @@ const addNewServices = () => {
                   chips
                 />
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -856,9 +913,9 @@ const addNewServices = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -881,7 +938,10 @@ const addNewServices = () => {
             >
               {{ customer.name }}
             </VChip>
-            <span v-if="!item.customers || item.customers.length === 0" class="text-disabled">
+            <span
+              v-if="!item.customers || item.customers.length === 0"
+              class="text-disabled"
+            >
               Нет компаний
             </span>
           </div>
@@ -901,7 +961,10 @@ const addNewServices = () => {
           </VTooltip>
         </template>
         <template #item.hasAttachments="{ item }">
-          <VTooltip v-if="item.hasAttachments" location="top">
+          <VTooltip
+            v-if="item.hasAttachments"
+            location="top"
+          >
             <template #activator="{ props }">
               <VIcon
                 v-bind="props"
@@ -912,7 +975,10 @@ const addNewServices = () => {
             </template>
             <span>Есть прикрепленные документы</span>
           </VTooltip>
-          <span v-else class="text-disabled">—</span>
+          <span
+            v-else
+            class="text-disabled"
+          >—</span>
         </template>
 
         <!-- SLA -->
@@ -925,16 +991,25 @@ const addNewServices = () => {
           >
             {{ item.sla.name }}
           </VChip>
-          <span v-else class="text-disabled">Нет SLA</span>
+          <span
+            v-else
+            class="text-disabled"
+          >Нет SLA</span>
         </template>
 
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_services')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_services')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_services')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_services')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -959,7 +1034,6 @@ const addNewServices = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать сервис' : 'Добавить сервис'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -986,10 +1060,7 @@ const addNewServices = () => {
             </VCol>
 
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"
@@ -1028,10 +1099,15 @@ const addNewServices = () => {
                 hint="Выберите файлы для прикрепления к сервису"
                 persistent-hint
               />
-              
+
               <!-- Список существующих вложений -->
-              <div v-if="existingAttachments.length > 0" class="mt-4">
-                <p class="text-body-2 mb-2">Прикрепленные файлы:</p>
+              <div
+                v-if="existingAttachments.length > 0"
+                class="mt-4"
+              >
+                <p class="text-body-2 mb-2">
+                  Прикрепленные файлы:
+                </p>
                 <VList density="compact">
                   <VListItem
                     v-for="attachment in existingAttachments"
@@ -1047,19 +1123,28 @@ const addNewServices = () => {
                           size="small"
                           @click="downloadAttachment(attachment)"
                         >
-                          <VIcon icon="bx-download" size="18" />
+                          <VIcon
+                            icon="bx-download"
+                            size="18"
+                          />
                         </IconBtn>
                         <IconBtn
                           color="error"
                           size="small"
                           @click="removeAttachment(attachment.id)"
                         >
-                          <VIcon icon="bx-trash" size="18" />
+                          <VIcon
+                            icon="bx-trash"
+                            size="18"
+                          />
                         </IconBtn>
                       </div>
                     </template>
                     <template #prepend>
-                      <VIcon icon="bx-file" size="20" />
+                      <VIcon
+                        icon="bx-file"
+                        size="20"
+                      />
                     </template>
                   </VListItem>
                 </VList>

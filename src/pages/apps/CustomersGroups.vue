@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Группа клиентов
 interface CustomersGroups {
@@ -26,7 +26,6 @@ interface Customer {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -36,10 +35,12 @@ const customers = ref<Customer[]>([])
 // Загрузка компаний
 const fetchCustomers = async () => {
   try {
-    const data = await $api<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customer[]; total: number }>(`${API_BASE}/customers`)
+
     console.log('📥 Загружены компании:', data.customers)
     customers.value = data.customers
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching customers:', err)
   }
 }
@@ -48,9 +49,12 @@ const fetchCustomers = async () => {
 const getCustomerName = (customerId: number | undefined) => {
   console.log('🔍 getCustomerName вызвана с customerId:', customerId, 'тип:', typeof customerId)
   console.log('🔍 customers.value:', JSON.stringify(customers.value))
-  if (!customerId) return 'Не назначена'
+  if (!customerId)
+    return 'Не назначена'
   const customer = customers.value.find(c => c.id === customerId || c.id === Number(customerId))
+
   console.log('🔍 Найденный customer:', customer)
+
   return customer?.name || 'Не назначена'
 }
 
@@ -66,15 +70,19 @@ const fetchCustomersGroups = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching customersGroups from:', `${API_BASE}/customersGroups`)
-    const data = await $api<{ customersGroups: CustomersGroups[], total: number }>(`${API_BASE}/customersGroups`)
+
+    const data = await $api<{ customersGroups: CustomersGroups[]; total: number }>(`${API_BASE}/customersGroups`)
+
     console.log('Fetched customersGroups data:', data)
     customersGroups.value = data.customersGroups
     console.log('📊 customersGroups.value после загрузки:', JSON.stringify(customersGroups.value))
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки группы клиентов'
     console.error('Error fetching customersGroups:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -84,11 +92,14 @@ const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'created
   try {
     const data = await $api<CustomersGroups>(`${API_BASE}/customersGroups`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     customersGroups.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating customersGroups:', err)
     throw err
   }
@@ -99,14 +110,16 @@ const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id
   try {
     const data = await $api<CustomersGroups>(`${API_BASE}/customersGroups/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = customersGroups.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       customersGroups.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating customersGroups:', err)
     throw err
   }
@@ -116,13 +129,14 @@ const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id
 const deleteCustomersGroups = async (id: number) => {
   try {
     await $api(`${API_BASE}/customersGroups/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = customersGroups.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       customersGroups.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting customersGroups:', err)
     throw err
   }
@@ -142,13 +156,13 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
 const filteredCustomersGroups = computed(() => {
   let filtered = customersGroups.value
-  
+
   // Логируем для отладки
   console.log('🔄 filteredCustomersGroups вычислен, количество:', filtered.length)
   filtered.forEach((cg, i) => {
@@ -186,13 +200,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteCustomersGroups(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} группы клиентов`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -203,13 +218,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateCustomersGroups(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} группы клиентов`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -237,7 +253,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -295,6 +311,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -305,21 +322,25 @@ const save = async () => {
         name: editedItem.value.name,
         message: editedItem.value.message,
         customerId: editedItem.value.customerId,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Группа клиентов успешно сохранена')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createCustomersGroups({
         name: editedItem.value.name,
         message: editedItem.value.message,
         customerId: editedItem.value.customerId,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Группа клиентов успешно добавлена')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения группы клиентов', 'error')
   }
 }
@@ -329,7 +350,8 @@ const deleteItemConfirm = async () => {
     await deleteCustomersGroups(editedItem.value.id)
     showToast('Группа клиентов успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления группа клиентов', 'error')
   }
 }
@@ -345,10 +367,11 @@ const toggleStatus = async (item: CustomersGroups, newValue: boolean) => {
       name: item.name,
       message: item.message,
       customerId: item.customerId,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус группы клиентов изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -375,20 +398,34 @@ const addNewCustomersGroups = () => {
 <template>
   <div>
     <VCard title="Группы клиентов">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -468,7 +505,6 @@ const addNewCustomersGroups = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -606,9 +642,9 @@ const addNewCustomersGroups = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, !!val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, !!val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -627,10 +663,16 @@ const addNewCustomersGroups = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_companies_groups')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_companies_groups')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_companies_groups')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_companies_groups')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -655,7 +697,6 @@ const addNewCustomersGroups = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать группа клиентов' : 'Добавить группа клиентов'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -668,10 +709,7 @@ const addNewCustomersGroups = () => {
             </VCol>
 
             <!-- Сообщение -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.message"
                 label="Сообщение"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Состояние
 interface States {
@@ -13,7 +13,6 @@ interface States {
   createdAt: string
   updatedAt: string
 }
-
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -37,14 +36,18 @@ const fetchStates = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching states from:', `${API_BASE}/states`)
-    const data = await $api<{ states: States[], total: number }>(`${API_BASE}/states`)
+
+    const data = await $api<{ states: States[]; total: number }>(`${API_BASE}/states`)
+
     console.log('Fetched states data:', data)
     states.value = data.states
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки состояния'
     console.error('Error fetching states:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -54,11 +57,14 @@ const createStates = async (item: Omit<States, 'id' | 'createdAt' | 'updatedAt'>
   try {
     const data = await $api<States>(`${API_BASE}/states`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     states.value.unshift(data) // Добавляем в начало массива
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating states:', err)
     throw err
   }
@@ -69,14 +75,16 @@ const updateStates = async (id: number, item: Omit<States, 'id' | 'createdAt' | 
   try {
     const data = await $api<States>(`${API_BASE}/states/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = states.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       states.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating states:', err)
     throw err
   }
@@ -86,13 +94,14 @@ const updateStates = async (id: number, item: Omit<States, 'id' | 'createdAt' | 
 const deleteStates = async (id: number) => {
   try {
     await $api(`${API_BASE}/states/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = states.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       states.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting states:', err)
     throw err
   }
@@ -112,7 +121,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -122,6 +131,7 @@ const filteredStates = computed(() => {
   if (searchQuery.value.trim()) {
     // Фильтруем по поисковому запросу (по названию)
     const query = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
   }
 
@@ -148,6 +158,7 @@ const clearFilters = () => {
 // Уникальные названия для фильтра
 const uniqueNames = computed(() => {
   const names = states.value.map(p => p.name)
+
   return [...new Set(names)].sort()
 })
 
@@ -174,13 +185,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteStates(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} состояния`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -191,13 +203,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateStates(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} состояния`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -226,7 +239,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -234,10 +247,9 @@ watch(selectedItems, (newValue) => {
 }, { deep: true })
 
 // Ограничение количества выбранных названий
-watch(selectedNames, (value) => {
-  if (value.length > 10) {
+watch(selectedNames, value => {
+  if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
-  }
 })
 
 // Диалоги
@@ -273,7 +285,7 @@ const typeOptions = [
   'Ожидает напоминания',
   'Открыта',
   'Удалена',
-  'Эскалирована'
+  'Эскалирована',
 ]
 
 // Методы
@@ -304,6 +316,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -312,19 +325,23 @@ const save = async () => {
       // Обновление существующего
       const updated = await updateStates(editedItem.value.id, {
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Состояние успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createStates({
         ...editedItem.value,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Состояние успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения состояние', 'error')
   }
 }
@@ -334,7 +351,8 @@ const deleteItemConfirm = async () => {
     await deleteStates(editedItem.value.id)
     showToast('Состояние успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления состояние', 'error')
   }
 }
@@ -345,15 +363,17 @@ const toggleStatus = async (item: States, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateStates(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус состояние изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -380,20 +400,34 @@ const addNewStates = () => {
 <template>
   <div>
     <VCard title="Состояния">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -466,7 +500,7 @@ const addNewStates = () => {
           </VBtn>
 
           <VBtn
-            v-if="$can('write','menu_states')"
+            v-if="$can('write', 'menu_states')"
             color="primary"
             prepend-icon="bx-plus"
             @click="addNewStates"
@@ -475,7 +509,6 @@ const addNewStates = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -507,7 +540,10 @@ const addNewStates = () => {
                   </template>
                 </AppCombobox>
               </VCol>
-              <VCol cols="12" md="6">
+              <VCol
+                cols="12"
+                md="6"
+              >
                 <AppSelect
                   v-model="statusFilter"
                   placeholder="Статус"
@@ -641,7 +677,7 @@ const addNewStates = () => {
             <div
               class="color-circle"
               :style="{ backgroundColor: item.color }"
-            ></div>
+            />
             <span>{{ item.color }}</span>
           </div>
         </template>
@@ -651,9 +687,9 @@ const addNewStates = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -667,10 +703,16 @@ const addNewStates = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_states')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_states')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_states')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_states')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -695,7 +737,6 @@ const addNewStates = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать состояние' : 'Добавить состояние'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -747,9 +788,7 @@ const addNewStates = () => {
           </VRow>
           <VRow>
             <!-- Комментарий -->
-            <VCol
-              cols="12"
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.comment"
                 label="Комментарий"

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import { ref, watch } from 'vue'
+import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 
 // Состояние аккордеонов (какие панели открыты)
 const expandedPanels = ref<number[]>(
-  JSON.parse(localStorage.getItem('permissionsExpandedPanels') || '[]')
+  JSON.parse(localStorage.getItem('permissionsExpandedPanels') || '[]'),
 )
 
 // Сохраняем состояние аккордеонов при изменении
-watch(expandedPanels, (newValue) => {
+watch(expandedPanels, newValue => {
   localStorage.setItem('permissionsExpandedPanels', JSON.stringify(newValue))
 }, { deep: true })
 
@@ -37,8 +37,14 @@ const handleAgentUpdated = () => {
       </div>
 
       <!-- Список агентов -->
-      <VCol cols="12" class="mt-6">
-        <AgentsTable ref="agentsTableRef" @agent-updated="handleAgentUpdated" />
+      <VCol
+        cols="12"
+        class="mt-6"
+      >
+        <AgentsTable
+          ref="agentsTableRef"
+          @agent-updated="handleAgentUpdated"
+        />
       </VCol>
     </VCard>
   </div>

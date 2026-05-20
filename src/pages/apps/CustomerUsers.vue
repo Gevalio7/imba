@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Клиент
 interface CustomerUsers {
@@ -43,7 +43,6 @@ interface CustomersGroup {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -56,9 +55,11 @@ const customersGroups = ref<CustomersGroup[]>([])
 // Загрузка компаний
 const fetchCustomers = async () => {
   try {
-    const data = await $api<{ customers: Customer[], total: number }>(`${API_BASE}/customers`)
+    const data = await $api<{ customers: Customer[]; total: number }>(`${API_BASE}/customers`)
+
     customers.value = data.customers
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching customers:', err)
   }
 }
@@ -66,24 +67,30 @@ const fetchCustomers = async () => {
 // Загрузка групп клиентов
 const fetchCustomersGroups = async () => {
   try {
-    const data = await $api<{ customersGroups: CustomersGroup[], total: number }>(`${API_BASE}/customersGroups`)
+    const data = await $api<{ customersGroups: CustomersGroup[]; total: number }>(`${API_BASE}/customersGroups`)
+
     customersGroups.value = data.customersGroups
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching customersGroups:', err)
   }
 }
 
 // Получить название компании по ID
 const getCustomerName = (customerId: number | undefined) => {
-  if (!customerId) return 'Не назначена'
+  if (!customerId)
+    return 'Не назначена'
   const customer = customers.value.find(c => c.id === customerId)
+
   return customer?.name || 'Не назначена'
 }
 
 // Получить название группы клиентов по ID
 const getCustomersGroupName = (customersGroupId: number | undefined) => {
-  if (!customersGroupId) return 'Не назначена'
+  if (!customersGroupId)
+    return 'Не назначена'
   const group = customersGroups.value.find(g => g.id === customersGroupId)
+
   return group?.name || 'Не назначена'
 }
 
@@ -99,14 +106,18 @@ const fetchCustomerUsers = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching customerUsers from:', `${API_BASE}/customerUsers`)
-    const data = await $api<{ customerUsers: CustomerUsers[], total: number }>(`${API_BASE}/customerUsers`)
+
+    const data = await $api<{ customerUsers: CustomerUsers[]; total: number }>(`${API_BASE}/customerUsers`)
+
     console.log('Fetched customerUsers data:', data)
     customerUsers.value = data.customerUsers
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки клиенты'
     console.error('Error fetching customerUsers:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -116,11 +127,14 @@ const createCustomerUsers = async (item: Omit<CustomerUsers, 'id' | 'createdAt' 
   try {
     const data = await $api<CustomerUsers>(`${API_BASE}/customerUsers`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     customerUsers.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating customerUsers:', err)
     throw err
   }
@@ -131,16 +145,18 @@ const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 
   try {
     const data = await $api<CustomerUsers>(`${API_BASE}/customerUsers/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     if (updateLocal) {
       const index = customerUsers.value.findIndex(p => p.id === id)
-      if (index !== -1) {
+      if (index !== -1)
         Object.assign(customerUsers.value[index], data)
-      }
     }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating customerUsers:', err)
     throw err
   }
@@ -150,13 +166,14 @@ const updateCustomerUsers = async (id: number, item: Omit<CustomerUsers, 'id' | 
 const deleteCustomerUsers = async (id: number) => {
   try {
     await $api(`${API_BASE}/customerUsers/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = customerUsers.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       customerUsers.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting customerUsers:', err)
     throw err
   }
@@ -180,7 +197,7 @@ const headers = [
   { title: 'Компания', key: 'customer', sortable: false },
   { title: 'Группа', key: 'customersGroup', sortable: false },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -218,13 +235,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteCustomerUsers(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} клиенты`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -241,13 +259,14 @@ const confirmBulkStatusChange = async () => {
         email: item.email,
         mobilePhone: item.mobilePhone,
         telegramAccount: item.telegramAccount,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} клиенты`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -275,7 +294,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -339,6 +358,7 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.firstName?.trim() || !editedItem.value.lastName?.trim()) {
     showToast('Имя и Фамилия обязательны для заполнения', 'error')
+
     return
   }
 
@@ -355,10 +375,12 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         customerId: editedItem.value.customerId,
         customersGroupId: editedItem.value.customersGroupId,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Клиент успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createCustomerUsers({
         firstName: editedItem.value.firstName,
@@ -370,12 +392,14 @@ const save = async () => {
         telegramAccount: editedItem.value.telegramAccount,
         customerId: editedItem.value.customerId,
         customersGroupId: editedItem.value.customersGroupId,
-        isActive: editedItem.value.isActive
+        isActive: editedItem.value.isActive,
       })
+
       showToast('Клиент успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения клиент', 'error')
   }
 }
@@ -385,7 +409,8 @@ const deleteItemConfirm = async () => {
     await deleteCustomerUsers(editedItem.value.id)
     showToast('Клиент успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления клиент', 'error')
   }
 }
@@ -396,7 +421,8 @@ const toggleStatus = async (item: CustomerUsers, newValue: boolean | null) => {
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
 
-  if (newValue === null) return
+  if (newValue === null)
+    return
 
   try {
     await updateCustomerUsers(item.id, {
@@ -407,10 +433,11 @@ const toggleStatus = async (item: CustomerUsers, newValue: boolean | null) => {
       email: item.email,
       mobilePhone: item.mobilePhone,
       telegramAccount: item.telegramAccount,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус клиент изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -440,20 +467,34 @@ const addNewCustomerUsers = () => {
 <template>
   <div>
     <VCard title="Клиенты">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -533,7 +574,6 @@ const addNewCustomerUsers = () => {
           </VBtn>
         </div>
       </div>
-
 
       <!-- Диалог фильтров -->
       <VDialog
@@ -671,9 +711,9 @@ const addNewCustomerUsers = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -697,10 +737,16 @@ const addNewCustomerUsers = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_companies_users')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_companies_users')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_companies_users')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_companies_users')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -725,7 +771,6 @@ const addNewCustomerUsers = () => {
       <VCard :title="editedIndex > -1 ? 'Редактировать клиент' : 'Добавить клиент'">
         <VCardText>
           <VRow>
-
             <!-- Имя -->
             <VCol
               cols="12"

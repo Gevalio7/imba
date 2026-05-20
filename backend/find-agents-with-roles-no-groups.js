@@ -4,12 +4,12 @@
  * где роли назначаются только через группы
  */
 
-const { pool } = require('./config/db');
+const { pool } = require('./config/db')
 
 async function findAgentsWithRolesNoGroups() {
   try {
-    console.log('Поиск агентов с ролями, но без групп...');
-    
+    console.log('Поиск агентов с ролями, но без групп...')
+
     // SQL-запрос для поиска агентов с ролями, но без групп
     const query = `
       SELECT
@@ -31,22 +31,25 @@ async function findAgentsWithRolesNoGroups() {
         AND aga.agent_id IS NULL
       ORDER BY
         a.id
-    `;
-    
-    const result = await pool.query(query);
-    
+    `
+
+    const result = await pool.query(query)
+
     if (result.rows.length === 0) {
-      console.log('Агенты с ролями, но без групп не найдены.');
-    } else {
-      console.log(`Найдено ${result.rows.length} агентов с ролями, но без групп:`);
-      console.table(result.rows);
+      console.log('Агенты с ролями, но без групп не найдены.')
     }
-    
-    return result.rows;
-  } catch (error) {
-    console.error('Ошибка при поиске агентов с ролями, но без групп:', error);
-    throw error;
-  } finally {
+    else {
+      console.log(`Найдено ${result.rows.length} агентов с ролями, но без групп:`)
+      console.table(result.rows)
+    }
+
+    return result.rows
+  }
+  catch (error) {
+    console.error('Ошибка при поиске агентов с ролями, но без групп:', error)
+    throw error
+  }
+  finally {
     // Не закрываем пул соединений, так как он может использоваться в других частях приложения
   }
 }
@@ -55,14 +58,15 @@ async function findAgentsWithRolesNoGroups() {
 if (require.main === module) {
   findAgentsWithRolesNoGroups()
     .then(() => {
-      console.log('Поиск завершен.');
-      process.exit(0);
+      console.log('Поиск завершен.')
+      process.exit(0)
     })
     .catch(err => {
-      console.error('Ошибка при выполнении скрипта:', err);
-      process.exit(1);
-    });
-} else {
+      console.error('Ошибка при выполнении скрипта:', err)
+      process.exit(1)
+    })
+}
+else {
   // Экспортируем функцию для использования в других модулях
-  module.exports = { findAgentsWithRolesNoGroups };
+  module.exports = { findAgentsWithRolesNoGroups }
 }

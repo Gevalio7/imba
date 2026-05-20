@@ -17,6 +17,7 @@ import wallet from '@images/cards/wallet-info.png'
 
 // Загружаем права при заходе на защищённую страницу
 const { loadPermissions } = useUserPermissions()
+
 loadPermissions()
 
 const statisticsVertical = [

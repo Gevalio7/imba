@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getAppointmentNotifications,
   getAppointmentNotificationById,
   createAppointmentNotifications,
   updateAppointmentNotifications,
   deleteAppointmentNotifications,
-} = require('../controllers/appointmentNotificationsController');
+} = require('../controllers/appointmentNotificationsController')
 
 // GET /appointmentNotifications - список с query params
-router.get('/', getAppointmentNotifications);
+router.get('/', getAppointmentNotifications)
 
 // GET /appointmentNotifications/:id
-router.get('/:id', getAppointmentNotificationById);
+router.get('/:id', getAppointmentNotificationById)
 
 // POST /appointmentNotifications
-router.post('/', createAppointmentNotifications);
+router.post('/', createAppointmentNotifications)
 
 // PUT /appointmentNotifications/:id
-router.put('/:id', updateAppointmentNotifications);
+router.put('/:id', updateAppointmentNotifications)
 
 // DELETE /appointmentNotifications/:id
-router.delete('/:id', deleteAppointmentNotifications);
+router.delete('/:id', deleteAppointmentNotifications)
 
-module.exports = router;
+module.exports = router

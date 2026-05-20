@@ -1,66 +1,70 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class Customers {
-  static tableName = 'customers';
-  static fields = 'name, street, zip, city, comment';
+  static tableName = 'customers'
+  static fields = 'name, street, zip, city, comment'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 100000, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 100000, page = 1, isActive } = options
 
     try {
-      let whereConditions = [];
-      let params = [];
-      let paramIndex = 1;
+      const whereConditions = []
+      const params = []
+      let paramIndex = 1
 
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        whereConditions.push(`is_active = $${paramIndex}`);
-        params.push(isActive);
-        paramIndex++;
+        whereConditions.push(`is_active = $${paramIndex}`)
+        params.push(isActive)
+        paramIndex++
       }
 
       if (q) {
-        const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereConditions.push(`(${conditions})`);
-        params.push(`%${q}%`);
-        paramIndex++;
+        const searchFields = this.fields.split(', ')
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ')
+
+        whereConditions.push(`(${conditions})`)
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-      let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
-      }
+      let orderClause = ''
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at'])
+      if (sortBy && sortableFields.includes(sortBy))
+        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
 
-      const offset = (page - 1) * itemsPerPage;
+      const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Customers.tableName} ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${Customers.tableName} ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Customers.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(itemsPerPage, offset);
-      const dataResult = await pool.query(dataQuery, params);
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Customers.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+
+      params.push(itemsPerPage, offset)
+
+      const dataResult = await pool.query(dataQuery, params)
 
       // Получаем все сервисы для всех компаний одним запросом (решение N+1 проблемы)
-      const customerIds = dataResult.rows.map(c => c.id);
-      let servicesMap = {};
-      
+      const customerIds = dataResult.rows.map(c => c.id)
+      const servicesMap = {}
+
       if (customerIds.length > 0) {
         const servicesQuery = `
           SELECT s.id, s.name, s.comment, s.type, s.is_active as "isActive", 
@@ -70,33 +74,36 @@ class Customers {
           INNER JOIN customers_services cs ON s.id = cs.service_id
           WHERE cs.customer_id = ANY($1)
           ORDER BY s.name
-        `;
-        const servicesResult = await pool.query(servicesQuery, [customerIds]);
-        
+        `
+
+        const servicesResult = await pool.query(servicesQuery, [customerIds])
+
         // Группируем сервисы по customer_id
         servicesResult.rows.forEach(row => {
-          const customerId = row.customer_id;
-          delete row.customer_id;
-          if (!servicesMap[customerId]) {
-            servicesMap[customerId] = [];
-          }
-          servicesMap[customerId].push(row);
-        });
+          const customerId = row.customer_id
+
+          delete row.customer_id
+          if (!servicesMap[customerId])
+            servicesMap[customerId] = []
+
+          servicesMap[customerId].push(row)
+        })
       }
 
       // Добавляем сервисы к каждой компании
       const customersWithServices = dataResult.rows.map(customer => ({
         ...customer,
-        services: servicesMap[customer.id] || []
-      }));
+        services: servicesMap[customer.id] || [],
+      }))
 
       return {
         customers: customersWithServices,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
@@ -110,12 +117,14 @@ class Customers {
          INNER JOIN customers_services cs ON s.id = cs.service_id
          WHERE cs.customer_id = $1
          ORDER BY s.name`,
-        [customerId]
-      );
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getServices:', error);
-      throw error;
+        [customerId],
+      )
+
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getServices:', error)
+      throw error
     }
   }
 
@@ -127,12 +136,14 @@ class Customers {
          VALUES ($1, $2) 
          ON CONFLICT (customer_id, service_id) DO NOTHING
          RETURNING *`,
-        [customerId, serviceId]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in addService:', error);
-      throw error;
+        [customerId, serviceId],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in addService:', error)
+      throw error
     }
   }
 
@@ -143,38 +154,43 @@ class Customers {
         `DELETE FROM customers_services 
          WHERE customer_id = $1 AND service_id = $2
          RETURNING *`,
-        [customerId, serviceId]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in removeService:', error);
-      throw error;
+        [customerId, serviceId],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in removeService:', error)
+      throw error
     }
   }
 
   // Установить сервисы для компании (заменить все)
   static async setServices(customerId, serviceIds) {
     try {
-      await pool.query('BEGIN');
-      
+      await pool.query('BEGIN')
+
       // Удаляем все существующие связи
-      await pool.query('DELETE FROM customers_services WHERE customer_id = $1', [customerId]);
-      
+      await pool.query('DELETE FROM customers_services WHERE customer_id = $1', [customerId])
+
       // Добавляем новые связи
       if (serviceIds && serviceIds.length > 0) {
-        const values = serviceIds.map((id, index) => `($1, ${index + 2})`).join(', ');
+        const values = serviceIds.map((id, index) => `($1, ${index + 2})`).join(', ')
+
         await pool.query(
           `INSERT INTO customers_services (customer_id, service_id) VALUES ${values}`,
-          [customerId, ...serviceIds]
-        );
+          [customerId, ...serviceIds],
+        )
       }
-      
-      await pool.query('COMMIT');
-      return true;
-    } catch (error) {
-      await pool.query('ROLLBACK');
-      console.error('Error in setServices:', error);
-      throw error;
+
+      await pool.query('COMMIT')
+
+      return true
+    }
+    catch (error) {
+      await pool.query('ROLLBACK')
+      console.error('Error in setServices:', error)
+      throw error
     }
   }
 
@@ -189,12 +205,14 @@ class Customers {
          FROM customer_users cu
          WHERE cu.customer_id = $1
          ORDER BY cu.last_name, cu.first_name`,
-        [customerId]
-      );
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getCustomerUsers:', error);
-      throw error;
+        [customerId],
+      )
+
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getCustomerUsers:', error)
+      throw error
     }
   }
 
@@ -203,12 +221,14 @@ class Customers {
     try {
       const result = await pool.query(
         `UPDATE customer_users SET customer_id = $1 WHERE id = $2 RETURNING *`,
-        [customerId, customerUserId]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in addCustomerUser:', error);
-      throw error;
+        [customerId, customerUserId],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in addCustomerUser:', error)
+      throw error
     }
   }
 
@@ -217,39 +237,43 @@ class Customers {
     try {
       const result = await pool.query(
         `UPDATE customer_users SET customer_id = NULL WHERE id = $1 RETURNING *`,
-        [customerUserId]
-      );
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in removeCustomerUser:', error);
-      throw error;
+        [customerUserId],
+      )
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in removeCustomerUser:', error)
+      throw error
     }
   }
 
   // Установить сотрудников для компании (заменить все)
   static async setCustomerUsers(customerId, customerUserIds) {
     try {
-      await pool.query('BEGIN');
-      
+      await pool.query('BEGIN')
+
       // Удаляем все существующие связи сотрудников с компаниями для этой компании
-      await pool.query('UPDATE customer_users SET customer_id = NULL WHERE customer_id = $1', [customerId]);
-      
+      await pool.query('UPDATE customer_users SET customer_id = NULL WHERE customer_id = $1', [customerId])
+
       // Устанавливаем новые связи
       if (customerUserIds && customerUserIds.length > 0) {
         for (const userId of customerUserIds) {
           await pool.query(
             `UPDATE customer_users SET customer_id = $1 WHERE id = $2`,
-            [customerId, userId]
-          );
+            [customerId, userId],
+          )
         }
       }
-      
-      await pool.query('COMMIT');
-      return true;
-    } catch (error) {
-      await pool.query('ROLLBACK');
-      console.error('Error in setCustomerUsers:', error);
-      throw error;
+
+      await pool.query('COMMIT')
+
+      return true
+    }
+    catch (error) {
+      await pool.query('ROLLBACK')
+      console.error('Error in setCustomerUsers:', error)
+      throw error
     }
   }
 
@@ -257,102 +281,111 @@ class Customers {
     try {
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
       const result = await pool.query(
         `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${Customers.tableName} WHERE id = $1`,
-        [id]
-      );
+        [id],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
   static async create(customer) {
     try {
-      const fieldList = this.fields.split(', ');
-      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => customer[field]);
-      
-      // Добавляем isActive
-      values.push(customer.isActive !== undefined ? customer.isActive : true);
-      
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
-      const sqlFieldsSelect = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      
-      const query = `INSERT INTO ${Customers.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+      const fieldList = this.fields.split(', ')
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ')
+      const values = fieldList.map(field => customer[field])
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      // Добавляем isActive
+      values.push(customer.isActive !== undefined ? customer.isActive : true)
+
+      // Преобразуем имена полей в snake_case для SQL
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ')
+
+      const sqlFieldsSelect = fieldList.map(f => {
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const query = `INSERT INTO ${Customers.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, customer) {
     try {
-      const fieldList = this.fields.split(', ');
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
+      const fieldList = this.fields.split(', ')
+      const updates = []
+      const values = []
+      let paramIndex = 1
 
       // Обновляем только переданные поля
       fieldList.forEach(field => {
         if (customer[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(customer[field]);
-          paramIndex++;
+          updates.push(`${toSnakeCase(field)} = $${paramIndex}`)
+          values.push(customer[field])
+          paramIndex++
         }
-      });
+      })
 
       // Добавляем isActive если передан
       if (customer.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(customer.isActive);
-        paramIndex++;
+        updates.push(`is_active = $${paramIndex}`)
+        values.push(customer.isActive)
+        paramIndex++
       }
 
       // Всегда обновляем updated_at
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       // Добавляем id в конец
-      values.push(id);
+      values.push(id)
 
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `UPDATE ${Customers.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const query = `UPDATE ${Customers.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${Customers.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${Customers.tableName} WHERE id = $1`, [id])
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 }
 
-module.exports = Customers;
+module.exports = Customers

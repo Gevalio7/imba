@@ -1,3 +1,23 @@
+<script setup lang="ts">
+interface Props {
+  modelValue: boolean
+  src: string
+  filename: string
+  zoom: number
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'update:modelValue': [value: boolean]
+  'zoom-in': []
+  'zoom-out': []
+  'reset-zoom': []
+  download: []
+  print: []
+}>()
+</script>
+
 <template>
   <VDialog
     :model-value="modelValue"
@@ -23,8 +43,8 @@
             size="small"
             variant="tonal"
             class="mx-1"
-            @click="$emit('reset-zoom')"
             style="cursor: pointer"
+            @click="$emit('reset-zoom')"
           >
             {{ zoom }}%
           </VChip>
@@ -38,7 +58,10 @@
             <VIcon icon="bx-zoom-in" />
           </VBtn>
 
-          <VDivider vertical class="mx-2" />
+          <VDivider
+            vertical
+            class="mx-2"
+          />
 
           <!-- Кнопка скачивания -->
           <VBtn
@@ -60,7 +83,10 @@
             <VIcon icon="bx-printer" />
           </VBtn>
 
-          <VDivider vertical class="mx-2" />
+          <VDivider
+            vertical
+            class="mx-2"
+          />
 
           <!-- Кнопка закрытия -->
           <VBtn
@@ -73,7 +99,10 @@
           </VBtn>
         </div>
       </VCardTitle>
-      <VCardText class="d-flex justify-center align-center pa-0" style="overflow: auto;">
+      <VCardText
+        class="d-flex justify-center align-center pa-0"
+        style="overflow: auto;"
+      >
         <VImg
           :src="src"
           :alt="filename"
@@ -97,23 +126,3 @@
     </VCard>
   </VDialog>
 </template>
-
-<script setup lang="ts">
-interface Props {
-  modelValue: boolean
-  src: string
-  filename: string
-  zoom: number
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:modelValue': [value: boolean]
-  'zoom-in': []
-  'zoom-out': []
-  'reset-zoom': []
-  download: []
-  print: []
-}>()
-</script>

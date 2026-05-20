@@ -1,9 +1,9 @@
 <!-- ❗Errors in the form are set on line 60 -->
 <script setup lang="ts">
+import { VForm } from 'vuetify/components/VForm'
 import authV2LoginIllustration from '@images/pages/auth-v2-login-illustration.png'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
-import { VForm } from 'vuetify/components/VForm'
 import { useUserPermissions } from '@/composables/useUserPermissions'
 import { getFirstAccessibleRoutePath } from '@/utils/firstAccessibleRoute'
 
@@ -47,9 +47,8 @@ const login = async () => {
       },
       onResponseError({ response }) {
         errors.value = response._data?.errors || {}
-        if (response._data?.message) {
+        if (response._data?.message)
           errors.value.general = response._data.message
-        }
       },
     })
 
@@ -60,12 +59,13 @@ const login = async () => {
     // Сохраняем в sessionStorage + localStorage (fallback для новых вкладок)
     if (typeof sessionStorage !== 'undefined') {
       const rulesJson = JSON.stringify(userAbilityRules)
+
       sessionStorage.setItem('userAbilityRules', rulesJson)
       sessionStorage.setItem('userData', JSON.stringify(userData))
       sessionStorage.setItem('accessToken', accessToken)
 
       localStorage.setItem('userAbilityRules', rulesJson)
-      
+
       console.log('Saved to storage. userAbilityRules count:', userAbilityRules.length)
     }
 
@@ -74,10 +74,10 @@ const login = async () => {
     // CASL инициализируется из sessionStorage (см. plugins/casl/index.ts).
     const cookieUserData = useCookie<typeof userData>('userData')
     const cookieAccessToken = useCookie<string>('accessToken')
-    
+
     cookieUserData.value = userData
     cookieAccessToken.value = accessToken
-    
+
     ability.update(userAbilityRules)
 
     // Загружаем права
@@ -214,8 +214,6 @@ const onSubmit = () => {
                   Login
                 </VBtn>
               </VCol>
-
-
             </VRow>
           </VForm>
         </VCardText>

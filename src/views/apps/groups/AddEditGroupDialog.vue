@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -77,11 +77,15 @@ const loadingRoles = ref(false)
 const fetchAllAgents = async () => {
   try {
     loadingAgents.value = true
-    const data = await $api<{ agents: Agent[], total: number }>('/agents')
+
+    const data = await $api<{ agents: Agent[]; total: number }>('/agents')
+
     allAgents.value = data.agents.filter(agent => agent.isActive) // Только активные
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching all agents:', err)
-  } finally {
+  }
+  finally {
     loadingAgents.value = false
   }
 }
@@ -90,11 +94,15 @@ const fetchAllAgents = async () => {
 const fetchAllRoles = async () => {
   try {
     loadingRoles.value = true
-    const data = await $api<{ roles: Role[], total: number }>('/roles')
+
+    const data = await $api<{ roles: Role[]; total: number }>('/roles')
+
     roles.value = data.roles
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching roles:', err)
-  } finally {
+  }
+  finally {
     loadingRoles.value = false
   }
 }
@@ -102,36 +110,41 @@ const fetchAllRoles = async () => {
 // Доступные агенты для группы (не добавленные в эту группу)
 const availableAgents = computed(() => {
   const currentAgentIds = (group.value.agents || []).map(a => a.id)
+
   return allAgents.value.filter(agent => !currentAgentIds.includes(agent.id))
 })
 
 // Методы
 const addAgent = async (agent: Agent) => {
-  if (!group.value.id || group.value.id === -1) return
+  if (!group.value.id || group.value.id === -1)
+    return
 
   try {
     await $api(`/agentsGroups/${group.value.id}/agents`, {
       method: 'POST',
-      body: { agentId: agent.id }
+      body: { agentId: agent.id },
     })
     group.value.agents.push(agent)
     showToast('Агент добавлен в группу')
     selectedAgent.value = null
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка добавления агента', 'error')
   }
 }
 
 const removeAgent = async (agent: Agent) => {
-  if (!group.value.id || group.value.id === -1) return
+  if (!group.value.id || group.value.id === -1)
+    return
 
   try {
     await $api(`/agentsGroups/${group.value.id}/agents/${agent.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     group.value.agents = group.value.agents.filter(a => a.id !== agent.id)
     showToast('Агент удален из группы')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления агента', 'error')
   }
 }
@@ -139,6 +152,7 @@ const removeAgent = async (agent: Agent) => {
 const saveGroup = async () => {
   if (!group.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -150,20 +164,22 @@ const saveGroup = async () => {
         body: {
           name: group.value.name,
           isActive: group.value.isActive,
-          roleIds: selectedRoleIds.value
-        }
+          roleIds: selectedRoleIds.value,
+        },
       })
       showToast('Группа обновлена')
-    } else {
+    }
+    else {
       // Создание
       const newGroup = await $api<AgentsGroups>('/agentsGroups', {
         method: 'POST',
         body: {
           name: group.value.name,
           isActive: group.value.isActive,
-          roleIds: selectedRoleIds.value
-        }
+          roleIds: selectedRoleIds.value,
+        },
       })
+
       // Убедимся что agents существует
       newGroup.agents = newGroup.agents || []
       group.value = newGroup
@@ -171,7 +187,8 @@ const saveGroup = async () => {
     }
     emit('group-updated')
     closeDialog()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения группы', 'error')
   }
 }
@@ -196,40 +213,43 @@ const showToast = (message: string, color: string = 'success') => {
 const fetchGroupById = async (groupId: number) => {
   try {
     const data = await $api<AgentsGroups>(`/agentsGroups/${groupId}`)
+
     group.value = { ...data, agents: group.value.agents || [] }
+
     // Инициализируем выбранные роли из актуальных данных
-    if (data.roles && data.roles.length > 0) {
+    if (data.roles && data.roles.length > 0)
       selectedRoleIds.value = data.roles.map(r => r.id)
-    } else if (data.roleId) {
+    else if (data.roleId)
       selectedRoleIds.value = [data.roleId]
-    } else {
+    else
       selectedRoleIds.value = []
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching group by id:', err)
   }
 }
 
 // Watchers
-watch(() => props.isDialogVisible, async (newVal) => {
+watch(() => props.isDialogVisible, async newVal => {
   if (newVal) {
     if (props.groupDetail) {
       group.value = { ...props.groupDetail }
+
       // Инициализируем выбранные роли из данных группы
-      if (props.groupDetail.roles && props.groupDetail.roles.length > 0) {
+      if (props.groupDetail.roles && props.groupDetail.roles.length > 0)
         selectedRoleIds.value = props.groupDetail.roles.map(r => r.id)
-      } else if (props.groupDetail.roleIds && props.groupDetail.roleIds.length > 0) {
+      else if (props.groupDetail.roleIds && props.groupDetail.roleIds.length > 0)
         selectedRoleIds.value = [...props.groupDetail.roleIds]
-      } else if (props.groupDetail.roleId) {
+      else if (props.groupDetail.roleId)
         selectedRoleIds.value = [props.groupDetail.roleId]
-      } else {
+      else
         selectedRoleIds.value = []
-      }
+
       // Загружаем актуальные данные с сервера (включая roles)
-      if (props.groupDetail.id > 0) {
+      if (props.groupDetail.id > 0)
         await fetchGroupById(props.groupDetail.id)
-      }
-    } else {
+    }
+    else {
       group.value = {
         id: -1,
         name: '',
@@ -319,7 +339,9 @@ watch(() => props.isDialogVisible, async (newVal) => {
             cols="12"
           >
             <VDivider class="my-4" />
-            <h6 class="text-h6 mb-4">Агенты в группе</h6>
+            <h6 class="text-h6 mb-4">
+              Агенты в группе
+            </h6>
 
             <div class="d-flex flex-wrap gap-2 mb-4">
               <VChip
@@ -332,7 +354,9 @@ watch(() => props.isDialogVisible, async (newVal) => {
               </VChip>
             </div>
 
-            <h6 class="text-h6 mb-4">Добавить агента</h6>
+            <h6 class="text-h6 mb-4">
+              Добавить агента
+            </h6>
 
             <VSelect
               v-model="selectedAgent"

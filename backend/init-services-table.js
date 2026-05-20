@@ -1,13 +1,13 @@
-const { pool } = require('./config/db');
-const Services = require('./models/services');
+const { pool } = require('./config/db')
+const Services = require('./models/services')
 
 async function initServicesTable() {
   try {
-    console.log('🔄 Проверка и наполнение таблицы services тестовыми данными...');
+    console.log('🔄 Проверка и наполнение таблицы services тестовыми данными...')
 
     // Получаем существующие сервисы
-    const existingData = await pool.query('SELECT name FROM services');
-    const existingNames = existingData.rows.map(row => row.name);
+    const existingData = await pool.query('SELECT name FROM services')
+    const existingNames = existingData.rows.map(row => row.name)
 
     // Тестовые данные для сервисов
     const testServices = [
@@ -21,30 +21,32 @@ async function initServicesTable() {
       { name: 'Резервное копирование', comment: 'Услуги по резервному копированию данных', isActive: true },
       { name: 'Мониторинг', comment: 'Мониторинг систем и приложений', isActive: true },
       { name: 'Интеграция систем', comment: 'Интеграция различных систем и приложений', isActive: true },
-    ];
+    ]
 
-    let addedCount = 0;
+    let addedCount = 0
 
-    console.log('📝 Вставка тестовых данных...');
+    console.log('📝 Вставка тестовых данных...')
 
     for (const service of testServices) {
       if (!existingNames.includes(service.name)) {
-        await Services.create(service);
-        console.log(`   ✅ Добавлен сервис: ${service.name}`);
-        addedCount++;
-      } else {
-        console.log(`   ℹ️  Сервис "${service.name}" уже существует, пропускаем`);
+        await Services.create(service)
+        console.log(`   ✅ Добавлен сервис: ${service.name}`)
+        addedCount++
+      }
+      else {
+        console.log(`   ℹ️  Сервис "${service.name}" уже существует, пропускаем`)
       }
     }
 
-    console.log('✅ Наполнение таблицы services завершено успешно');
-    console.log(`   Добавлено ${addedCount} новых тестовых записей`);
+    console.log('✅ Наполнение таблицы services завершено успешно')
+    console.log(`   Добавлено ${addedCount} новых тестовых записей`)
 
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Ошибка наполнения таблицы services:', error);
-    process.exit(1);
+    process.exit(0)
+  }
+  catch (error) {
+    console.error('❌ Ошибка наполнения таблицы services:', error)
+    process.exit(1)
   }
 }
 
-initServicesTable();
+initServicesTable()

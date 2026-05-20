@@ -15,6 +15,7 @@ let locale: any = null
 
 onMounted(() => {
   const { locale: localeRef } = useI18n({ useScope: 'global' })
+
   locale = localeRef
 })
 </script>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useFilters, type ColumnSetting } from '@/composables/useFilters'
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { type ColumnSetting, useFilters } from '@/composables/useFilters'
+import { $api } from '@/utils/api'
 import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
 
 definePage({
@@ -68,13 +68,17 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
     error.value = null
+
     const data = await $api(`${API_BASE}/ticketSchedules`)
+
     schedules.value = data.schedules
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки расписаний'
     console.error('Error fetching schedules:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -83,9 +87,12 @@ const fetchSchedules = async () => {
 const deleteScheduleById = async (id: number) => {
   try {
     await $api(`/ticketSchedules/${id}`, { method: 'DELETE' })
+
     const index = schedules.value.findIndex(s => s.id === id)
-    if (index !== -1) schedules.value.splice(index, 1)
-  } catch (err) {
+    if (index !== -1)
+      schedules.value.splice(index, 1)
+  }
+  catch (err) {
     console.error('Error deleting schedule:', err)
     throw err
   }
@@ -114,14 +121,18 @@ const loadColumnSettings = (): ColumnSetting[] => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as ColumnSetting[]
+
       return availableColumns.map(col => {
         const savedCol = parsed.find((s: ColumnSetting) => s.key === col.key)
+
         return savedCol ? { ...col, visible: savedCol.visible } : col
       })
     }
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error loading column settings:', e)
   }
+
   return [...availableColumns]
 }
 
@@ -134,12 +145,12 @@ const headers = computed(() => {
     .map(col => ({
       title: col.title,
       key: col.key,
-      sortable: col.sortable
+      sortable: col.sortable,
     }))
 })
 
 // Сохранение настроек при изменении
-watch(columnSettings, (newSettings) => {
+watch(columnSettings, newSettings => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
 }, { deep: true })
 
@@ -148,9 +159,11 @@ const isColumnsDialogOpen = ref(false)
 
 const moveColumn = (index: number, direction: 'up' | 'down') => {
   const newIndex = direction === 'up' ? index - 1 : index + 1
-  if (newIndex < 0 || newIndex >= columnSettings.value.length) return
-  
+  if (newIndex < 0 || newIndex >= columnSettings.value.length)
+    return
+
   const temp = columnSettings.value[index]
+
   columnSettings.value[index] = columnSettings.value[newIndex]
   columnSettings.value[newIndex] = temp
 }
@@ -167,7 +180,7 @@ const filterableColumns = computed(() => {
       title: col.title,
       value: col.key,
       type: col.type,
-      options: col.options || []
+      options: col.options || [],
     }))
 })
 
@@ -176,13 +189,13 @@ const searchQuery = ref('')
 
 // Получить специальное значение для фильтрации
 const getFilterSpecialValue = (schedule: TicketSchedule, columnKey: string): string => {
-  if (columnKey === 'scheduleType') {
+  if (columnKey === 'scheduleType')
     return getScheduleTypeText(schedule.scheduleType)
-  } else if (columnKey === 'period') {
+  else if (columnKey === 'period')
     return getPeriodText(schedule)
-  } else if (columnKey === 'isActive') {
+  else if (columnKey === 'isActive')
     return schedule.isActive ? 'Активно' : 'Приостановлено'
-  }
+
   return ''
 }
 
@@ -192,10 +205,11 @@ const filteredSchedules = computed(() => {
   // Поиск
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(s =>
-      s.title?.toLowerCase().includes(q) ||
-      s.ticketNumber?.toLowerCase().includes(q) ||
-      s.scheduleType?.toLowerCase().includes(q)
+      s.title?.toLowerCase().includes(q)
+      || s.ticketNumber?.toLowerCase().includes(q)
+      || s.scheduleType?.toLowerCase().includes(q),
     )
   }
 
@@ -218,14 +232,15 @@ const isBulkDeleteDialogOpen = ref(false)
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const id of selectedItems.value) {
+    for (const id of selectedItems.value)
       await deleteScheduleById(id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} расписаний`)
     isBulkDeleteDialogOpen.value = false
     await fetchSchedules()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -235,11 +250,12 @@ const toggleActiveStatus = async (scheduleId: number, makeActive: boolean) => {
   try {
     await $api(`/ticketSchedules/${scheduleId}`, {
       method: 'PUT',
-      body: { isActive: makeActive }
+      body: { isActive: makeActive },
     })
     showToast(makeActive ? 'Расписание активировано' : 'Расписание приостановлено')
     await fetchSchedules()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -251,21 +267,24 @@ const bulkSetActive = async (makeActive: boolean) => {
     for (const id of selectedItems.value) {
       await $api(`/ticketSchedules/${id}`, {
         method: 'PUT',
-        body: { isActive: makeActive }
+        body: { isActive: makeActive },
       })
     }
     selectedItems.value = []
     showToast(makeActive ? `Активировано ${count} расписаний` : `Приостановлено ${count} расписаний`)
     isBulkActionsMenuOpen.value = false
     await fetchSchedules()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
 
 // Форматирование даты
 const formatDate = (dateStr: string | null) => {
-  if (!dateStr) return '-'
+  if (!dateStr)
+    return '-'
+
   return new Date(dateStr).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -277,7 +296,9 @@ const formatDate = (dateStr: string | null) => {
 
 // Форматирование даты только для даты
 const formatDateOnly = (dateStr: string | null) => {
-  if (!dateStr) return '-'
+  if (!dateStr)
+    return '-'
+
   return new Date(dateStr).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -297,40 +318,43 @@ const getScheduleTypeText = (type: string) => {
 
 // Получить текстовое представление периода
 const getPeriodText = (schedule: TicketSchedule) => {
-  if (schedule.scheduleType === 'weekly') {
+  if (schedule.scheduleType === 'weekly')
     return getWeekDaysText(schedule.scheduleDays)
-  } else if (schedule.scheduleType === 'monthly') {
+  else if (schedule.scheduleType === 'monthly')
     return `${schedule.scheduleDayOfMonth} числа`
-  }
+
   return '-'
 }
 
 // Получить текстовое представление дней недели
 const getWeekDaysText = (days: number[] | null) => {
-  if (!days || days.length === 0) return '-'
+  if (!days || days.length === 0)
+    return '-'
+
   const dayNames: Record<number, string> = {
-    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'
+    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс',
   }
+
   return days.map(d => dayNames[d]).join(', ')
 }
 
 // Статус расписания
 const getScheduleStatus = (schedule: TicketSchedule) => {
-  if (!schedule.isActive) return { text: 'Приостановлено', color: 'warning', variant: 'flat' as const }
-  if (schedule.nextRunAt && new Date(schedule.nextRunAt) <= new Date()) {
+  if (!schedule.isActive)
+    return { text: 'Приостановлено', color: 'warning', variant: 'flat' as const }
+  if (schedule.nextRunAt && new Date(schedule.nextRunAt) <= new Date())
     return { text: 'Готов к выполнению', color: 'success', variant: 'flat' as const }
-  }
-  if (schedule.nextRunAt) {
+
+  if (schedule.nextRunAt)
     return { text: 'Ожидание', color: 'info', variant: 'flat' as const }
-  }
+
   return { text: 'Завершено', color: 'error', variant: 'flat' as const }
 }
 
 // Перейти к редактированию тикета
 const goToTicket = (ticketId: number | null) => {
-  if (ticketId) {
+  if (ticketId)
     window.location.href = `/apps/tickets/edit?id=${ticketId}`
-  }
 }
 
 // Диалог удаления
@@ -355,25 +379,30 @@ const openLogsDialog = async (schedule: TicketSchedule) => {
   logsLoading.value = true
   try {
     const data = await $api(`${API_BASE}/ticketSchedules/${schedule.id}/logs`)
+
     scheduleLogs.value = data.logs || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching logs:', err)
     scheduleLogs.value = []
-  } finally {
+  }
+  finally {
     logsLoading.value = false
   }
 }
 
 // Формат даты для логов
 const formatLogDate = (dateStr: string | null) => {
-  if (!dateStr) return '-'
+  if (!dateStr)
+    return '-'
+
   return new Date(dateStr).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   })
 }
 
@@ -398,12 +427,14 @@ const closeDelete = () => {
 }
 
 const deleteItemConfirm = async () => {
-  if (!deletingItem.value) return
+  if (!deletingItem.value)
+    return
   try {
     await deleteScheduleById(deletingItem.value.id)
     showToast('Расписание успешно удалено')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления расписания', 'error')
   }
 }
@@ -422,39 +453,47 @@ const saveSchedule = async () => {
     await fetchSchedules()
     showToast('Расписание сохранено')
     editDialog.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения расписания', 'error')
-  } finally {
+  }
+  finally {
     savingSchedule.value = false
   }
 }
 
 // Удалить расписание из диалога
 const deleteScheduleFromDialog = async () => {
-  if (!editingSchedule.value) return
+  if (!editingSchedule.value)
+    return
   try {
     await deleteScheduleById(editingSchedule.value.id)
     showToast('Расписание удалено')
     editDialog.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления расписания', 'error')
   }
 }
 
 // Запустить расписание сейчас
 const runScheduleNow = async () => {
-  if (!editingSchedule.value?.id) return
+  if (!editingSchedule.value?.id)
+    return
   try {
     await $api(`/ticketSchedules/${editingSchedule.value.id}/run`, {
-      method: 'POST'
+      method: 'POST',
     })
     showToast('Тикет создан по расписанию')
     editDialog.value = false
     await fetchSchedules()
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error('Error running schedule:', err)
     console.log('Error data:', err?.data)
+
     const message = err?.data?.message || err?.response?.data?.message || err?.message || 'Ошибка создания тикета'
+
     console.log('Toast message:', message)
     showToast(message, 'error')
   }
@@ -481,20 +520,34 @@ onMounted(() => {
 <template>
   <div>
     <VCard title="Расписания тикетов">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <AppTextField
             v-model="searchQuery"
@@ -514,7 +567,7 @@ onMounted(() => {
           >
             Фильтр
           </VBtn>
-          
+
           <!-- Кнопка сброса фильтров -->
           <VBtn
             v-if="filterRows.some(f => f.column && f.condition)"
@@ -547,15 +600,20 @@ onMounted(() => {
           </template>
           <VList>
             <VListItem @click="bulkSetActive(true)">
-               <VListItemTitle>Активировать</VListItemTitle>
-             </VListItem>
-             <VListItem @click="bulkSetActive(false)">
-               <VListItemTitle>Приостановить</VListItemTitle>
-             </VListItem>
-             <VDivider />
-             <VListItem v-if="$can('delete','menu_tickets_schedules')" @click="() => { isBulkDeleteDialogOpen = true; isBulkActionsMenuOpen = false }">
-               <VListItemTitle class="text-error">Удалить</VListItemTitle>
-             </VListItem>
+              <VListItemTitle>Активировать</VListItemTitle>
+            </VListItem>
+            <VListItem @click="bulkSetActive(false)">
+              <VListItemTitle>Приостановить</VListItemTitle>
+            </VListItem>
+            <VDivider />
+            <VListItem
+              v-if="$can('delete', 'menu_tickets_schedules')"
+              @click="() => { isBulkDeleteDialogOpen = true; isBulkActionsMenuOpen = false }"
+            >
+              <VListItemTitle class="text-error">
+                Удалить
+              </VListItemTitle>
+            </VListItem>
           </VList>
         </VMenu>
 
@@ -586,11 +644,20 @@ onMounted(() => {
       </div>
 
       <!-- Диалог настроек колонок -->
-      <VDialog v-model="isColumnsDialogOpen" max-width="600px">
+      <VDialog
+        v-model="isColumnsDialogOpen"
+        max-width="600px"
+      >
         <VCard title="Настройка колонок">
           <VCardText>
             <div class="d-flex justify-end mb-4">
-              <VBtn variant="text" size="small" @click="resetColumnSettings">Сбросить</VBtn>
+              <VBtn
+                variant="text"
+                size="small"
+                @click="resetColumnSettings"
+              >
+                Сбросить
+              </VBtn>
             </div>
             <VList>
               <VListItem
@@ -629,19 +696,30 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end">
-              <VBtn color="primary" variant="elevated" @click="isColumnsDialogOpen = false">Готово</VBtn>
+              <VBtn
+                color="primary"
+                variant="elevated"
+                @click="isColumnsDialogOpen = false"
+              >
+                Готово
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог фильтров -->
-      <VDialog v-model="isFilterDialogOpen" max-width="900px">
+      <VDialog
+        v-model="isFilterDialogOpen"
+        max-width="900px"
+      >
         <VCard title="Фильтры">
           <VCardText>
             <!-- Пресеты -->
             <div class="mb-4">
-              <div class="text-subtitle-2 mb-2">Пресеты</div>
+              <div class="text-subtitle-2 mb-2">
+                Пресеты
+              </div>
               <div class="d-flex flex-wrap gap-2">
                 <VChip
                   v-for="preset in filterPresets"
@@ -666,10 +744,16 @@ onMounted(() => {
 
             <!-- Заголовки таблицы фильтров -->
             <div class="d-flex gap-2 mb-2 text-subtitle-2">
-              <div style="width: 180px;">Колонка</div>
-              <div style="width: 150px;">Условие</div>
-              <div style="width: 200px;">Значение</div>
-              <div style="width: 60px;"></div>
+              <div style="width: 180px;">
+                Колонка
+              </div>
+              <div style="width: 150px;">
+                Условие
+              </div>
+              <div style="width: 200px;">
+                Значение
+              </div>
+              <div style="width: 60px;" />
             </div>
 
             <!-- Строки фильтров -->
@@ -686,14 +770,14 @@ onMounted(() => {
                 placeholder="Колонка"
                 style="width: 180px;"
               />
-               <AppSelect
-                 v-model="filter.condition"
-                 :items="getConditionsForColumn(columnSettings.find(c => c.key === filter.column))"
-                 placeholder="Условие"
-                 style="width: 150px;"
-                 :clearable="filter.condition !== null"
-               />
-              
+              <AppSelect
+                v-model="filter.condition"
+                :items="getConditionsForColumn(columnSettings.find(c => c.key === filter.column))"
+                placeholder="Условие"
+                style="width: 150px;"
+                :clearable="filter.condition !== null"
+              />
+
               <!-- Для булевых колонок -->
               <AppSelect
                 v-if="columnSettings.find(c => c.key === filter.column)?.type === 'boolean'"
@@ -706,7 +790,7 @@ onMounted(() => {
                 style="width: 200px;"
                 :clearable="filter.value !== null && filter.value !== '' && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty'"
               />
-              
+
               <!-- Для колонок со справочниками -->
               <AppSelect
                 v-else-if="columnSettings.find(c => c.key === filter.column)?.type === 'select'"
@@ -719,7 +803,7 @@ onMounted(() => {
                 style="width: 200px;"
                 :clearable="filter.value !== null && filter.value !== '' && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty'"
               />
-              
+
               <!-- Для дат -->
               <AppTextField
                 v-else-if="columnSettings.find(c => c.key === filter.column)?.type === 'date'"
@@ -729,7 +813,7 @@ onMounted(() => {
                 :disabled="filter.condition === 'is_empty' || filter.condition === 'is_not_empty'"
                 style="width: 200px;"
               />
-              
+
               <!-- Для текстовых полей -->
               <AppTextField
                 v-else
@@ -738,7 +822,7 @@ onMounted(() => {
                 :disabled="filter.condition === 'is_empty' || filter.condition === 'is_not_empty'"
                 style="width: 200px;"
               />
-              
+
               <IconBtn @click="removeFilterRow(filter.id)">
                 <VIcon icon="bx-trash" />
               </IconBtn>
@@ -755,16 +839,36 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn variant="text" @click="clearAllFilters">Сбросить всё</VBtn>
-              <VBtn color="error" variant="outlined" @click="isFilterDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="isFilterDialogOpen = false">Применить</VBtn>
+              <VBtn
+                variant="text"
+                @click="clearAllFilters"
+              >
+                Сбросить всё
+              </VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isFilterDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="isFilterDialogOpen = false"
+              >
+                Применить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог сохранения пресета -->
-      <VDialog v-model="isSavePresetDialogOpen" max-width="400px">
+      <VDialog
+        v-model="isSavePresetDialogOpen"
+        max-width="400px"
+      >
         <VCard title="Сохранить пресет">
           <VCardText>
             <AppTextField
@@ -775,23 +879,49 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn variant="text" @click="isSavePresetDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="saveCurrentAsPreset(FILTER_PRESETS_KEY)">Сохранить</VBtn>
+              <VBtn
+                variant="text"
+                @click="isSavePresetDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="saveCurrentAsPreset(FILTER_PRESETS_KEY)"
+              >
+                Сохранить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог массового удаления -->
-      <VDialog v-model="isBulkDeleteDialogOpen" max-width="500px">
+      <VDialog
+        v-model="isBulkDeleteDialogOpen"
+        max-width="500px"
+      >
         <VCard title="Подтверждение удаления">
           <VCardText>
             Вы уверены, что хотите удалить выбранные расписания? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn color="error" variant="outlined" @click="isBulkDeleteDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="confirmBulkDelete">Удалить</VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkDeleteDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkDelete"
+              >
+                Удалить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
@@ -800,8 +930,16 @@ onMounted(() => {
       <VDivider />
 
       <!-- Пустое состояние -->
-      <div v-if="!loading && filteredSchedules.length === 0" class="text-center pa-6">
-        <VIcon icon="bx-calendar" size="48" color="grey" class="mb-2" />
+      <div
+        v-if="!loading && filteredSchedules.length === 0"
+        class="text-center pa-6"
+      >
+        <VIcon
+          icon="bx-calendar"
+          size="48"
+          color="grey"
+          class="mb-2"
+        />
         <p class="text-body-1 text-medium-emphasis">
           Нет активных расписаний
         </p>
@@ -837,7 +975,10 @@ onMounted(() => {
 
         <!-- Название -->
         <template #item.title="{ item }">
-          <span class="text-body-2 text-truncate" style="max-width: 200px; display: block;">
+          <span
+            class="text-body-2 text-truncate"
+            style="max-width: 200px; display: block;"
+          >
             {{ item.title || '-' }}
           </span>
         </template>
@@ -860,13 +1001,22 @@ onMounted(() => {
 
         <!-- Период -->
         <template #item.period="{ item }">
-          <span v-if="item.scheduleType === 'weekly'" class="text-body-2">
+          <span
+            v-if="item.scheduleType === 'weekly'"
+            class="text-body-2"
+          >
             {{ getWeekDaysText(item.scheduleDays) }}
           </span>
-          <span v-else-if="item.scheduleType === 'monthly'" class="text-body-2">
+          <span
+            v-else-if="item.scheduleType === 'monthly'"
+            class="text-body-2"
+          >
             {{ item.scheduleDayOfMonth }} числа
           </span>
-          <span v-else class="text-body-2">-</span>
+          <span
+            v-else
+            class="text-body-2"
+          >-</span>
         </template>
 
         <!-- Дата начала -->
@@ -881,23 +1031,36 @@ onMounted(() => {
 
         <!-- Следующий запуск -->
         <template #item.nextRunAt="{ item }">
-          <span v-if="item.nextRunAt" class="text-body-2" :class="{
-            'text-success': new Date(item.nextRunAt) <= new Date(),
-            'text-medium-emphasis': new Date(item.nextRunAt) > new Date()
-          }">
+          <span
+            v-if="item.nextRunAt"
+            class="text-body-2"
+            :class="{
+              'text-success': new Date(item.nextRunAt) <= new Date(),
+              'text-medium-emphasis': new Date(item.nextRunAt) > new Date(),
+            }"
+          >
             {{ formatDate(item.nextRunAt) }}
           </span>
-          <span v-else class="text-error">
+          <span
+            v-else
+            class="text-error"
+          >
             Завершено
           </span>
         </template>
 
         <!-- Последний запуск -->
         <template #item.lastRunAt="{ item }">
-          <span v-if="item.lastRunAt" class="text-body-2">
+          <span
+            v-if="item.lastRunAt"
+            class="text-body-2"
+          >
             {{ formatDate(item.lastRunAt) }}
           </span>
-          <span v-else class="text-body-2 text-medium-emphasis">
+          <span
+            v-else
+            class="text-body-2 text-medium-emphasis"
+          >
             Ещё не выполнялось
           </span>
         </template>
@@ -919,13 +1082,22 @@ onMounted(() => {
             <IconBtn @click="openLogsDialog(item)">
               <VIcon icon="bx-history" />
             </IconBtn>
-            <IconBtn v-if="$can('write','menu_tickets_schedules')" @click="toggleActiveStatus(item.id, !item.isActive)">
+            <IconBtn
+              v-if="$can('write', 'menu_tickets_schedules')"
+              @click="toggleActiveStatus(item.id, !item.isActive)"
+            >
               <VIcon :icon="item.isActive ? 'bx-pause' : 'bx-play'" />
             </IconBtn>
-            <IconBtn v-if="$can('write','menu_tickets_schedules')" @click="openEditDialog(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_tickets_schedules')"
+              @click="openEditDialog(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_tickets_schedules')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_tickets_schedules')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -943,31 +1115,61 @@ onMounted(() => {
     </VCard>
 
     <!-- Диалог удаления -->
-    <VDialog v-model="deleteDialog" max-width="500px">
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
       <VCard title="Подтверждение удаления">
         <VCardText>
           Вы уверены, что хотите удалить это расписание? Это действие нельзя отменить.
         </VCardText>
         <VCardText>
           <div class="d-flex justify-center gap-4">
-            <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
-            <VBtn color="success" variant="elevated" @click="deleteItemConfirm">Удалить</VBtn>
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
           </div>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Диалог логов расписания -->
-    <VDialog v-model="logsDialog" max-width="700px">
+    <VDialog
+      v-model="logsDialog"
+      max-width="700px"
+    >
       <VCard title="История выполнения расписания">
         <VCardText>
-          <div v-if="logsLoading" class="d-flex justify-center pa-4">
-            <VProgressCircular indeterminate color="primary" />
+          <div
+            v-if="logsLoading"
+            class="d-flex justify-center pa-4"
+          >
+            <VProgressCircular
+              indeterminate
+              color="primary"
+            />
           </div>
-          <div v-else-if="scheduleLogs.length === 0" class="text-center pa-4 text-medium-emphasis">
+          <div
+            v-else-if="scheduleLogs.length === 0"
+            class="text-center pa-4 text-medium-emphasis"
+          >
             Нет записей в истории выполнения
           </div>
-          <VTable v-else density="compact">
+          <VTable
+            v-else
+            density="compact"
+          >
             <thead>
               <tr>
                 <th>Время</th>
@@ -977,21 +1179,35 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="log in scheduleLogs" :key="log.id">
+              <tr
+                v-for="log in scheduleLogs"
+                :key="log.id"
+              >
                 <td>{{ formatLogDate(log.executedAt) }}</td>
                 <td>
-                  <VChip size="small" :color="getLogStatusColor(log.status)">
+                  <VChip
+                    size="small"
+                    :color="getLogStatusColor(log.status)"
+                  >
                     {{ log.status === 'success' ? 'Успешно' : log.status === 'error' ? 'Ошибка' : 'Пропущено' }}
                   </VChip>
                 </td>
                 <td>
-                  <a v-if="log.createdTicketNumber" :href="`/apps/tickets/edit?id=${log.createdTicketId}`" target="_blank" class="text-primary">
+                  <a
+                    v-if="log.createdTicketNumber"
+                    :href="`/apps/tickets/edit?id=${log.createdTicketId}`"
+                    target="_blank"
+                    class="text-primary"
+                  >
                     #{{ log.createdTicketNumber }}
                   </a>
                   <span v-else>-</span>
                 </td>
                 <td>
-                  <span v-if="log.errorMessage" class="text-error">{{ log.errorMessage }}</span>
+                  <span
+                    v-if="log.errorMessage"
+                    class="text-error"
+                  >{{ log.errorMessage }}</span>
                   <span v-else>-</span>
                 </td>
               </tr>
@@ -1000,7 +1216,13 @@ onMounted(() => {
         </VCardText>
         <VCardText>
           <div class="d-flex justify-end">
-            <VBtn color="primary" variant="elevated" @click="logsDialog = false">Закрыть</VBtn>
+            <VBtn
+              color="primary"
+              variant="elevated"
+              @click="logsDialog = false"
+            >
+              Закрыть
+            </VBtn>
           </div>
         </VCardText>
       </VCard>
@@ -1018,7 +1240,11 @@ onMounted(() => {
     />
 
     <!-- Уведомления -->
-    <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="5000">
+    <VSnackbar
+      v-model="isToastVisible"
+      :color="toastColor"
+      timeout="5000"
+    >
       {{ toastMessage }}
     </VSnackbar>
   </div>

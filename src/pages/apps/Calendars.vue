@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { $api } from '@/utils/api'
 
 // Типы данных для Календарь
 interface Calendars {
@@ -19,7 +19,6 @@ interface Calendars {
   updatedAt: string
 }
 
-
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -35,14 +34,18 @@ const fetchCalendars = async () => {
     loading.value = true
     error.value = null
     console.log('Fetching calendars from:', `${API_BASE}/calendars`)
-    const data = await $api<{ calendars: Calendars[], total: number }>(`${API_BASE}/calendars`)
+
+    const data = await $api<{ calendars: Calendars[]; total: number }>(`${API_BASE}/calendars`)
+
     console.log('Fetched calendars data:', data)
     calendars.value = data.calendars
     total.value = data.total
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки календари'
     console.error('Error fetching calendars:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -52,11 +55,14 @@ const createCalendars = async (item: Omit<Calendars, 'id' | 'createdAt' | 'updat
   try {
     const data = await $api<Calendars>(`${API_BASE}/calendars`, {
       method: 'POST',
-      body: item
+      body: item,
     })
+
     calendars.value.push(data)
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error creating calendars:', err)
     throw err
   }
@@ -67,14 +73,16 @@ const updateCalendars = async (id: number, item: Omit<Calendars, 'id' | 'created
   try {
     const data = await $api<Calendars>(`${API_BASE}/calendars/${id}`, {
       method: 'PUT',
-      body: item
+      body: item,
     })
+
     const index = calendars.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       calendars.value[index] = data
-    }
+
     return data
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error updating calendars:', err)
     throw err
   }
@@ -84,13 +92,14 @@ const updateCalendars = async (id: number, item: Omit<Calendars, 'id' | 'created
 const deleteCalendars = async (id: number) => {
   try {
     await $api(`${API_BASE}/calendars/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
+
     const index = calendars.value.findIndex(p => p.id === id)
-    if (index !== -1) {
+    if (index !== -1)
       calendars.value.splice(index, 1)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error deleting calendars:', err)
     throw err
   }
@@ -115,7 +124,7 @@ const headers = [
   { title: 'Создано', key: 'createdAt', sortable: true },
   { title: 'Изменено', key: 'updatedAt', sortable: true },
   { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false },
 ]
 
 // Фильтрация
@@ -153,13 +162,14 @@ const bulkChangeStatus = () => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteCalendars(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} календари`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
@@ -170,13 +180,14 @@ const confirmBulkStatusChange = async () => {
     for (const item of selectedItems.value) {
       await updateCalendars(item.id, {
         ...item,
-        isActive: bulkStatusValue.value === 1
+        isActive: bulkStatusValue.value === 1,
       })
     }
     selectedItems.value = []
     showToast(`Статус изменен для ${count} календари`)
     isBulkStatusDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового изменения статуса', 'error')
   }
 }
@@ -204,7 +215,7 @@ const isBulkStatusDialogOpen = ref(false)
 const bulkStatusValue = ref<number>(1)
 
 // Отслеживание изменений выбранных элементов
-watch(selectedItems, (newValue) => {
+watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
@@ -257,7 +268,7 @@ const editItem = (item: Calendars) => {
   editedItem.value = {
     ...item,
     dateFrom: item.dateFrom ? new Date(item.dateFrom).toISOString().split('T')[0] : '',
-    dateTo: item.dateTo ? new Date(item.dateTo).toISOString().split('T')[0] : ''
+    dateTo: item.dateTo ? new Date(item.dateTo).toISOString().split('T')[0] : '',
   }
   editDialog.value = true
 }
@@ -284,6 +295,7 @@ const save = async () => {
   console.log('DEBUG: Saving calendar with color:', editedItem.value.color)
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
+
     return
   }
 
@@ -293,23 +305,28 @@ const save = async () => {
       ...editedItem.value,
       dateFrom: editedItem.value.dateFrom ? new Date(editedItem.value.dateFrom).toISOString() : null,
       dateTo: editedItem.value.dateTo ? new Date(editedItem.value.dateTo).toISOString() : null,
-      isActive: editedItem.value.isActive
+      isActive: editedItem.value.isActive,
     }
+
     console.log('DEBUG: Data to send:', dataToSend)
 
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updateCalendars(editedItem.value.id, dataToSend)
+
       console.log('DEBUG: Updated calendar:', updated)
       showToast('Календарь успешно сохранен')
-    } else {
+    }
+    else {
       // Добавление нового
       const created = await createCalendars(dataToSend)
+
       console.log('DEBUG: Created calendar:', created)
       showToast('Календарь успешно добавлен')
     }
     close()
-  } catch (err) {
+  }
+  catch (err) {
     console.error('DEBUG: Error saving calendar:', err)
     showToast('Ошибка сохранения календарь', 'error')
   }
@@ -320,14 +337,16 @@ const deleteItemConfirm = async () => {
     await deleteCalendars(editedItem.value.id)
     showToast('Календарь успешно удален')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления календарь', 'error')
   }
 }
 
 // Переключение статуса
 const toggleStatus = async (item: Calendars, newValue: boolean | null) => {
-  if (newValue === null) return
+  if (newValue === null)
+    return
   console.log('🔄 toggleStatus вызван')
   console.log('📝 Элемент:', item)
   console.log('🔢 Новое значение isActive:', newValue)
@@ -335,10 +354,11 @@ const toggleStatus = async (item: Calendars, newValue: boolean | null) => {
   try {
     await updateCalendars(item.id, {
       ...item,
-      isActive: newValue
+      isActive: newValue,
     })
     showToast('Статус календарь изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -365,20 +385,34 @@ const addNewCalendars = () => {
 <template>
   <div>
     <VCard title="Календари">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
@@ -459,11 +493,10 @@ const addNewCalendars = () => {
         </div>
       </div>
 
-
       <!-- Диалог фильтров -->
       <VDialog
         v-model="isFilterDialogOpen"
-        :maxWidth="'500px'"
+        max-width="500px"
       >
         <VCard title="Фильтры">
           <VCardText>
@@ -513,7 +546,7 @@ const addNewCalendars = () => {
       <!-- Диалог массового удаления -->
       <VDialog
         v-model="isBulkDeleteDialogOpen"
-        :maxWidth="'500px'"
+        max-width="500px"
       >
         <VCard title="Подтверждение удаления">
           <VCardText>
@@ -543,7 +576,7 @@ const addNewCalendars = () => {
       <!-- Диалог массового изменения статуса -->
       <VDialog
         v-model="isBulkStatusDialogOpen"
-        :maxWidth="'500px'"
+        max-width="500px"
       >
         <VCard title="Изменить статус">
           <VCardText>
@@ -633,9 +666,9 @@ const addNewCalendars = () => {
           <div class="d-flex align-center gap-2">
             <VSwitch
               :model-value="item.isActive"
-              @update:model-value="(val) => toggleStatus(item, val)"
               color="primary"
               hide-details
+              @update:model-value="(val) => toggleStatus(item, val)"
             />
             <VChip
               v-bind="resolveStatusVariant(item.isActive)"
@@ -649,10 +682,16 @@ const addNewCalendars = () => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_calendars')" @click="editItem(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_calendars')"
+              @click="editItem(item)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_calendars')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_calendars')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -672,12 +711,11 @@ const addNewCalendars = () => {
     <!-- Диалог редактирования -->
     <VDialog
       v-model="editDialog"
-      :maxWidth="'600px'"
+      max-width="600px"
     >
       <VCard :title="editedIndex > -1 ? 'Редактировать календарь' : 'Добавить календарь'">
         <VCardText>
           <VRow>
-
             <!-- Название -->
             <VCol
               cols="12"
@@ -690,10 +728,7 @@ const addNewCalendars = () => {
             </VCol>
 
             <!-- Описание -->
-            <VCol
-              cols="12"
-              
-            >
+            <VCol cols="12">
               <AppTextarea
                 v-model="editedItem.description"
                 label="Описание"
@@ -765,7 +800,7 @@ const addNewCalendars = () => {
                 type="color"
                 label="Цвет"
                 placeholder="Выберите цвет"
-              />
+              >
             </VCol>
 
             <!-- Дата с -->
@@ -830,7 +865,7 @@ const addNewCalendars = () => {
     <!-- Диалог удаления -->
     <VDialog
       v-model="deleteDialog"
-      :maxWidth="'500px'"
+      max-width="500px"
     >
       <VCard title="Вы уверены, что хотите удалить этот календарь?">
         <VCardText>

@@ -1,3 +1,24 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+
+interface Props {
+  executorAgentIds: number[]
+  executorGroupIds: number[]
+  agentOptions: any[]
+  agentGroupOptions: any[]
+  allowMultipleAgents?: boolean
+  allowMultipleGroups?: boolean
+}
+
+const props = defineProps<Props>()
+
+defineEmits<{
+  'update:agentIds': [value: number[]]
+  'update:groupIds': [value: number[]]
+  'assign-to-me': []
+}>()
+</script>
+
 <template>
   <div>
     <!-- Группы исполнителей -->
@@ -37,24 +58,3 @@
     </AppSelect>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-
-interface Props {
-  executorAgentIds: number[]
-  executorGroupIds: number[]
-  agentOptions: any[]
-  agentGroupOptions: any[]
-  allowMultipleAgents?: boolean
-  allowMultipleGroups?: boolean
-}
-
-const props = defineProps<Props>()
-
-defineEmits<{
-  'update:agentIds': [value: number[]]
-  'update:groupIds': [value: number[]]
-  'assign-to-me': []
-}>()
-</script>

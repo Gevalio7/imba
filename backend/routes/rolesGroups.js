@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getRolesGroups,
   getRolesGroupById,
   createRolesGroups,
   updateRolesGroups,
   deleteRolesGroups,
-} = require('../controllers/rolesGroupsController');
+} = require('../controllers/rolesGroupsController')
 
 // GET /rolesGroups - список с query params
-router.get('/', getRolesGroups);
+router.get('/', getRolesGroups)
 
 // GET /rolesGroups/:id
-router.get('/:id', getRolesGroupById);
+router.get('/:id', getRolesGroupById)
 
 // POST /rolesGroups
-router.post('/', createRolesGroups);
+router.post('/', createRolesGroups)
 
 // PUT /rolesGroups/:id
-router.put('/:id', updateRolesGroups);
+router.put('/:id', updateRolesGroups)
 
 // DELETE /rolesGroups/:id
-router.delete('/:id', deleteRolesGroups);
+router.delete('/:id', deleteRolesGroups)
 
-module.exports = router;
+module.exports = router

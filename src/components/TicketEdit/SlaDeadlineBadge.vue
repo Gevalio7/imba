@@ -1,3 +1,15 @@
+<script setup lang="ts">
+import { formatDeadline, formatSlaTime } from '@/utils/slaFormatter'
+
+interface Props {
+  selectedSla?: any
+  responseDeadline?: string
+  resolutionDeadline?: string
+}
+
+defineProps<Props>()
+</script>
+
 <template>
   <VAlert
     v-if="selectedSla || responseDeadline || resolutionDeadline"
@@ -19,21 +31,12 @@
       <div v-if="resolutionDeadline">
         <strong>Срок решения:</strong> {{ formatDeadline(resolutionDeadline) }}
       </div>
-      <div v-if="!selectedSla && !responseDeadline && !resolutionDeadline" class="text-body-2 text-medium-emphasis">
+      <div
+        v-if="!selectedSla && !responseDeadline && !resolutionDeadline"
+        class="text-body-2 text-medium-emphasis"
+      >
         SLA не установлен
       </div>
     </div>
   </VAlert>
 </template>
-
-<script setup lang="ts">
-import { formatSlaTime, formatDeadline } from '@/utils/slaFormatter'
-
-interface Props {
-  selectedSla?: any
-  responseDeadline?: string
-  resolutionDeadline?: string
-}
-
-defineProps<Props>()
-</script>

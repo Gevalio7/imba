@@ -1,6 +1,28 @@
+<script setup lang="ts">
+import { formatDateTime } from '@/utils/slaFormatter'
+import type { TicketComment } from '@/types/ticket'
+
+interface Props {
+  comment: TicketComment
+  editingId: number | null
+  editingContent: string
+}
+
+defineProps<Props>()
+
+defineEmits<{
+  'start-edit': []
+  'save-edit': [content: string]
+  'cancel-edit': []
+  'delete': []
+}>()
+</script>
+
 <template>
-  <div class="comment-item pa-4 mb-3 rounded"
-       :class="comment.isInternal ? 'internal-comment' : 'external-comment'">
+  <div
+    class="comment-item pa-4 mb-3 rounded"
+    :class="comment.isInternal ? 'internal-comment' : 'external-comment'"
+  >
     <div class="d-flex justify-space-between align-start mb-2">
       <div class="d-flex align-center">
         <VAvatar
@@ -8,8 +30,14 @@
           color="primary"
           class="me-2"
         >
-          <VImg v-if="comment.authorAvatar" :src="comment.authorAvatar" />
-          <span v-else class="text-caption">{{ (comment.authorName || comment.author || 'U').charAt(0).toUpperCase() }}</span>
+          <VImg
+            v-if="comment.authorAvatar"
+            :src="comment.authorAvatar"
+          />
+          <span
+            v-else
+            class="text-caption"
+          >{{ (comment.authorName || comment.author || 'U').charAt(0).toUpperCase() }}</span>
         </VAvatar>
         <div>
           <div class="text-body-1 font-weight-medium">
@@ -36,7 +64,10 @@
           size="small"
           @click="$emit('start-edit')"
         >
-          <VIcon icon="bx-edit" size="18" />
+          <VIcon
+            icon="bx-edit"
+            size="18"
+          />
         </VBtn>
         <VBtn
           icon
@@ -45,7 +76,10 @@
           size="small"
           @click="$emit('delete')"
         >
-          <VIcon icon="bx-trash" size="18" />
+          <VIcon
+            icon="bx-trash"
+            size="18"
+          />
         </VBtn>
       </div>
     </div>
@@ -84,26 +118,6 @@
     />
   </div>
 </template>
-
-<script setup lang="ts">
-import { formatDateTime } from '@/utils/slaFormatter'
-import type { TicketComment } from '@/types/ticket'
-
-interface Props {
-  comment: TicketComment
-  editingId: number | null
-  editingContent: string
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'start-edit': []
-  'save-edit': [content: string]
-  'cancel-edit': []
-  'delete': []
-}>()
-</script>
 
 <style lang="scss" scoped>
 .comment-item {

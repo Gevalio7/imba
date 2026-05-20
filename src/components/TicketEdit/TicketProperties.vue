@@ -1,3 +1,97 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { formatDeadline, formatSlaTime } from '@/utils/slaFormatter'
+
+interface Props {
+  ticket: any
+  referenceData: any
+  availableStatuses: any[]
+  currentWorkflow: any
+  allowMultipleExecutorGroups: any
+  allowMultipleExecutors: any
+  filteredServices: any[]
+  filteredCategories: any[]
+  hasCategoriesForType: boolean
+  categoryVisible: boolean
+}
+
+const props = defineProps<Props>()
+
+// Вычисляемый выбранный SLA для отображения дедлайнов
+const selectedSla = computed(() => {
+  if (!props.ticket.slaId)
+    return null
+
+  return props.referenceData.sla.find((s: any) => s.id === props.ticket.slaId) || null
+})
+
+// Агенты для выбора
+const agentOptions = computed(() => {
+  return props.referenceData.agents.map((a: any) => ({
+    title: `${a.firstName || ''} ${a.lastName || ''} (${a.email || a.login})`.trim(),
+    value: a.id,
+  }))
+})
+
+// Группы агентов для выбора
+const agentGroupOptions = computed(() => {
+  return props.referenceData.agentGroups.map((g: any) => ({
+    title: g.name,
+    value: g.id,
+  }))
+})
+
+// Авторы (сотрудники) для выбора - с информацией о компании
+const authorOptions = computed(() => {
+  return props.referenceData.customerUsers.map((c: any) => {
+    const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
+    const email = c.email ? ` (${c.email})` : ''
+    const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
+
+    return {
+      title: `${name}${email}${companyInfo}`,
+      value: c.id,
+      customerId: c.customerId,
+      customerName: c.customerName,
+    }
+  })
+})
+
+// Вычисляемый список статусов для выбора
+const statusOptions = computed(() => {
+  // Если есть workflow и доступные статусы
+  if (props.availableStatuses.length > 0) {
+    // Находим текущий статус в общем списке
+    const currentStatus = props.referenceData.states.find((s: any) => s.id === props.ticket.stateId)
+
+    // Создаём список с текущим статусом (если он есть и не в availableStatuses)
+    const options = props.availableStatuses.map(s => ({
+      title: s.name,
+      value: s.id,
+      color: s.color,
+    }))
+
+    // Добавляем текущий статус если его нет в списке
+    if (currentStatus && !options.find(o => o.value === currentStatus.id)) {
+      options.unshift({
+        title: currentStatus.name,
+        value: currentStatus.id,
+        color: currentStatus.color,
+      })
+    }
+
+    return options
+  }
+
+  // Если нет workflow - возвращаем все статусы
+  return props.referenceData.states.map((s: any) => ({
+    title: s.name,
+    value: s.id,
+    color: s.color,
+  }))
+})
+</script>
+
 <template>
   <VCard class="mb-6">
     <VCardTitle class="d-flex align-center px-6 py-4">
@@ -224,7 +318,10 @@
             <div v-if="ticket.resolutionDeadline">
               <strong>Срок решения:</strong> {{ formatDeadline(ticket.resolutionDeadline) }}
             </div>
-            <div v-if="!selectedSla && !ticket.responseDeadline && !ticket.resolutionDeadline" class="text-body-2 text-medium-emphasis">
+            <div
+              v-if="!selectedSla && !ticket.responseDeadline && !ticket.resolutionDeadline"
+              class="text-body-2 text-medium-emphasis"
+            >
               SLA не установлен
             </div>
           </div>
@@ -233,94 +330,3 @@
     </VCardText>
   </VCard>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-import { formatSlaTime, formatDeadline } from '@/utils/slaFormatter'
-
-interface Props {
-  ticket: any
-  referenceData: any
-  availableStatuses: any[]
-  currentWorkflow: any
-  allowMultipleExecutorGroups: any
-  allowMultipleExecutors: any
-  filteredServices: any[]
-  filteredCategories: any[]
-  hasCategoriesForType: boolean
-  categoryVisible: boolean
-}
-
-const props = defineProps<Props>()
-
-// Вычисляемый выбранный SLA для отображения дедлайнов
-const selectedSla = computed(() => {
-  if (!props.ticket.slaId) return null
-  return props.referenceData.sla.find((s: any) => s.id === props.ticket.slaId) || null
-})
-
-// Агенты для выбора
-const agentOptions = computed(() => {
-  return props.referenceData.agents.map((a: any) => ({
-    title: `${a.firstName || ''} ${a.lastName || ''} (${a.email || a.login})`.trim(),
-    value: a.id,
-  }))
-})
-
-// Группы агентов для выбора
-const agentGroupOptions = computed(() => {
-  return props.referenceData.agentGroups.map((g: any) => ({
-    title: g.name,
-    value: g.id,
-  }))
-})
-
-// Авторы (сотрудники) для выбора - с информацией о компании
-const authorOptions = computed(() => {
-  return props.referenceData.customerUsers.map((c: any) => {
-    const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.login || 'Неизвестно'
-    const email = c.email ? ` (${c.email})` : ''
-    const companyInfo = c.customerName ? ` [${c.customerName}]` : ''
-    return {
-      title: `${name}${email}${companyInfo}`,
-      value: c.id,
-      customerId: c.customerId,
-      customerName: c.customerName,
-    }
-  })
-})
-
-// Вычисляемый список статусов для выбора
-const statusOptions = computed(() => {
-  // Если есть workflow и доступные статусы
-  if (props.availableStatuses.length > 0) {
-    // Находим текущий статус в общем списке
-    const currentStatus = props.referenceData.states.find((s: any) => s.id === props.ticket.stateId)
-
-    // Создаём список с текущим статусом (если он есть и не в availableStatuses)
-    const options = props.availableStatuses.map(s => ({
-      title: s.name,
-      value: s.id,
-      color: s.color,
-    }))
-
-    // Добавляем текущий статус если его нет в списке
-    if (currentStatus && !options.find(o => o.value === currentStatus.id)) {
-      options.unshift({
-        title: currentStatus.name,
-        value: currentStatus.id,
-        color: currentStatus.color,
-      })
-    }
-
-    return options
-  }
-
-  // Если нет workflow - возвращаем все статусы
-  return props.referenceData.states.map((s: any) => ({
-    title: s.name,
-    value: s.id,
-    color: s.color,
-  }))
-})
-</script>

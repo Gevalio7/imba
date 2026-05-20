@@ -9,10 +9,18 @@ import { useImagePreview } from '@/composables/useImagePreview'
 import { useTicketHistory } from '@/composables/useTicketHistory'
 import { useQuickAnswers } from '@/composables/useQuickAnswers'
 import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
+</script>
+
+<script lang="ts">
+// Import utilities
+import { createObjectUrl, isImageFile, isImageType } from '@/utils/fileUtils'
+import TicketProperties from '@/components/TicketEdit/TicketProperties.vue'
+import TicketCommentsSection from '@/components/TicketEdit/TicketCommentsSection.vue'
 
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
+
     // route-level permission meta for router guard — allow read for viewing, write guarded on actions
     action: 'read',
     subject: 'menu_tickets_list',
@@ -24,6 +32,7 @@ const route = useRoute()
 
 const ticketId = computed(() => {
   const id = route.query.id
+
   return id ? Number(id) : null
 })
 
@@ -104,7 +113,7 @@ const {
 
 // Create a computed queue ref for quick answers
 const currentQueue = computed(() => ({
-  quickAnswerArticleIds: []
+  quickAnswerArticleIds: [],
 }))
 
 const {
@@ -144,7 +153,8 @@ const refreshData = async () => {
   try {
     await refreshReferenceData()
     showToast('Справочные данные обновлены', 'success')
-  } catch (error) {
+  }
+  catch (error) {
     showToast('Ошибка обновления данных', 'error')
   }
 }
@@ -159,8 +169,10 @@ const handleSave = async () => {
   try {
     await save()
     showToast('Обращение успешно сохранено', 'success')
-  } catch (error: any) {
+  }
+  catch (error: any) {
     const message = error.message || 'Ошибка при сохранении обращения'
+
     showToast(message, 'error')
   }
 }
@@ -174,7 +186,8 @@ const onScheduleUpdate = () => {
   showToast('Расписание обновлено', 'success')
 }
 
-
+// Active tab for comments/history
+const activeTab = ref('comments')
 </script>
 
 <template>
@@ -206,7 +219,10 @@ const onScheduleUpdate = () => {
           color="primary"
           @click="refreshData"
         >
-          <VIcon icon="bx-refresh" class="me-2" />
+          <VIcon
+            icon="bx-refresh"
+            class="me-2"
+          />
           Обновить данные
         </VBtn>
         <VBtn
@@ -214,11 +230,14 @@ const onScheduleUpdate = () => {
           color="primary"
           @click="openScheduleDialog"
         >
-          <VIcon icon="bx-calendar" class="me-2" />
+          <VIcon
+            icon="bx-calendar"
+            class="me-2"
+          />
           Расписание
         </VBtn>
         <VBtn
-          v-if="$can('write','menu_tickets_list')"
+          v-if="$can('write', 'menu_tickets_list')"
           :loading="saving"
           @click="handleSave"
         >
@@ -272,9 +291,14 @@ const onScheduleUpdate = () => {
           </VCardTitle>
           <VCardText>
             <!-- Существующие вложения -->
-            <div v-if="existingAttachments.length > 0" class="mb-4">
+            <div
+              v-if="existingAttachments.length > 0"
+              class="mb-4"
+            >
               <div class="d-flex justify-space-between align-center mb-2">
-                <p class="text-body-2 mb-0">Прикрепленные файлы:</p>
+                <p class="text-body-2 mb-0">
+                  Прикрепленные файлы:
+                </p>
                 <div class="d-flex gap-2">
                   <VBtn
                     v-if="existingAttachments.length > 1"
@@ -283,7 +307,10 @@ const onScheduleUpdate = () => {
                     color="primary"
                     @click="downloadAllAttachments"
                   >
-                    <VIcon icon="bx-download" class="me-1" />
+                    <VIcon
+                      icon="bx-download"
+                      class="me-1"
+                    />
                     Скачать все
                   </VBtn>
                 </div>
@@ -307,7 +334,10 @@ const onScheduleUpdate = () => {
                   >
                     <template #placeholder>
                       <div class="d-flex align-center justify-center fill-height bg-surface-variant">
-                        <VProgressCircular indeterminate size="20" />
+                        <VProgressCircular
+                          indeterminate
+                          size="20"
+                        />
                       </div>
                     </template>
                   </VImg>
@@ -320,7 +350,11 @@ const onScheduleUpdate = () => {
                     width="80"
                     @click="openPreview(attachment)"
                   >
-                    <VIcon icon="bx-file" size="32" color="grey" />
+                    <VIcon
+                      icon="bx-file"
+                      size="32"
+                      color="grey"
+                    />
                   </VCard>
 
                   <!-- Кнопка скачивания -->
@@ -331,7 +365,10 @@ const onScheduleUpdate = () => {
                     class="attachment-download-btn"
                     @click.stop="downloadAttachment(attachment)"
                   >
-                    <VIcon icon="bx-download" size="14" />
+                    <VIcon
+                      icon="bx-download"
+                      size="14"
+                    />
                   </VBtn>
 
                   <!-- Кнопка удаления -->
@@ -342,11 +379,17 @@ const onScheduleUpdate = () => {
                     class="attachment-delete-btn"
                     @click="deleteAttachment(attachment.id)"
                   >
-                    <VIcon icon="bx-x" size="14" />
+                    <VIcon
+                      icon="bx-x"
+                      size="14"
+                    />
                   </VBtn>
 
                   <!-- Название файла -->
-                  <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+                  <div
+                    class="text-caption text-truncate text-center mt-1"
+                    style="max-width: 80px;"
+                  >
                     {{ attachment.filename }}
                   </div>
                 </div>
@@ -354,8 +397,13 @@ const onScheduleUpdate = () => {
             </div>
 
             <!-- Новые файлы для загрузки -->
-            <div v-if="newAttachments.length > 0" class="mb-4">
-              <p class="text-body-2 mb-2">Новые файлы:</p>
+            <div
+              v-if="newAttachments.length > 0"
+              class="mb-4"
+            >
+              <p class="text-body-2 mb-2">
+                Новые файлы:
+              </p>
               <div class="attachments-grid d-flex flex-wrap gap-2">
                 <div
                   v-for="(file, index) in newAttachments"
@@ -374,7 +422,10 @@ const onScheduleUpdate = () => {
                   >
                     <template #placeholder>
                       <div class="d-flex align-center justify-center fill-height bg-surface-variant">
-                        <VProgressCircular indeterminate size="20" />
+                        <VProgressCircular
+                          indeterminate
+                          size="20"
+                        />
                       </div>
                     </template>
                   </VImg>
@@ -386,7 +437,11 @@ const onScheduleUpdate = () => {
                     height="80"
                     width="80"
                   >
-                    <VIcon icon="bx-file" size="32" color="grey" />
+                    <VIcon
+                      icon="bx-file"
+                      size="32"
+                      color="grey"
+                    />
                   </VCard>
 
                   <!-- Кнопка удаления -->
@@ -397,11 +452,17 @@ const onScheduleUpdate = () => {
                     class="attachment-delete-btn"
                     @click="removeNewAttachment(index)"
                   >
-                    <VIcon icon="bx-x" size="14" />
+                    <VIcon
+                      icon="bx-x"
+                      size="14"
+                    />
                   </VBtn>
 
                   <!-- Название файла -->
-                  <div class="text-caption text-truncate text-center mt-1" style="max-width: 80px;">
+                  <div
+                    class="text-caption text-truncate text-center mt-1"
+                    style="max-width: 80px;"
+                  >
                     {{ file.name }}
                   </div>
                 </div>
@@ -455,8 +516,8 @@ const onScheduleUpdate = () => {
           :show-quick-answers="true"
           :quick-answers-loading="loadingQuickAnswers"
           :quick-answers="quickAnswerArticles"
-          @update:newComment="(value) => newComment = value"
-          @update:isInternalComment="(value) => isInternalComment = value"
+          @update:new-comment="(value) => newComment = value"
+          @update:is-internal-comment="(value) => isInternalComment = value"
           @add-comment="addComment"
           @start-edit-comment="startEditComment"
           @save-edit-comment="saveEditComment"
@@ -547,8 +608,8 @@ const onScheduleUpdate = () => {
               size="small"
               variant="tonal"
               class="mx-1"
-              @click="resetZoom"
               style="cursor: pointer"
+              @click="resetZoom"
             >
               {{ imageZoom }}%
             </VChip>
@@ -562,7 +623,10 @@ const onScheduleUpdate = () => {
               <VIcon icon="bx-zoom-in" />
             </VBtn>
 
-            <VDivider vertical class="mx-2" />
+            <VDivider
+              vertical
+              class="mx-2"
+            />
 
             <!-- Кнопка скачивания -->
             <VBtn
@@ -583,7 +647,10 @@ const onScheduleUpdate = () => {
               <VIcon icon="bx-printer" />
             </VBtn>
 
-            <VDivider vertical class="mx-2" />
+            <VDivider
+              vertical
+              class="mx-2"
+            />
 
             <!-- Кнопка закрытия -->
             <VBtn
@@ -596,7 +663,10 @@ const onScheduleUpdate = () => {
             </VBtn>
           </div>
         </VCardTitle>
-        <VCardText class="d-flex justify-center align-center pa-0" style="overflow: auto;">
+        <VCardText
+          class="d-flex justify-center align-center pa-0"
+          style="overflow: auto;"
+        >
           <VImg
             :src="imagePreview.src"
             :alt="imagePreview.filename"
@@ -629,19 +699,8 @@ const onScheduleUpdate = () => {
       :ticket-id="Number(ticketId)"
       @update="onScheduleUpdate"
     />
-
   </div>
 </template>
-
-<script lang="ts">
-// Import utilities
-import { isImageFile, isImageType, createObjectUrl } from '@/utils/fileUtils'
-import TicketProperties from '@/components/TicketEdit/TicketProperties.vue'
-import TicketCommentsSection from '@/components/TicketEdit/TicketCommentsSection.vue'
-
-// Active tab for comments/history
-const activeTab = ref('comments')
-</script>
 
 <style lang="scss" scoped>
 .drop-zone {

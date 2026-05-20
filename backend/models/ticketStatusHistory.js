@@ -1,7 +1,7 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 class TicketStatusHistory {
-  static tableName = 'ticket_status_history';
+  static tableName = 'ticket_status_history'
 
   /**
    * Получить историю переходов статусов для тикета
@@ -33,20 +33,21 @@ class TicketStatusHistory {
         LEFT JOIN agents a ON tsh.changed_by = a.id
         WHERE tsh.ticket_id = $1
         ORDER BY COALESCE(tsh.transition_time, tsh.created_at) DESC`,
-        [ticketId]
-      );
+        [ticketId],
+      )
 
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getByTicketId:', error);
-      throw error;
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getByTicketId:', error)
+      throw error
     }
   }
 
   /**
    * Получить последний переход для тикета
    * @param {number} ticketId - ID тикета
-   * @returns {Object|null} Последняя запись перехода
+   * @returns {object | null} Последняя запись перехода
    */
   static async getLastTransition(ticketId) {
     try {
@@ -64,24 +65,25 @@ class TicketStatusHistory {
         WHERE tsh.ticket_id = $1
         ORDER BY COALESCE(tsh.transition_time, tsh.created_at) DESC
         LIMIT 1`,
-        [ticketId]
-      );
+        [ticketId],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getLastTransition:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getLastTransition:', error)
+      throw error
     }
   }
 
   /**
    * Записать переход статуса
-   * @param {Object} data - Данные перехода
-   * @returns {Object} Созданная запись
+   * @param {object} data - Данные перехода
+   * @returns {object} Созданная запись
    */
   static async create(data) {
     try {
-      const { ticketId, fromStatusId, toStatusId, changedBy, timeInPreviousStatus, actionLabel } = data;
+      const { ticketId, fromStatusId, toStatusId, changedBy, timeInPreviousStatus, actionLabel } = data
 
       const result = await pool.query(
         `INSERT INTO ${TicketStatusHistory.tableName} (
@@ -99,13 +101,14 @@ class TicketStatusHistory {
           time_in_previous_status as "timeInPreviousStatus",
           action_label as "actionLabel",
           created_at as "createdAt"`,
-        [ticketId, fromStatusId || null, toStatusId, changedBy || null, timeInPreviousStatus || null, actionLabel || null]
-      );
+        [ticketId, fromStatusId || null, toStatusId, changedBy || null, timeInPreviousStatus || null, actionLabel || null],
+      )
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
@@ -116,21 +119,22 @@ class TicketStatusHistory {
    * @param {number} toStatusId - Новый статус
    * @param {number|null} changedBy - ID пользователя, изменившего статус
    * @param {string|null} actionLabel - Метка действия из workflow
-   * @returns {Object} Созданная запись
+   * @returns {object} Созданная запись
    */
   static async recordTransition(ticketId, fromStatusId, toStatusId, changedBy, actionLabel = null) {
     try {
       // Получаем последний переход для расчёта времени
-      const lastTransition = await TicketStatusHistory.getLastTransition(ticketId);
-      
-      let timeInPreviousStatus = null;
+      const lastTransition = await TicketStatusHistory.getLastTransition(ticketId)
+
+      let timeInPreviousStatus = null
       if (lastTransition) {
         // Вычисляем интервал между текущим временем и временем последнего перехода
         const result = await pool.query(
           `SELECT $1::timestamp with time zone - $2::timestamp with time zone as interval`,
-          [new Date().toISOString(), lastTransition.transitionTime.toISOString()]
-        );
-        timeInPreviousStatus = result.rows[0].interval;
+          [new Date().toISOString(), lastTransition.transitionTime.toISOString()],
+        )
+
+        timeInPreviousStatus = result.rows[0].interval
       }
 
       return await TicketStatusHistory.create({
@@ -140,10 +144,11 @@ class TicketStatusHistory {
         changedBy,
         timeInPreviousStatus,
         actionLabel,
-      });
-    } catch (error) {
-      console.error('Error in recordTransition:', error);
-      throw error;
+      })
+    }
+    catch (error) {
+      console.error('Error in recordTransition:', error)
+      throw error
     }
   }
 
@@ -166,13 +171,14 @@ class TicketStatusHistory {
         WHERE tsh.ticket_id = $1 AND tsh.time_in_previous_status IS NOT NULL
         GROUP BY ts.id, ts.name, ts.color
         ORDER BY totalSeconds DESC`,
-        [ticketId]
-      );
+        [ticketId],
+      )
 
-      return result.rows;
-    } catch (error) {
-      console.error('Error in getStatusStatistics:', error);
-      throw error;
+      return result.rows
+    }
+    catch (error) {
+      console.error('Error in getStatusStatistics:', error)
+      throw error
     }
   }
 
@@ -185,15 +191,16 @@ class TicketStatusHistory {
     try {
       const result = await pool.query(
         `DELETE FROM ${TicketStatusHistory.tableName} WHERE ticket_id = $1`,
-        [ticketId]
-      );
+        [ticketId],
+      )
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in deleteByTicketId:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in deleteByTicketId:', error)
+      throw error
     }
   }
 }
 
-module.exports = TicketStatusHistory;
+module.exports = TicketStatusHistory

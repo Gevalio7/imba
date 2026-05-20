@@ -1,5 +1,5 @@
+import { computed, ref } from 'vue'
 import { $api } from '@/utils/api'
-import { ref, computed } from 'vue'
 
 export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<any[]>, ticketCompanyId: Ref<number | undefined>) {
   const authorSearch = ref('')
@@ -19,22 +19,24 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
     const config = systemConfigs.value.find(c => c.name === 'create_customer_user_by_email')
     const isEnabled = config?.value === true || config?.value === 'true'
     const isActive = config?.isActive !== false
+
     console.log('Config create_customer_user_by_email:', { value: config?.value, isActive: config?.isActive, canCreate: isEnabled && isActive })
+
     return isEnabled && isActive
   })
 
   // Фильтрованный список авторов по поиску
   const filteredAuthorOptions = computed(() => {
     // Если предлагаем создать нового сотрудника, скрываем обычные опции
-    if (showCreateNewAuthor.value) {
+    if (showCreateNewAuthor.value)
       return []
-    }
 
     if (!authorSearch.value.trim()) {
       return customerUsers.value.map((a: any) => {
         const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login || 'Неизвестно'
         const email = a.email ? ` (${a.email})` : ''
         const companyInfo = a.customerName ? ` [${a.customerName}]` : ''
+
         return {
           title: `${name}${email}${companyInfo}`,
           value: a.id,
@@ -44,16 +46,19 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
       })
     }
     const search = authorSearch.value.toLowerCase()
+
     return customerUsers.value.filter((a: any) => {
       const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login || 'Неизвестно'
       const email = a.email ? ` (${a.email})` : ''
       const companyInfo = a.customerName ? ` [${a.customerName}]` : ''
       const fullTitle = `${name}${email}${companyInfo}`.toLowerCase()
+
       return fullTitle.includes(search)
     }).map((a: any) => {
       const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login || 'Неизвестно'
       const email = a.email ? ` (${a.email})` : ''
       const companyInfo = a.customerName ? ` [${a.customerName}]` : ''
+
       return {
         title: `${name}${email}${companyInfo}`,
         value: a.id,
@@ -70,7 +75,8 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
 
   // Проверка - является ли введенный текст email
   const isEmail = (text: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+
     return emailRegex.test(text)
   }
 
@@ -78,29 +84,31 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
   const handleAuthorUpdate = (search: string) => {
     authorSearch.value = search || ''
 
-    console.log('handleAuthorUpdate: search="' + search + '", canCreate=' + canCreateCustomerUserByEmail.value + ', isPotentialEmail=' + (search ? isPotentialEmail(search) : false) + ', isEmail=' + (search ? isEmail(search) : false) + ', filteredLength=' + filteredAuthorOptions.value.length)
+    console.log(`handleAuthorUpdate: search="${search}", canCreate=${canCreateCustomerUserByEmail.value}, isPotentialEmail=${search ? isPotentialEmail(search) : false}, isEmail=${search ? isEmail(search) : false}, filteredLength=${filteredAuthorOptions.value.length}`)
 
     // Если включена опция создания по email и введен потенциальный email
     if (canCreateCustomerUserByEmail.value && search && isPotentialEmail(search)) {
       // Проверяем, есть ли сотрудник с таким email
       const found = filteredAuthorOptions.value.find((a: any) =>
-        a.title.toLowerCase().includes(search.toLowerCase())
+        a.title.toLowerCase().includes(search.toLowerCase()),
       )
 
-      console.log('Email check: found=' + !!found + ', showCreateNewAuthor will be ' + !found)
+      console.log(`Email check: found=${!!found}, showCreateNewAuthor will be ${!found}`)
 
       if (!found) {
         // Показываем опцию создания нового сотрудника
         showCreateNewAuthor.value = true
         newAuthorData.value.email = search
-      } else {
+      }
+      else {
         showCreateNewAuthor.value = false
       }
-    } else {
+    }
+    else {
       showCreateNewAuthor.value = false
     }
 
-    console.log('Final showCreateNewAuthor=' + showCreateNewAuthor.value)
+    console.log(`Final showCreateNewAuthor=${showCreateNewAuthor.value}`)
   }
 
   // Очистка выбора автора
@@ -111,9 +119,8 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
 
   // Создание нового сотрудника
   const createNewAuthor = async () => {
-    if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email)) {
+    if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email))
       return
-    }
 
     try {
       // Создаем сотрудника
@@ -132,7 +139,8 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
       authorSearch.value = ''
 
       return newUser
-    } catch (err: any) {
+    }
+    catch (err: any) {
       console.error('Error creating customer user:', err)
       throw err
     }

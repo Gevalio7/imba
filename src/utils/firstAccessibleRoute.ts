@@ -24,36 +24,38 @@ const ALL_MENU = [...dashboard, ...appsAndPages]
  * @returns route name (имя маршрута для router.push({ name }))
  */
 export function getFirstAccessibleRouteName(rules: AbilityRule[]): string | null {
-  if (!Array.isArray(rules) || rules.length === 0) return null
+  if (!Array.isArray(rules) || rules.length === 0)
+    return null
 
   // Map subject -> true для быстрой проверки
   const grantedReadSubjects = new Set<string>()
   for (const rule of rules) {
-    if (rule.action === 'read' && typeof rule.subject === 'string') {
+    if (rule.action === 'read' && typeof rule.subject === 'string')
       grantedReadSubjects.add(rule.subject)
-    }
+
     // 'manage' / 'all' даёт доступ ко всему — обрабатываем как полный доступ
-    if (rule.action === 'manage' && rule.subject === 'all') {
+    if (rule.action === 'manage' && rule.subject === 'all')
       return null // null означает "разрешено всё, использовать дефолт"
-    }
   }
 
   // Рекурсивно обходим пункты меню
   const findFirst = (items: any[]): string | null => {
     for (const item of items) {
-      if (!item || typeof item !== 'object') continue
+      if (!item || typeof item !== 'object')
+        continue
 
       // Если это леaf-пункт с `to` и `subject` — проверяем
-      if (item.to && item.subject && grantedReadSubjects.has(item.subject)) {
+      if (item.to && item.subject && grantedReadSubjects.has(item.subject))
         return typeof item.to === 'string' ? item.to : item.to?.name ?? null
-      }
 
       // Если это группа с детьми — углубляемся
       if (Array.isArray(item.children)) {
         const found = findFirst(item.children)
-        if (found) return found
+        if (found)
+          return found
       }
     }
+
     return null
   }
 
@@ -113,14 +115,18 @@ const ROUTE_NAME_TO_PATH: Record<string, string> = {
  */
 export function getFirstAccessibleRoutePath(rules: AbilityRule[]): string {
   const routeName = getFirstAccessibleRouteName(rules)
-  if (!routeName) return '/dashboards/analytics'
+  if (!routeName)
+    return '/dashboards/analytics'
 
   const path = ROUTE_NAME_TO_PATH[routeName]
-  if (path) return path
+  if (path)
+    return path
 
   // Фолбэк: если имя неизвестно — пробуем сгенерировать путь по эвристике
   // (только первый сегмент превращаем в `/`-префикс)
   const idx = routeName.indexOf('-')
-  if (idx === -1) return '/' + routeName
-  return '/' + routeName.slice(0, idx) + '/' + routeName.slice(idx + 1)
+  if (idx === -1)
+    return `/${routeName}`
+
+  return `/${routeName.slice(0, idx)}/${routeName.slice(idx + 1)}`
 }

@@ -10,12 +10,16 @@ const { logout } = useLogout()
 const router = useRouter()
 
 const getStoredUserData = () => {
-  if (typeof sessionStorage === 'undefined') return null
+  if (typeof sessionStorage === 'undefined')
+    return null
   try {
     const data = sessionStorage.getItem('userData')
+
     return data ? JSON.parse(data) : null
-  } catch (error: any) {
+  }
+  catch (error: any) {
     console.error('Failed to parse userData:', (error as any)?.message || error)
+
     return null
   }
 }
@@ -37,7 +41,6 @@ const userProfileList = [
   { type: 'divider' },
 ] as any[]
 </script>
-
 
 <template>
   <VBadge

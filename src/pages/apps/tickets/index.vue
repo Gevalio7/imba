@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useFilters, type ColumnSetting } from '@/composables/useFilters'
-import { $api } from '@/utils/api'
 import { computed, onMounted, ref, watch } from 'vue'
+import { type ColumnSetting, useFilters } from '@/composables/useFilters'
+import { $api } from '@/utils/api'
 
 // Типы данных
 interface Ticket {
@@ -85,18 +85,21 @@ const fetchTickets = async () => {
   try {
     loading.value = true
     error.value = null
-    const data = await $api<{ tickets: Ticket[], total: number }>(`/tickets`)
+
+    const data = await $api<{ tickets: Ticket[]; total: number }>(`/tickets`)
+
     tickets.value = data.tickets
     total.value = data.total
-    
+
     // После загрузки тикетов - обновляем опции фильтров
-    if (tickets.value.length > 0) {
+    if (tickets.value.length > 0)
       loadUniqueValuesFromTickets()
-    }
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки обращений'
     console.error('Error fetching tickets:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -105,9 +108,12 @@ const fetchTickets = async () => {
 const deleteTicketById = async (id: number) => {
   try {
     await $api(`${API_BASE}/tickets/${id}`, { method: 'DELETE' })
+
     const index = tickets.value.findIndex(t => t.id === id)
-    if (index !== -1) tickets.value.splice(index, 1)
-  } catch (err) {
+    if (index !== -1)
+      tickets.value.splice(index, 1)
+  }
+  catch (err) {
     console.error('Error deleting ticket:', err)
     throw err
   }
@@ -144,14 +150,18 @@ const loadColumnSettings = (): ColumnSetting[] => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as ColumnSetting[]
+
       return availableColumns.map(col => {
         const savedCol = parsed.find((s: ColumnSetting) => s.key === col.key)
+
         return savedCol ? { ...col, visible: savedCol.visible } : col
       })
     }
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error loading column settings:', e)
   }
+
   return [...availableColumns]
 }
 
@@ -164,12 +174,12 @@ const headers = computed(() => {
     .map(col => ({
       title: col.title,
       key: col.key,
-      sortable: col.sortable
+      sortable: col.sortable,
     }))
 })
 
 // Сохранение настроек при изменении
-watch(columnSettings, (newSettings) => {
+watch(columnSettings, newSettings => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
 }, { deep: true })
 
@@ -178,9 +188,11 @@ const isColumnsDialogOpen = ref(false)
 
 const moveColumn = (index: number, direction: 'up' | 'down') => {
   const newIndex = direction === 'up' ? index - 1 : index + 1
-  if (newIndex < 0 || newIndex >= columnSettings.value.length) return
-  
+  if (newIndex < 0 || newIndex >= columnSettings.value.length)
+    return
+
   const temp = columnSettings.value[index]
+
   columnSettings.value[index] = columnSettings.value[newIndex]
   columnSettings.value[newIndex] = temp
 }
@@ -197,7 +209,7 @@ const filterableColumns = computed(() => {
       title: col.title,
       value: col.key,
       type: col.type,
-      options: col.options || []
+      options: col.options || [],
     }))
 })
 
@@ -206,17 +218,17 @@ const searchQuery = ref('')
 
 // Получить специальное значение для фильтрации
 const getFilterSpecialValue = (ticket: Ticket, columnKey: string): string => {
-  if (columnKey === 'slaStatus') {
+  if (columnKey === 'slaStatus')
     return getSlaStatus(ticket).text
-  } else if (columnKey === 'executorGroupIds') {
+  else if (columnKey === 'executorGroupIds')
     return ticket.executorGroups?.map(g => g.name).join(', ') || ''
-  } else if (columnKey === 'executorAgentIds') {
+  else if (columnKey === 'executorAgentIds')
     return ticket.executorAgents?.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') || ''
-  } else if (columnKey === 'observerAgentIds') {
+  else if (columnKey === 'observerAgentIds')
     return ticket.observerAgents?.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') || ''
-  } else if (columnKey === 'ownerLogin') {
+  else if (columnKey === 'ownerLogin')
     return getOwnerName(ticket)
-  }
+
   return ''
 }
 
@@ -226,9 +238,10 @@ const filteredTickets = computed(() => {
   // Поиск
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
+
     filtered = filtered.filter(t =>
-      t.title?.toLowerCase().includes(q) ||
-      t.ticketNumber?.toLowerCase().includes(q)
+      t.title?.toLowerCase().includes(q)
+      || t.ticketNumber?.toLowerCase().includes(q),
     )
   }
 
@@ -254,13 +267,15 @@ const bulkDelete = () => {
 const bulkClone = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await cloneTicketById(item.id)
-    }
+
     showToast(`Клонировано ${count} обращений`)
+
     // Обновляем данные
     await fetchTickets()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка клонирования обращений', 'error')
   }
 }
@@ -270,8 +285,9 @@ const cloneTicketById = async (id: number) => {
   try {
     // Получаем тикет
     const ticket = tickets.value.find(t => t.id === id)
-    if (!ticket) throw new Error('Тикет не найден')
-    
+    if (!ticket)
+      throw new Error('Тикет не найден')
+
     // Создаем копию с основными полями
     const cloneData = {
       title: `${ticket.title} (копия)`,
@@ -287,14 +303,13 @@ const cloneTicketById = async (id: number) => {
       executorAgentIds: ticket.executorAgentIds || [],
       executorGroupIds: ticket.executorGroupIds || [],
     }
-    
-    const newTicket = await $api(`${API_BASE}/tickets`, {
+
+    return await $api(`${API_BASE}/tickets`, {
       method: 'POST',
-      body: cloneData
+      body: cloneData,
     })
-    
-    return newTicket
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error cloning ticket:', err)
     throw err
   }
@@ -303,18 +318,17 @@ const cloneTicketById = async (id: number) => {
 const confirmBulkDelete = async () => {
   try {
     const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
+    for (const item of selectedItems.value)
       await deleteTicketById(item.id)
-    }
+
     selectedItems.value = []
     showToast(`Удалено ${count} обращений`)
     isBulkDeleteDialogOpen.value = false
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка массового удаления', 'error')
   }
 }
-
-
 
 const resolvePriorityColor = (color?: string | null) => {
   return color || 'secondary'
@@ -326,56 +340,55 @@ const resolveStateColor = (color?: string | null) => {
 
 // Функция для определения статуса SLA
 const getSlaStatus = (ticket: Ticket) => {
-  if (!ticket.responseDeadline && !ticket.resolutionDeadline) {
+  if (!ticket.responseDeadline && !ticket.resolutionDeadline)
     return { color: 'grey', text: 'Нет SLA', variant: 'text' }
-  }
-  
+
   const now = new Date()
-  
-  if (ticket.slaViolated) {
+
+  if (ticket.slaViolated)
     return { color: 'error', text: 'SLA нарушен', variant: 'flat' }
-  }
-  
+
   if (ticket.responseDeadline) {
     const deadline = new Date(ticket.responseDeadline)
     const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
-    
-    if (hoursLeft < 0) {
+
+    if (hoursLeft < 0)
       return { color: 'error', text: 'Просрочен', variant: 'flat' }
-    } else if (hoursLeft < 4) {
+    else if (hoursLeft < 4)
       return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
-    }
   }
-  
+
   if (ticket.resolutionDeadline) {
     const deadline = new Date(ticket.resolutionDeadline)
     const hoursLeft = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
-    
-    if (hoursLeft < 0) {
+
+    if (hoursLeft < 0)
       return { color: 'error', text: 'Просрочен', variant: 'flat' }
-    } else if (hoursLeft < 4) {
+    else if (hoursLeft < 4)
       return { color: 'warning', text: 'Скоро истекает', variant: 'tonal' }
-    }
   }
-  
+
   return { color: 'success', text: 'В норме', variant: 'flat' }
 }
 
 // Форматтер даты
 const formatDate = (dateStr: string | null) => {
-  if (!dateStr) return '-'
+  if (!dateStr)
+    return '-'
   const date = new Date(dateStr)
+
   return date.toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
 const getOwnerName = (ticket: Ticket) => {
   if (!ticket.ownerFirstname && !ticket.ownerLastname)
     return ticket.ownerLogin || '-'
+
   return `${ticket.ownerFirstname || ''} ${ticket.ownerLastname || ''}`.trim()
 }
 
@@ -393,9 +406,11 @@ const cloneTicket = async (item: Ticket) => {
   try {
     await cloneTicketById(item.id)
     showToast('Обращение склонировано')
+
     // Обновляем данные
     await fetchTickets()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка клонирования обращения', 'error')
   }
 }
@@ -406,12 +421,14 @@ const closeDelete = () => {
 }
 
 const deleteItemConfirm = async () => {
-  if (!deletingItem.value) return
+  if (!deletingItem.value)
+    return
   try {
     await deleteTicketById(deletingItem.value.id)
     showToast('Обращение успешно удалёно')
     closeDelete()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления обращения', 'error')
   }
 }
@@ -443,88 +460,112 @@ const viewTicket = (id: number) => {
 // Загрузка уникальных значений из данных тикетов
 const loadUniqueValuesFromTickets = () => {
   console.log('Loading unique values from tickets data...')
-  
+
   // Собираем все уникальные значения из тикетов
   const uniqueValues: Record<string, Set<string>> = {}
-  
+
   tickets.value.forEach(ticket => {
     // Тип
     if (ticket.typeName) {
-      if (!uniqueValues.typeName) uniqueValues.typeName = new Set()
+      if (!uniqueValues.typeName)
+        uniqueValues.typeName = new Set()
       uniqueValues.typeName.add(ticket.typeName)
     }
+
     // Категория
     if (ticket.categoryName) {
-      if (!uniqueValues.categoryName) uniqueValues.categoryName = new Set()
+      if (!uniqueValues.categoryName)
+        uniqueValues.categoryName = new Set()
       uniqueValues.categoryName.add(ticket.categoryName)
     }
+
     // Приоритет
     if (ticket.priorityName) {
-      if (!uniqueValues.priorityName) uniqueValues.priorityName = new Set()
+      if (!uniqueValues.priorityName)
+        uniqueValues.priorityName = new Set()
       uniqueValues.priorityName.add(ticket.priorityName)
     }
+
     // Очередь
     if (ticket.queueName) {
-      if (!uniqueValues.queueName) uniqueValues.queueName = new Set()
+      if (!uniqueValues.queueName)
+        uniqueValues.queueName = new Set()
       uniqueValues.queueName.add(ticket.queueName)
     }
+
     // Статус
     if (ticket.stateName) {
-      if (!uniqueValues.stateName) uniqueValues.stateName = new Set()
+      if (!uniqueValues.stateName)
+        uniqueValues.stateName = new Set()
       uniqueValues.stateName.add(ticket.stateName)
     }
+
     // Сервис
     if (ticket.serviceName) {
-      if (!uniqueValues.serviceName) uniqueValues.serviceName = new Set()
+      if (!uniqueValues.serviceName)
+        uniqueValues.serviceName = new Set()
       uniqueValues.serviceName.add(ticket.serviceName)
     }
+
     // Компания
     if (ticket.companyName) {
-      if (!uniqueValues.companyName) uniqueValues.companyName = new Set()
+      if (!uniqueValues.companyName)
+        uniqueValues.companyName = new Set()
       uniqueValues.companyName.add(ticket.companyName)
     }
+
     // Автор
     const ownerName = getOwnerName(ticket)
     if (ownerName && ownerName !== '-') {
-      if (!uniqueValues.ownerLogin) uniqueValues.ownerLogin = new Set()
+      if (!uniqueValues.ownerLogin)
+        uniqueValues.ownerLogin = new Set()
       uniqueValues.ownerLogin.add(ownerName)
     }
+
     // Группы
     if (ticket.executorGroups && ticket.executorGroups.length > 0) {
-      if (!uniqueValues.executorGroupIds) uniqueValues.executorGroupIds = new Set()
+      if (!uniqueValues.executorGroupIds)
+        uniqueValues.executorGroupIds = new Set()
       ticket.executorGroups.forEach(g => uniqueValues.executorGroupIds!.add(g.name))
     }
+
     // Исполнители
     if (ticket.executorAgents && ticket.executorAgents.length > 0) {
-      if (!uniqueValues.executorAgentIds) uniqueValues.executorAgentIds = new Set()
+      if (!uniqueValues.executorAgentIds)
+        uniqueValues.executorAgentIds = new Set()
       ticket.executorAgents.forEach(a => {
         const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login
-        if (name) uniqueValues.executorAgentIds!.add(name)
+        if (name)
+          uniqueValues.executorAgentIds!.add(name)
       })
     }
+
     // Наблюдатели
     if (ticket.observerAgents && ticket.observerAgents.length > 0) {
-      if (!uniqueValues.observerAgentIds) uniqueValues.observerAgentIds = new Set()
+      if (!uniqueValues.observerAgentIds)
+        uniqueValues.observerAgentIds = new Set()
       ticket.observerAgents.forEach(a => {
         const name = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login
-        if (name) uniqueValues.observerAgentIds!.add(name)
+        if (name)
+          uniqueValues.observerAgentIds!.add(name)
       })
     }
   })
-  
+
   console.log('Unique values collected:', Object.keys(uniqueValues).map(k => `${k}: ${uniqueValues[k].size}`).join(', '))
-  
+
   // Обновляем опции в columnSettings
   columnSettings.value = columnSettings.value.map(col => {
-    const newCol = { ...col, options: [] as { title: string, value: string }[] }
+    const newCol = { ...col, options: [] as { title: string; value: string }[] }
     const uniqueSet = uniqueValues[col.key]
-    
+
     if (uniqueSet && uniqueSet.size > 0) {
       newCol.options = Array.from(uniqueSet)
         .sort()
         .map(value => ({ title: value, value }))
       console.log(`Options for ${col.key}:`, newCol.options.length)
-    } else if (col.key === 'slaStatus') {
+    }
+    else if (col.key === 'slaStatus') {
       // SLA status - фиксированные значения
       newCol.options = [
         { title: 'В норме', value: 'В норме' },
@@ -534,10 +575,10 @@ const loadUniqueValuesFromTickets = () => {
         { title: 'Нет SLA', value: 'Нет SLA' },
       ]
     }
-    
+
     return newCol
   })
-  
+
   console.log('Unique values loaded successfully')
 }
 
@@ -551,20 +592,34 @@ onMounted(() => {
 <template>
   <div>
     <VCard title="Обращения">
-
       <!-- Индикатор загрузки -->
-      <div v-if="loading" class="d-flex justify-center pa-6">
-        <VProgressCircular indeterminate color="primary" />
+      <div
+        v-if="loading"
+        class="d-flex justify-center pa-6"
+      >
+        <VProgressCircular
+          indeterminate
+          color="primary"
+        />
       </div>
 
       <!-- Сообщение об ошибке -->
-      <div v-else-if="error" class="d-flex justify-center pa-6">
-        <VAlert type="error" class="ma-4">
+      <div
+        v-else-if="error"
+        class="d-flex justify-center pa-6"
+      >
+        <VAlert
+          type="error"
+          class="ma-4"
+        >
           {{ error }}
         </VAlert>
       </div>
 
-      <div v-else class="d-flex flex-wrap gap-4 pa-6">
+      <div
+        v-else
+        class="d-flex flex-wrap gap-4 pa-6"
+      >
         <div class="d-flex align-center">
           <AppTextField
             v-model="searchQuery"
@@ -584,7 +639,7 @@ onMounted(() => {
           >
             Фильтр
           </VBtn>
-          
+
           <!-- Кнопка сброса фильтров -->
           <VBtn
             v-if="filterRows.some(f => f.column && f.condition)"
@@ -658,7 +713,7 @@ onMounted(() => {
           </VBtn>
 
           <VBtn
-            v-if="$can('write','menu_tickets_create')"
+            v-if="$can('write', 'menu_tickets_create')"
             color="primary"
             prepend-icon="bx-plus"
             @click="createTicket"
@@ -669,11 +724,20 @@ onMounted(() => {
       </div>
 
       <!-- Диалог настроек колонок -->
-      <VDialog v-model="isColumnsDialogOpen" max-width="600px">
+      <VDialog
+        v-model="isColumnsDialogOpen"
+        max-width="600px"
+      >
         <VCard title="Настройка колонок">
           <VCardText>
             <div class="d-flex justify-end mb-4">
-              <VBtn variant="text" size="small" @click="resetColumnSettings">Сбросить</VBtn>
+              <VBtn
+                variant="text"
+                size="small"
+                @click="resetColumnSettings"
+              >
+                Сбросить
+              </VBtn>
             </div>
             <VList>
               <VListItem
@@ -712,19 +776,30 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end">
-              <VBtn color="primary" variant="elevated" @click="isColumnsDialogOpen = false">Готово</VBtn>
+              <VBtn
+                color="primary"
+                variant="elevated"
+                @click="isColumnsDialogOpen = false"
+              >
+                Готово
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог фильтров -->
-      <VDialog v-model="isFilterDialogOpen" max-width="900px">
+      <VDialog
+        v-model="isFilterDialogOpen"
+        max-width="900px"
+      >
         <VCard title="Фильтры">
           <VCardText>
             <!-- Пресеты -->
             <div class="mb-4">
-              <div class="text-subtitle-2 mb-2">Пресеты</div>
+              <div class="text-subtitle-2 mb-2">
+                Пресеты
+              </div>
               <div class="d-flex flex-wrap gap-2">
                 <VChip
                   v-for="preset in filterPresets"
@@ -749,10 +824,16 @@ onMounted(() => {
 
             <!-- Заголовки таблицы фильтров -->
             <div class="d-flex gap-2 mb-2 text-subtitle-2">
-              <div style="width: 180px;">Колонка</div>
-              <div style="width: 150px;">Условие</div>
-              <div style="width: 200px;">Значение</div>
-              <div style="width: 60px;"></div>
+              <div style="width: 180px;">
+                Колонка
+              </div>
+              <div style="width: 150px;">
+                Условие
+              </div>
+              <div style="width: 200px;">
+                Значение
+              </div>
+              <div style="width: 60px;" />
             </div>
 
             <!-- Строки фильтров -->
@@ -776,7 +857,7 @@ onMounted(() => {
                 style="width: 150px;"
                 :clearable="filter.condition !== null"
               />
-              
+
               <!-- Для булевых колонок -->
               <AppSelect
                 v-if="columnSettings.find(c => c.key === filter.column)?.type === 'boolean'"
@@ -789,7 +870,7 @@ onMounted(() => {
                 style="width: 200px;"
                 :clearable="filter.value !== null && filter.value !== '' && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty'"
               />
-              
+
               <!-- Для колонок со справочниками -->
               <AppSelect
                 v-else-if="columnSettings.find(c => c.key === filter.column)?.type === 'select'"
@@ -802,7 +883,7 @@ onMounted(() => {
                 style="width: 200px;"
                 :clearable="filter.value !== null && filter.value !== '' && filter.condition !== 'is_empty' && filter.condition !== 'is_not_empty'"
               />
-              
+
               <!-- Для дат -->
               <AppTextField
                 v-else-if="columnSettings.find(c => c.key === filter.column)?.type === 'date'"
@@ -812,7 +893,7 @@ onMounted(() => {
                 :disabled="filter.condition === 'is_empty' || filter.condition === 'is_not_empty'"
                 style="width: 200px;"
               />
-              
+
               <!-- Для текстовых полей -->
               <AppTextField
                 v-else
@@ -821,7 +902,7 @@ onMounted(() => {
                 :disabled="filter.condition === 'is_empty' || filter.condition === 'is_not_empty'"
                 style="width: 200px;"
               />
-              
+
               <IconBtn @click="removeFilterRow(filter.id)">
                 <VIcon icon="bx-trash" />
               </IconBtn>
@@ -838,16 +919,36 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn variant="text" @click="clearAllFilters">Сбросить всё</VBtn>
-              <VBtn color="error" variant="outlined" @click="isFilterDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="isFilterDialogOpen = false">Применить</VBtn>
+              <VBtn
+                variant="text"
+                @click="clearAllFilters"
+              >
+                Сбросить всё
+              </VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isFilterDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="isFilterDialogOpen = false"
+              >
+                Применить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог сохранения пресета -->
-      <VDialog v-model="isSavePresetDialogOpen" max-width="400px">
+      <VDialog
+        v-model="isSavePresetDialogOpen"
+        max-width="400px"
+      >
         <VCard title="Сохранить пресет">
           <VCardText>
             <AppTextField
@@ -858,23 +959,49 @@ onMounted(() => {
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn variant="text" @click="isSavePresetDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="saveCurrentAsPreset(FILTER_PRESETS_KEY)">Сохранить</VBtn>
+              <VBtn
+                variant="text"
+                @click="isSavePresetDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="saveCurrentAsPreset(FILTER_PRESETS_KEY)"
+              >
+                Сохранить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
       </VDialog>
 
       <!-- Диалог массового удаления -->
-      <VDialog v-model="isBulkDeleteDialogOpen" max-width="500px">
+      <VDialog
+        v-model="isBulkDeleteDialogOpen"
+        max-width="500px"
+      >
         <VCard title="Подтверждение удаления">
           <VCardText>
             Вы уверены, что хотите удалить выбранные обращения? Это действие нельзя отменить.
           </VCardText>
           <VCardText>
             <div class="d-flex justify-end gap-4">
-              <VBtn color="error" variant="outlined" @click="isBulkDeleteDialogOpen = false">Отмена</VBtn>
-              <VBtn color="success" variant="elevated" @click="confirmBulkDelete">Удалить</VBtn>
+              <VBtn
+                color="error"
+                variant="outlined"
+                @click="isBulkDeleteDialogOpen = false"
+              >
+                Отмена
+              </VBtn>
+              <VBtn
+                color="success"
+                variant="elevated"
+                @click="confirmBulkDelete"
+              >
+                Удалить
+              </VBtn>
             </div>
           </VCardText>
         </VCard>
@@ -917,26 +1044,44 @@ onMounted(() => {
 
         <!-- Группы исполнителей -->
         <template #item.executorGroupIds="{ item }">
-          <span v-if="item.executorGroups && item.executorGroups.length > 0" class="text-body-2">
+          <span
+            v-if="item.executorGroups && item.executorGroups.length > 0"
+            class="text-body-2"
+          >
             {{ item.executorGroups.map(g => g.name).join(', ') }}
           </span>
-          <span v-else class="text-body-2 text-medium-emphasis">-</span>
+          <span
+            v-else
+            class="text-body-2 text-medium-emphasis"
+          >-</span>
         </template>
 
         <!-- Исполнители -->
         <template #item.executorAgentIds="{ item }">
-          <span v-if="item.executorAgents && item.executorAgents.length > 0" class="text-body-2">
+          <span
+            v-if="item.executorAgents && item.executorAgents.length > 0"
+            class="text-body-2"
+          >
             {{ item.executorAgents.map(a => `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.login).join(', ') }}
           </span>
-          <span v-else class="text-body-2 text-medium-emphasis">-</span>
+          <span
+            v-else
+            class="text-body-2 text-medium-emphasis"
+          >-</span>
         </template>
 
         <!-- Наблюдатели -->
         <template #item.observerAgentIds="{ item }">
-          <span v-if="item.observerAgentIds && item.observerAgentIds.length > 0" class="text-body-2">
+          <span
+            v-if="item.observerAgentIds && item.observerAgentIds.length > 0"
+            class="text-body-2"
+          >
             {{ item.observerAgentIds.length }} наблюдатель{{ item.observerAgentIds.length === 1 ? '' : 'ей' }}
           </span>
-          <span v-else class="text-body-2 text-medium-emphasis">-</span>
+          <span
+            v-else
+            class="text-body-2 text-medium-emphasis"
+          >-</span>
         </template>
 
         <!-- Приоритет -->
@@ -950,12 +1095,18 @@ onMounted(() => {
           >
             {{ item.priorityName }}
           </VChip>
-          <span v-else class="text-body-2">-</span>
+          <span
+            v-else
+            class="text-body-2"
+          >-</span>
         </template>
 
         <!-- Статус -->
         <template #item.stateName="{ item }">
-          <div v-if="item.stateName" class="d-flex align-center gap-1">
+          <div
+            v-if="item.stateName"
+            class="d-flex align-center gap-1"
+          >
             <VChip
               :color="resolveStateColor(item.stateColor)"
               density="compact"
@@ -975,7 +1126,10 @@ onMounted(() => {
               Эскалирован
             </VChip>
           </div>
-          <span v-else class="text-body-2">-</span>
+          <span
+            v-else
+            class="text-body-2"
+          >-</span>
         </template>
 
         <!-- SLA Статус -->
@@ -993,14 +1147,20 @@ onMounted(() => {
 
         <!-- Срок ответа -->
         <template #item.responseDeadline="{ item }">
-          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
+          <span
+            class="text-body-2"
+            :class="{ 'text-error': getSlaStatus(item).color === 'error' }"
+          >
             {{ formatDate(item.responseDeadline) }}
           </span>
         </template>
 
         <!-- Срок решения -->
         <template #item.resolutionDeadline="{ item }">
-          <span class="text-body-2" :class="{ 'text-error': getSlaStatus(item).color === 'error' }">
+          <span
+            class="text-body-2"
+            :class="{ 'text-error': getSlaStatus(item).color === 'error' }"
+          >
             {{ formatDate(item.resolutionDeadline) }}
           </span>
         </template>
@@ -1028,19 +1188,31 @@ onMounted(() => {
         <!-- Действия -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
-            <IconBtn v-if="$can('write','menu_tickets_create')" @click="cloneTicket(item)">
+            <IconBtn
+              v-if="$can('write', 'menu_tickets_create')"
+              @click="cloneTicket(item)"
+            >
               <VIcon icon="bx-copy" />
             </IconBtn>
 
             <!-- Eye (view) icon: show when user has only read permission or lacks write -->
-            <IconBtn v-if="$can('read','menu_tickets_list') && !$can('write','menu_tickets_list')" @click="viewTicket(item.id)">
+            <IconBtn
+              v-if="$can('read', 'menu_tickets_list') && !$can('write', 'menu_tickets_list')"
+              @click="viewTicket(item.id)"
+            >
               <VIcon icon="bx-show" />
             </IconBtn>
 
-            <IconBtn v-if="$can('write','menu_tickets_list')" @click="editTicket(item.id)">
+            <IconBtn
+              v-if="$can('write', 'menu_tickets_list')"
+              @click="editTicket(item.id)"
+            >
               <VIcon icon="bx-edit" />
             </IconBtn>
-            <IconBtn v-if="$can('delete','menu_tickets_list')" @click="deleteItem(item)">
+            <IconBtn
+              v-if="$can('delete', 'menu_tickets_list')"
+              @click="deleteItem(item)"
+            >
               <VIcon icon="bx-trash" />
             </IconBtn>
           </div>
@@ -1058,19 +1230,38 @@ onMounted(() => {
     </VCard>
 
     <!-- Диалог удаления -->
-    <VDialog v-model="deleteDialog" max-width="500px">
+    <VDialog
+      v-model="deleteDialog"
+      max-width="500px"
+    >
       <VCard title="Вы уверены, что хотите удалить это обращение?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
-            <VBtn color="error" variant="outlined" @click="closeDelete">Отмена</VBtn>
-            <VBtn color="success" variant="elevated" @click="deleteItemConfirm">Удалить</VBtn>
+            <VBtn
+              color="error"
+              variant="outlined"
+              @click="closeDelete"
+            >
+              Отмена
+            </VBtn>
+            <VBtn
+              color="success"
+              variant="elevated"
+              @click="deleteItemConfirm"
+            >
+              Удалить
+            </VBtn>
           </div>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Уведомления -->
-    <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="3000">
+    <VSnackbar
+      v-model="isToastVisible"
+      :color="toastColor"
+      timeout="3000"
+    >
       {{ toastMessage }}
     </VSnackbar>
   </div>

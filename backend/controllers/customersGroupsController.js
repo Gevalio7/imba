@@ -1,14 +1,14 @@
-const CustomersGroups = require('../models/customersGroups');
-const { asyncHandler } = require('../middleware/errorHandler');
+const CustomersGroups = require('../models/customersGroups')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getCustomersGroups = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await CustomersGroups.getAll({
     q: searchQuery,
@@ -16,92 +16,87 @@ const getCustomersGroups = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getCustomersGroupById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const customersgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const customersgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(customersgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(customersgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const customersgroup = await CustomersGroups.getById(customersgroupId);
+  const customersgroup = await CustomersGroups.getById(customersgroupId)
 
-  if (!customersgroup) {
-    return res.status(404).json({ message: 'CustomersGroup not found' });
-  }
+  if (!customersgroup)
+    return res.status(404).json({ message: 'CustomersGroup not found' })
 
-  res.json(customersgroup);
-});
+  res.json(customersgroup)
+})
 
 const createCustomersGroups = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
-  data.message = req.body.message;
-  data.customerId = req.body.customerId;
-  
+  const data = {}
+
+  data.name = req.body.name
+  data.message = req.body.message
+  data.customerId = req.body.customerId
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newCustomersGroup = await CustomersGroups.create(data);
+  const newCustomersGroup = await CustomersGroups.create(data)
 
-  res.status(201).json(newCustomersGroup);
-});
+  res.status(201).json(newCustomersGroup)
+})
 
 const updateCustomersGroups = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const customersgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const customersgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(customersgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(customersgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
-  if (req.body.customerId !== undefined) data.customerId = req.body.customerId;
-  
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
+  if (req.body.message !== undefined)
+    data.message = req.body.message
+  if (req.body.customerId !== undefined)
+    data.customerId = req.body.customerId
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
-  const updatedCustomersGroup = await CustomersGroups.update(customersgroupId, data);
+  const updatedCustomersGroup = await CustomersGroups.update(customersgroupId, data)
 
-  if (!updatedCustomersGroup) {
-    return res.status(404).json({ message: 'CustomersGroup not found' });
-  }
+  if (!updatedCustomersGroup)
+    return res.status(404).json({ message: 'CustomersGroup not found' })
 
-  res.json(updatedCustomersGroup);
-});
+  res.json(updatedCustomersGroup)
+})
 
 const deleteCustomersGroups = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const customersgroupId = parseInt(id, 10);
+  const { id } = req.params
+  const customersgroupId = Number.parseInt(id, 10)
 
-  if (isNaN(customersgroupId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(customersgroupId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await CustomersGroups.delete(customersgroupId);
+  const deleted = await CustomersGroups.delete(customersgroupId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'CustomersGroup not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'CustomersGroup not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 module.exports = {
   getCustomersGroups,
@@ -109,4 +104,4 @@ module.exports = {
   createCustomersGroups,
   updateCustomersGroups,
   deleteCustomersGroups,
-};
+}

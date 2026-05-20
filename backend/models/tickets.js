@@ -1,66 +1,71 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class Tickets {
-  static tableName = 'tickets';
+  static tableName = 'tickets'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive, visibilityFilter } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive, visibilityFilter } = options
 
     // Валидация пагинации
-    const safePage = Math.max(1, parseInt(page, 10) || 1);
-    const safeItemsPerPage = Math.max(1, Math.min(100, parseInt(itemsPerPage, 10) || 10));
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1)
+    const safeItemsPerPage = Math.max(1, Math.min(100, Number.parseInt(itemsPerPage, 10) || 10))
 
     try {
-      let whereClause = '';
-      let params = [];
-      let paramIndex = 1;
+      let whereClause = ''
+      const params = []
+      let paramIndex = 1
 
       // Фильтр по активности
       if (isActive !== undefined) {
-        whereClause = `WHERE t.is_active = ${paramIndex}`;
-        params.push(isActive === 'true' || isActive === true);
-        paramIndex++;
-      } else {
+        whereClause = `WHERE t.is_active = ${paramIndex}`
+        params.push(isActive === 'true' || isActive === true)
+        paramIndex++
+      }
+      else {
         // По умолчанию показываем только активные
-        whereClause = 'WHERE t.is_active = true';
+        whereClause = 'WHERE t.is_active = true'
       }
 
       if (q) {
-        const searchFields = ['ticket_number', 'title'];
-        const conditions = searchFields.map(field => `${field} ILIKE ${paramIndex}`).join(' OR ');
-        whereClause += ` AND (${conditions})`;
-        params.push(`%${q}%`);
-        paramIndex++;
+        const searchFields = ['ticket_number', 'title']
+        const conditions = searchFields.map(field => `${field} ILIKE ${paramIndex}`).join(' OR ')
+
+        whereClause += ` AND (${conditions})`
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
       // Применяем фильтр видимости
       if (visibilityFilter) {
-        whereClause += ` AND (${visibilityFilter.condition})`;
-        params.push(...visibilityFilter.params);
-        paramIndex += visibilityFilter.params.length;
+        whereClause += ` AND (${visibilityFilter.condition})`
+        params.push(...visibilityFilter.params)
+        paramIndex += visibilityFilter.params.length
       }
 
       // Белый список полей для сортировки
-      const sortableFields = ['ticketNumber', 'title', 'createdAt', 'updatedAt'];
-      let orderClause = 'ORDER BY t.created_at DESC';
+      const sortableFields = ['ticketNumber', 'title', 'createdAt', 'updatedAt']
+      let orderClause = 'ORDER BY t.created_at DESC'
       if (sortBy && sortableFields.includes(sortBy)) {
-        const sortField = sortBy === 'ticketNumber' ? 't.ticket_number' : 
-                          sortBy === 'createdAt' ? 't.created_at' : 
-                          sortBy === 'updatedAt' ? 't.updated_at' : `t.${toSnakeCase(sortBy)}`;
-        orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
+        const sortField = sortBy === 'ticketNumber'
+          ? 't.ticket_number'
+          : sortBy === 'createdAt'
+            ? 't.created_at'
+            : sortBy === 'updatedAt' ? 't.updated_at' : `t.${toSnakeCase(sortBy)}`
+
+        orderClause = `ORDER BY ${sortField} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
       }
 
-      const offset = (safePage - 1) * safeItemsPerPage;
+      const offset = (safePage - 1) * safeItemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${Tickets.tableName} t ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${Tickets.tableName} t ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data with joins
       const dataQuery = `
@@ -125,34 +130,38 @@ class Tickets {
          ${whereClause}
         ${orderClause}
         LIMIT ${safeItemsPerPage} OFFSET ${offset}
-      `;
-      const dataResult = await pool.query(dataQuery, params);
+      `
+
+      const dataResult = await pool.query(dataQuery, params)
 
       // Calculate age for each ticket
       const tickets = dataResult.rows.map(ticket => ({
         ...ticket,
         age: calculateAge(ticket.createdAt),
-      }));
+      }))
 
       return {
         tickets,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
   static async getById(id, includeInactive = false) {
     try {
-      console.log(`🔍 Tickets.getById called with id=${id}, includeInactive=${includeInactive}, typeof id=${typeof id}`);
-      const activeFilter = includeInactive ? '' : 'AND t.is_active = true';
-      
+      console.log(`🔍 Tickets.getById called with id=${id}, includeInactive=${includeInactive}, typeof id=${typeof id}`)
+
+      const activeFilter = includeInactive ? '' : 'AND t.is_active = true'
+
       // Проверим, что id - число
-      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-      console.log(`🔍 Tickets.getById using numericId=${numericId}`);
-      
+      const numericId = typeof id === 'string' ? Number.parseInt(id, 10) : id
+
+      console.log(`🔍 Tickets.getById using numericId=${numericId}`)
+
       const result = await pool.query(
         `SELECT 
           t.id,
@@ -214,19 +223,20 @@ class Tickets {
         LEFT JOIN services svc ON t.service_id = svc.id
         LEFT JOIN sla ON t.sla_id = sla.id
         WHERE t.id = $1 ${activeFilter}`,
-        [numericId]
-      );
+        [numericId],
+      )
 
-      console.log(`🔍 Tickets.getById result rows: ${result.rows.length}`);
-      const ticket = result.rows[0];
-      if (ticket) {
-        ticket.age = calculateAge(ticket.createdAt);
-      }
+      console.log(`🔍 Tickets.getById result rows: ${result.rows.length}`)
 
-      return ticket || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      const ticket = result.rows[0]
+      if (ticket)
+        ticket.age = calculateAge(ticket.createdAt)
+
+      return ticket || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
@@ -247,8 +257,8 @@ class Tickets {
           pending_start_at as "pendingStartAt", observer_agent_ids as "observerAgentIds", observer_group_ids as "observerGroupIds",
           escalation_count as "escalationCount", is_escalated as "isEscalated",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
-      `;
-      
+      `
+
       const values = [
         ticket.ticketNumber,
         ticket.title,
@@ -273,23 +283,26 @@ class Tickets {
         ticket.observerGroupIds || [],
         ticket.escalationCount || 0,
         ticket.isEscalated !== undefined ? ticket.isEscalated : false,
+
         // Простая конвертация в boolean
         ticket.isActive !== undefined ? Boolean(ticket.isActive) : true,
-      ];
-      
-      const result = await pool.query(query, values);
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      ]
+
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, ticket) {
     try {
-      const updates = [];
-      const values = [id];
-      let paramIndex = 2; // $1 - это id
+      const updates = []
+      const values = [id]
+      let paramIndex = 2 // $1 - это id
 
       const fieldMap = {
         ticketNumber: 'ticket_number',
@@ -315,26 +328,28 @@ class Tickets {
         observerGroupIds: 'observer_group_ids',
         escalationCount: 'escalation_count',
         isEscalated: 'is_escalated',
-      };
+      }
 
       Object.entries(fieldMap).forEach(([field, column]) => {
         if (ticket[field] !== undefined) {
-          updates.push(`${column} = $${paramIndex}`);
-          values.push(ticket[field]);
-          paramIndex++;
+          updates.push(`${column} = $${paramIndex}`)
+          values.push(ticket[field])
+          paramIndex++
         }
-      });
+      })
 
       if (ticket.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
+        updates.push(`is_active = $${paramIndex}`)
+
         // Простая конвертация в boolean
-        const isActiveValue = Boolean(ticket.isActive);
-        values.push(isActiveValue);
-        paramIndex++;
+        const isActiveValue = Boolean(ticket.isActive)
+
+        values.push(isActiveValue)
+        paramIndex++
       }
 
       // Всегда обновляем updated_at
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       const query = `
         UPDATE ${Tickets.tableName} 
@@ -349,13 +364,15 @@ class Tickets {
           pending_start_at as "pendingStartAt", observer_agent_ids as "observerAgentIds", observer_group_ids as "observerGroupIds",
           escalation_count as "escalationCount", is_escalated as "isEscalated",
           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
-      `;
-      
-      const result = await pool.query(query, values);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      `
+
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
@@ -364,12 +381,14 @@ class Tickets {
       // Soft delete - устанавливаем is_active = false
       const result = await pool.query(
         `UPDATE ${Tickets.tableName} SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = true RETURNING id`,
-        [id]
-      );
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+        [id],
+      )
+
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 
@@ -384,52 +403,56 @@ class Tickets {
             CREATE SEQUENCE ticket_number_seq START WITH 1000001;
           END IF;
         END $$;
-      `);
-      
+      `)
+
       // Получаем следующее значение из sequence
-      const result = await pool.query("SELECT nextval('ticket_number_seq') as ticket_number");
-      return String(result.rows[0].ticket_number);
-    } catch (error) {
-      console.error('Error in generateTicketNumber:', error);
+      const result = await pool.query("SELECT nextval('ticket_number_seq') as ticket_number")
+
+      return String(result.rows[0].ticket_number)
+    }
+    catch (error) {
+      console.error('Error in generateTicketNumber:', error)
+
       // Fallback - если SEQUENCE не работает
       const fallback = await pool.query(
         `SELECT ticket_number FROM ${Tickets.tableName} 
          WHERE ticket_number ~ '^[0-9]+$' 
          ORDER BY CAST(ticket_number AS INTEGER) DESC 
-         LIMIT 1`
-      );
-      
-      if (fallback.rows.length === 0) {
-        return '1000001';
-      }
-      
-      const lastNumber = parseInt(fallback.rows[0].ticket_number, 10);
-      return String(lastNumber + 1);
+         LIMIT 1`,
+      )
+
+      if (fallback.rows.length === 0)
+        return '1000001'
+
+      const lastNumber = Number.parseInt(fallback.rows[0].ticket_number, 10)
+
+      return String(lastNumber + 1)
     }
   }
 }
 
 // Helper function to calculate age
 function calculateAge(createdAt) {
-  if (!createdAt) return { days: 0, hours: 0, minutes: 0, formatted: '0д 0ч' };
-  
-  const now = new Date();
-  const created = new Date(createdAt);
-  const diffMs = now - created;
-  
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  const remainingHours = diffHours % 24;
-  const remainingMinutes = diffMinutes % 60;
-  
+  if (!createdAt)
+    return { days: 0, hours: 0, minutes: 0, formatted: '0д 0ч' }
+
+  const now = new Date()
+  const created = new Date(createdAt)
+  const diffMs = now - created
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMinutes / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  const remainingHours = diffHours % 24
+  const remainingMinutes = diffMinutes % 60
+
   return {
     days: diffDays,
     hours: remainingHours,
     minutes: remainingMinutes,
     formatted: `${diffDays}д ${remainingHours}ч`,
-  };
+  }
 }
 
-module.exports = Tickets;
+module.exports = Tickets

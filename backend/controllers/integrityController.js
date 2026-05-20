@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs')
+const path = require('node:path')
+const crypto = require('node:crypto')
 
-const PROJECT_ROOT = path.join(__dirname, '..', '..');
+const PROJECT_ROOT = path.join(__dirname, '..', '..')
 
 // Файлы и директории, которые нужно исключить из проверки
 const EXCLUDE_PATTERNS = [
@@ -19,98 +19,99 @@ const EXCLUDE_PATTERNS = [
   '.env',
   '.env.local',
   '.DS_Store',
-  'Thumbs.db'
-];
+  'Thumbs.db',
+]
 
 // Директории для проверки
-const SCAN_DIRECTORIES = ['backend', 'src'];
+const SCAN_DIRECTORIES = ['backend', 'src']
 
 // Получить список файлов для проверки
 const getFileList = (dir, baseDir = dir) => {
-  const files = [];
-  
-  if (!fs.existsSync(dir)) {
-    return files;
-  }
+  const files = []
 
-  const items = fs.readdirSync(dir);
-  
+  if (!fs.existsSync(dir))
+    return files
+
+  const items = fs.readdirSync(dir)
+
   for (const item of items) {
-    const fullPath = path.join(dir, item);
-    const relativePath = path.relative(baseDir, fullPath);
-    
+    const fullPath = path.join(dir, item)
+    const relativePath = path.relative(baseDir, fullPath)
+
     // Проверяем, нужно ли исключить
     if (EXCLUDE_PATTERNS.some(pattern => {
-      if (pattern.includes('*')) {
-        return relativePath.match(new RegExp('^' + pattern.replace('*', '.*')));
-      }
-      return relativePath.includes(pattern);
-    })) {
-      continue;
-    }
+      if (pattern.includes('*'))
+        return relativePath.match(new RegExp(`^${pattern.replace('*', '.*')}`))
 
-    const stat = fs.statSync(fullPath);
-    
-    if (stat.isDirectory()) {
-      files.push(...getFileList(fullPath, baseDir));
-    } else if (stat.isFile()) {
-      files.push(relativePath);
-    }
+      return relativePath.includes(pattern)
+    }))
+      continue
+
+    const stat = fs.statSync(fullPath)
+
+    if (stat.isDirectory())
+      files.push(...getFileList(fullPath, baseDir))
+    else if (stat.isFile())
+      files.push(relativePath)
   }
-  
-  return files;
-};
+
+  return files
+}
 
 // Вычислить хэш файла
-const calculateFileHash = (filePath) => {
-  const content = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(content).digest('hex');
-};
+const calculateFileHash = filePath => {
+  const content = fs.readFileSync(filePath)
+
+  return crypto.createHash('sha256').update(content).digest('hex')
+}
 
 // Сканировать проект и получить хэши всех файлов
 const scanProject = async () => {
-  const results = {};
-  const projectRoot = PROJECT_ROOT;
-  
+  const results = {}
+  const projectRoot = PROJECT_ROOT
+
   for (const dir of SCAN_DIRECTORIES) {
-    const fullDir = path.join(projectRoot, dir);
-    const files = getFileList(fullDir, fullDir);
-    
+    const fullDir = path.join(projectRoot, dir)
+    const files = getFileList(fullDir, fullDir)
+
     for (const relativePath of files) {
-      const fullPath = path.join(fullDir, relativePath);
+      const fullPath = path.join(fullDir, relativePath)
       try {
-        const hash = calculateFileHash(fullPath);
-        results[`${dir}/${relativePath}`] = hash;
-      } catch (err) {
-        console.error(`Error hashing ${fullPath}:`, err.message);
+        const hash = calculateFileHash(fullPath)
+
+        results[`${dir}/${relativePath}`] = hash
+      }
+      catch (err) {
+        console.error(`Error hashing ${fullPath}:`, err.message)
       }
     }
   }
-  
-  return results;
-};
+
+  return results
+}
 
 // Сохранить хэши в файл
-const saveHashes = async (hashes) => {
-  const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json');
-  fs.writeFileSync(hashesPath, JSON.stringify(hashes, null, 2));
-};
+const saveHashes = async hashes => {
+  const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json')
+
+  fs.writeFileSync(hashesPath, JSON.stringify(hashes, null, 2))
+}
 
 // Загрузить хэши из файла
 const loadHashes = async () => {
-  const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json');
-  if (fs.existsSync(hashesPath)) {
-    return JSON.parse(fs.readFileSync(hashesPath, 'utf8'));
-  }
-  return null;
-};
+  const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json')
+  if (fs.existsSync(hashesPath))
+    return JSON.parse(fs.readFileSync(hashesPath, 'utf8'))
+
+  return null
+}
 
 // Получить текущее состояние целостности
 const getIntegrityStatus = async (req, res) => {
   try {
-    const currentHashes = await scanProject();
-    const savedHashes = await loadHashes();
-    
+    const currentHashes = await scanProject()
+    const savedHashes = await loadHashes()
+
     if (!savedHashes) {
       return res.json({
         initialized: false,
@@ -118,37 +119,37 @@ const getIntegrityStatus = async (req, res) => {
         filesScanned: Object.keys(currentHashes).length,
         changedFiles: [],
         newFiles: [],
-        removedFiles: []
-      });
+        removedFiles: [],
+      })
     }
-    
-    const changedFiles = [];
-    const newFiles = [];
-    const removedFiles = [];
-    
+
+    const changedFiles = []
+    const newFiles = []
+    const removedFiles = []
+
     // Проверяем измененные и новые файлы
     for (const [filePath, hash] of Object.entries(currentHashes)) {
       if (!savedHashes[filePath]) {
-        newFiles.push({ path: filePath, status: 'new' });
-      } else if (savedHashes[filePath] !== hash) {
-        changedFiles.push({ 
-          path: filePath, 
-          oldHash: savedHashes[filePath], 
+        newFiles.push({ path: filePath, status: 'new' })
+      }
+      else if (savedHashes[filePath] !== hash) {
+        changedFiles.push({
+          path: filePath,
+          oldHash: savedHashes[filePath],
           newHash: hash,
-          status: 'modified' 
-        });
+          status: 'modified',
+        })
       }
     }
-    
+
     // Проверяем удаленные файлы
     for (const filePath of Object.keys(savedHashes)) {
-      if (!currentHashes[filePath]) {
-        removedFiles.push({ path: filePath, status: 'removed' });
-      }
+      if (!currentHashes[filePath])
+        removedFiles.push({ path: filePath, status: 'removed' })
     }
-    
-    const isOk = changedFiles.length === 0 && newFiles.length === 0 && removedFiles.length === 0;
-    
+
+    const isOk = changedFiles.length === 0 && newFiles.length === 0 && removedFiles.length === 0
+
     res.json({
       initialized: true,
       isOk,
@@ -158,84 +159,88 @@ const getIntegrityStatus = async (req, res) => {
       changedFiles,
       newFiles,
       removedFiles,
-      lastChecked: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error checking integrity:', error);
-    res.status(500).json({ message: 'Ошибка при проверке целостности', error: error.message });
+      lastChecked: new Date().toISOString(),
+    })
   }
-};
+  catch (error) {
+    console.error('Error checking integrity:', error)
+    res.status(500).json({ message: 'Ошибка при проверке целостности', error: error.message })
+  }
+}
 
 // Инициализировать (пересоздать) хэши
 const initializeHashes = async (req, res) => {
   try {
-    const hashes = await scanProject();
-    await saveHashes(hashes);
-    
+    const hashes = await scanProject()
+
+    await saveHashes(hashes)
+
     res.json({
       success: true,
       message: 'Хэши успешно инициализированы',
       filesCount: Object.keys(hashes).length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error initializing hashes:', error);
-    res.status(500).json({ message: 'Ошибка при инициализации хэшей', error: error.message });
+      timestamp: new Date().toISOString(),
+    })
   }
-};
+  catch (error) {
+    console.error('Error initializing hashes:', error)
+    res.status(500).json({ message: 'Ошибка при инициализации хэшей', error: error.message })
+  }
+}
 
 // Получить список файлов с хэшами
 const getHashesList = async (req, res) => {
   try {
-    const hashes = await loadHashes();
-    
+    const hashes = await loadHashes()
+
     if (!hashes) {
       return res.json({
         initialized: false,
         message: 'Хэши не инициализированы',
-        files: []
-      });
+        files: [],
+      })
     }
-    
+
     const files = Object.entries(hashes).map(([path, hash]) => ({
       path,
       hash,
-      truncatedHash: hash.substring(0, 12)
-    }));
-    
+      truncatedHash: hash.substring(0, 12),
+    }))
+
     res.json({
       initialized: true,
       filesCount: files.length,
-      files
-    });
-  } catch (error) {
-    console.error('Error getting hashes list:', error);
-    res.status(500).json({ message: 'Ошибка при получении списка хэшей', error: error.message });
+      files,
+    })
   }
-};
+  catch (error) {
+    console.error('Error getting hashes list:', error)
+    res.status(500).json({ message: 'Ошибка при получении списка хэшей', error: error.message })
+  }
+}
 
 // Удалить хэши (сброс)
 const resetHashes = async (req, res) => {
   try {
-    const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json');
-    
-    if (fs.existsSync(hashesPath)) {
-      fs.unlinkSync(hashesPath);
-    }
-    
+    const hashesPath = path.join(PROJECT_ROOT, 'integrity-hashes.json')
+
+    if (fs.existsSync(hashesPath))
+      fs.unlinkSync(hashesPath)
+
     res.json({
       success: true,
-      message: 'Хэши успешно сброшены'
-    });
-  } catch (error) {
-    console.error('Error resetting hashes:', error);
-    res.status(500).json({ message: 'Ошибка при сбросе хэшей', error: error.message });
+      message: 'Хэши успешно сброшены',
+    })
   }
-};
+  catch (error) {
+    console.error('Error resetting hashes:', error)
+    res.status(500).json({ message: 'Ошибка при сбросе хэшей', error: error.message })
+  }
+}
 
 module.exports = {
   getIntegrityStatus,
   initializeHashes,
   getHashesList,
-  resetHashes
-};
+  resetHashes,
+}

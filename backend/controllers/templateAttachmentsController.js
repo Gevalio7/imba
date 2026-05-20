@@ -1,14 +1,14 @@
-const TemplateAttachments = require('../models/templateAttachments');
-const { asyncHandler } = require('../middleware/errorHandler');
+const TemplateAttachments = require('../models/templateAttachments')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getTemplateAttachments = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await TemplateAttachments.getAll({
     q: searchQuery,
@@ -16,90 +16,84 @@ const getTemplateAttachments = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getTemplateAttachmentById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templateattachmentId = parseInt(id, 10);
+  const { id } = req.params
+  const templateattachmentId = Number.parseInt(id, 10)
 
-  if (isNaN(templateattachmentId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templateattachmentId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const templateattachment = await TemplateAttachments.getById(templateattachmentId);
+  const templateattachment = await TemplateAttachments.getById(templateattachmentId)
 
-  if (!templateattachment) {
-    return res.status(404).json({ message: 'TemplateAttachment not found' });
-  }
+  if (!templateattachment)
+    return res.status(404).json({ message: 'TemplateAttachment not found' })
 
-  res.json(templateattachment);
-});
+  res.json(templateattachment)
+})
 
 const createTemplateAttachments = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
-  data.message = req.body.message;
-  
+  const data = {}
+
+  data.name = req.body.name
+  data.message = req.body.message
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newTemplateAttachment = await TemplateAttachments.create(data);
+  const newTemplateAttachment = await TemplateAttachments.create(data)
 
-  res.status(201).json(newTemplateAttachment);
-});
+  res.status(201).json(newTemplateAttachment)
+})
 
 const updateTemplateAttachments = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templateattachmentId = parseInt(id, 10);
+  const { id } = req.params
+  const templateattachmentId = Number.parseInt(id, 10)
 
-  if (isNaN(templateattachmentId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templateattachmentId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.message !== undefined) data.message = req.body.message;
-  
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
+  if (req.body.message !== undefined)
+    data.message = req.body.message
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
-  const updatedTemplateAttachment = await TemplateAttachments.update(templateattachmentId, data);
+  const updatedTemplateAttachment = await TemplateAttachments.update(templateattachmentId, data)
 
-  if (!updatedTemplateAttachment) {
-    return res.status(404).json({ message: 'TemplateAttachment not found' });
-  }
+  if (!updatedTemplateAttachment)
+    return res.status(404).json({ message: 'TemplateAttachment not found' })
 
-  res.json(updatedTemplateAttachment);
-});
+  res.json(updatedTemplateAttachment)
+})
 
 const deleteTemplateAttachments = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const templateattachmentId = parseInt(id, 10);
+  const { id } = req.params
+  const templateattachmentId = Number.parseInt(id, 10)
 
-  if (isNaN(templateattachmentId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(templateattachmentId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await TemplateAttachments.delete(templateattachmentId);
+  const deleted = await TemplateAttachments.delete(templateattachmentId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'TemplateAttachment not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'TemplateAttachment not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 module.exports = {
   getTemplateAttachments,
@@ -107,4 +101,4 @@ module.exports = {
   createTemplateAttachments,
   updateTemplateAttachments,
   deleteTemplateAttachments,
-};
+}

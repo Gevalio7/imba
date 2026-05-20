@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getAdminNotifications,
   getAdminNotificationById,
   createAdminNotifications,
   updateAdminNotifications,
   deleteAdminNotifications,
-} = require('../controllers/adminNotificationsController');
+} = require('../controllers/adminNotificationsController')
 
 // GET /adminNotifications - список с query params
-router.get('/', getAdminNotifications);
+router.get('/', getAdminNotifications)
 
 // GET /adminNotifications/:id
-router.get('/:id', getAdminNotificationById);
+router.get('/:id', getAdminNotificationById)
 
 // POST /adminNotifications
-router.post('/', createAdminNotifications);
+router.post('/', createAdminNotifications)
 
 // PUT /adminNotifications/:id
-router.put('/:id', updateAdminNotifications);
+router.put('/:id', updateAdminNotifications)
 
 // DELETE /adminNotifications/:id
-router.delete('/:id', deleteAdminNotifications);
+router.delete('/:id', deleteAdminNotifications)
 
-module.exports = router;
+module.exports = router

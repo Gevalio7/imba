@@ -1,69 +1,74 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }
 
 class States {
-  static tableName = 'states';
-  static fields = 'name, comment, type, color';
+  static tableName = 'states'
+  static fields = 'name, comment, type, color'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options
 
     try {
-      let whereConditions = [];
-      let params = [];
-      let paramIndex = 1;
+      const whereConditions = []
+      const params = []
+      let paramIndex = 1
 
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        whereConditions.push(`is_active = $${paramIndex}`);
-        params.push(isActive);
-        paramIndex++;
+        whereConditions.push(`is_active = $${paramIndex}`)
+        params.push(isActive)
+        paramIndex++
       }
 
       if (q) {
-        const searchFields = this.fields.split(', ');
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereConditions.push(`(${conditions})`);
-        params.push(`%${q}%`);
-        paramIndex++;
+        const searchFields = this.fields.split(', ')
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ')
+
+        whereConditions.push(`(${conditions})`)
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-      let orderClause = '';
-      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at']);
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
-      }
+      let orderClause = ''
+      const sortableFields = this.fields.split(', ').concat(['created_at', 'updated_at'])
+      if (sortBy && sortableFields.includes(sortBy))
+        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
 
-      const offset = (page - 1) * itemsPerPage;
+      const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${States.tableName} ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${States.tableName} ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${States.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(itemsPerPage, offset);
-      const dataResult = await pool.query(dataQuery, params);
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${States.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+
+      params.push(itemsPerPage, offset)
+
+      const dataResult = await pool.query(dataQuery, params)
 
       return {
         states: dataResult.rows,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
@@ -71,102 +76,111 @@ class States {
     try {
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
       const result = await pool.query(
         `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${States.tableName} WHERE id = $1`,
-        [id]
-      );
+        [id],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
   static async create(state) {
     try {
-      const fieldList = this.fields.split(', ');
-      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => state[field]);
-      
-      // Добавляем isActive
-      values.push(state.isActive !== undefined ? state.isActive : true);
-      
-      // Преобразуем имена полей в snake_case для SQL
-      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
-      const sqlFieldsSelect = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      
-      const query = `INSERT INTO ${States.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+      const fieldList = this.fields.split(', ')
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ')
+      const values = fieldList.map(field => state[field])
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      // Добавляем isActive
+      values.push(state.isActive !== undefined ? state.isActive : true)
+
+      // Преобразуем имена полей в snake_case для SQL
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ')
+
+      const sqlFieldsSelect = fieldList.map(f => {
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const query = `INSERT INTO ${States.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, state) {
     try {
-      const fieldList = this.fields.split(', ');
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
+      const fieldList = this.fields.split(', ')
+      const updates = []
+      const values = []
+      let paramIndex = 1
 
       // Обновляем только переданные поля
       fieldList.forEach(field => {
         if (state[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(state[field]);
-          paramIndex++;
+          updates.push(`${toSnakeCase(field)} = $${paramIndex}`)
+          values.push(state[field])
+          paramIndex++
         }
-      });
+      })
 
       // Добавляем isActive если передан
       if (state.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(state.isActive);
-        paramIndex++;
+        updates.push(`is_active = $${paramIndex}`)
+        values.push(state.isActive)
+        paramIndex++
       }
 
       // Всегда обновляем updated_at
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       // Добавляем id в конец
-      values.push(id);
+      values.push(id)
 
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `UPDATE ${States.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const query = `UPDATE ${States.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${States.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${States.tableName} WHERE id = $1`, [id])
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 }
 
-module.exports = States;
+module.exports = States

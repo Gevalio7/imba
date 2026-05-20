@@ -191,7 +191,8 @@ const isCookieHasAnyValue = ref(false)
 let locale: any = null
 
 const isActiveLangRTL = computed(() => {
-  if (!locale) return false
+  if (!locale)
+    return false
   const lang = themeConfig.app.i18n.langConfig.find(l => l.i18nLang === locale.value)
 
   return lang?.isRTL ?? false
@@ -199,6 +200,7 @@ const isActiveLangRTL = computed(() => {
 
 onMounted(() => {
   const { locale: localeRef } = useI18n({ useScope: 'global' })
+
   locale = localeRef
   isI18nReady.value = true
 })

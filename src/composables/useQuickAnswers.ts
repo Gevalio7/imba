@@ -1,5 +1,5 @@
+import { computed, ref } from 'vue'
 import { $api } from '@/utils/api'
-import { ref, computed } from 'vue'
 import type { Article } from '@/types/ticket'
 
 export function useQuickAnswers(queue: Ref<any>) {
@@ -14,39 +14,45 @@ export function useQuickAnswers(queue: Ref<any>) {
         {
           id: 1,
           title: 'Приветствие',
-          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.'
+          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.',
         },
         {
           id: 2,
           title: 'Запрос дополнительной информации',
-          content: 'Для более точного решения проблемы нам потребуется дополнительная информация. Пожалуйста, предоставьте следующие данные:'
+          content: 'Для более точного решения проблемы нам потребуется дополнительная информация. Пожалуйста, предоставьте следующие данные:',
         },
         {
           id: 3,
           title: 'Уведомление о решении',
-          content: 'Ваша заявка успешно обработана. Проблема решена. Если у вас возникнут дополнительные вопросы, пожалуйста, обращайтесь.'
-        }
+          content: 'Ваша заявка успешно обработана. Проблема решена. Если у вас возникнут дополнительные вопросы, пожалуйста, обращайтесь.',
+        },
       ]
+
       return
     }
 
     try {
       loadingQuickAnswers.value = true
+
       const ids = queue.value.quickAnswerArticleIds
       const data = await $api('/knowledge-base')
       const allArticles = (data as any).articles || []
+
       quickAnswerArticles.value = allArticles.filter((a: any) => ids.includes(a.id))
-    } catch (err) {
+    }
+    catch (err) {
       console.error('Error loading quick answers:', err)
+
       // Fallback to demo data
       quickAnswerArticles.value = [
         {
           id: 1,
           title: 'Приветствие',
-          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.'
-        }
+          content: 'Здравствуйте! Спасибо за обращение. Мы рассмотрим вашу заявку в ближайшее время.',
+        },
       ]
-    } finally {
+    }
+    finally {
       loadingQuickAnswers.value = false
     }
   }
@@ -59,9 +65,8 @@ export function useQuickAnswers(queue: Ref<any>) {
 
   const openQuickAnswersDialog = () => {
     showDialog.value = true
-    if (quickAnswerArticles.value.length === 0) {
+    if (quickAnswerArticles.value.length === 0)
       loadQuickAnswers()
-    }
   }
 
   const closeQuickAnswersDialog = () => {

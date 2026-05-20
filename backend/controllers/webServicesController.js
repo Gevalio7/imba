@@ -1,14 +1,14 @@
-const WebServices = require('../models/webServices');
-const { asyncHandler } = require('../middleware/errorHandler');
+const WebServices = require('../models/webServices')
+const { asyncHandler } = require('../middleware/errorHandler')
 
 const getWebServices = asyncHandler(async (req, res) => {
-  const { q, sortBy, orderBy, itemsPerPage, page } = req.query;
+  const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sortByLocal = typeof sortBy === 'string' ? sortBy : '';
-  const orderByLocal = typeof orderBy === 'string' ? orderBy : '';
-  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? parseInt(itemsPerPage, 10) : 1000;
-  const pageLocal = typeof page === 'string' ? parseInt(page, 10) : 1;
+  const searchQuery = typeof q === 'string' ? q : undefined
+  const sortByLocal = typeof sortBy === 'string' ? sortBy : ''
+  const orderByLocal = typeof orderBy === 'string' ? orderBy : ''
+  const itemsPerPageLocal = typeof itemsPerPage === 'string' ? Number.parseInt(itemsPerPage, 10) : 1000
+  const pageLocal = typeof page === 'string' ? Number.parseInt(page, 10) : 1
 
   const result = await WebServices.getAll({
     q: searchQuery,
@@ -16,96 +16,93 @@ const getWebServices = asyncHandler(async (req, res) => {
     orderBy: orderByLocal,
     itemsPerPage: itemsPerPageLocal,
     page: pageLocal,
-  });
+  })
 
-  res.json(result);
-});
+  res.json(result)
+})
 
 const getWebServiceById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const webserviceId = parseInt(id, 10);
+  const { id } = req.params
+  const webserviceId = Number.parseInt(id, 10)
 
-  if (isNaN(webserviceId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(webserviceId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const webservice = await WebServices.getById(webserviceId);
+  const webservice = await WebServices.getById(webserviceId)
 
-  if (!webservice) {
-    return res.status(404).json({ message: 'WebService not found' });
-  }
+  if (!webservice)
+    return res.status(404).json({ message: 'WebService not found' })
 
-  res.json(webservice);
-});
+  res.json(webservice)
+})
 
 const createWebServices = asyncHandler(async (req, res) => {
-  const data = {};
-  data.name = req.body.name;
-  data.description = req.body.description;
-  data.endpoint = req.body.endpoint;
-  data.method = req.body.method;
-  data.lastTested = req.body.lastTested;
-  
+  const data = {}
+
+  data.name = req.body.name
+  data.description = req.body.description
+  data.endpoint = req.body.endpoint
+  data.method = req.body.method
+  data.lastTested = req.body.lastTested
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
   // Валидация обязательных полей
-  if (!data.name) {
-    return res.status(400).json({ message: 'name is required' });
-  }
+  if (!data.name)
+    return res.status(400).json({ message: 'name is required' })
 
-  const newWebService = await WebServices.create(data);
+  const newWebService = await WebServices.create(data)
 
-  res.status(201).json(newWebService);
-});
+  res.status(201).json(newWebService)
+})
 
 const updateWebServices = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const webserviceId = parseInt(id, 10);
+  const { id } = req.params
+  const webserviceId = Number.parseInt(id, 10)
 
-  if (isNaN(webserviceId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(webserviceId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const data = {};
-  if (req.body.name !== undefined) data.name = req.body.name;
-  if (req.body.description !== undefined) data.description = req.body.description;
-  if (req.body.endpoint !== undefined) data.endpoint = req.body.endpoint;
-  if (req.body.method !== undefined) data.method = req.body.method;
-  if (req.body.lastTested !== undefined) data.lastTested = req.body.lastTested;
-  
+  const data = {}
+  if (req.body.name !== undefined)
+    data.name = req.body.name
+  if (req.body.description !== undefined)
+    data.description = req.body.description
+  if (req.body.endpoint !== undefined)
+    data.endpoint = req.body.endpoint
+  if (req.body.method !== undefined)
+    data.method = req.body.method
+  if (req.body.lastTested !== undefined)
+    data.lastTested = req.body.lastTested
+
   // Добавляем isActive если передан
-  if (req.body.isActive !== undefined) {
-    data.isActive = req.body.isActive;
-  }
+  if (req.body.isActive !== undefined)
+    data.isActive = req.body.isActive
 
-  const updatedWebService = await WebServices.update(webserviceId, data);
+  const updatedWebService = await WebServices.update(webserviceId, data)
 
-  if (!updatedWebService) {
-    return res.status(404).json({ message: 'WebService not found' });
-  }
+  if (!updatedWebService)
+    return res.status(404).json({ message: 'WebService not found' })
 
-  res.json(updatedWebService);
-});
+  res.json(updatedWebService)
+})
 
 const deleteWebServices = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const webserviceId = parseInt(id, 10);
+  const { id } = req.params
+  const webserviceId = Number.parseInt(id, 10)
 
-  if (isNaN(webserviceId)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (isNaN(webserviceId))
+    return res.status(400).json({ message: 'Invalid ID' })
 
-  const deleted = await WebServices.delete(webserviceId);
+  const deleted = await WebServices.delete(webserviceId)
 
-  if (!deleted) {
-    return res.status(404).json({ message: 'WebService not found' });
-  }
+  if (!deleted)
+    return res.status(404).json({ message: 'WebService not found' })
 
-  res.status(204).send();
-});
+  res.status(204).send()
+})
 
 module.exports = {
   getWebServices,
@@ -113,4 +110,4 @@ module.exports = {
   createWebServices,
   updateWebServices,
   deleteWebServices,
-};
+}

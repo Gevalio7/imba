@@ -1,175 +1,191 @@
-const { pool } = require('../config/db');
+const { pool } = require('../config/db')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
   // Сначала обрабатываем: заглавная + заглавная + строчная -> заглавная_заглавная_строчная
-  let result = str.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2');
+  let result = str.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+
   // Затем: строчная/цифра + заглавная -> строчная/цифра_заглавная
-  result = result.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
-  return result.toLowerCase();
+  result = result.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+
+  return result.toLowerCase()
 }
 
 class PostMasterMailAccounts {
-  static tableName = 'post_master_mail_accounts';
-  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID';
+  static tableName = 'post_master_mail_accounts'
+  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options;
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options
 
     try {
-      let whereConditions = [];
-      let params = [];
-      let paramIndex = 1;
+      const whereConditions = []
+      const params = []
+      let paramIndex = 1
 
       // Фильтр по статусу (isActive)
       if (isActive !== undefined) {
-        whereConditions.push(`is_active = $${paramIndex}`);
-        params.push(isActive);
-        paramIndex++;
+        whereConditions.push(`is_active = $${paramIndex}`)
+        params.push(isActive)
+        paramIndex++
       }
 
       if (q) {
-        const searchFields = ['name', 'type', 'host', 'login'];
-        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ');
-        whereConditions.push(`(${conditions})`);
-        params.push(`%${q}%`);
-        paramIndex++;
+        const searchFields = ['name', 'type', 'host', 'login']
+        const conditions = searchFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ')
+
+        whereConditions.push(`(${conditions})`)
+        params.push(`%${q}%`)
+        paramIndex++
       }
 
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-      let orderClause = '';
-      const sortableFields = ['name', 'type', 'host', 'login', 'created_at', 'updated_at'];
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`;
-      }
+      let orderClause = ''
+      const sortableFields = ['name', 'type', 'host', 'login', 'created_at', 'updated_at']
+      if (sortBy && sortableFields.includes(sortBy))
+        orderClause = `ORDER BY ${sortBy} ${orderBy === 'desc' ? 'DESC' : 'ASC'}`
 
-      const offset = (page - 1) * itemsPerPage;
+      const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${PostMasterMailAccounts.tableName} ${whereClause}`;
-      const countResult = await pool.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total);
+      const countQuery = `SELECT COUNT(*) as total FROM ${PostMasterMailAccounts.tableName} ${whereClause}`
+      const countResult = await pool.query(countQuery, params)
+      const total = Number.parseInt(countResult.rows[0].total)
 
       // Get paginated data
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
-      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(itemsPerPage, offset);
-      const dataResult = await pool.query(dataQuery, params);
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
+      const dataQuery = `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} ${whereClause} ${orderClause} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+
+      params.push(itemsPerPage, offset)
+
+      const dataResult = await pool.query(dataQuery, params)
 
       return {
         postMasterMailAccounts: dataResult.rows,
         total,
-      };
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+      }
+    }
+    catch (error) {
+      console.error('Error in getAll:', error)
+      throw error
     }
   }
 
   static async getById(id) {
     try {
       const sqlFields = this.fields.split(', ').map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
+
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
+
       const result = await pool.query(
         `SELECT id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive" FROM ${PostMasterMailAccounts.tableName} WHERE id = $1`,
-        [id]
-      );
+        [id],
+      )
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in getById:', error)
+      throw error
     }
   }
 
   static async create(postMasterMailAccount) {
     try {
-      const fieldList = this.fields.split(', ');
-      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fieldList.map(field => postMasterMailAccount[field]);
+      const fieldList = this.fields.split(', ')
+      const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ')
+      const values = fieldList.map(field => postMasterMailAccount[field])
 
       // Добавляем isActive
-      values.push(postMasterMailAccount.isActive !== undefined ? postMasterMailAccount.isActive : true);
+      values.push(postMasterMailAccount.isActive !== undefined ? postMasterMailAccount.isActive : true)
 
       // Преобразуем имена полей в snake_case для SQL
-      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ');
+      const sqlFieldsInsert = fieldList.map(f => toSnakeCase(f)).join(', ')
+
       const sqlFieldsSelect = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `INSERT INTO ${PostMasterMailAccounts.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+      const query = `INSERT INTO ${PostMasterMailAccounts.tableName} (${sqlFieldsInsert}, is_active) VALUES (${placeholders}, $${fieldList.length + 1}) RETURNING id, ${sqlFieldsSelect}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0]
+    }
+    catch (error) {
+      console.error('Error in create:', error)
+      throw error
     }
   }
 
   static async update(id, postMasterMailAccount) {
     try {
-      const fieldList = this.fields.split(', ');
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
+      const fieldList = this.fields.split(', ')
+      const updates = []
+      const values = []
+      let paramIndex = 1
 
       // Обновляем только переданные поля
       fieldList.forEach(field => {
         if (postMasterMailAccount[field] !== undefined) {
-          updates.push(`${toSnakeCase(field)} = $${paramIndex}`);
-          values.push(postMasterMailAccount[field]);
-          paramIndex++;
+          updates.push(`${toSnakeCase(field)} = $${paramIndex}`)
+          values.push(postMasterMailAccount[field])
+          paramIndex++
         }
-      });
+      })
 
       // Добавляем isActive если передан
       if (postMasterMailAccount.isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex}`);
-        values.push(postMasterMailAccount.isActive);
-        paramIndex++;
+        updates.push(`is_active = $${paramIndex}`)
+        values.push(postMasterMailAccount.isActive)
+        paramIndex++
       }
 
       // Всегда обновляем updated_at
-      updates.push('updated_at = CURRENT_TIMESTAMP');
+      updates.push('updated_at = CURRENT_TIMESTAMP')
 
       // Добавляем id в конец
-      values.push(id);
+      values.push(id)
 
       // Преобразуем имена полей в snake_case для SQL
       const sqlFields = fieldList.map(f => {
-        const snake = toSnakeCase(f);
-        return snake === f ? f : `${snake} as "${f}"`;
-      }).join(', ');
+        const snake = toSnakeCase(f)
 
-      const query = `UPDATE ${PostMasterMailAccounts.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`;
-      const result = await pool.query(query, values);
+        return snake === f ? f : `${snake} as "${f}"`
+      }).join(', ')
 
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+      const query = `UPDATE ${PostMasterMailAccounts.tableName} SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, ${sqlFields}, created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"`
+      const result = await pool.query(query, values)
+
+      return result.rows[0] || null
+    }
+    catch (error) {
+      console.error('Error in update:', error)
+      throw error
     }
   }
 
   static async delete(id) {
     try {
-      const result = await pool.query(`DELETE FROM ${PostMasterMailAccounts.tableName} WHERE id = $1`, [id]);
+      const result = await pool.query(`DELETE FROM ${PostMasterMailAccounts.tableName} WHERE id = $1`, [id])
 
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+      return result.rowCount > 0
+    }
+    catch (error) {
+      console.error('Error in delete:', error)
+      throw error
     }
   }
 }
 
-module.exports = PostMasterMailAccounts;
+module.exports = PostMasterMailAccounts

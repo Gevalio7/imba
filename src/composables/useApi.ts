@@ -12,9 +12,8 @@ export const useApi = createFetch({
     refetch: true,
     async beforeFetch({ options }) {
       let accessToken = null
-      if (typeof sessionStorage !== 'undefined') {
+      if (typeof sessionStorage !== 'undefined')
         accessToken = sessionStorage.getItem('accessToken')
-      }
 
       if (accessToken) {
         options.headers = {

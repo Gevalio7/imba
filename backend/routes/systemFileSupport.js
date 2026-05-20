@@ -1,26 +1,28 @@
-const express = require('express');
-const router = express.Router();
+const express = require('express')
+
+const router = express.Router()
+
 const {
   getSystemFileSupport,
   getSystemFileSupportById,
   createSystemFileSupport,
   updateSystemFileSupport,
   deleteSystemFileSupport,
-} = require('../controllers/systemFileSupportController');
+} = require('../controllers/systemFileSupportController')
 
 // GET /systemFileSupport - список с query params
-router.get('/', getSystemFileSupport);
+router.get('/', getSystemFileSupport)
 
 // GET /systemFileSupport/:id
-router.get('/:id', getSystemFileSupportById);
+router.get('/:id', getSystemFileSupportById)
 
 // POST /systemFileSupport
-router.post('/', createSystemFileSupport);
+router.post('/', createSystemFileSupport)
 
 // PUT /systemFileSupport/:id
-router.put('/:id', updateSystemFileSupport);
+router.put('/:id', updateSystemFileSupport)
 
 // DELETE /systemFileSupport/:id
-router.delete('/:id', deleteSystemFileSupport);
+router.delete('/:id', deleteSystemFileSupport)
 
-module.exports = router;
+module.exports = router

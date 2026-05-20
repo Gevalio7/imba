@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import girlUsingLaptop from '@images/pages/girl-using-laptop.png'
 import { ref, watch } from 'vue'
+import girlUsingLaptop from '@images/pages/girl-using-laptop.png'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -33,6 +33,18 @@ interface Role {
   name: string
 }
 
+const props = withDefaults(defineProps<Props>(), {
+  roles: () => [],
+})
+
+// Emits
+const emit = defineEmits<{
+  edit: [group: AgentsGroups]
+  delete: [group: AgentsGroups]
+  add: []
+  toggleStatus: [group: AgentsGroups, newValue: boolean]
+}>()
+
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
@@ -43,28 +55,15 @@ interface Props {
   roles?: Role[]
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  roles: () => []
-})
-
 // Если роли переданы через props, используем их
 const localRoles = ref<Role[]>(props.roles || [])
 const loadingRoles = ref(false)
 
 // Следим за изменениями props.roles и обновляем локальное состояние
-watch(() => props.roles, (newRoles) => {
-  if (newRoles && newRoles.length > 0) {
+watch(() => props.roles, newRoles => {
+  if (newRoles && newRoles.length > 0)
     localRoles.value = newRoles
-  }
 }, { immediate: true })
-
-// Emits
-const emit = defineEmits<{
-  edit: [group: AgentsGroups]
-  delete: [group: AgentsGroups]
-  add: []
-  toggleStatus: [group: AgentsGroups, newValue: boolean]
-}>()
 
 const editGroup = (group: AgentsGroups) => {
   emit('edit', group)
@@ -84,20 +83,24 @@ const toggleStatus = (group: AgentsGroups, newValue: boolean) => {
 
 // Получить имя роли по ID
 const getRoleName = (roleId?: number) => {
-  if (!roleId) return ''
+  if (!roleId)
+    return ''
   const role = localRoles.value.find(r => r.id === roleId)
+
   return role ? role.name : ''
 }
 
 // Получить список ролей группы
 const getGroupRoles = (group: AgentsGroups): Role[] => {
-  if (group.roles && group.roles.length > 0) {
+  if (group.roles && group.roles.length > 0)
     return group.roles
-  }
+
   if (group.roleId) {
     const role = localRoles.value.find(r => r.id === group.roleId)
+
     return role ? [role] : []
   }
+
   return []
 }
 </script>
@@ -130,8 +133,14 @@ const getGroupRoles = (group: AgentsGroups): Role[] => {
                 :color="agent.avatar ? undefined : ($vuetify.theme.current.dark ? '#373B50' : '#EEEDF0')"
                 size="default"
               >
-                <VImg v-if="agent.avatar" :src="agent.avatar" />
-                <span v-else class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
+                <VImg
+                  v-if="agent.avatar"
+                  :src="agent.avatar"
+                />
+                <span
+                  v-else
+                  class="text-caption"
+                >{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
               </VAvatar>
 
               <VAvatar
@@ -139,8 +148,14 @@ const getGroupRoles = (group: AgentsGroups): Role[] => {
                 :color="agent.avatar ? undefined : ($vuetify.theme.current.dark ? '#373B50' : '#EEEDF0')"
                 size="default"
               >
-                <VImg v-if="agent.avatar" :src="agent.avatar" />
-                <span v-else class="text-caption">{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
+                <VImg
+                  v-if="agent.avatar"
+                  :src="agent.avatar"
+                />
+                <span
+                  v-else
+                  class="text-caption"
+                >{{ agent.firstName?.[0] || '' }}{{ agent.lastName?.[0] || '' }}</span>
               </VAvatar>
             </template>
             <VAvatar
@@ -183,10 +198,10 @@ const getGroupRoles = (group: AgentsGroups): Role[] => {
             <div class="d-flex flex-column align-end gap-2">
               <VSwitch
                 :model-value="group.isActive"
-                @update:model-value="(val) => toggleStatus(group, !!val)"
                 color="primary"
                 hide-details
                 density="compact"
+                @update:model-value="(val) => toggleStatus(group, !!val)"
               />
               <div class="d-flex gap-1">
                 <IconBtn @click="editGroup(group)">

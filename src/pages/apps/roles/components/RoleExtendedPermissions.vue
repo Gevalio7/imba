@@ -1,110 +1,3 @@
-<template>
-  <VCard class="mt-6">
-    <VCardTitle class="d-flex align-center gap-3">
- 
-      <VIcon icon="bx-crown" class="mr-3" color="error" />
-      <span class="text-h6">Расширенные права</span>
-    </VCardTitle>
-
-    <VCardText>
-      <VRow class="g-4">
-        <VCol cols="12">
-          <div class="super-admin-row d-flex align-center justify-space-between">
-            <div class="d-flex align-center gap-3">
-
-              <div>
-                <div class="text-body-1 font-weight-medium">Супер-админ</div>
-                <div class="text-caption text-medium-emphasis">Полный доступ ко всем разделам системы</div>
-              </div>
-            </div>
-            <VSwitch :model-value="superAdmin" color="error" hide-details @update:model-value="(v) => emit('update:superAdmin', !!v)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <VSelect
-            :model-value="departments"
-            :items="departmentsList"
-            item-title="name"
-            item-value="id"
-            multiple
-            chips
-            label="Видны обращения Отделов"
-            placeholder="Все отделы"
-            density="compact"
-            @update:model-value="$emit('update:departments', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <VSelect
-            :model-value="companies"
-            :items="companiesList"
-            item-title="name"
-            item-value="id"
-            multiple
-            chips
-            label="Видны обращения Компаний"
-            placeholder="Все компании"
-            density="compact"
-            @update:model-value="$emit('update:companies', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Только свои обращения</div>
-              <div class="text-caption text-medium-emphasis">Показывать только заявки, где назначен исполнитель</div>
-            </div>
-            <VSwitch :model-value="onlyOwnTickets" color="primary" hide-details @update:model-value="(v) => emit('update:onlyOwnTickets', !!v)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Добавлять комментарии в обращения</div>
-              <div class="text-caption text-medium-emphasis mt-1 mb-0">(видны всем)</div>
-            </div>
-            <VSwitch :model-value="canReply" color="primary" hide-details @update:model-value="(v) => emit('update:canReply', !!v)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Менять статус в тикете</div>
-              <div class="text-caption text-medium-emphasis mt-1 mb-0">Разрешение на смену статуса обращения</div>
-            </div>
-            <VSwitch :model-value="canChangeStatus" color="primary" hide-details @update:model-value="(v) => emit('update:canChangeStatus', !!v)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12" md="6">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Менять приоритет</div>
-              <div class="text-caption text-medium-emphasis mt-1 mb-0">Разрешение на изменение приоритета тикета</div>
-            </div>
-            <VSwitch :model-value="canChangePriority" color="primary" hide-details @update:model-value="(v) => emit('update:canChangePriority', !!v)" />
-          </div>
-        </VCol>
-
-        <VCol cols="12">
-          <div class="option-row d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-1">Внутренние заметки</div>
-              <div class="text-caption text-medium-emphasis mt-1 mb-0">Добавлять внутренние комментарии (видны только сотрудникам)</div>
-            </div>
-            <VSwitch :model-value="canInternalNotes" color="primary" hide-details @update:model-value="(v) => emit('update:canInternalNotes', !!v)" />
-          </div>
-        </VCol>
-      </VRow>
-    </VCardText>
-  </VCard>
-</template>
-
 <script setup lang="ts">
 interface SelectItem { id: number; name: string }
 
@@ -132,6 +25,187 @@ defineEmits<{
   (e: 'update:canChangePriority', value: boolean): void
 }>()
 </script>
+
+<template>
+  <VCard class="mt-6">
+    <VCardTitle class="d-flex align-center gap-3">
+      <VIcon
+        icon="bx-crown"
+        class="mr-3"
+        color="error"
+      />
+      <span class="text-h6">Расширенные права</span>
+    </VCardTitle>
+
+    <VCardText>
+      <VRow class="g-4">
+        <VCol cols="12">
+          <div class="super-admin-row d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-3">
+              <div>
+                <div class="text-body-1 font-weight-medium">
+                  Супер-админ
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Полный доступ ко всем разделам системы
+                </div>
+              </div>
+            </div>
+            <VSwitch
+              :model-value="superAdmin"
+              color="error"
+              hide-details
+              @update:model-value="(v) => emit('update:superAdmin', !!v)"
+            />
+          </div>
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <VSelect
+            :model-value="departments"
+            :items="departmentsList"
+            item-title="name"
+            item-value="id"
+            multiple
+            chips
+            label="Видны обращения Отделов"
+            placeholder="Все отделы"
+            density="compact"
+            @update:model-value="$emit('update:departments', $event)"
+          />
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <VSelect
+            :model-value="companies"
+            :items="companiesList"
+            item-title="name"
+            item-value="id"
+            multiple
+            chips
+            label="Видны обращения Компаний"
+            placeholder="Все компании"
+            density="compact"
+            @update:model-value="$emit('update:companies', $event)"
+          />
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">
+                Только свои обращения
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                Показывать только заявки, где назначен исполнитель
+              </div>
+            </div>
+            <VSwitch
+              :model-value="onlyOwnTickets"
+              color="primary"
+              hide-details
+              @update:model-value="(v) => emit('update:onlyOwnTickets', !!v)"
+            />
+          </div>
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">
+                Добавлять комментарии в обращения
+              </div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">
+                (видны всем)
+              </div>
+            </div>
+            <VSwitch
+              :model-value="canReply"
+              color="primary"
+              hide-details
+              @update:model-value="(v) => emit('update:canReply', !!v)"
+            />
+          </div>
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">
+                Менять статус в тикете
+              </div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">
+                Разрешение на смену статуса обращения
+              </div>
+            </div>
+            <VSwitch
+              :model-value="canChangeStatus"
+              color="primary"
+              hide-details
+              @update:model-value="(v) => emit('update:canChangeStatus', !!v)"
+            />
+          </div>
+        </VCol>
+
+        <VCol
+          cols="12"
+          md="6"
+        >
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">
+                Менять приоритет
+              </div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">
+                Разрешение на изменение приоритета тикета
+              </div>
+            </div>
+            <VSwitch
+              :model-value="canChangePriority"
+              color="primary"
+              hide-details
+              @update:model-value="(v) => emit('update:canChangePriority', !!v)"
+            />
+          </div>
+        </VCol>
+
+        <VCol cols="12">
+          <div class="option-row d-flex align-center justify-space-between">
+            <div>
+              <div class="text-body-1">
+                Внутренние заметки
+              </div>
+              <div class="text-caption text-medium-emphasis mt-1 mb-0">
+                Добавлять внутренние комментарии (видны только сотрудникам)
+              </div>
+            </div>
+            <VSwitch
+              :model-value="canInternalNotes"
+              color="primary"
+              hide-details
+              @update:model-value="(v) => emit('update:canInternalNotes', !!v)"
+            />
+          </div>
+        </VCol>
+      </VRow>
+    </VCardText>
+  </VCard>
+</template>
 
 <style scoped>
 .super-admin-row {

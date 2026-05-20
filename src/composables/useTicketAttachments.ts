@@ -1,5 +1,5 @@
-import { $api } from '@/utils/api'
 import { ref } from 'vue'
+import { $api } from '@/utils/api'
 
 export function useTicketAttachments(ticketId: Ref<number | null>) {
   const existingAttachments = ref<any[]>([])
@@ -7,10 +7,12 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
 
   // Загрузка вложений тикета
   const fetchAttachments = async () => {
-    if (!ticketId.value) return
+    if (!ticketId.value)
+      return
 
     try {
       const data = await $api(`/ticketAttachments?ticketId=${ticketId.value}`)
+
       existingAttachments.value = (data as any).attachments || []
     }
     catch (err) {
@@ -22,6 +24,7 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
   const uploadNewAttachments = async () => {
     for (const file of newAttachments.value) {
       const formData = new FormData()
+
       formData.append('file', file)
       formData.append('ticketId', ticketId.value!.toString())
 
@@ -36,7 +39,7 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
   const deleteAttachment = async (attachmentId: number) => {
     try {
       await $api(`/ticketAttachments/${attachmentId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
       await fetchAttachments()
     }
@@ -49,26 +52,31 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
   const downloadAttachment = async (attachment: any) => {
     try {
       const link = document.createElement('a')
+
       link.href = `/uploads/${attachment.filename}`
       link.download = attachment.filename
       link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-    } catch (err) {
+    }
+    catch (err) {
       console.error('Error downloading attachment:', err)
     }
   }
 
   // Скачивание всех вложений
   const downloadAllAttachments = async () => {
-    if (existingAttachments.value.length === 0) return
+    if (existingAttachments.value.length === 0)
+      return
 
     try {
       for (const attachment of existingAttachments.value) {
         // Небольшая задержка между скачиваниями
         await new Promise(resolve => setTimeout(resolve, 300))
+
         const link = document.createElement('a')
+
         link.href = `/uploads/${attachment.filename}`
         link.download = attachment.filename
         link.target = '_blank'
@@ -76,7 +84,8 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
         link.click()
         document.body.removeChild(link)
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error('Error downloading all attachments:', err)
     }
   }
@@ -84,9 +93,8 @@ export function useTicketAttachments(ticketId: Ref<number | null>) {
   // Обработка выбора файлов
   const handleFileSelect = (event: Event) => {
     const target = event.target as HTMLInputElement
-    if (target.files) {
+    if (target.files)
       newAttachments.value = [...newAttachments.value, ...Array.from(target.files)]
-    }
   }
 
   // Удаление нового вложения

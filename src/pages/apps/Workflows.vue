@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { $api } from '@/utils/api'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
+import { $api } from '@/utils/api'
 
 // Типы данных
 interface WorkflowTransition {
@@ -120,14 +120,18 @@ const tempLine = ref<{ x1: number; y1: number; x2: number; y2: number } | null>(
 
 // Динамические размеры SVG
 const svgWidth = computed(() => {
-  if (nodes.value.length === 0) return containerRect.value.width
+  if (nodes.value.length === 0)
+    return containerRect.value.width
   const maxX = Math.max(...nodes.value.map(n => n.x + NODE_WIDTH + 50))
+
   return Math.max(containerRect.value.width, maxX)
 })
 
 const svgHeight = computed(() => {
-  if (nodes.value.length === 0) return 500
+  if (nodes.value.length === 0)
+    return 500
   const maxY = Math.max(...nodes.value.map(n => n.y + NODE_HEIGHT + 50))
+
   return Math.max(500, maxY)
 })
 
@@ -149,12 +153,16 @@ const showToast = (message: string, color: string = 'success') => {
 const fetchWorkflows = async () => {
   try {
     loading.value = true
+
     const data = await $api<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
+
     workflows.value = data.workflows || []
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки воркфлоу'
     console.error('Error fetching workflows:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -162,8 +170,10 @@ const fetchWorkflows = async () => {
 const fetchStates = async () => {
   try {
     const data = await $api<{ states: State[] }>(`${API_BASE}/states`)
+
     states.value = data.states || []
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error fetching states:', err)
   }
 }
@@ -171,13 +181,17 @@ const fetchStates = async () => {
 const fetchWorkflowDetails = async (id: number) => {
   try {
     loading.value = true
+
     const data = await $api<Workflow>(`${API_BASE}/workflows/${id}/full`)
+
     selectedWorkflow.value = data
     buildVisualization()
-  } catch (err) {
+  }
+  catch (err) {
     error.value = 'Ошибка загрузки воркфлоу'
     console.error('Error fetching workflow details:', err)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -189,8 +203,8 @@ const selectWorkflow = (workflow: Workflow) => {
 }
 
 // Опции для селектов
-const stateOptions = computed(() => 
-  states.value.map(s => ({ title: s.name, value: s.id }))
+const stateOptions = computed(() =>
+  states.value.map(s => ({ title: s.name, value: s.id })),
 )
 
 // Методы для воркфлоу
@@ -207,6 +221,7 @@ const openEditWorkflow = (workflow: Workflow) => {
 const saveWorkflow = async () => {
   if (!workflowForm.value.name?.trim()) {
     showToast('Название обязательно', 'error')
+
     return
   }
 
@@ -214,19 +229,21 @@ const saveWorkflow = async () => {
     if (workflowForm.value.id) {
       await $api(`${API_BASE}/workflows/${workflowForm.value.id}`, {
         method: 'PUT',
-        body: workflowForm.value
+        body: workflowForm.value,
       })
       showToast('Воркфлоу обновлен')
-    } else {
+    }
+    else {
       await $api(`${API_BASE}/workflows`, {
         method: 'POST',
-        body: workflowForm.value
+        body: workflowForm.value,
       })
       showToast('Воркфлоу создан')
     }
     editWorkflowDialog.value = false
     await fetchWorkflows()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения', 'error')
   }
 }
@@ -239,16 +256,18 @@ const confirmDeleteWorkflow = (workflow: Workflow) => {
 const deleteWorkflow = async () => {
   try {
     await $api(`${API_BASE}/workflows/${workflowForm.value.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     showToast('Воркфлоу удален')
     deleteWorkflowDialog.value = false
     selectedWorkflow.value = null
     selectedWorkflowId.value = null
+
     // Удаляем сохраненные позиции
     localStorage.removeItem(`workflow_positions_${workflowForm.value.id}`)
     await fetchWorkflows()
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления', 'error')
   }
 }
@@ -261,7 +280,7 @@ const openCreateTransition = (sourceId?: number | string, targetId?: number | st
     targetStatusId: targetId && typeof targetId === 'number' ? targetId : undefined,
     actionLabel: '',
     sortOrder: (selectedWorkflow.value?.transitions?.length || 0) + 1,
-    isActive: true
+    isActive: true,
   }
   editedTransitionIndex.value = -1
   editTransitionDialog.value = true
@@ -276,10 +295,12 @@ const openEditTransition = (transition: WorkflowTransition, index: number) => {
 const saveTransition = async () => {
   if (!transitionForm.value.actionLabel?.trim()) {
     showToast('Название действия обязательно', 'error')
+
     return
   }
   if (!transitionForm.value.targetStatusId) {
     showToast('Целевой статус обязателен', 'error')
+
     return
   }
 
@@ -287,21 +308,22 @@ const saveTransition = async () => {
     if (transitionForm.value.id) {
       await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
         method: 'PUT',
-        body: transitionForm.value
+        body: transitionForm.value,
       })
       showToast('Переход обновлен')
-    } else {
+    }
+    else {
       await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions`, {
         method: 'POST',
-        body: transitionForm.value
+        body: transitionForm.value,
       })
       showToast('Переход создан')
     }
     editTransitionDialog.value = false
-    if (selectedWorkflowId.value) {
+    if (selectedWorkflowId.value)
       await fetchWorkflowDetails(selectedWorkflowId.value)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка сохранения', 'error')
   }
 }
@@ -315,57 +337,61 @@ const confirmDeleteTransition = (transition: WorkflowTransition, index: number) 
 const deleteTransition = async () => {
   try {
     await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transitionForm.value.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     showToast('Переход удален')
     deleteTransitionDialog.value = false
-    if (selectedWorkflowId.value) {
+    if (selectedWorkflowId.value)
       await fetchWorkflowDetails(selectedWorkflowId.value)
-    }
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка удаления', 'error')
   }
 }
 
 // Перемещение переходов
 const moveTransitionUp = async (transition: WorkflowTransition, index: number) => {
-  if (index <= 0 || !selectedWorkflow.value?.transitions) return
-  
+  if (index <= 0 || !selectedWorkflow.value?.transitions)
+    return
+
   const prevTransition = selectedWorkflow.value.transitions[index - 1]
-  
+
   try {
     await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
       method: 'PUT',
-      body: { sortOrder: prevTransition.sortOrder }
+      body: { sortOrder: prevTransition.sortOrder },
     })
     await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${prevTransition.id}`, {
       method: 'PUT',
-      body: { sortOrder: transition.sortOrder }
+      body: { sortOrder: transition.sortOrder },
     })
     await fetchWorkflowDetails(selectedWorkflowId.value!)
     showToast('Порядок изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения порядка', 'error')
   }
 }
 
 const moveTransitionDown = async (transition: WorkflowTransition, index: number) => {
-  if (!selectedWorkflow.value?.transitions || index >= selectedWorkflow.value.transitions.length - 1) return
-  
+  if (!selectedWorkflow.value?.transitions || index >= selectedWorkflow.value.transitions.length - 1)
+    return
+
   const nextTransition = selectedWorkflow.value.transitions[index + 1]
-  
+
   try {
     await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${transition.id}`, {
       method: 'PUT',
-      body: { sortOrder: nextTransition.sortOrder }
+      body: { sortOrder: nextTransition.sortOrder },
     })
     await $api(`${API_BASE}/workflows/${selectedWorkflowId.value}/transitions/${nextTransition.id}`, {
       method: 'PUT',
-      body: { sortOrder: transition.sortOrder }
+      body: { sortOrder: transition.sortOrder },
     })
     await fetchWorkflowDetails(selectedWorkflowId.value!)
     showToast('Порядок изменен')
-  } catch (err) {
+  }
+  catch (err) {
     showToast('Ошибка изменения порядка', 'error')
   }
 }
@@ -374,12 +400,14 @@ const moveTransitionDown = async (transition: WorkflowTransition, index: number)
 
 // Загрузка позиций из localStorage
 const loadPositions = () => {
-  if (!selectedWorkflowId.value) return
+  if (!selectedWorkflowId.value)
+    return
   const saved = localStorage.getItem(`workflow_positions_${selectedWorkflowId.value}`)
   if (saved) {
     try {
       nodePositions.value = JSON.parse(saved)
-    } catch (e) {
+    }
+    catch (e) {
       nodePositions.value = {}
     }
   }
@@ -387,8 +415,10 @@ const loadPositions = () => {
 
 // Сохранение позиций в localStorage
 const savePositions = () => {
-  if (!selectedWorkflowId.value) return
+  if (!selectedWorkflowId.value)
+    return
   const positions: Record<string, { x: number; y: number }> = {}
+
   nodes.value.forEach(node => {
     positions[String(node.id)] = { x: node.x, y: node.y }
   })
@@ -398,27 +428,32 @@ const savePositions = () => {
 
 // Получение цвета статуса
 const getStateColor = (stateId: number | null): string => {
-  if (!stateId) return '#9e9e9e' // серый для начального узла
+  if (!stateId)
+    return '#9e9e9e' // серый для начального узла
   const state = states.value.find(s => s.id === stateId)
+
   return state?.color || '#1976d2'
 }
 
 // Получение имени статуса
 const getStateName = (stateId: number | null): string => {
-  if (!stateId) return 'Начало'
+  if (!stateId)
+    return 'Начало'
   const state = states.value.find(s => s.id === stateId)
+
   return state?.name || 'Неизвестно'
 }
 
 // Построение визуализации
 const buildVisualization = () => {
-  if (!selectedWorkflow.value) return
-  
+  if (!selectedWorkflow.value)
+    return
+
   loadPositions()
-  
+
   const transitions = selectedWorkflow.value.transitions || []
   const nodeMap = new Map<number | string, WorkflowNode>()
-  
+
   // Собираем все уникальные статусы
   transitions.forEach(t => {
     if (t.sourceStatusId === null) {
@@ -428,32 +463,33 @@ const buildVisualization = () => {
           id: 'start',
           name: 'Начало',
           color: '#9e9e9e',
-          x: nodePositions.value['start']?.x || 50,
-          y: nodePositions.value['start']?.y || containerRect.value.height / 2,
-          isStart: true
+          x: nodePositions.value.start?.x || 50,
+          y: nodePositions.value.start?.y || containerRect.value.height / 2,
+          isStart: true,
         })
       }
-    } else if (!nodeMap.has(t.sourceStatusId)) {
+    }
+    else if (!nodeMap.has(t.sourceStatusId)) {
       nodeMap.set(t.sourceStatusId, {
         id: t.sourceStatusId,
         name: t.sourceStatusName || getStateName(t.sourceStatusId),
         color: t.sourceStatusColor || getStateColor(t.sourceStatusId),
         x: nodePositions.value[t.sourceStatusId]?.x || 200 + nodeMap.size * 150,
-        y: nodePositions.value[t.sourceStatusId]?.y || 100 + (nodeMap.size % 3) * 100
+        y: nodePositions.value[t.sourceStatusId]?.y || 100 + (nodeMap.size % 3) * 100,
       })
     }
-    
+
     if (!nodeMap.has(t.targetStatusId)) {
       nodeMap.set(t.targetStatusId, {
         id: t.targetStatusId,
         name: t.targetStatusName || getStateName(t.targetStatusId),
         color: t.targetStatusColor || getStateColor(t.targetStatusId),
         x: nodePositions.value[t.targetStatusId]?.x || 200 + nodeMap.size * 150,
-        y: nodePositions.value[t.targetStatusId]?.y || 100 + (nodeMap.size % 3) * 100
+        y: nodePositions.value[t.targetStatusId]?.y || 100 + (nodeMap.size % 3) * 100,
       })
     }
   })
-  
+
   // Если переходов нет, показываем все статусы
   if (nodeMap.size === 0) {
     states.value.forEach((state, index) => {
@@ -462,26 +498,25 @@ const buildVisualization = () => {
         name: state.name,
         color: state.color || '#1976d2',
         x: nodePositions.value[state.id]?.x || 100 + (index % 4) * 180,
-        y: nodePositions.value[state.id]?.y || 100 + Math.floor(index / 4) * 100
+        y: nodePositions.value[state.id]?.y || 100 + Math.floor(index / 4) * 100,
       })
     })
   }
-  
+
   nodes.value = Array.from(nodeMap.values())
-  
+
   // Строим ребра
   edges.value = transitions.map(t => ({
     id: t.id,
     sourceId: t.sourceStatusId === null ? 'start' : t.sourceStatusId,
     targetId: t.targetStatusId,
     label: t.actionLabel,
-    transition: t
+    transition: t,
   }))
-  
+
   // Автоматическое размещение если нет сохраненных позиций
-  if (Object.keys(nodePositions.value).length === 0) {
+  if (Object.keys(nodePositions.value).length === 0)
     autoLayout()
-  }
 }
 
 // Автоматическое размещение узлов
@@ -489,20 +524,21 @@ const autoLayout = () => {
   const padding = 50
   const levelWidth = 200
   const nodeSpacingY = 80
-  
+
   // Определяем уровни для каждого узла (BFS от начального узла)
   const levelMap = new Map<number | string, number>()
   const startNode = nodes.value.find(n => n.isStart)
-  
+
   if (startNode) {
     levelMap.set('start', 0)
-    let queue: (number | string)[] = ['start']
-    let visited = new Set(['start'])
-    
+
+    const queue: (number | string)[] = ['start']
+    const visited = new Set(['start'])
+
     while (queue.length > 0) {
       const current = queue.shift()!
       const currentLevel = levelMap.get(current) || 0
-      
+
       edges.value.forEach(edge => {
         if (edge.sourceId === current && !visited.has(edge.targetId)) {
           levelMap.set(edge.targetId, currentLevel + 1)
@@ -511,32 +547,35 @@ const autoLayout = () => {
         }
       })
     }
-    
+
     // Узлы без уровня (недостижимые от начала) размещаем на дополнительных уровнях
     nodes.value.forEach(node => {
       if (!levelMap.has(node.id)) {
         const maxLevel = Math.max(0, ...Array.from(levelMap.values()))
+
         levelMap.set(node.id, maxLevel + 1)
       }
     })
   }
-  
+
   // Группируем узлы по уровням
   const levels: (number | string)[][] = []
+
   nodes.value.forEach(node => {
     const level = levelMap.get(node.id) ?? 0
-    if (!levels[level]) levels[level] = []
+    if (!levels[level])
+      levels[level] = []
     levels[level].push(node.id)
   })
-  
+
   // Находим максимальное количество узлов на уровне для расчета высоты
   const maxNodesInLevel = Math.max(...levels.map(l => l.length), 1)
-  
+
   // Размещаем узлы по уровням
   levels.forEach((levelNodes, levelIndex) => {
     const totalHeight = (levelNodes.length - 1) * nodeSpacingY + NODE_HEIGHT
     const startY = Math.max(padding, (maxNodesInLevel - 1) * nodeSpacingY / 2 - totalHeight / 2 + padding)
-    
+
     levelNodes.forEach((nodeId, nodeIndex) => {
       const node = nodes.value.find(n => n.id === nodeId)
       if (node) {
@@ -545,34 +584,38 @@ const autoLayout = () => {
       }
     })
   })
-  
+
   // Если нет ребер, размещаем сеткой
   if (edges.value.length === 0) {
     const cols = Math.max(4, Math.ceil(Math.sqrt(nodes.value.length)))
+
     nodes.value.forEach((node, index) => {
       node.x = padding + (index % cols) * (NODE_WIDTH + 40)
       node.y = padding + Math.floor(index / cols) * (NODE_HEIGHT + 30)
     })
   }
-  
+
   savePositions()
 }
 
 // Обработчики событий для drag-and-drop
 const onNodeMouseDown = (event: MouseEvent, node: WorkflowNode) => {
-  if (creatingTransition.value) return
-  
+  if (creatingTransition.value)
+    return
+
   draggedNode.value = node
+
   const svg = (event.target as Element).closest('svg')
   const wrapper = canvasWrapper.value
-  
+
   if (svg && wrapper) {
     const rect = svg.getBoundingClientRect()
     const scrollLeft = wrapper.scrollLeft
     const scrollTop = wrapper.scrollTop
+
     dragOffset.value = {
       x: event.clientX - rect.left - node.x + scrollLeft,
-      y: event.clientY - rect.top - node.y + scrollTop
+      y: event.clientY - rect.top - node.y + scrollTop,
     }
   }
   event.preventDefault()
@@ -583,19 +626,21 @@ const onMouseMove = (event: MouseEvent) => {
     const rect = svgContainer.value.getBoundingClientRect()
     const scrollLeft = canvasWrapper.value.scrollLeft
     const scrollTop = canvasWrapper.value.scrollTop
+
     draggedNode.value.x = Math.max(0, event.clientX - rect.left - dragOffset.value.x + scrollLeft)
     draggedNode.value.y = Math.max(0, event.clientY - rect.top - dragOffset.value.y + scrollTop)
   }
-  
+
   if (creatingTransition.value && transitionStartNode.value && svgContainer.value && canvasWrapper.value) {
     const rect = svgContainer.value.getBoundingClientRect()
     const scrollLeft = canvasWrapper.value.scrollLeft
     const scrollTop = canvasWrapper.value.scrollTop
+
     tempLine.value = {
       x1: transitionStartNode.value.x + NODE_WIDTH / 2,
       y1: transitionStartNode.value.y + NODE_HEIGHT / 2,
       x2: event.clientX - rect.left + scrollLeft,
-      y2: event.clientY - rect.top + scrollTop
+      y2: event.clientY - rect.top + scrollTop,
     }
   }
 }
@@ -615,15 +660,15 @@ const startTransitionCreation = (node: WorkflowNode) => {
     x1: node.x + NODE_WIDTH / 2,
     y1: node.y + NODE_HEIGHT / 2,
     x2: node.x + NODE_WIDTH / 2,
-    y2: node.y + NODE_HEIGHT / 2
+    y2: node.y + NODE_HEIGHT / 2,
   }
 }
 
 // Завершение создания перехода
 const finishTransitionCreation = (targetNode: WorkflowNode) => {
-  if (transitionStartNode.value && transitionStartNode.value.id !== targetNode.id) {
+  if (transitionStartNode.value && transitionStartNode.value.id !== targetNode.id)
     openCreateTransition(transitionStartNode.value.id, targetNode.id)
-  }
+
   cancelTransitionCreation()
 }
 
@@ -638,9 +683,10 @@ const cancelTransitionCreation = () => {
 const onNodeClick = (event: MouseEvent, node: WorkflowNode) => {
   if (creatingTransition.value) {
     finishTransitionCreation(node)
+
     return
   }
-  
+
   selectedNode.value = selectedNode.value?.id === node.id ? null : node
   selectedEdge.value = null
 }
@@ -656,6 +702,7 @@ const onEdgeClick = (event: MouseEvent, edge: WorkflowEdge) => {
 const onSvgClick = (event: MouseEvent) => {
   if (creatingTransition.value) {
     cancelTransitionCreation()
+
     return
   }
   selectedNode.value = null
@@ -664,61 +711,63 @@ const onSvgClick = (event: MouseEvent) => {
 
 // Редактирование выбранного перехода
 const editSelectedEdge = () => {
-  if (!selectedEdge.value) return
+  if (!selectedEdge.value)
+    return
   const index = selectedWorkflow.value?.transitions?.findIndex(t => t.id === selectedEdge.value!.id) ?? -1
-  if (index >= 0 && selectedWorkflow.value?.transitions) {
+  if (index >= 0 && selectedWorkflow.value?.transitions)
     openEditTransition(selectedEdge.value.transition, index)
-  }
 }
 
 // Удаление выбранного перехода
 const deleteSelectedEdge = () => {
-  if (!selectedEdge.value) return
+  if (!selectedEdge.value)
+    return
   const index = selectedWorkflow.value?.transitions?.findIndex(t => t.id === selectedEdge.value!.id) ?? -1
-  if (index >= 0 && selectedWorkflow.value?.transitions) {
+  if (index >= 0 && selectedWorkflow.value?.transitions)
     confirmDeleteTransition(selectedEdge.value.transition, index)
-  }
 }
 
 // Вычисление точек начала и конца ребра (у границ узлов)
 const getEdgePoints = (sourceId: number | string, targetId: number | string): { sx: number; sy: number; tx: number; ty: number } => {
   const source = nodes.value.find(n => n.id === sourceId)
   const target = nodes.value.find(n => n.id === targetId)
-  
-  if (!source || !target) return { sx: 0, sy: 0, tx: 0, ty: 0 }
-  
+
+  if (!source || !target)
+    return { sx: 0, sy: 0, tx: 0, ty: 0 }
+
   // Центры узлов
   const scx = source.x + NODE_WIDTH / 2
   const scy = source.y + NODE_HEIGHT / 2
   const tcx = target.x + NODE_WIDTH / 2
   const tcy = target.y + NODE_HEIGHT / 2
-  
+
   // Направление от source к target
   const dx = tcx - scx
   const dy = tcy - scy
   const dist = Math.sqrt(dx * dx + dy * dy) || 1
-  
+
   // Нормализованный вектор направления
   const nx = dx / dist
   const ny = dy / dist
-  
+
   // Точка на границе source (с небольшим отступом)
   const sx = scx + nx * (NODE_WIDTH / 2 + 3)
   const sy = scy + ny * (NODE_HEIGHT / 2 + 3)
-  
+
   // Точка на границе target (с отступом для стрелки - меньше для маленькой стрелки)
   const tx = tcx - nx * (NODE_WIDTH / 2 + 10)
   const ty = tcy - ny * (NODE_HEIGHT / 2 + 10)
-  
+
   return { sx, sy, tx, ty }
 }
 
 // Вычисление пути для ребра (прямая линия)
 const getEdgePath = (sourceId: number | string, targetId: number | string): string => {
   const { sx, sy, tx, ty } = getEdgePoints(sourceId, targetId)
-  
-  if (sx === 0 && sy === 0 && tx === 0 && ty === 0) return ''
-  
+
+  if (sx === 0 && sy === 0 && tx === 0 && ty === 0)
+    return ''
+
   // Простая прямая линия
   return `M ${sx} ${sy} L ${tx} ${ty}`
 }
@@ -726,10 +775,10 @@ const getEdgePath = (sourceId: number | string, targetId: number | string): stri
 // Получение середины ребра для метки
 const getEdgeLabelPos = (sourceId: number | string, targetId: number | string): { x: number; y: number } => {
   const { sx, sy, tx, ty } = getEdgePoints(sourceId, targetId)
-  
+
   return {
     x: (sx + tx) / 2,
-    y: (sy + ty) / 2
+    y: (sy + ty) / 2,
   }
 }
 
@@ -737,6 +786,7 @@ const getEdgeLabelPos = (sourceId: number | string, targetId: number | string): 
 const updateContainerSize = () => {
   if (canvasWrapper.value) {
     const rect = canvasWrapper.value.getBoundingClientRect()
+
     containerRect.value = { width: rect.width, height: Math.max(400, rect.height) }
   }
 }
@@ -745,7 +795,7 @@ const updateContainerSize = () => {
 onMounted(async () => {
   await fetchStates()
   await fetchWorkflows()
-  
+
   nextTick(() => {
     updateContainerSize()
     window.addEventListener('resize', updateContainerSize)
@@ -767,7 +817,10 @@ watch(selectedWorkflowId, () => {
     <VCard title="Управление воркфлоу">
       <VCardText>
         <VRow class="mb-4">
-          <VCol cols="12" md="6">
+          <VCol
+            cols="12"
+            md="6"
+          >
             <VBtn
               color="primary"
               prepend-icon="bx-plus"
@@ -777,25 +830,54 @@ watch(selectedWorkflowId, () => {
               Создать воркфлоу
             </VBtn>
           </VCol>
-          <VCol cols="12" md="6" class="d-flex justify-end align-center">
-            <VBtnToggle v-model="viewMode" mandatory variant="outlined" divided>
-              <VBtn value="visual" icon="bx-grid-alt" title="Визуальный редактор" />
-              <VBtn value="table" icon="bx-list-ul" title="Табличный вид" />
+          <VCol
+            cols="12"
+            md="6"
+            class="d-flex justify-end align-center"
+          >
+            <VBtnToggle
+              v-model="viewMode"
+              mandatory
+              variant="outlined"
+              divided
+            >
+              <VBtn
+                value="visual"
+                icon="bx-grid-alt"
+                title="Визуальный редактор"
+              />
+              <VBtn
+                value="table"
+                icon="bx-list-ul"
+                title="Табличный вид"
+              />
             </VBtnToggle>
           </VCol>
         </VRow>
 
         <!-- Индикатор загрузки -->
-        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-4" />
+        <VProgressLinear
+          v-if="loading"
+          indeterminate
+          color="primary"
+          class="mb-4"
+        />
 
         <!-- Сообщение об ошибке -->
-        <VAlert v-if="error" type="error" class="mb-4">
+        <VAlert
+          v-if="error"
+          type="error"
+          class="mb-4"
+        >
           {{ error }}
         </VAlert>
 
         <VRow>
           <!-- Список воркфлоу -->
-          <VCol cols="12" md="3">
+          <VCol
+            cols="12"
+            md="3"
+          >
             <VCard variant="outlined">
               <VCardTitle class="text-subtitle-1">
                 Список воркфлоу
@@ -809,14 +891,20 @@ watch(selectedWorkflowId, () => {
                   @click="selectWorkflow(workflow)"
                 >
                   <template #prepend>
-                    <VIcon icon="bx-network-chart" color="success" />
+                    <VIcon
+                      icon="bx-network-chart"
+                      color="success"
+                    />
                   </template>
                   <VListItemTitle>{{ workflow.name }}</VListItemTitle>
                   <VListItemSubtitle>
                     {{ workflow.transitionsCount || 0 }} переходов
                   </VListItemSubtitle>
                   <template #append>
-                    <VChip size="x-small" :color="workflow.isActive ? 'success' : 'error'">
+                    <VChip
+                      size="x-small"
+                      :color="workflow.isActive ? 'success' : 'error'"
+                    >
                       {{ workflow.isActive ? 'Активен' : 'Неактивен' }}
                     </VChip>
                   </template>
@@ -831,25 +919,44 @@ watch(selectedWorkflowId, () => {
           </VCol>
 
           <!-- Редактор воркфлоу -->
-          <VCol cols="12" md="9">
-            <VCard v-if="selectedWorkflow" variant="outlined">
+          <VCol
+            cols="12"
+            md="9"
+          >
+            <VCard
+              v-if="selectedWorkflow"
+              variant="outlined"
+            >
               <VCardTitle class="d-flex align-center justify-space-between">
                 <div class="d-flex align-center">
                   <span>{{ selectedWorkflow.name }}</span>
-                  <VChip size="small" :color="selectedWorkflow.isActive ? 'success' : 'error'" class="ml-2">
+                  <VChip
+                    size="small"
+                    :color="selectedWorkflow.isActive ? 'success' : 'error'"
+                    class="ml-2"
+                  >
                     {{ selectedWorkflow.isActive ? 'Активен' : 'Неактивен' }}
                   </VChip>
                 </div>
                 <div class="d-flex gap-2">
-                  <VBtn size="small" variant="tonal" @click="openEditWorkflow(selectedWorkflow)">
+                  <VBtn
+                    size="small"
+                    variant="tonal"
+                    @click="openEditWorkflow(selectedWorkflow)"
+                  >
                     <VIcon icon="bx-edit" />
                   </VBtn>
-                  <VBtn size="small" variant="tonal" color="error" @click="confirmDeleteWorkflow(selectedWorkflow)">
+                  <VBtn
+                    size="small"
+                    variant="tonal"
+                    color="error"
+                    @click="confirmDeleteWorkflow(selectedWorkflow)"
+                  >
                     <VIcon icon="bx-trash" />
                   </VBtn>
                 </div>
               </VCardTitle>
-              
+
               <VCardText v-if="selectedWorkflow.description">
                 {{ selectedWorkflow.description }}
               </VCardText>
@@ -861,28 +968,28 @@ watch(selectedWorkflowId, () => {
                 <div class="d-flex align-center justify-space-between mb-4">
                   <span class="text-subtitle-1">Визуальный редактор</span>
                   <div class="d-flex gap-2">
-                    <VBtn 
-                      size="small" 
-                      variant="outlined" 
+                    <VBtn
+                      size="small"
+                      variant="outlined"
                       prepend-icon="bx-refresh"
                       @click="autoLayout"
                     >
                       Авто-размещение
                     </VBtn>
-                    <VBtn 
-                      size="small" 
-                      variant="outlined" 
+                    <VBtn
+                      size="small"
+                      variant="outlined"
                       color="warning"
                       prepend-icon="bx-reset"
                       @click="() => { nodePositions = {}; localStorage.removeItem(`workflow_positions_${selectedWorkflowId}`); buildVisualization(); }"
                     >
                       Сбросить позиции
                     </VBtn>
-                    <VBtn 
-                      size="small" 
-                      color="primary" 
+                    <VBtn
+                      size="small"
+                      color="primary"
                       prepend-icon="bx-plus"
-                      @click="openCreateTransition()"
+                      @click="openCreateTransition"
                     >
                       Добавить переход
                     </VBtn>
@@ -891,7 +998,12 @@ watch(selectedWorkflowId, () => {
 
                 <!-- Панель инструментов для выбранного элемента -->
                 <VSlideYTransition>
-                  <VAlert v-if="selectedEdge" type="info" variant="tonal" class="mb-4">
+                  <VAlert
+                    v-if="selectedEdge"
+                    type="info"
+                    variant="tonal"
+                    class="mb-4"
+                  >
                     <div class="d-flex align-center justify-space-between">
                       <div>
                         <strong>Переход:</strong> "{{ selectedEdge.label }}"
@@ -900,12 +1012,27 @@ watch(selectedWorkflowId, () => {
                         </span>
                       </div>
                       <div class="d-flex gap-2">
-                        <VBtn size="small" variant="flat" @click="editSelectedEdge">
-                          <VIcon icon="bx-edit" class="mr-1" />
+                        <VBtn
+                          size="small"
+                          variant="flat"
+                          @click="editSelectedEdge"
+                        >
+                          <VIcon
+                            icon="bx-edit"
+                            class="mr-1"
+                          />
                           Редактировать
                         </VBtn>
-                        <VBtn size="small" color="error" variant="flat" @click="deleteSelectedEdge">
-                          <VIcon icon="bx-trash" class="mr-1" />
+                        <VBtn
+                          size="small"
+                          color="error"
+                          variant="flat"
+                          @click="deleteSelectedEdge"
+                        >
+                          <VIcon
+                            icon="bx-trash"
+                            class="mr-1"
+                          />
                           Удалить
                         </VBtn>
                       </div>
@@ -914,26 +1041,26 @@ watch(selectedWorkflowId, () => {
                 </VSlideYTransition>
 
                 <!-- SVG-холст с прокруткой -->
-                <div 
+                <div
                   ref="canvasWrapper"
                   class="workflow-canvas"
                   :class="{ 'workflow-canvas--dark': isDark }"
-                  :style="{ 
-                    width: '100%', 
+                  :style="{
+                    width: '100%',
                     height: '500px',
                     border: creatingTransition ? '2px dashed #1976d2' : `1px solid ${themeColors.canvasBorder}`,
                     borderRadius: '8px',
                     backgroundColor: themeColors.canvasBg,
                     position: 'relative',
-                    overflow: 'auto'
+                    overflow: 'auto',
                   }"
                 >
                   <svg
                     ref="svgContainer"
                     :width="svgWidth"
                     :height="svgHeight"
-                    @click="onSvgClick"
                     style="cursor: default; min-inline-size: 100%;"
+                    @click="onSvgClick"
                   >
                     <!-- Определения -->
                     <defs>
@@ -946,7 +1073,10 @@ watch(selectedWorkflowId, () => {
                         refY="3"
                         orient="auto"
                       >
-                        <polygon points="0 0, 8 3, 0 6" :fill="themeColors.edgeColor" />
+                        <polygon
+                          points="0 0, 8 3, 0 6"
+                          :fill="themeColors.edgeColor"
+                        />
                       </marker>
                       <marker
                         id="arrowhead-selected"
@@ -956,26 +1086,54 @@ watch(selectedWorkflowId, () => {
                         refY="3.5"
                         orient="auto"
                       >
-                        <polygon points="0 0, 10 3.5, 0 7" :fill="themeColors.edgeSelected" />
+                        <polygon
+                          points="0 0, 10 3.5, 0 7"
+                          :fill="themeColors.edgeSelected"
+                        />
                       </marker>
-                      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.2"/>
+                      <filter
+                        id="shadow"
+                        x="-20%"
+                        y="-20%"
+                        width="140%"
+                        height="140%"
+                      >
+                        <feDropShadow
+                          dx="2"
+                          dy="2"
+                          stdDeviation="2"
+                          flood-opacity="0.2"
+                        />
                       </filter>
                     </defs>
 
                     <!-- Сетка -->
-                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                      <path d="M 20 0 L 0 0 0 20" fill="none" :stroke="themeColors.gridColor" stroke-width="0.5"/>
+                    <pattern
+                      id="grid"
+                      width="20"
+                      height="20"
+                      patternUnits="userSpaceOnUse"
+                    >
+                      <path
+                        d="M 20 0 L 0 0 0 20"
+                        fill="none"
+                        :stroke="themeColors.gridColor"
+                        stroke-width="0.5"
+                      />
                     </pattern>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
+                    <rect
+                      width="100%"
+                      height="100%"
+                      fill="url(#grid)"
+                    />
 
                     <!-- Ребра (переходы) -->
                     <g class="edges">
                       <g
                         v-for="edge in edges"
                         :key="edge.id"
-                        @click.stop="onEdgeClick($event, edge)"
                         :style="{ cursor: 'pointer' }"
+                        @click.stop="onEdgeClick($event, edge)"
                       >
                         <!-- Невидимая линия для удобства клика -->
                         <path
@@ -1012,7 +1170,7 @@ watch(selectedWorkflowId, () => {
                             font-size="10"
                             font-weight="600"
                           >
-                            {{ edge.label.length > 14 ? edge.label.substring(0, 14) + '...' : edge.label }}
+                            {{ edge.label.length > 14 ? `${edge.label.substring(0, 14)}...` : edge.label }}
                           </text>
                           <!-- Направление (откуда → куда) -->
                           <text
@@ -1046,10 +1204,10 @@ watch(selectedWorkflowId, () => {
                         v-for="node in nodes"
                         :key="node.id"
                         :transform="`translate(${node.x}, ${node.y})`"
+                        :style="{ cursor: draggedNode === node ? 'grabbing' : 'grab' }"
                         @mousedown="onNodeMouseDown($event, node)"
                         @click.stop="onNodeClick($event, node)"
                         @dblclick.stop="!node.isStart && startTransitionCreation(node)"
-                        :style="{ cursor: draggedNode === node ? 'grabbing' : 'grab' }"
                       >
                         <!-- Тень -->
                         <rect
@@ -1086,7 +1244,7 @@ watch(selectedWorkflowId, () => {
                           font-weight="500"
                           :fill="themeColors.nodeText"
                         >
-                          {{ node.name.length > 14 ? node.name.substring(0, 14) + '...' : node.name }}
+                          {{ node.name.length > 14 ? `${node.name.substring(0, 14)}...` : node.name }}
                         </text>
                         <!-- Индикатор создания перехода -->
                         <circle
@@ -1112,7 +1270,7 @@ watch(selectedWorkflowId, () => {
 
                   <!-- Подсказка при создании перехода -->
                   <VSlideYTransition>
-                    <div 
+                    <div
                       v-if="creatingTransition"
                       class="transition-hint"
                       :style="{
@@ -1125,10 +1283,13 @@ watch(selectedWorkflowId, () => {
                         padding: '8px 16px',
                         borderRadius: '20px',
                         fontSize: '12px',
-                        zIndex: 10
+                        zIndex: 10,
                       }"
                     >
-                      <VIcon icon="bx-link" class="mr-1" />
+                      <VIcon
+                        icon="bx-link"
+                        class="mr-1"
+                      />
                       Кликните на целевой узел для создания перехода или ESC для отмены
                     </div>
                   </VSlideYTransition>
@@ -1137,15 +1298,24 @@ watch(selectedWorkflowId, () => {
                 <!-- Легенда -->
                 <div class="d-flex gap-4 mt-4 text-caption text-medium-emphasis">
                   <div class="d-flex align-center gap-1">
-                    <VIcon icon="bx-mouse" size="14" />
+                    <VIcon
+                      icon="bx-mouse"
+                      size="14"
+                    />
                     Перетащите узел для перемещения
                   </div>
                   <div class="d-flex align-center gap-1">
-                    <VIcon icon="bx-pointer" size="14" />
+                    <VIcon
+                      icon="bx-pointer"
+                      size="14"
+                    />
                     Клик для выбора
                   </div>
                   <div class="d-flex align-center gap-1">
-                    <VIcon icon="bx-link" size="14" />
+                    <VIcon
+                      icon="bx-link"
+                      size="14"
+                    />
                     Двойной клик для создания перехода
                   </div>
                 </div>
@@ -1155,7 +1325,12 @@ watch(selectedWorkflowId, () => {
               <VCardText v-else>
                 <div class="d-flex align-center justify-space-between mb-4">
                   <span class="text-subtitle-1">Переходы</span>
-                  <VBtn size="small" color="primary" prepend-icon="bx-plus" @click="openCreateTransition">
+                  <VBtn
+                    size="small"
+                    color="primary"
+                    prepend-icon="bx-plus"
+                    @click="openCreateTransition"
+                  >
                     Добавить переход
                   </VBtn>
                 </div>
@@ -1163,19 +1338,32 @@ watch(selectedWorkflowId, () => {
                 <VTable v-if="selectedWorkflow.transitions?.length">
                   <thead>
                     <tr>
-                      <th style="inline-size: 50px;">№</th>
+                      <th style="inline-size: 50px;">
+                        №
+                      </th>
                       <th>Из статуса</th>
-                      <th style="inline-size: 50px;"></th>
+                      <th style="inline-size: 50px;" />
                       <th>В статус</th>
                       <th>Действие</th>
-                      <th style="inline-size: 100px;">Порядок</th>
-                      <th style="inline-size: 80px;">Действия</th>
+                      <th style="inline-size: 100px;">
+                        Порядок
+                      </th>
+                      <th style="inline-size: 80px;">
+                        Действия
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(transition, index) in selectedWorkflow.transitions" :key="transition.id">
+                    <tr
+                      v-for="(transition, index) in selectedWorkflow.transitions"
+                      :key="transition.id"
+                    >
                       <td>
-                        <VChip size="small" color="primary" variant="tonal">
+                        <VChip
+                          size="small"
+                          color="primary"
+                          variant="tonal"
+                        >
                           {{ transition.sortOrder }}
                         </VChip>
                       </td>
@@ -1188,13 +1376,23 @@ watch(selectedWorkflowId, () => {
                         >
                           {{ transition.sourceStatusName }}
                         </VChip>
-                        <span v-else class="text-medium-emphasis">
-                          <VIcon icon="bx-play-circle" size="small" class="mr-1" />
+                        <span
+                          v-else
+                          class="text-medium-emphasis"
+                        >
+                          <VIcon
+                            icon="bx-play-circle"
+                            size="small"
+                            class="mr-1"
+                          />
                           Начало
                         </span>
                       </td>
                       <td class="text-center">
-                        <VIcon icon="bx-arrow-right" color="primary" />
+                        <VIcon
+                          icon="bx-arrow-right"
+                          color="primary"
+                        />
                       </td>
                       <td>
                         <VChip
@@ -1210,21 +1408,48 @@ watch(selectedWorkflowId, () => {
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <IconBtn size="x-small" @click="moveTransitionUp(transition, index)" :disabled="index === 0">
-                            <VIcon icon="bx-chevron-up" size="16" />
+                          <IconBtn
+                            size="x-small"
+                            :disabled="index === 0"
+                            @click="moveTransitionUp(transition, index)"
+                          >
+                            <VIcon
+                              icon="bx-chevron-up"
+                              size="16"
+                            />
                           </IconBtn>
-                          <IconBtn size="x-small" @click="moveTransitionDown(transition, index)" :disabled="index === selectedWorkflow.transitions!.length - 1">
-                            <VIcon icon="bx-chevron-down" size="16" />
+                          <IconBtn
+                            size="x-small"
+                            :disabled="index === selectedWorkflow.transitions!.length - 1"
+                            @click="moveTransitionDown(transition, index)"
+                          >
+                            <VIcon
+                              icon="bx-chevron-down"
+                              size="16"
+                            />
                           </IconBtn>
                         </div>
                       </td>
                       <td>
                         <div class="d-flex gap-1">
-                          <IconBtn size="small" @click="openEditTransition(transition, index)">
-                            <VIcon icon="bx-edit" size="18" />
+                          <IconBtn
+                            size="small"
+                            @click="openEditTransition(transition, index)"
+                          >
+                            <VIcon
+                              icon="bx-edit"
+                              size="18"
+                            />
                           </IconBtn>
-                          <IconBtn size="small" color="error" @click="confirmDeleteTransition(transition, index)">
-                            <VIcon icon="bx-trash" size="18" />
+                          <IconBtn
+                            size="small"
+                            color="error"
+                            @click="confirmDeleteTransition(transition, index)"
+                          >
+                            <VIcon
+                              icon="bx-trash"
+                              size="18"
+                            />
                           </IconBtn>
                         </div>
                       </td>
@@ -1232,17 +1457,34 @@ watch(selectedWorkflowId, () => {
                   </tbody>
                 </VTable>
 
-                <VAlert v-else type="info" variant="tonal">
+                <VAlert
+                  v-else
+                  type="info"
+                  variant="tonal"
+                >
                   Нет настроенных переходов. Добавьте первый переход для создания воркфлоу.
                 </VAlert>
               </VCardText>
             </VCard>
 
-            <VCard v-else variant="outlined" class="d-flex align-center justify-center" style="min-block-size: 300px;">
+            <VCard
+              v-else
+              variant="outlined"
+              class="d-flex align-center justify-center"
+              style="min-block-size: 300px;"
+            >
               <div class="text-center text-medium-emphasis">
-                <VIcon icon="bx-network-chart" size="64" color="disabled" />
-                <div class="text-h6 mt-4">Выберите воркфлоу</div>
-                <div class="text-body-2">для просмотра и редактирования переходов</div>
+                <VIcon
+                  icon="bx-network-chart"
+                  size="64"
+                  color="disabled"
+                />
+                <div class="text-h6 mt-4">
+                  Выберите воркфлоу
+                </div>
+                <div class="text-body-2">
+                  для просмотра и редактирования переходов
+                </div>
               </div>
             </VCard>
           </VCol>
@@ -1251,7 +1493,10 @@ watch(selectedWorkflowId, () => {
     </VCard>
 
     <!-- Диалог создания/редактирования воркфлоу -->
-    <VDialog v-model="editWorkflowDialog" max-width="500px">
+    <VDialog
+      v-model="editWorkflowDialog"
+      max-width="500px"
+    >
       <VCard :title="workflowForm.id ? 'Редактировать воркфлоу' : 'Создать воркфлоу'">
         <VCardText>
           <VRow>
@@ -1279,14 +1524,27 @@ watch(selectedWorkflowId, () => {
           </VRow>
         </VCardText>
         <VCardText class="d-flex justify-end gap-4">
-          <VBtn variant="outlined" @click="editWorkflowDialog = false">Отмена</VBtn>
-          <VBtn color="primary" @click="saveWorkflow">Сохранить</VBtn>
+          <VBtn
+            variant="outlined"
+            @click="editWorkflowDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="primary"
+            @click="saveWorkflow"
+          >
+            Сохранить
+          </VBtn>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Диалог создания/редактирования перехода -->
-    <VDialog v-model="editTransitionDialog" max-width="500px">
+    <VDialog
+      v-model="editTransitionDialog"
+      max-width="500px"
+    >
       <VCard :title="transitionForm.id ? 'Редактировать переход' : 'Создать переход'">
         <VCardText>
           <VRow>
@@ -1297,7 +1555,10 @@ watch(selectedWorkflowId, () => {
                 placeholder="Например: Взять в работу, Закрыть, Переоткрыть"
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol
+              cols="12"
+              md="6"
+            >
               <AppSelect
                 v-model="transitionForm.sourceStatusId"
                 :items="stateOptions"
@@ -1308,7 +1569,10 @@ watch(selectedWorkflowId, () => {
                 persistent-hint
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol
+              cols="12"
+              md="6"
+            >
               <AppSelect
                 v-model="transitionForm.targetStatusId"
                 :items="stateOptions"
@@ -1316,14 +1580,20 @@ watch(selectedWorkflowId, () => {
                 placeholder="Выберите целевой статус"
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol
+              cols="12"
+              md="6"
+            >
               <AppTextField
                 v-model.number="transitionForm.sortOrder"
                 label="Порядок"
                 type="number"
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol
+              cols="12"
+              md="6"
+            >
               <VSwitch
                 v-model="transitionForm.isActive"
                 label="Активен"
@@ -1333,40 +1603,80 @@ watch(selectedWorkflowId, () => {
           </VRow>
         </VCardText>
         <VCardText class="d-flex justify-end gap-4">
-          <VBtn variant="outlined" @click="editTransitionDialog = false">Отмена</VBtn>
-          <VBtn color="primary" @click="saveTransition">Сохранить</VBtn>
+          <VBtn
+            variant="outlined"
+            @click="editTransitionDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="primary"
+            @click="saveTransition"
+          >
+            Сохранить
+          </VBtn>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Диалог удаления воркфлоу -->
-    <VDialog v-model="deleteWorkflowDialog" max-width="400px">
+    <VDialog
+      v-model="deleteWorkflowDialog"
+      max-width="400px"
+    >
       <VCard title="Удалить воркфлоу?">
         <VCardText>
           Вы уверены, что хотите удалить "{{ workflowForm.name }}"? Все переходы будут удалены.
         </VCardText>
         <VCardText class="d-flex justify-end gap-4">
-          <VBtn variant="outlined" @click="deleteWorkflowDialog = false">Отмена</VBtn>
-          <VBtn color="error" @click="deleteWorkflow">Удалить</VBtn>
+          <VBtn
+            variant="outlined"
+            @click="deleteWorkflowDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="error"
+            @click="deleteWorkflow"
+          >
+            Удалить
+          </VBtn>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Диалог удаления перехода -->
-    <VDialog v-model="deleteTransitionDialog" max-width="400px">
+    <VDialog
+      v-model="deleteTransitionDialog"
+      max-width="400px"
+    >
       <VCard title="Удалить переход?">
         <VCardText>
           Вы уверены, что хотите удалить переход "{{ transitionForm.actionLabel }}"?
         </VCardText>
         <VCardText class="d-flex justify-end gap-4">
-          <VBtn variant="outlined" @click="deleteTransitionDialog = false">Отмена</VBtn>
-          <VBtn color="error" @click="deleteTransition">Удалить</VBtn>
+          <VBtn
+            variant="outlined"
+            @click="deleteTransitionDialog = false"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="error"
+            @click="deleteTransition"
+          >
+            Удалить
+          </VBtn>
         </VCardText>
       </VCard>
     </VDialog>
 
     <!-- Уведомления -->
-    <VSnackbar v-model="isToastVisible" :color="toastColor" timeout="3000">
+    <VSnackbar
+      v-model="isToastVisible"
+      :color="toastColor"
+      timeout="3000"
+    >
       {{ toastMessage }}
     </VSnackbar>
   </div>

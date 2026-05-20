@@ -1,13 +1,13 @@
-const { pool } = require('./config/db');
-const States = require('./models/states');
+const { pool } = require('./config/db')
+const States = require('./models/states')
 
 async function initStatesTable() {
   try {
-    console.log('🔄 Проверка и наполнение таблицы states тестовыми данными...');
+    console.log('🔄 Проверка и наполнение таблицы states тестовыми данными...')
 
     // Получаем существующие состояния
-    const existingData = await pool.query('SELECT name FROM states');
-    const existingNames = existingData.rows.map(row => row.name);
+    const existingData = await pool.query('SELECT name FROM states')
+    const existingNames = existingData.rows.map(row => row.name)
 
     // Тестовые данные для состояний
     const testStates = [
@@ -21,30 +21,32 @@ async function initStatesTable() {
       { name: 'Отклонен', comment: 'Заявка отклонена', type: 'closed', color: '#dc3545', isActive: true },
       { name: 'Отменен', comment: 'Заявка отменена клиентом', type: 'closed', color: '#fd7e14', isActive: true },
       { name: 'На удержании', comment: 'Заявка временно приостановлена', type: 'pending', color: '#e83e8c', isActive: true },
-    ];
+    ]
 
-    let addedCount = 0;
+    let addedCount = 0
 
-    console.log('📝 Вставка тестовых данных...');
+    console.log('📝 Вставка тестовых данных...')
 
     for (const state of testStates) {
       if (!existingNames.includes(state.name)) {
-        await States.create(state);
-        console.log(`   ✅ Добавлено состояние: ${state.name}`);
-        addedCount++;
-      } else {
-        console.log(`   ℹ️  Состояние "${state.name}" уже существует, пропускаем`);
+        await States.create(state)
+        console.log(`   ✅ Добавлено состояние: ${state.name}`)
+        addedCount++
+      }
+      else {
+        console.log(`   ℹ️  Состояние "${state.name}" уже существует, пропускаем`)
       }
     }
 
-    console.log('✅ Наполнение таблицы states завершено успешно');
-    console.log(`   Добавлено ${addedCount} новых тестовых записей`);
+    console.log('✅ Наполнение таблицы states завершено успешно')
+    console.log(`   Добавлено ${addedCount} новых тестовых записей`)
 
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Ошибка наполнения таблицы states:', error);
-    process.exit(1);
+    process.exit(0)
+  }
+  catch (error) {
+    console.error('❌ Ошибка наполнения таблицы states:', error)
+    process.exit(1)
   }
 }
 
-initStatesTable();
+initStatesTable()
