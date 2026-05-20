@@ -9,6 +9,9 @@ const {
   deletePostMasterMailAccount,
 } = require('../controllers/postMasterMailAccountsController');
 
+// additionally expose mail fetcher run endpoint under admin
+const MailFetcherController = require('../routes/mailFetcher');
+
 // GET /postMasterMailAccounts - список с query params
 router.get('/', getPostMasterMailAccounts);
 
