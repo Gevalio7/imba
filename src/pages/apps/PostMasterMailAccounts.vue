@@ -500,7 +500,8 @@ const testConnectionForForm = async () => {
       protocol,
       username,
       password,
-      type: 'incoming'
+      type: 'incoming',
+      authenticationType: editedItem.value.authenticationType,
     }
 
     console.log('Testing connection (form) with', body)
@@ -897,6 +898,20 @@ const addNewPostMasterMailAccount = () => {
                 label="Хост *"
                 placeholder="mail.example.com"
               />
+            </VCol>
+
+            <!-- Подсказка для Gmail -->
+            <VCol cols="12" v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')">
+              <VAlert
+                type="info"
+                variant="tonal"
+                density="compact"
+              >
+                Для Gmail используйте <strong>пароль приложения (App Password)</strong>, а не обычный пароль аккаунта.
+                <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noopener">
+                  Инструкция по созданию
+                </a>
+              </VAlert>
             </VCol>
 
             <!-- Логин -->

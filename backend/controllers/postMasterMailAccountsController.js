@@ -225,62 +225,122 @@ async function imapTestConnection({ host, port = 993, username, password, useTLS
 }
 
 const testConnection = asyncHandler(async (req, res) => {
+  console.log('=== TEST CONNECTION DEBUG ===')
+  console.log('req.body:', JSON.stringify(req.body, null, 2))
+  console.log('req.headers.authorization:', req.headers.authorization)
+  console.log('req.headers["content-type"]:', req.headers['content-type'])
+
   try {
-    let { host, port, protocol, username, password, type } = req.body || {}
+    let { host, port, protocol, username, password, type, authenticationType } = req.body || {}
+
+    console.log('Extracted fields ->', { host, port, protocol, username, password: password ? '***' : 'empty', type, authenticationType })
 
     // Нормализация
     host = host?.toString().trim() || ''
     username = username?.toString().trim().replace(/,/g, '.') || ''
     password = password?.toString().trim() || ''
 
+    console.log('Normalized fields ->', { host, port, protocol, username, password: password || 'empty', type, authenticationType })
+
     // Валидация
-    if (!host) return res.status(400).json({ success: false, message: 'Хост обязателен' })
-    if (!username) return res.status(400).json({ success: false, message: 'Логин обязателен' })
-    if (!username.includes('@')) return res.status(400).json({ success: false, message: 'Неверный формат email' })
-    if (!password) return res.status(400).json({ success: false, message: 'Пароль обязателен' })
+    if (!host) {
+      console.log('VALIDATION FAILED: host is empty')
+      return res.status(400).json({ success: false, message: 'Хост обязателен' })
+    }
+    if (!username) {
+      console.log('VALIDATION FAILED: username is empty')
+      return res.status(400).json({ success: false, message: 'Логин обязателен' })
+    }
+    if (!username.includes('@')) {
+      console.log('VALIDATION FAILED: username has no @')
+      return res.status(400).json({ success: false, message: 'Неверный формат email' })
+    }
+    if (authenticationType === 'password' && !password) {
+      console.log('VALIDATION FAILED: authenticationType=password but password is empty')
+      return res.status(400).json({ success: false, message: 'Пароль обязателен' })
+    }
+    console.log('VALIDATION PASSED')
 
     const portNum = port ? parseInt(String(port), 10) : (protocol === 'imap' || protocol === 'imapssl' ? 993 : 143)
     const useTLS = portNum === 993
+    console.log('Port resolved:', { rawPort: port, portNum, useTLS })
 
     const result = await imapTestConnection({ host, port: portNum, username, password, useTLS })
+    console.log('IMAP result:', result)
     if (result.success) {
+      console.log('TEST CONNECTION RESULT: success')
       res.json({ success: true, message: result.message })
     } else {
+      console.log('TEST CONNECTION RESULT: failed ->', result.message)
       res.status(400).json({ success: false, message: result.message })
     }
   } catch (err) {
     console.error('Error in testConnection:', err)
     res.status(500).json({ success: false, message: (err && err.message) ? err.message : 'Internal error' })
   }
+  console.log('=== END TEST CONNECTION DEBUG ===')
 })
 
 const testConnectionById = asyncHandler(async (req, res) => {
+  console.log('=== TEST CONNECTION BY ID DEBUG ===')
+  console.log('params.id:', req.params.id)
+  console.log('req.headers.authorization:', req.headers.authorization)
+
   const { id } = req.params;
   const postMasterMailAccountId = parseInt(id, 10);
   if (isNaN(postMasterMailAccountId)) {
+    console.log('Invalid ID:', id)
     return res.status(400).json({ success: false, message: 'Invalid ID' });
   }
 
+  console.log('Fetching account from DB, id:', postMasterMailAccountId)
   const account = await PostMasterMailAccounts.getById(postMasterMailAccountId);
-  if (!account) return res.status(404).json({ success: false, message: 'PostMasterMailAccount not found' });
+  console.log('Account from DB:', account ? { id: account.id, host: account.host, login: account.login, authType: account.authenticationType, hasPassword: !!account.password } : 'NOT FOUND')
+
+  if (!account) {
+    console.log('Account NOT found')
+    return res.status(404).json({ success: false, message: 'PostMasterMailAccount not found' });
+  }
 
   const host = account.host;
   const username = account.login;
-  const password = account.password;
+  const accountPassword = account.password;
+  const authType = (account.authenticationType || '').toString().toLowerCase();
+  const isPasswordAuth = authType === 'password';
+
+  console.log('Auth check:', { authType, isPasswordAuth, hasPassword: !!accountPassword })
+
+  if (isPasswordAuth && !accountPassword) {
+    console.log('VALIDATION FAILED: password required but missing')
+    return res.status(400).json({ success: false, message: 'Пароль обязателен для аккаунтов с аутентификацией по паролю' });
+  }
+
+  // По умолчанию: SSL + порт 993 для IMAP/IMAPS, POP3S=995, POP3=110
   let port = 993;
+  let useTLS = true;
+
   if (account.type && typeof account.type === 'string') {
     const t = account.type.toLowerCase();
-    if (t.includes('s')) port = 993; else port = 143;
+    if (t.includes('pop3')) {
+      // POP3S=995+SSL, POP3=110+noSSL
+      if (t.includes('s')) { port = 995; } else { port = 110; useTLS = false; }
+    }
+    // IMAP/IMAPS: по умолчанию 993+SSL (type 'imap' без 's' всё равно идёт по 993)
+    // Если в БД явно указан порт — фронтенд сам передаст его и переопределит defaults
   }
-  const useTLS = port === 993;
 
-  const result = await imapTestConnection({ host, port, username, password, useTLS });
+  console.log('Connecting:', { host, port, username, useTLS, passwordProvided: isPasswordAuth })
+  const result = await imapTestConnection({ host, port, username, password: isPasswordAuth ? accountPassword : undefined, useTLS });
+  console.log('IMAP result:', result)
   if (result.success) {
+    console.log('TEST BY ID RESULT: success')
     res.json({ success: true, message: result.message });
   } else {
+    console.log('TEST BY ID RESULT: failed ->', result.message)
     res.status(400).json({ success: false, message: result.message });
   }
-});
+  console.log('=== END TEST BY ID DEBUG ===')
+})
 
 module.exports = {
   getPostMasterMailAccounts,
