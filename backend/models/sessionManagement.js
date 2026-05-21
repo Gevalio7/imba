@@ -19,7 +19,8 @@ class SessionManagement {
 
       if (q) {
         const searchFields = this.fields.split(', ')
-        const textFields = searchFields.filter(field => field !== 'userId')
+        // Только текстовые поля можно искать через ILIKE. timestamp и числовые — исключаем.
+        const textSearchableFields = ['username', 'ipAddress', 'userAgent', 'type']
         const conditions = []
 
         // If q is numeric, search userId exactly
@@ -30,16 +31,20 @@ class SessionManagement {
           paramIndex++
         }
 
-        // Always search text fields with ILIKE
-        if (textFields.length > 0) {
-          const textConditions = textFields.map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`).join(' OR ')
+        // Поиск только по текстовым полям
+        const textConditions = textSearchableFields
+          .map(field => `${toSnakeCase(field)} ILIKE $${paramIndex}`)
+          .join(' OR ')
 
+        if (textConditions) {
           conditions.push(`(${textConditions})`)
           params.push(`%${q}%`)
           paramIndex++
         }
 
-        whereClause = `WHERE ${conditions.join(' OR ')}`
+        if (conditions.length > 0) {
+          whereClause = `WHERE ${conditions.join(' OR ')}`
+        }
       }
 
       let orderClause = ''

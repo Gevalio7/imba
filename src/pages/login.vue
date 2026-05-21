@@ -31,8 +31,8 @@ const errors = ref<Record<string, string | undefined>>({
 const refVForm = ref<VForm>()
 
 const credentials = ref({
-  email: 'morozova@dreamdesc.ru',
-  password: '123456',
+  email: 'admin@example.com',
+  password: 'admin123',
 })
 
 const rememberMe = ref(false)
@@ -42,6 +42,7 @@ const login = async () => {
     const res = await $api('/auth/login', {
       method: 'POST',
       body: {
+        login: credentials.value.email,
         email: credentials.value.email,
         password: credentials.value.password,
       },
@@ -164,11 +165,11 @@ const onSubmit = () => {
               <VCol cols="12">
                 <AppTextField
                   v-model="credentials.email"
-                  label="Email"
-                  placeholder="johndoe@email.com"
-                  type="email"
+                  label="Email / Логин"
+                  placeholder="admin или admin@example.com"
+                  type="text"
                   autofocus
-                  :rules="[requiredValidator, emailValidator]"
+                  :rules="[requiredValidator]"
                 />
               </VCol>
 

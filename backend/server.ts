@@ -6,21 +6,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
-// @ts-expect-error
-import TicketSchedules from './models/ticketSchedules'
-
-// @ts-expect-error
-import Tickets from './models/tickets'
-
-// @ts-expect-error
-import { cleanupOldBackups } from './controllers/backupController'
-
 console.log('🚀 Запуск server.ts...')
 
-// @ts-expect-error
+// Используем require для JS-модулей без типов
+const TicketSchedules = require('./models/ticketSchedules')
+const Tickets = require('./models/tickets')
+const { cleanupOldBackups } = require('./controllers/backupController')
 const { pool } = require('./config/db')
-
-// @ts-expect-error
 const { TicketScheduleLogs } = require('./models/ticketSchedules')
 
 const app: Application = express()
@@ -88,7 +80,7 @@ const processDueSchedules = async () => {
     // Сначала деактивируем истекшие расписания
     console.log('📅 Проверяем истекшие расписания...')
 
-    const deactivatedResult = await (pool as any).query(`
+    const deactivatedResult = await pool.query(`
       UPDATE ticket_schedules
       SET is_active = false, updated_at = CURRENT_TIMESTAMP
       WHERE is_active = true AND end_date IS NOT NULL AND end_date < CURRENT_DATE
@@ -99,7 +91,7 @@ const processDueSchedules = async () => {
 
     console.log('📋 Получаем просроченные расписания...')
 
-    const dueSchedules = await (TicketSchedules as any).getDueSchedules()
+    const dueSchedules = await TicketSchedules.getDueSchedules()
 
     console.log(`📋 Найдено ${dueSchedules.length} расписаний для выполнения`)
 
@@ -124,7 +116,7 @@ const processDueSchedules = async () => {
 
         console.log(`🎫 Преобразованный ticketId: ${ticketId}`)
 
-        const originalTicket = await (Tickets as any).getById(ticketId, true)
+        const originalTicket = await Tickets.getById(ticketId, true)
 
         console.log(`🎫 Результат getById:`, originalTicket ? 'найден' : 'не найден')
         if (!originalTicket) {
@@ -133,7 +125,7 @@ const processDueSchedules = async () => {
           // Записываем лог ошибки
           const errorTime = new Date()
 
-          await (TicketScheduleLogs as any).create({
+          await TicketScheduleLogs.create({
             scheduleId: schedule.id,
             executedAt: errorTime.toISOString(),
             status: 'error',
@@ -142,7 +134,7 @@ const processDueSchedules = async () => {
           })
 
           // Снимаем блокировку
-          await (pool as any).query(`UPDATE ticket_schedules SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [schedule.id])
+          await pool.query(`UPDATE ticket_schedules SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [schedule.id])
           continue
         }
 
@@ -152,9 +144,9 @@ const processDueSchedules = async () => {
         const executionTime = new Date()
 
         // Создаём новый тикет - клонируем актуальный с префиксом
-        const ticketNumber = await (Tickets as any).generateTicketNumber()
+        const ticketNumber = await Tickets.generateTicketNumber()
 
-        const newTicket = await (Tickets as any).create({
+        const newTicket = await Tickets.create({
           ticketNumber,
           title: `${schedule.titlePrefix || 'Расписание (Р) '}${originalTicket.title}`,
           description: originalTicket.description,
@@ -174,7 +166,7 @@ const processDueSchedules = async () => {
         console.log(`✅ Создан тикет #${ticketNumber} по расписанию ID ${schedule.id} (клонирован из #${originalTicket.ticketNumber})`)
 
         // Записываем лог выполнения
-        await (TicketScheduleLogs as any).create({
+        await TicketScheduleLogs.create({
           scheduleId: schedule.id,
           executedAt: executionTime.toISOString(),
           createdTicketId: newTicket.id,
@@ -194,7 +186,7 @@ const processDueSchedules = async () => {
           endDate: schedule.endDate,
         }
 
-        let nextRunAt = (calculateNextRunAt as any)(nextScheduleData)
+        let nextRunAt = calculateNextRunAt(nextScheduleData)
 
         // Если следующее время выполнения в прошлом или null - исправляем
         if (!nextRunAt || nextRunAt <= executionTime) {
@@ -213,12 +205,12 @@ const processDueSchedules = async () => {
 
         console.log(`⏰ Обновляем время для расписания ID ${schedule.id}: last_run_at=${executionTime.toISOString()}, next_run_at=${nextRunAt?.toISOString()}`)
 
-        const updateResult = await (TicketSchedules as any).updateRunTime(schedule.id, executionTime.toISOString(), nextRunAt?.toISOString())
+        const updateResult = await TicketSchedules.updateRunTime(schedule.id, executionTime.toISOString(), nextRunAt?.toISOString())
 
         console.log(`✅ Результат обновления: ${JSON.stringify(updateResult)}`)
 
         // Проверяем, что обновление сработало
-        const checkResult = await (pool as any).query('SELECT id, last_run_at, next_run_at FROM ticket_schedules WHERE id = $1', [schedule.id])
+        const checkResult = await pool.query('SELECT id, last_run_at, next_run_at FROM ticket_schedules WHERE id = $1', [schedule.id])
 
         console.log(`🔍 Проверка после обновления: ${JSON.stringify(checkResult.rows[0])}`)
       }
@@ -226,7 +218,7 @@ const processDueSchedules = async () => {
         console.error(`❌ Ошибка при выполнении расписания ID ${schedule.id}:`, err)
 
         // В случае ошибки снимаем блокировку
-        await (pool as any).query(`UPDATE ticket_schedules SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [schedule.id])
+        await pool.query(`UPDATE ticket_schedules SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [schedule.id])
       }
     }
   }
@@ -293,7 +285,7 @@ app.listen(PORT, async () => {
 
   // Запускаем очистку старых бэкапов при старте сервера
   console.log('🧹 Запуск очистки старых бэкапов...')
-  await (cleanupOldBackups as any)()
+  await cleanupOldBackups()
   console.log('✅ Очистка бэкапов завершена')
 
   // Запускаем cron для расписаний

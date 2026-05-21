@@ -7,9 +7,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Функция для вывода цветного текста
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 print_color() {
     local color=$1
     shift
@@ -33,9 +34,9 @@ kill_port() {
     if [ ! -z "$pids" ]; then
         print_color $YELLOW "⚠️  Останавливаем процесс на порту $port..."
         # Логируем процессы перед убийством
-        echo "DEBUG: Процессы на порту $port:" >> logs/debug.log
+        echo "DEBUG: Процессы на порту $port:" >> "$PROJECT_ROOT/logs/debug.log"
         for pid in $pids; do
-            ps -p $pid -o pid,ppid,cmd 2>/dev/null >> logs/debug.log || echo "PID $pid: не найден" >> logs/debug.log
+            ps -p $pid -o pid,ppid,cmd 2>/dev/null >> "$PROJECT_ROOT/logs/debug.log" || echo "PID $pid: не найден" >> "$PROJECT_ROOT/logs/debug.log"
         done
         kill -9 $pids 2>/dev/null
         sleep 1
@@ -81,11 +82,10 @@ print_color $MAGENTA "║                                                       
 print_color $MAGENTA "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Проверка наличия .env файла
-if [ ! -f ".env" ]; then
+if [ ! -f "$PROJECT_ROOT/.env" ]; then
     print_color $YELLOW "⚠️  Файл .env не найден. Создаем из .env.example..."
-    if [ -f ".env.example" ]; then
-        cp .env.example .env
+    if [ -f "$PROJECT_ROOT/.env.example" ]; then
+        cp "$PROJECT_ROOT/.env.example" "$PROJECT_ROOT/.env"
         print_color $GREEN "✅ Файл .env создан"
     else
         print_color $RED "❌ Файл .env.example не найден!"
@@ -93,11 +93,10 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# Проверка наличия backend/.env файла
-if [ ! -f "backend/.env" ]; then
+if [ ! -f "$PROJECT_ROOT/backend/.env" ]; then
     print_color $YELLOW "⚠️  Файл backend/.env не найден. Создаем из backend/.env.example..."
-    if [ -f "backend/.env.example" ]; then
-        cp backend/.env.example backend/.env
+    if [ -f "$PROJECT_ROOT/backend/.env.example" ]; then
+        cp "$PROJECT_ROOT/backend/.env.example" "$PROJECT_ROOT/backend/.env"
         print_color $GREEN "✅ Файл backend/.env создан"
     else
         print_color $YELLOW "⚠️  Файл backend/.env.example не найден, пропускаем..."
@@ -112,10 +111,9 @@ kill_port 5175
 kill_port 5176
 kill_port 3000
 
-# Очистка кэша Vite
 print_color $CYAN "\n🗑️  Очистка кэша Vite..."
-if [ -d "node_modules/.vite" ]; then
-    rm -rf node_modules/.vite
+if [ -d "$PROJECT_ROOT/node_modules/.vite" ]; then
+    rm -rf "$PROJECT_ROOT/node_modules/.vite"
     print_color $GREEN "✅ Кэш Vite очищен"
 else
     print_color $GREEN "✅ Кэш Vite уже пуст"
@@ -124,9 +122,9 @@ fi
 # Проверка зависимостей
 print_color $CYAN "\n📦 Проверка зависимостей..."
 
-if [ ! -d "node_modules" ]; then
+if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
     print_color $YELLOW "⚠️  Зависимости фронтенда не установлены. Устанавливаем..."
-    npm install
+    (cd "$PROJECT_ROOT" && npm install)
     if [ $? -ne 0 ]; then
         print_color $RED "❌ Ошибка установки зависимостей фронтенда"
         exit 1
@@ -136,9 +134,9 @@ else
     print_color $GREEN "✅ Зависимости фронтенда уже установлены"
 fi
 
-if [ ! -d "backend/node_modules" ]; then
+if [ ! -d "$PROJECT_ROOT/backend/node_modules" ]; then
     print_color $YELLOW "⚠️  Зависимости бэкенда не установлены. Устанавливаем..."
-    cd backend && npm install && cd ..
+    (cd "$PROJECT_ROOT/backend" && npm install)
     if [ $? -ne 0 ]; then
         print_color $RED "❌ Ошибка установки зависимостей бэкенда"
         exit 1
@@ -148,24 +146,19 @@ else
     print_color $GREEN "✅ Зависимости бэкенда уже установлены"
 fi
 
-# Инициализация базы данных
 print_color $CYAN "\n🗄️  Инициализация базы данных..."
-cd backend && npm run init-db && cd ..
+(cd "$PROJECT_ROOT/backend" && npm run init-db)
 if [ $? -ne 0 ]; then
     print_color $RED "❌ Ошибка инициализации базы данных"
     exit 1
 fi
 print_color $GREEN "✅ База данных инициализирована"
 
-# Создание логов директории
-mkdir -p logs
+mkdir -p "$PROJECT_ROOT/logs"
 
-# Запуск бэкенда
 print_color $CYAN "\n🔧 Запуск бэкенда..."
-cd backend
-npm run dev 2>&1 | tee ../logs/backend.log &
+( cd "$PROJECT_ROOT/backend" && npm run dev 2>&1 | tee "$PROJECT_ROOT/logs/backend.log" ) &
 BACKEND_PID=$!
-cd ..
 
 # Ждем запуска бэкенда
 print_color $YELLOW "⏳ Ожидание запуска бэкенда..."
@@ -187,7 +180,7 @@ for i in {1..30}; do
     if [ $i -eq 30 ]; then
         print_color $RED "❌ Бэкенд не запустился за 30 секунд"
         print_color $YELLOW "📋 Последние строки лога:"
-        tail -20 logs/backend.log
+        tail -20 "$PROJECT_ROOT/logs/backend.log"
         cleanup
         exit 1
     fi
@@ -196,9 +189,8 @@ for i in {1..30}; do
 done
 echo ""
 
-# Запуск фронтенда
 print_color $CYAN "\n🎨 Запуск фронтенда..."
-npm run dev 2>&1 | tee logs/frontend.log &
+( cd "$PROJECT_ROOT" && npm run dev 2>&1 | tee "$PROJECT_ROOT/logs/frontend.log" ) &
 FRONTEND_PID=$!
 
 # Ждем запуска фронтенда
@@ -218,7 +210,7 @@ for i in {1..30}; do
     if [ $i -eq 30 ]; then
         print_color $RED "❌ Фронтенд не запустился за 30 секунд"
         print_color $YELLOW "📋 Последние строки лога:"
-        tail -20 logs/frontend.log
+        tail -20 "$PROJECT_ROOT/logs/frontend.log"
         cleanup
         exit 1
     fi
@@ -240,12 +232,12 @@ print_color $GREEN "💚 Health:    http://localhost:3000/health"
 print_color $GREEN "📊 API:       http://localhost:3000/api"
 echo ""
 print_color $CYAN "📋 Логи:"
-print_color $CYAN "   Фронтенд: logs/frontend.log"
-print_color $CYAN "   Бэкенд:   logs/backend.log"
+print_color $CYAN "   Фронтенд: $PROJECT_ROOT/logs/frontend.log"
+print_color $CYAN "   Бэкенд:   $PROJECT_ROOT/logs/backend.log"
 echo ""
 print_color $YELLOW "💡 Для просмотра логов в реальном времени:"
-print_color $YELLOW "   tail -f logs/frontend.log"
-print_color $YELLOW "   tail -f logs/backend.log"
+print_color $YELLOW "   tail -f $PROJECT_ROOT/logs/frontend.log"
+print_color $YELLOW "   tail -f $PROJECT_ROOT/logs/backend.log"
 echo ""
 print_color $RED "⚠️  Нажмите Ctrl+C для остановки всех сервисов"
 echo ""
@@ -255,14 +247,14 @@ while true; do
     # Проверяем, живы ли процессы
     if ! kill -0 $BACKEND_PID 2>/dev/null; then
         print_color $RED "\n❌ Бэкенд упал! Последние строки лога:"
-        tail -20 logs/backend.log
+        tail -20 "$PROJECT_ROOT/logs/backend.log"
         cleanup
         exit 1
     fi
     
     if ! kill -0 $FRONTEND_PID 2>/dev/null; then
         print_color $RED "\n❌ Фронтенд упал! Последние строки лога:"
-        tail -20 logs/frontend.log
+        tail -20 "$PROJECT_ROOT/logs/frontend.log"
         cleanup
         exit 1
     fi
