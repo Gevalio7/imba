@@ -7,14 +7,13 @@ interface SLA {
   id: number
   name: string
   description: string
-  type: string // тип SLA
-  responseTime: number // в минутах - время первого ответа
-  resolutionTime: number // в минутах - время обновления
-  solutionTime: number // в минутах - время решения
-  minIncidentTime: number // в минутах - минимальное время между инцидентами
-  responseNotification: number // процент уведомления для первого ответа
-  updateNotification: number // процент уведомления для обновления
-  solutionNotification: number // процент уведомления для решения
+  responseTime: number
+  resolutionTime: number
+  solutionTime: number
+  minIncidentTime: number
+  responseNotification: number
+  updateNotification: number
+  solutionNotification: number
   calendarId?: number
   calendarName?: string
   serviceIds?: number[]
@@ -278,6 +277,7 @@ watch(selectedItems, newValue => {
 
 // Диалоги
 const deleteDialog = ref(false)
+const editDialog = ref(false)
 
 const editedItem = ref<SLA>({
   id: -1,
@@ -306,7 +306,8 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: SLA) => {
-  router.push(`/apps/SLA-${item.id}`)
+  editedItem.value = { ...item }
+  editDialog.value = true
 }
 
 const deleteItem = (item: SLA) => {
@@ -316,6 +317,48 @@ const deleteItem = (item: SLA) => {
 
 const closeDelete = () => {
   deleteDialog.value = false
+}
+
+const closeEdit = () => {
+  editDialog.value = false
+  // reset to default
+  editedItem.value = {
+    id: -1,
+    name: '',
+    description: '',
+
+    responseTime: 15,
+    resolutionTime: 240,
+    solutionTime: 480,
+    minIncidentTime: 10,
+    responseNotification: 20,
+    updateNotification: 80,
+    solutionNotification: 80,
+    calendarId: undefined,
+    calendarName: '',
+    serviceIds: [],
+    serviceNames: [],
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  }
+}
+
+const saveSLA = async () => {
+  try {
+    if (editedItem.value.id && editedItem.value.id > 0) {
+      await updateSLA(editedItem.value.id, editedItem.value)
+      showToast('SLA успешно обновлен')
+    } else {
+      await createSLA(editedItem.value)
+      showToast('SLA успешно создан')
+    }
+    closeEdit()
+    await fetchSLA()
+  } catch (err) {
+    showToast('Ошибка сохранения SLA', 'error')
+    console.error(err)
+  }
 }
 
 const deleteItemConfirm = async () => {
@@ -363,7 +406,27 @@ const showToast = (message: string, color: string = 'success') => {
 
 // Добавление нового sla
 const addNewSLA = () => {
-  router.push('/apps/SLA-new')
+  editedItem.value = {
+    id: -1,
+    name: '',
+    description: '',
+
+    responseTime: 15,
+    resolutionTime: 240,
+    solutionTime: 480,
+    minIncidentTime: 10,
+    responseNotification: 20,
+    updateNotification: 80,
+    solutionNotification: 80,
+    calendarId: undefined,
+    calendarName: '',
+    serviceIds: [],
+    serviceNames: [],
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  }
+  editDialog.value = true
 }
 </script>
 
@@ -666,6 +729,105 @@ const addNewSLA = () => {
         />
       </div>
     </VCard>
+
+    <!-- Диалог редактирования / создания SLA -->
+    <VDialog
+      v-model="editDialog"
+      max-width="800px"
+    >
+      <VCard :title="editedItem.id > 0 ? 'Редактировать SLA' : 'Добавить SLA'">
+        <VCardText>
+          <VRow>
+            <VCol cols="12" md="8">
+              <AppTextField
+                v-model="editedItem.name"
+                label="Название *"
+                :rules="[v => !!v || 'Обязательное поле']"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VSwitch
+                v-model="editedItem.isActive"
+                :label="editedItem.isActive ? 'Активен' : 'Не активен'"
+                color="primary"
+              />
+            </VCol>
+          </VRow>
+
+          <VRow>
+            <VCol cols="12">
+              <AppTextField
+                v-model="editedItem.description"
+                label="Описание"
+                type="textarea"
+              />
+            </VCol>
+          </VRow>
+
+          <VRow>
+            <VCol cols="12" md="4">
+              <AppTextField
+                v-model.number="editedItem.responseTime"
+                label="Время первого ответа (мин)"
+                type="number"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <AppTextField
+                v-model.number="editedItem.resolutionTime"
+                label="Время обновления (мин)"
+                type="number"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <AppTextField
+                v-model.number="editedItem.solutionTime"
+                label="Время решения (мин)"
+                type="number"
+              />
+            </VCol>
+          </VRow>
+
+          <VRow>
+            <VCol cols="12" md="6">
+              <AppSelect
+                v-model="editedItem.calendarId"
+                :items="calendars.map(c => ({ title: c.name, value: c.id }))"
+                label="Календарь"
+                clearable
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <AppSelect
+                v-model="editedItem.serviceIds"
+                :items="services.map(s => ({ title: s.name, value: s.id }))"
+                label="Сервисы"
+                multiple
+                chips
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="closeEdit"
+          >
+            Отмена
+          </VBtn>
+          <VBtn
+            color="success"
+            variant="elevated"
+            @click="saveSLA"
+          >
+            Сохранить
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 
     <!-- Диалог удаления -->
     <VDialog

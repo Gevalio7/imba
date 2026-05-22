@@ -156,8 +156,8 @@ async function addOrgTestData() {
 
         const firstName = getRandomName(gender)
         const lastName = getRandomLastName(gender)
-        const login = generateLogin(firstName, lastName)
-        const email = generateEmail(firstName, lastName)
+        const login = generateLogin(firstName, lastName) + (j + i * 100)
+        const email = generateEmail(firstName, lastName).replace('@', `+${i}${j}@`)
         const mobilePhone = generatePhone()
         const telegramAccount = generateTelegram()
 
@@ -170,9 +170,9 @@ async function addOrgTestData() {
         if (existingUser.rows.length === 0) {
           await client.query(
             `INSERT INTO customer_users 
-             (first_name, last_name, login, email, mobile_phone, telegram_account, customer_id, customers_group_id, is_active) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [firstName, lastName, login, email, mobilePhone, telegramAccount, companyId, groupId, true],
+             (first_name, last_name, login, password, email, mobile_phone, telegram_account, customer_id, customers_group_id, is_active) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [firstName, lastName, login, '123456', email, mobilePhone, telegramAccount, companyId, groupId, true],
           )
           totalUsersCreated++
         }

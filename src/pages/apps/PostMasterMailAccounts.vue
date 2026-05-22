@@ -11,6 +11,7 @@ interface PostMasterMailAccount {
   login: string
   password?: string
   host: string
+  port?: number
   imapFolder?: string
   trusted: boolean
   dispatchingBy: 'Queue' | 'From'
@@ -387,6 +388,11 @@ const save = async () => {
   }
 
   try {
+    // Trim password to remove accidental spaces (especially important for Gmail App Passwords)
+    if (editedItem.value.password) {
+      editedItem.value.password = editedItem.value.password.toString().trim()
+    }
+
     if (editedIndex.value > -1) {
       // Обновление существующего
       const updated = await updatePostMasterMailAccount(editedItem.value.id, {
@@ -452,8 +458,31 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
+// Надёжное извлечение сообщения об ошибке из ответа ofetch / axios
+const getApiErrorMessage = (errOrRes: any): string => {
+  if (!errOrRes) return 'Неизвестная ошибка'
+
+  // Пробуем разные структуры, в которые ofetch может положить тело ответа
+  const data =
+    errOrRes?.data ??
+    errOrRes?.response?._data ??
+    errOrRes?.data?.data ??
+    errOrRes
+
+  if (data?.message) return data.message
+  if (typeof data === 'string') return data
+  if (data?.error) return data.error
+
+  // Последние варианты
+  if (errOrRes?.message) return errOrRes.message
+  if (errOrRes?.response?.statusText) return errOrRes.response.statusText
+
+  return 'Неизвестная ошибка'
+}
+
 // Добавление нового PostMasterMailAccount
 const testingRowId = ref<number | null>(null)
+const showPassword = ref(false)
 
 const canTestForm = computed(() => {
   if (!editedItem.value.host || !editedItem.value.host.toString().trim())
@@ -479,14 +508,13 @@ const testConnectionForItem = async (item: PostMasterMailAccount) => {
       showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
     }
     else {
-      showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
+      const msg = getApiErrorMessage(res)
+      showToast(`Ошибка подключения: ${msg}`, 'error')
     }
   }
   catch (err: any) {
     console.error('Error testing connection for item:', err)
-
-    const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
-
+    const msg = getApiErrorMessage(err)
     showToast(`Ошибка подключения: ${msg}`, 'error')
   }
   finally {
@@ -558,14 +586,14 @@ const testConnectionForForm = async () => {
 
     if (res && res.success)
       showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
-    else
-      showToast(`Ошибка подключения: ${res && res.message ? res.message : 'Неизвестная ошибка'}`, 'error')
+    else {
+      const msg = getApiErrorMessage(res)
+      showToast(`Ошибка подключения: ${msg}`, 'error')
+    }
   }
   catch (err: any) {
     console.error('Error testing connection for form:', err)
-
-    const msg = err && err.data && err.data.message ? err.data.message : (err && err.message ? err.message : 'Неизвестная ошибка')
-
+    const msg = getApiErrorMessage(err)
     showToast(`Ошибка подключения: ${msg}`, 'error')
   }
   finally {
@@ -982,6 +1010,19 @@ const addNewPostMasterMailAccount = () => {
               />
             </VCol>
 
+            <!-- Порт -->
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <AppTextField
+                v-model.number="editedItem.port"
+                label="Порт"
+                type="number"
+                placeholder="993"
+              />
+            </VCol>
+
             <!-- Подсказка для Gmail -->
             <VCol
               v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')"
@@ -1023,9 +1064,19 @@ const addNewPostMasterMailAccount = () => {
               <AppTextField
                 v-model="editedItem.password"
                 label="Пароль *"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 placeholder="Введите пароль"
-              />
+              >
+                <template #append-inner>
+                  <IconBtn
+                    variant="text"
+                    density="compact"
+                    @click="showPassword = !showPassword"
+                  >
+                    <VIcon :icon="showPassword ? 'bx-show' : 'bx-hide'" />
+                  </IconBtn>
+                </template>
+              </AppTextField>
             </VCol>
 
             <!-- IMAP папка -->

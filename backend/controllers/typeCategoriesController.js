@@ -1,5 +1,6 @@
 const TypeCategories = require('../models/typeCategories')
 const Types = require('../models/types')
+const { pool } = require('../config/db')
 const { asyncHandler } = require('../middleware/errorHandler')
 
 const getTypeCategories = asyncHandler(async (req, res) => {
@@ -89,7 +90,7 @@ const deleteTypeCategory = asyncHandler(async (req, res) => {
 
   // Получаем все типы с этой категорией
   const typesResult = await pool.query(
-    `SELECT id, category_ids FROM types WHERE category_ids && ARRAY[$1]`,
+    `SELECT id, category_ids FROM types WHERE $1 = ANY(category_ids)`,
     [categoryId],
   )
 

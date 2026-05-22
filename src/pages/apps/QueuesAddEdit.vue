@@ -285,7 +285,8 @@ const templateOptions = computed(() => {
 
 const allowMultipleExecutorGroups = computed(() => {
   const config = referenceData.value.systemConfiguration.find(c => c.name === 'allow_multiple_executor_groups')
-  const value = config ? config.value === 'true' || config.value === true : false
+  // Default to true so that multi-select always works and previously saved arrays are displayed
+  const value = config ? config.value === 'true' || config.value === true : true
 
   console.log('allowMultipleExecutorGroups:', value, 'config:', config)
 
@@ -294,7 +295,8 @@ const allowMultipleExecutorGroups = computed(() => {
 
 const allowMultipleExecutors = computed(() => {
   const config = referenceData.value.systemConfiguration.find(c => c.name === 'allow_multiple_executors')
-  const value = config ? config.value === 'true' || config.value === true : false
+  // Default to true so multi-select for agents works
+  const value = config ? config.value === 'true' || config.value === true : true
 
   console.log('allowMultipleExecutors:', value, 'config:', config)
 

@@ -158,9 +158,9 @@ CREATE TABLE sla (
     type VARCHAR(50),
     solution_time NUMERIC(10,2),
     min_incident_time NUMERIC(10,2),
-    response_notification BOOLEAN DEFAULT true,
-    update_notification BOOLEAN DEFAULT true,
-    solution_notification BOOLEAN DEFAULT true,
+    response_notification INTEGER DEFAULT 20,
+    update_notification INTEGER DEFAULT 80,
+    solution_notification INTEGER DEFAULT 80,
     calendar_id INTEGER,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -181,6 +181,27 @@ CREATE TABLE workflows (
 
 CREATE INDEX IF NOT EXISTS idx_workflows_name ON workflows(name);
 CREATE INDEX IF NOT EXISTS idx_workflows_is_active ON workflows(is_active);
+
+-- Workflow transitions (правила переходов между статусами в воркфлоу)
+CREATE TABLE workflow_transitions (
+    id SERIAL PRIMARY KEY,
+    workflow_id INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    source_status_id INTEGER REFERENCES states(id) ON DELETE CASCADE,
+    target_status_id INTEGER NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+    action_label VARCHAR(255) NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_transition UNIQUE (workflow_id, source_status_id, target_status_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_transitions_workflow_id ON workflow_transitions(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_transitions_source_status ON workflow_transitions(source_status_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_transitions_target_status ON workflow_transitions(target_status_id);
+
+-- Add is_initial to states if not present (used by workflow system)
+ALTER TABLE states ADD COLUMN IF NOT EXISTS is_initial BOOLEAN DEFAULT false;
 
 CREATE TABLE calendars (
     id SERIAL PRIMARY KEY,
@@ -303,6 +324,7 @@ CREATE TABLE types (
     name VARCHAR(255) NOT NULL,
     comment TEXT,
     workflow_id INTEGER REFERENCES workflows(id) ON DELETE SET NULL,
+    category_ids INTEGER[] DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -310,6 +332,9 @@ CREATE TABLE types (
 
 CREATE INDEX IF NOT EXISTS idx_types_name ON types(name);
 CREATE INDEX IF NOT EXISTS idx_types_is_active ON types(is_active);
+CREATE INDEX IF NOT EXISTS idx_types_category_ids ON types USING GIN(category_ids);
+
+COMMENT ON COLUMN types.category_ids IS 'Массив ID категорий типа';
 
 CREATE TABLE services (
     id SERIAL PRIMARY KEY,
@@ -668,9 +693,12 @@ CREATE TABLE knowledge_base (
     is_published BOOLEAN DEFAULT false,
     views_count INTEGER DEFAULT 0,
     created_by INTEGER REFERENCES agents(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_kb_active ON knowledge_base(is_active);
 
 -- === СИСТЕМНЫЕ ТАБЛИЦЫ ===
 
