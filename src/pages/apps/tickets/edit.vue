@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+// Utilities
+import { createObjectUrl, isImageFile, isImageType } from '@/utils/fileUtils'
+
+// Composables
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useTicketForm } from '@/composables/useTicketForm'
 import { useTicketComments } from '@/composables/useTicketComments'
@@ -8,20 +13,18 @@ import { useTicketAttachments } from '@/composables/useTicketAttachments'
 import { useImagePreview } from '@/composables/useImagePreview'
 import { useTicketHistory } from '@/composables/useTicketHistory'
 import { useQuickAnswers } from '@/composables/useQuickAnswers'
-import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
-</script>
 
-<script lang="ts">
-// Import utilities
-import { createObjectUrl, isImageFile, isImageType } from '@/utils/fileUtils'
+// Components
+import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
 import TicketProperties from '@/components/TicketEdit/TicketProperties.vue'
 import TicketCommentsSection from '@/components/TicketEdit/TicketCommentsSection.vue'
+import AppTextField from '@/@core/components/app-form-elements/AppTextField.vue'
+import TiptapEditor from '@/@core/components/TiptapEditor.vue'
 
+// Page meta
 definePage({
   meta: {
     navActiveLink: 'apps-tickets',
-
-    // route-level permission meta for router guard — allow read for viewing, write guarded on actions
     action: 'read',
     subject: 'menu_tickets_list',
   },
@@ -32,13 +35,13 @@ const route = useRoute()
 
 const ticketId = computed(() => {
   const id = route.query.id
-
   return id ? Number(id) : null
 })
 
-// Use composables
+// Reference data
 const { data: refData, fetchAll: loadReferenceData, refreshData: refreshReferenceData } = useReferenceData()
 
+// Main ticket form composable
 const {
   ticket,
   description,
@@ -56,6 +59,7 @@ const {
   allowMultipleExecutors,
 } = useTicketForm(ticketId)
 
+// Comments
 const {
   comments,
   newComment,
@@ -74,6 +78,7 @@ const {
   deleteComment,
 } = useTicketComments(ticketId)
 
+// Attachments
 const {
   existingAttachments,
   newAttachments,
@@ -86,6 +91,7 @@ const {
   removeNewAttachment,
 } = useTicketAttachments(ticketId)
 
+// Image preview
 const {
   imagePreview,
   imageZoom,
@@ -95,9 +101,9 @@ const {
   zoomOut,
   resetZoom,
   downloadImage,
-  printImage,
 } = useImagePreview()
 
+// History
 const {
   historyChanges,
   loadingHistory,
@@ -111,10 +117,10 @@ const {
   fetchAllHistory,
 } = useTicketHistory(ticketId)
 
-// Create a computed queue ref for quick answers
-const currentQueue = computed(() => ({
-  quickAnswerArticleIds: [],
-}))
+// Quick answers (dummy queue for now) - используем ref со стабильным объектом, чтобы избежать лишних ререндеров useQuickAnswers
+const currentQueue = ref({
+  quickAnswerArticleIds: [] as number[],
+})
 
 const {
   quickAnswerArticles,
@@ -125,59 +131,104 @@ const {
   closeQuickAnswersDialog,
 } = useQuickAnswers(currentQueue)
 
-// Initialize data
-onMounted(async () => {
-  await loadReferenceData()
-  await fetchTicket()
-  await fetchComments()
-  await fetchAttachments()
-  await fetchAllHistory()
-})
-
-// Расписание
+// Local state
 const scheduleDialog = ref(false)
-
-// Toast notifications
+const activeTab = ref('comments')
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
 
+// Toast helper
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
   toastColor.value = color
   isToastVisible.value = true
 }
 
-// Обновление справочных данных
-const refreshData = async () => {
-  try {
-    await refreshReferenceData()
-    showToast('Справочные данные обновлены', 'success')
+// Управление blob URL для новых вложений (исправление утечки памяти)
+// Создаём URL один раз на файл, очищаем при удалении/размонтировании
+const attachmentUrlMap = ref(new Map<File, string>())
+
+const getAttachmentUrl = (file: File): string => {
+  if (attachmentUrlMap.value.has(file)) {
+    return attachmentUrlMap.value.get(file)!
   }
-  catch (error) {
-    showToast('Ошибка обновления данных', 'error')
-  }
+  const url = createObjectUrl(file)
+  attachmentUrlMap.value.set(file, url)
+  return url
 }
 
-// Cancel action
+const cleanupAttachmentUrls = () => {
+  attachmentUrlMap.value.forEach((url) => {
+    if (url) URL.revokeObjectURL(url)
+  })
+  attachmentUrlMap.value.clear()
+}
+
+// Отслеживаем удаление файлов для revoke
+watch(newAttachments, (newFiles, oldFiles) => {
+  if (oldFiles) {
+    oldFiles.forEach((file) => {
+      if (!newFiles.includes(file)) {
+        const url = attachmentUrlMap.value.get(file)
+        if (url) {
+          URL.revokeObjectURL(url)
+          attachmentUrlMap.value.delete(file)
+        }
+      }
+    })
+  }
+}, { deep: true })
+
+onBeforeUnmount(() => {
+  cleanupAttachmentUrls()
+})
+
+// Data loading
+onMounted(async () => {
+  try {
+    // Справочные данные загружаем всегда
+    await loadReferenceData()
+
+    // Для данных тикета проверяем наличие ticketId, чтобы избежать лишних API вызовов
+    if (ticketId.value) {
+      await fetchTicket()
+      await fetchComments()
+      await fetchAttachments()
+      await fetchAllHistory()
+    } else {
+      showToast('ID обращения не указан в URL', 'warning')
+    }
+  } catch (error: any) {
+    console.error('Ошибка загрузки данных в onMounted:', error)
+    showToast('Ошибка загрузки данных. Попробуйте обновить страницу.', 'error')
+  }
+})
+
+// Actions
 const cancel = () => {
   router.push('/apps/tickets')
 }
 
-// Save action with error handling
+const refreshData = async () => {
+  try {
+    await refreshReferenceData()
+    showToast('Справочные данные обновлены', 'success')
+  } catch (error) {
+    showToast('Ошибка обновления данных', 'error')
+  }
+}
+
 const handleSave = async () => {
   try {
     await save()
     showToast('Обращение успешно сохранено', 'success')
-  }
-  catch (error: any) {
+  } catch (error: any) {
     const message = error.message || 'Ошибка при сохранении обращения'
-
     showToast(message, 'error')
   }
 }
 
-// Расписание
 const openScheduleDialog = () => {
   scheduleDialog.value = true
 }
@@ -186,8 +237,14 @@ const onScheduleUpdate = () => {
   showToast('Расписание обновлено', 'success')
 }
 
-// Active tab for comments/history
-const activeTab = ref('comments')
+// Обработчики обновления из TicketCommentsSection (вынесены из шаблона для производительности)
+const updateNewComment = (value: string) => {
+  newComment.value = value
+}
+
+const updateIsInternalComment = (value: boolean) => {
+  isInternalComment.value = value
+}
 </script>
 
 <template>
@@ -413,7 +470,7 @@ const activeTab = ref('comments')
                   <!-- Превью для новых изображений -->
                   <VImg
                     v-if="isImageType(file)"
-                    :src="createObjectUrl(file)"
+                    :src="getAttachmentUrl(file)"
                     :alt="file.name"
                     class="attachment-thumbnail rounded"
                     cover
@@ -516,8 +573,8 @@ const activeTab = ref('comments')
           :show-quick-answers="true"
           :quick-answers-loading="loadingQuickAnswers"
           :quick-answers="quickAnswerArticles"
-          @update:new-comment="(value) => newComment = value"
-          @update:is-internal-comment="(value) => isInternalComment = value"
+           @update:new-comment="updateNewComment"
+           @update:is-internal-comment="updateIsInternalComment"
           @add-comment="addComment"
           @start-edit-comment="startEditComment"
           @save-edit-comment="saveEditComment"
@@ -696,7 +753,7 @@ const activeTab = ref('comments')
       v-model="scheduleDialog"
       :schedule="null"
       :saving="false"
-      :ticket-id="Number(ticketId)"
+      :ticket-id="ticketId"
       @update="onScheduleUpdate"
     />
   </div>

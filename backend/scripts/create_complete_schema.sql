@@ -575,13 +575,19 @@ CREATE TABLE ticket_attachments (
 
 CREATE TABLE ticket_status_history (
     id SERIAL PRIMARY KEY,
-    ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
-    from_state_id INTEGER REFERENCES states(id),
-    to_state_id INTEGER REFERENCES states(id),
-    changed_by INTEGER REFERENCES agents(id),
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    from_status_id INTEGER REFERENCES states(id) ON DELETE SET NULL,
+    to_status_id INTEGER NOT NULL REFERENCES states(id) ON DELETE SET NULL,
+    transition_id INTEGER REFERENCES workflow_transitions(id) ON DELETE SET NULL,
+    changed_by INTEGER REFERENCES agents(id) ON DELETE SET NULL,
     time_in_previous_status INTERVAL,
+    action_label VARCHAR(255),
+    comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+COMMENT ON COLUMN ticket_status_history.transition_id IS 'ID перехода из workflow_transitions (для аудита)';
+COMMENT ON COLUMN ticket_status_history.comment IS 'Комментарий при смене статуса';
 
 CREATE TABLE ticket_history (
     id SERIAL PRIMARY KEY,

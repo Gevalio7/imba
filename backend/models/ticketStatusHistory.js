@@ -14,8 +14,8 @@ class TicketStatusHistory {
         `SELECT 
           tsh.id,
           tsh.ticket_id as "ticketId",
-          tsh.from_status_id as "fromStatusId",
-          tsh.to_status_id as "toStatusId",
+          COALESCE(tsh.from_status_id, tsh.from_state_id) as "fromStatusId",
+          COALESCE(tsh.to_status_id, tsh.to_state_id) as "toStatusId",
           tsh.changed_by as "changedBy",
           COALESCE(tsh.transition_time, tsh.created_at) as "transitionTime",
           tsh.time_in_previous_status as "timeInPreviousStatus",
@@ -28,8 +28,8 @@ class TicketStatusHistory {
           ts.color as "toStatusColor",
           a.first_name || ' ' || a.last_name as "changedByName"
         FROM ${TicketStatusHistory.tableName} tsh
-        LEFT JOIN states fs ON tsh.from_status_id = fs.id
-        LEFT JOIN states ts ON tsh.to_status_id = ts.id
+        LEFT JOIN states fs ON COALESCE(tsh.from_status_id, tsh.from_state_id) = fs.id
+        LEFT JOIN states ts ON COALESCE(tsh.to_status_id, tsh.to_state_id) = ts.id
         LEFT JOIN agents a ON tsh.changed_by = a.id
         WHERE tsh.ticket_id = $1
         ORDER BY COALESCE(tsh.transition_time, tsh.created_at) DESC`,
@@ -55,8 +55,8 @@ class TicketStatusHistory {
         `SELECT 
           tsh.id,
           tsh.ticket_id as "ticketId",
-          tsh.from_status_id as "fromStatusId",
-          tsh.to_status_id as "toStatusId",
+          COALESCE(tsh.from_status_id, tsh.from_state_id) as "fromStatusId",
+          COALESCE(tsh.to_status_id, tsh.to_state_id) as "toStatusId",
           tsh.changed_by as "changedBy",
           COALESCE(tsh.transition_time, tsh.created_at) as "transitionTime",
           tsh.time_in_previous_status as "timeInPreviousStatus",

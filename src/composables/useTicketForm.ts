@@ -167,7 +167,17 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
     try {
       const data = await $api(`/tickets/${ticketId.value}`)
-      const t = data as any
+
+      // Нормализуем ответ: иногда бэкенд возвращает { tickets: [...], total: 1 }, иногда прямой объект
+      let t: any = data
+      if (data && Array.isArray(data.tickets)) {
+        t = data.tickets[0] || {}
+      } else if (data && Array.isArray(data) && data.length > 0) {
+        t = data[0]
+      }
+
+      // console.log('fetchTicket raw data:', data)
+      // console.log('fetchTicket normalized ticket:', t)
 
       ticket.id = t.id
       ticket.ticketNumber = t.ticketNumber || ''
@@ -180,15 +190,17 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
       // ownerId может быть числом или объектом
       if (t.ownerId) {
-        const owner = customerUsers.value.find((a: any) => a.value === t.ownerId)
+        const ownerList = customerUsers.value || []
+        // Исправлено: ищем по id, а не по value (customerUsers приходят с id из referenceData)
+        const owner = ownerList.find((a: any) => a.id === Number(t.ownerId) || a.id === t.ownerId)
 
         ticket.ownerId = owner || t.ownerId
       }
       else {
         ticket.ownerId = undefined
       }
-      ticket.executorAgentIds = t.executorAgentIds || []
-      ticket.executorGroupIds = t.executorGroupIds || []
+      ticket.executorAgentIds = Array.isArray(t.executorAgentIds) ? t.executorAgentIds : []
+      ticket.executorGroupIds = Array.isArray(t.executorGroupIds) ? t.executorGroupIds : []
       ticket.companyId = t.companyId || undefined
       ticket.serviceId = t.serviceId || undefined
       ticket.slaId = t.slaId || undefined
@@ -196,14 +208,14 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       ticket.resolutionDeadline = t.resolutionDeadline || undefined
 
       // Эскалация
-      ticket.observerAgentIds = t.observerAgentIds || []
-      ticket.observerGroupIds = t.observerGroupIds || [] // TODO: типизировать - добавить поле в API/бэкенд
+      ticket.observerAgentIds = Array.isArray(t.observerAgentIds) ? t.observerAgentIds : []
+      ticket.observerGroupIds = Array.isArray(t.observerGroupIds) ? t.observerGroupIds : []
       ticket.escalationCount = t.escalationCount || 0
       ticket.isEscalated = t.isEscalated || false
 
       // Сохраняем начальные значения исполнителей для определения изменений при эскалации
-      ticket.initialExecutorAgentIds = t.executorAgentIds || []
-      ticket.initialExecutorGroupIds = t.executorGroupIds || []
+      ticket.initialExecutorAgentIds = Array.isArray(t.executorAgentIds) ? t.executorAgentIds : []
+      ticket.initialExecutorGroupIds = Array.isArray(t.executorGroupIds) ? t.executorGroupIds : []
       description.value = t.description || ''
 
       // Загружаем workflow если есть тип
