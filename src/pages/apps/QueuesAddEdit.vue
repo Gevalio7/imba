@@ -45,7 +45,7 @@ interface ReferenceData {
   customers: { id: number; name: string }[]
   customersGroups: { id: number; name: string; customerId: number }[]
   agents: { id: number; firstName: string; lastName: string }[]
-  types: { id: number; name: string }[]
+  types: { id: number; name: string; categoryIds?: number[] }[]
   typeCategories: { id: number; name: string }[]
   postMasterMailAccounts: { id: number; name: string }[]
   templates: { id: number; name: string }[]
@@ -252,7 +252,25 @@ const typeOptions = computed(() =>
 
 const typeCategoryOptions = computed(() => {
   try {
-    return referenceData.value.typeCategories?.map(c => ({ title: c.name, value: c.id })) || []
+    const allCategories = referenceData.value.typeCategories || []
+    const selectedTypeId = queue.value.typeId
+
+    // Если тип не выбран — показываем все категории (как было раньше)
+    if (!selectedTypeId) {
+      return allCategories.map(c => ({ title: c.name, value: c.id }))
+    }
+
+    // Находим выбранный тип и его привязанные категории
+    const selectedType = referenceData.value.types.find((t: any) => t.id === selectedTypeId)
+    const categoryIds = selectedType?.categoryIds || []
+    if (categoryIds.length === 0) {
+      return []
+    }
+
+    // Фильтруем только категории, связанные с этим типом
+    return allCategories
+      .filter((c: any) => categoryIds.includes(c.id))
+      .map(c => ({ title: c.name, value: c.id }))
   }
   catch (err) {
     console.error('Error in typeCategoryOptions:', err)
@@ -333,6 +351,7 @@ const quickAnswerFilter = ref({
 
 const foundArticles = ref<Article[]>([])
 const selectedArticleIds = ref<number[]>([])
+const selectedArticles = ref<Article[]>([])   // Полные данные выбранных статей для красивого отображения
 const loadingArticles = ref(false)
 const showQuickAnswersDialog = ref(false)
 
@@ -369,34 +388,55 @@ const searchArticles = async () => {
   }
 }
 
-const fetchCategoriesAndServices = async () => {
-  try {
-    const [typesData, servicesData] = await Promise.all([
-      $api<{ types: any[] }>(`${API_BASE}/types`),
-      $api<{ services: any[] }>(`${API_BASE}/services`),
-    ])
+// Загрузка деталей выбранных статей по их ID (один запрос вместо N)
+const preloadSelectedArticles = async (ids: number[]) => {
+  if (!ids || ids.length === 0) return
 
-    typesList.value = typesData.types || []
-    servicesList.value = servicesData.services || []
-    categoriesList.value = typesList.value
+  try {
+    const data = await $api<{ articles: Article[] }>(`${API_BASE}/knowledge-base/by-filters`, {
+      params: { ids: ids.join(',') },
+    })
+
+    selectedArticles.value = data.articles || []
+  } catch (err) {
+    console.error('Error preloading selected articles via batch:', err)
+    // Fallback на заглушки, чтобы не падало
+    selectedArticles.value = ids.map(id => ({ id, title: `Статья #${id}`, content: '' } as Article))
   }
-  catch (err) {
-    console.error('Error fetching categories/services:', err)
-  }
+}
+
+// Убирает HTML-теги из строки (для превью контента статьи)
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return (div.textContent || div.innerText || '').trim()
 }
 
 const toggleArticle = (articleId: number) => {
   const index = selectedArticleIds.value.indexOf(articleId)
-  if (index === -1)
+  if (index === -1) {
     selectedArticleIds.value.push(articleId)
-  else
+    // Добавляем полные данные статьи, если они есть в текущем поиске
+    const fullArticle = foundArticles.value.find(a => a.id === articleId)
+    if (fullArticle && !selectedArticles.value.some(a => a.id === articleId)) {
+      selectedArticles.value.push(fullArticle)
+    }
+  } else {
     selectedArticleIds.value.splice(index, 1)
+    // Удаляем из деталей
+    const idx = selectedArticles.value.findIndex(a => a.id === articleId)
+    if (idx !== -1) selectedArticles.value.splice(idx, 1)
+  }
 }
 
 const removeArticle = (articleId: number) => {
   const index = selectedArticleIds.value.indexOf(articleId)
-  if (index !== -1)
+  if (index !== -1) {
     selectedArticleIds.value.splice(index, 1)
+    const idx = selectedArticles.value.findIndex(a => a.id === articleId)
+    if (idx !== -1) selectedArticles.value.splice(idx, 1)
+  }
 }
 
 const isArticleSelected = (articleId: number) => {
@@ -405,11 +445,16 @@ const isArticleSelected = (articleId: number) => {
 
 const selectedArticlesDetails = computed(() => {
   return selectedArticleIds.value.map(id => {
-    const article = foundArticles.value.find(a => a.id === id)
-    if (article)
-      return article
+    // Сначала ищем в dedicated selectedArticles (загружены при открытии формы)
+    let article = selectedArticles.value.find(a => a.id === id)
+    if (article) return article
 
-    return { id, title: `Статья #${id}`, content: '' }
+    // Затем в результатах поиска
+    article = foundArticles.value.find(a => a.id === id)
+    if (article) return article
+
+    // Fallback
+    return { id, title: `Статья #${id}`, content: '' } as Article
   })
 })
 
@@ -484,8 +529,11 @@ const fetchQueue = async () => {
     console.log('After nextTick, departmentId:', queue.value.departmentId)
 
     // Initialize selected article IDs
-    if (queue.value.quickAnswerArticleIds && Array.isArray(queue.value.quickAnswerArticleIds))
+    if (queue.value.quickAnswerArticleIds && Array.isArray(queue.value.quickAnswerArticleIds)) {
       selectedArticleIds.value = [...queue.value.quickAnswerArticleIds]
+      // Загружаем реальные названия статей, чтобы не было "Статья #N"
+      await preloadSelectedArticles(selectedArticleIds.value)
+    }
 
     // Initialize keywords array
     keywordsArray.value = typeof queue.value.keywords === 'string' && queue.value.keywords ? queue.value.keywords.split(',').map(k => k.trim()).filter(k => k) : []
@@ -605,6 +653,37 @@ watch(() => queue.value.companyId, (newCompanyId, oldCompanyId) => {
   if (newCompanyId !== oldCompanyId && oldCompanyId !== null && referenceData.value.customersGroups) {
     queue.value.departmentId = null
     queue.value.postMasterMailAccountId = null
+  }
+})
+
+// Watcher для изменения типа — зависимость категории от типа
+watch(() => queue.value.typeId, (newTypeId, oldTypeId) => {
+  // Пропускаем начальную загрузку (когда оба значения уже установлены из БД)
+  if (oldTypeId === undefined && queue.value.categoryId)
+    return
+
+  if (!newTypeId) {
+    // Тип очищен — оставляем категорию как есть (или можно очистить)
+    return
+  }
+
+  const selectedType = referenceData.value.types.find((t: any) => t.id === newTypeId)
+  if (!selectedType) return
+
+  const validCategoryIds: number[] = selectedType.categoryIds || []
+
+  if (validCategoryIds.length === 0) {
+    queue.value.categoryId = null
+    return
+  }
+
+  // Если у типа только одна категория и категория ещё не выбрана — автоподставляем
+  if (validCategoryIds.length === 1 && !queue.value.categoryId) {
+    queue.value.categoryId = validCategoryIds[0]
+  }
+  // Если текущая категория не входит в список разрешённых для типа — очищаем
+  else if (queue.value.categoryId && !validCategoryIds.includes(queue.value.categoryId)) {
+    queue.value.categoryId = null
   }
 })
 
@@ -774,9 +853,14 @@ onMounted(async () => {
                       v-model="queue.categoryId"
                       label="Категория типа"
                       :items="typeCategoryOptions"
+                      :disabled="!queue.typeId"
+                      :placeholder="queue.typeId ? 'Выберите категорию' : 'Сначала выберите тип'"
                       clearable
                       clear-icon="bx-x"
                     />
+                    <div v-if="!queue.typeId" class="text-caption text-medium-emphasis mt-1">
+                      Выберите тип, чтобы увидеть доступные категории
+                    </div>
                   </VCol>
                 </VRow>
               </div>
@@ -1130,9 +1214,9 @@ onMounted(async () => {
               <VListItemTitle class="font-weight-medium">
                 {{ article.title }}
               </VListItemTitle>
-              <VListItemSubtitle class="text-truncate">
-                {{ article.content?.substring(0, 100) || 'Без описания' }}...
-              </VListItemSubtitle>
+               <VListItemSubtitle class="text-truncate">
+                 {{ stripHtml(article.content).substring(0, 120) || 'Без описания' }}...
+               </VListItemSubtitle>
             </VListItem>
           </VList>
         </VCardText>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // Utilities
@@ -52,6 +52,7 @@ const {
   filteredCategories,
   hasCategoriesForType,
   categoryVisible,
+  availableTypes,
   currentWorkflow,
   availableStatuses,
   loadingWorkflow,
@@ -117,10 +118,29 @@ const {
   fetchAllHistory,
 } = useTicketHistory(ticketId)
 
-// Quick answers (dummy queue for now) - используем ref со стабильным объектом, чтобы избежать лишних ререндеров useQuickAnswers
+// Quick answers - now wired to the actual selected queue from the ticket
 const currentQueue = ref({
   quickAnswerArticleIds: [] as number[],
 })
+
+// Sync currentQueue with the real queue's quickAnswerArticleIds whenever ticket.queueId or reference data changes
+watch([() => ticket.queueId, () => refData.queues], ([newQueueId]) => {
+  if (!newQueueId || !refData.queues?.length) {
+    currentQueue.value = { quickAnswerArticleIds: [] }
+    return
+  }
+
+  const selectedQueue = refData.queues.find((q: any) => q.id === newQueueId)
+  if (selectedQueue) {
+    currentQueue.value = {
+      quickAnswerArticleIds: Array.isArray(selectedQueue.quickAnswerArticleIds)
+        ? [...selectedQueue.quickAnswerArticleIds]
+        : [],
+    }
+    // Load the actual article content for the quick answers
+    nextTick(() => loadQuickAnswers())
+  }
+}, { immediate: true, deep: true })
 
 const {
   quickAnswerArticles,
@@ -598,9 +618,10 @@ const updateIsInternalComment = (value: boolean) => {
           :allow-multiple-executors="allowMultipleExecutors"
           :filtered-services="filteredServices"
           :filtered-categories="filteredCategories"
-          :has-categories-for-type="hasCategoriesForType"
-          :category-visible="categoryVisible"
-        />
+           :has-categories-for-type="hasCategoriesForType"
+           :category-visible="categoryVisible"
+           :available-types="availableTypes"
+         />
       </VCol>
     </VRow>
 

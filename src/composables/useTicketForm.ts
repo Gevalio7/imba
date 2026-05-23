@@ -111,14 +111,47 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     return !ticket.typeId || hasCategoriesForType.value
   })
 
+  // Вычисляемые типы - фильтруются по workflow выбранной очереди (аналогично Add.vue)
+  const availableTypes = computed(() => {
+    const allTypes = types.value || []
+    if (!ticket.queueId) {
+      return allTypes
+    }
+    const queue = queues.value.find((q: any) => q.id === ticket.queueId)
+    if (!queue?.workflowId) {
+      return allTypes
+    }
+    return allTypes.filter((t: any) => t.workflowId === queue.workflowId)
+  })
+
   // Workflow данные
   const currentWorkflow = ref<any>(null)
   const availableStatuses = ref<any[]>([])
   const loadingWorkflow = ref(false)
 
-  // Загрузка workflow и доступных статусов по типу
-  const fetchTypeWorkflow = async (currentStatusId?: number | null) => {
-    if (!ticket.typeId) {
+  /**
+   * Загружает данные workflow по ID типа обращения
+   *
+   * @param typeId - ID типа обращения (опционально; если не передан — используется ticket.typeId)
+   * @param currentStatusId - ID текущего статуса для получения доступных переходов (для режима редактирования)
+   * @returns Promise, который резолвится после загрузки данных workflow
+   *
+   * @description
+   * Функция загружает:
+   * - Информацию о workflow, связанном с типом
+   * - Начальный статус (первый статус с типом 'new')
+   * - Доступные статусы для перехода
+   *
+   * @example
+   * // Для нового обращения
+   * await fetchWorkflowByType(5)
+   *
+   * // Для редактирования (получаем переходы из текущего статуса)
+   * await fetchWorkflowByType(5, 123)
+   */
+  const fetchWorkflowByType = async (typeId?: number, currentStatusId?: number | null) => {
+    const targetTypeId = typeId ?? ticket.typeId
+    if (!targetTypeId) {
       currentWorkflow.value = null
       availableStatuses.value = []
 
@@ -129,11 +162,10 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       loadingWorkflow.value = true
 
       // Всегда используем оригинальный сохраненный статус для определения доступных переходов
-      // Это предотвращает "перепрыгивание" через этапы workflow
       const statusForWorkflow = originalStateId.value ?? currentStatusId
 
       // Формируем URL с параметром currentStatusId
-      let url = `/types/${ticket.typeId}/workflow`
+      let url = `/types/${targetTypeId}/workflow`
       if (statusForWorkflow !== undefined && statusForWorkflow !== null)
         url += `?currentStatusId=${statusForWorkflow}`
 
@@ -220,7 +252,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
       // Загружаем workflow если есть тип
       if (t.typeId)
-        await fetchTypeWorkflow(t.stateId)
+        await fetchWorkflowByType(t.typeId, t.stateId)
 
       // Track original saved status for workflow validation
       originalStateId.value = t.stateId
@@ -417,8 +449,10 @@ export function useTicketForm(ticketId: Ref<number | null>) {
             const typesData = await $api("/types")
             const typesList = (typesData as any).types || []
             const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-            if (typeWithWorkflow)
+            if (typeWithWorkflow) {
               ticket.typeId = typeWithWorkflow.id
+              // fetchWorkflowByType будет вызван реактивно через watcher на typeId
+            }
           }
           catch (err) {
             console.error("Error finding type for workflow:", err)
@@ -454,7 +488,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       return
 
     if (newTypeId) {
-      await fetchTypeWorkflow(ticket.stateId)
+      await fetchWorkflowByType(newTypeId, ticket.stateId)
 
       // Очищаем категорию если она не входит в список разрешённых для нового типа
       const selectedType = types.value.find((t: any) => t.id === newTypeId)
@@ -514,6 +548,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     filteredCategories,
     hasCategoriesForType,
     categoryVisible,
+    availableTypes,
     currentWorkflow,
     availableStatuses,
     loadingWorkflow,

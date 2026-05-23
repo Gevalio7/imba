@@ -162,6 +162,7 @@ const getTypeWithWorkflow = asyncHandler(async (req, res) => {
         id: initialTransition.targetStatusId,
         name: initialTransition.statusName,
         color: initialTransition.statusColor,
+        type: initialTransition.statusType || null,
       }
       : null,
     availableStatuses: availableTransitions.map(t => ({

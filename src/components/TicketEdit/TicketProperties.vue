@@ -13,6 +13,7 @@ interface Props {
   filteredCategories: any[]
   hasCategoriesForType: boolean
   categoryVisible: boolean
+  availableTypes?: any[]
 }
 
 const props = defineProps<Props>()
@@ -107,15 +108,27 @@ const statusOptions = computed(() => {
           disabled
         />
 
-        <AppSelect
-          v-model="ticket.typeId"
-          :items="referenceData.types"
-          item-title="name"
-          item-value="id"
-          label="Тип"
-          placeholder="Выберите тип"
-          clearable
-        />
+        <div class="d-flex flex-column gap-y-2">
+          <div class="d-flex align-center justify-space-between">
+            <label class="v-label">Тип</label>
+            <span
+              v-if="availableTypes && availableTypes.length > 0 && availableTypes.length < (referenceData?.types?.length || 0)"
+              class="text-caption text-medium-emphasis"
+            >
+              <VIcon icon="bx-info-circle" size="14" class="me-1" />
+              Ограничено workflow очереди
+            </span>
+          </div>
+          <AppSelect
+            v-model="ticket.typeId"
+            :items="availableTypes && availableTypes.length > 0 ? availableTypes : referenceData.types"
+            :disabled="!!(availableTypes && availableTypes.length === 1)"
+            item-title="name"
+            item-value="id"
+            placeholder="Выберите тип"
+            clearable
+          />
+        </div>
 
         <!-- Категория - зависит от типа: показываем только если есть связанные категории -->
         <AppSelect

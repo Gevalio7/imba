@@ -39,6 +39,9 @@ const availableStatuses = ref<any[]>([])
 const initialStatus = ref<any>(null)
 const loadingWorkflow = ref(false)
 
+// Флаг для предотвращения гонок при автоматической подстановке из очереди
+let isUpdatingFromQueue = false
+
 // Загрузка справочников - используется useReferenceData composable
 
 // Получение очереди по ID
@@ -46,10 +49,24 @@ const getQueueById = (queueId: number) => {
   return queues.value.find(q => q.id === queueId)
 }
 
+// Сброс данных workflow (для очистки при ошибках или удалении очереди)
+const resetWorkflowData = () => {
+  currentWorkflow.value = null
+  initialStatus.value = null
+  availableStatuses.value = []
+  ticket.value.stateId = undefined
+  ticket.value.categoryId = undefined
+  ticket.value.typeId = undefined
+}
+
 // Загрузка workflow и доступных статусов по типу
 const fetchTypeWorkflow = async (typeId: number) => {
   try {
     loadingWorkflow.value = true
+
+    // Очищаем предыдущие данные перед запросом
+    availableStatuses.value = []
+    initialStatus.value = null
 
     const data = await $api(`/types/${typeId}/workflow`)
 
@@ -57,8 +74,8 @@ const fetchTypeWorkflow = async (typeId: number) => {
     initialStatus.value = (data as any).initialStatus
     availableStatuses.value = (data as any).availableStatuses || []
 
-    // Автоматически устанавливаем начальный статус если есть
-    if (initialStatus.value)
+    // Устанавливаем статус только если ещё не установлен (чтобы не перезаписывать при ручном выборе)
+    if (initialStatus.value && !ticket.value.stateId)
       ticket.value.stateId = initialStatus.value.id
   }
   catch (err) {
@@ -95,85 +112,102 @@ const ticket = ref({
 
 // Watcher для изменения типа - автоподстановка категории
 watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
+  // Пропускаем если это автоматическое обновление из очереди при инициализации
+  if (isUpdatingFromQueue && oldTypeId === undefined) {
+    return
+  }
+
   if (newTypeId) {
     await fetchTypeWorkflow(newTypeId)
 
-    // Автоподстановка категории при выборе типа
-    const selectedType = types.value.find((t: any) => t.id === newTypeId)
-    if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
-      // Если у типа только одна категория - автоподставляем
-      if (selectedType.categoryIds.length === 1)
+    // Автоподстановка категории только если пользователь ещё не выбрал
+    if (!ticket.value.categoryId) {
+      const selectedType = types.value.find((t: any) => t.id === newTypeId)
+      if (selectedType?.categoryIds?.length === 1) {
         ticket.value.categoryId = selectedType.categoryIds[0]
-
-      // Если у типа несколько категорий - не сбрасываем уже выбранную (если она в списке)
-      else if (ticket.value.categoryId && !selectedType.categoryIds.includes(ticket.value.categoryId))
-        ticket.value.categoryId = undefined
+      }
     }
+    return
   }
-  else {
-    currentWorkflow.value = null
-    initialStatus.value = null
-    availableStatuses.value = []
-    ticket.value.stateId = undefined
-    ticket.value.categoryId = undefined
-  }
+
+  // Сброс при очистке типа
+  resetWorkflowData()
 })
 
 // Watcher для изменения очереди - автозаполнение полей
 watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
-  // Пропускаем только если это не реальное изменение
-  if (oldQueueId === undefined && newQueueId === undefined)
+  if (newQueueId === oldQueueId) return
+
+  if (!newQueueId) {
+    resetWorkflowData()
     return
+  }
 
-  // Обрабатываем изменение, если newQueueId отличается от oldQueueId
-  if (newQueueId !== oldQueueId && newQueueId) {
+  isUpdatingFromQueue = true
+
+  try {
     const queue = getQueueById(newQueueId)
-    if (queue) {
-      // Автозаполняем поля из данных очереди
-      if (queue.companyId)
-        ticket.value.companyId = queue.companyId
-
-      if (queue.serviceId)
-        ticket.value.serviceId = queue.serviceId
-
-      if (queue.slaId)
-        ticket.value.slaId = queue.slaId
-
-      if (queue.priorityId)
-        ticket.value.priorityId = queue.priorityId
-
-      // Автозаполняем исполнителей из очереди если не выбраны
-      if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0)
-        ticket.value.executorGroupIds = [...queue.executorGroupIds]
-
-      if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0)
-        ticket.value.executorAgentIds = [...queue.executorAgentIds]
-
-      // Автозаполняем наблюдателей из очереди если не выбраны
-      if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0)
-        ticket.value.observerGroupIds = [...queue.observerGroupIds]
-
-      if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0)
-        ticket.value.observerAgentIds = [...queue.observerAgentIds]
-
-      // Если у очереди есть workflow - ищем тип с этим workflow
-      if (queue.workflowId) {
-        try {
-          const typesData = await $api('/types')
-          const typesList = (typesData as any).types || []
-          const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-          if (typeWithWorkflow)
-            ticket.value.typeId = typeWithWorkflow.id
-        }
-        catch (err) {
-          console.error('Error finding type for workflow:', err)
-        }
-      }
-
-      // Если у очереди есть category_id - автозаполняем категорию
-      if (queue.categoryId)
-        ticket.value.categoryId = queue.categoryId
+    if (!queue) {
+      console.warn('Queue not found:', newQueueId)
+      showToast('Очередь не найдена', 'error')
+      return
     }
+
+    // Автозаполняем поля из данных очереди
+    if (queue.companyId)
+      ticket.value.companyId = queue.companyId
+
+    if (queue.serviceId)
+      ticket.value.serviceId = queue.serviceId
+
+    if (queue.slaId)
+      ticket.value.slaId = queue.slaId
+
+    if (queue.priorityId)
+      ticket.value.priorityId = queue.priorityId
+
+    // Автозаполняем исполнителей из очереди если не выбраны
+    if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0)
+      ticket.value.executorGroupIds = [...queue.executorGroupIds]
+
+    if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0)
+      ticket.value.executorAgentIds = [...queue.executorAgentIds]
+
+    // Автозаполняем наблюдателей из очереди если не выбраны
+    if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0)
+      ticket.value.observerGroupIds = [...queue.observerGroupIds]
+
+    if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0)
+      ticket.value.observerAgentIds = [...queue.observerAgentIds]
+
+    // Если у очереди есть workflow - ищем тип с этим workflow
+    if (queue.workflowId) {
+      const typesData = await $api('/types')
+      const typesList = (typesData as any).types || []
+      const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
+      if (typeWithWorkflow) {
+        ticket.value.typeId = typeWithWorkflow.id
+        // Загружаем workflow и начальный статус (type watcher пропускается из-за флага)
+        await fetchTypeWorkflow(typeWithWorkflow.id)
+      }
+    }
+
+    // Если у очереди есть category_id - автозаполняем категорию (приоритет над типом)
+    if (queue.categoryId)
+      ticket.value.categoryId = queue.categoryId
+    else if (ticket.value.typeId && !ticket.value.categoryId) {
+      // Если из очереди не пришла - пробуем взять единственную категорию типа
+      const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+      if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length === 1)
+        ticket.value.categoryId = selectedType.categoryIds[0]
+    }
+  } catch (error) {
+    console.error('Error processing queue selection:', error)
+    showToast('Ошибка загрузки данных очереди', 'error')
+    resetWorkflowData()
+  } finally {
+    await nextTick()
+    isUpdatingFromQueue = false
   }
 })
 
@@ -411,6 +445,22 @@ const hasCategoriesForType = computed(() => {
   const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
 
   return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
+})
+
+// Вычисляемые типы - фильтруются по workflow выбранной очереди
+const availableTypes = computed(() => {
+  // Если очередь не выбрана - показываем все типы
+  if (!ticket.value.queueId) {
+    return types.value
+  }
+
+  const queue = getQueueById(ticket.value.queueId)
+  if (!queue?.workflowId) {
+    return types.value
+  }
+
+  // Фильтруем только типы, связанные с workflow этой очереди
+  return types.value.filter((t: any) => t.workflowId === queue.workflowId)
 })
 
 // Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)
@@ -857,16 +907,18 @@ onMounted(async () => {
           </VCardTitle>
           <VCardText>
             <div class="d-flex flex-column gap-y-4">
-              <AppSelect
-                v-model="ticket.typeId"
-                :items="types"
-                item-title="name"
-                item-value="id"
-                label="Тип"
-                placeholder="Выберите тип"
-                clearable
-                density="comfortable"
-              />
+               <AppSelect
+                 v-model="ticket.typeId"
+                 :items="availableTypes"
+                 :disabled="availableTypes.length === 1"
+                 item-title="name"
+                 item-value="id"
+                 label="Тип"
+                 placeholder="Выберите тип"
+                 clearable
+                 density="comfortable"
+               />
+
 
               <!-- Категория - зависит от типа -->
               <AppSelect

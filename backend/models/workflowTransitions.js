@@ -331,17 +331,19 @@ class WorkflowTransitions {
    */
   static async getInitialTransition(workflowId) {
     try {
+      // Только один вариант: первый статус с type = 'new' в этом workflow
+      // (по возрастанию sort_order переходов)
       const result = await pool.query(
         `SELECT 
-          wt.id,
-          wt.target_status_id as "targetStatusId",
-          wt.action_label as "actionLabel",
+          s.id as "targetStatusId",
           s.name as "statusName",
-          s.color as "statusColor"
-        FROM ${WorkflowTransitions.tableName} wt
-        LEFT JOIN states s ON wt.target_status_id = s.id
-        WHERE wt.workflow_id = $1
-          AND wt.source_status_id IS NULL
+          s.color as "statusColor",
+          s.type as "statusType",
+          'Первый статус "Новый"' as "actionLabel"
+        FROM workflow_transitions wt
+        JOIN states s ON s.id IN (wt.source_status_id, wt.target_status_id)
+        WHERE wt.workflow_id = $1 
+          AND s.type = 'new'
           AND wt.is_active = true
         ORDER BY wt.sort_order ASC
         LIMIT 1`,

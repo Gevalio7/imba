@@ -163,7 +163,7 @@ const incrementViews = asyncHandler(async (req, res) => {
 
 // Получить статьи по фильтрам (категория и/или сервис)
 const getArticlesByFilters = asyncHandler(async (req, res) => {
-  const { categoryId, serviceId } = req.query
+  const { categoryId, serviceId, ids } = req.query
 
   const filters = {}
   if (categoryId)
@@ -171,9 +171,18 @@ const getArticlesByFilters = asyncHandler(async (req, res) => {
   if (serviceId)
     filters.serviceId = Number.parseInt(serviceId, 10)
 
+  // Поддержка ids=1,2,3 или ids[]=1&ids[]=2
+  if (ids) {
+    if (Array.isArray(ids)) {
+      filters.ids = ids.map(Number).filter(Boolean)
+    } else if (typeof ids === 'string') {
+      filters.ids = ids.split(',').map(Number).filter(Boolean)
+    }
+  }
+
   const result = await KnowledgeBase.getAll({
     ...filters,
-    itemsPerPage: 100,
+    itemsPerPage: 200,   // достаточно для батч-запросов по id
     page: 1,
   })
 

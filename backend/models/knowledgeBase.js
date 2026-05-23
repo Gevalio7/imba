@@ -10,7 +10,7 @@ class KnowledgeBase {
   static fields = 'title, content, categoryId, tags, serviceId, isPublished, viewsCount, createdBy'
 
   static async getAll(options = {}) {
-    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, categoryId, serviceId, isPublished } = options
+    const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, categoryId, serviceId, isPublished, ids } = options
 
     try {
       let whereClause = ''
@@ -30,6 +30,15 @@ class KnowledgeBase {
         filterConditions.push(`service_id = $${paramIndex}`)
         params.push(serviceId)
         paramIndex++
+      }
+
+      if (ids && Array.isArray(ids) && ids.length > 0) {
+        const validIds = ids.map(Number).filter(Boolean)
+        if (validIds.length > 0) {
+          filterConditions.push(`id = ANY($${paramIndex})`)
+          params.push(validIds)
+          paramIndex++
+        }
       }
 
       if (isPublished !== undefined) {
