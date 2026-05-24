@@ -133,35 +133,35 @@ watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
   resetWorkflowData()
 })
 
-// Watcher для изменения очереди - автозаполнение полей
-// Большой рефакторинг: делегируем в централизованную applyDefaultsFromQueue из useTicketForm
-watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
-  if (newQueueId === oldQueueId) return
+// УДАЛЕН дублирующий watcher для очереди (логика теперь полностью в useTicketForm.ts)
+// watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
+//   if (newQueueId === oldQueueId) return
+// 
+//   if (!newQueueId) {
+//     resetWorkflowData()
+//     return
+//   }
+// 
+//   // Используем защитный флаг из composable
+//   // (локальный isUpdatingFromQueue пока оставлен для совместимости с type watcher)
+//   isUpdatingFromQueue = true
+// 
+//   try {
+//     // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
+//     await applyDefaultsFromQueue(newQueueId)
+// 
+//     // После делегирования обновляем локальный initialStatus (если нужно)
+//     initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
+//   } catch (error) {
+//     console.error('Error processing queue selection (delegated):', error)
+//     showToast('Ошибка загрузки данных очереди', 'error')
+//     resetWorkflowData()
+//   } finally {
+//     await nextTick()
+//     isUpdatingFromQueue = false
+//   }
+// })
 
-  if (!newQueueId) {
-    resetWorkflowData()
-    return
-  }
-
-  // Используем защитный флаг из composable
-  // (локальный isUpdatingFromQueue пока оставлен для совместимости с type watcher)
-  isUpdatingFromQueue = true
-
-  try {
-    // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
-    await applyDefaultsFromQueue(newQueueId)
-
-    // После делегирования обновляем локальный initialStatus (если нужно)
-    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
-  } catch (error) {
-    console.error('Error processing queue selection (delegated):', error)
-    showToast('Ошибка загрузки данных очереди', 'error')
-    resetWorkflowData()
-  } finally {
-    await nextTick()
-    isUpdatingFromQueue = false
-  }
-})
 
 // Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
 watch(() => ticket.companyId, (newCompanyId, oldCompanyId) => {

@@ -210,107 +210,95 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     }
   }
 
-  /**
-   * Централизованная функция автозаполнения полей тикета из очереди.
-   * Используется watcher'ом queueId.
-   * Содержит защитный флаг + nextTick, чтобы избежать гонок с другими watchers.
-   * Логи оставлены для диагностики (по запросу пользователя).
-   */
-  const applyDefaultsFromQueue = async (queueId: number) => {
-    const queue = queues.value.find((q: any) => q.id === queueId)
-    if (!queue) {
-      console.warn('[QUEUE-AUTOFILL] Queue not found:', queueId)
-      return
-    }
+const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = true) => {
+  const queue = queues.value.find((q: any) => q.id === queueId)
+  if (!queue) {
+    console.warn('[QUEUE-AUTOFILL] Queue not found:', queueId)
+    return
+  }
 
-    console.log('[QUEUE-WATCHER-EDIT] applyDefaultsFromQueue start', {
-      queueId,
-      currentType: ticket.typeId,
-      currentCategory: ticket.categoryId,
-      currentState: ticket.stateId
-    })
+  console.log('[QUEUE-AUTOFILL] Start', { queueId, forceUpdate })
 
-    queueUpdateInProgress.value = true
+  queueUpdateInProgress.value = true
 
-    try {
-      // Базовые поля из очереди
-      if (queue.companyId) ticket.companyId = queue.companyId
-      if (queue.serviceId) ticket.serviceId = queue.serviceId
-      if (queue.slaId) ticket.slaId = queue.slaId
-      if (queue.priorityId) ticket.priorityId = queue.priorityId
+  try {
+    // 1. Базовые поля - при forceUpdate=true обновляем всегда
+    if (forceUpdate || !ticket.companyId) ticket.companyId = queue.companyId || null
+    if (forceUpdate || !ticket.serviceId) ticket.serviceId = queue.serviceId || null
+    if (forceUpdate || !ticket.slaId) ticket.slaId = queue.slaId || null
+    if (forceUpdate || !ticket.priorityId) ticket.priorityId = queue.priorityId || null
 
-      // Исполнители и наблюдатели (полная поддержка, как в лучшей версии add.vue)
+    // 2. Исполнители и наблюдатели - при forceUpdate=true обновляем всегда
+    if (forceUpdate) {
+      ticket.executorGroupIds = queue.executorGroupIds && Array.isArray(queue.executorGroupIds) ? [...queue.executorGroupIds] : []
+      ticket.executorAgentIds = queue.executorAgentIds && Array.isArray(queue.executorAgentIds) ? [...queue.executorAgentIds] : []
+      ticket.observerGroupIds = queue.observerGroupIds && Array.isArray(queue.observerGroupIds) ? [...queue.observerGroupIds] : []
+      ticket.observerAgentIds = queue.observerAgentIds && Array.isArray(queue.observerAgentIds) ? [...queue.observerAgentIds] : []
+      
+      console.log('[QUEUE-AUTOFILL] Force updated executors/observers')
+    } else {
       if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.executorGroupIds.length === 0)
         ticket.executorGroupIds = [...queue.executorGroupIds]
-
       if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.executorAgentIds.length === 0)
         ticket.executorAgentIds = [...queue.executorAgentIds]
-
       if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.observerGroupIds.length === 0)
         ticket.observerGroupIds = [...queue.observerGroupIds]
-
       if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.observerAgentIds.length === 0)
         ticket.observerAgentIds = [...queue.observerAgentIds]
-
-      // Старый простой вариант agentGroupId (для обратной совместимости)
-      if (queue.agentGroupId && ticket.executorGroupIds.length === 0 && ticket.executorAgentIds.length === 0)
-        ticket.executorGroupIds = [queue.agentGroupId]
-
-      // Тип по workflow очереди + немедленная загрузка workflow
-      let typeSetFromQueue = false
-      if (queue.workflowId) {
-        try {
-          const typesData = await $api("/types")
-          const typesList = (typesData as any).types || []
-          const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-
-          console.log('[QUEUE-WATCHER-EDIT] type lookup result', {
-            workflowId: queue.workflowId,
-            foundType: typeWithWorkflow?.id,
-            typeName: typeWithWorkflow?.name
-          })
-
-          if (typeWithWorkflow) {
-            ticket.typeId = typeWithWorkflow.id
-            typeSetFromQueue = true
-            // Прямо здесь грузим workflow + статусы (не полагаемся на реактивность watcher'а)
-            await fetchWorkflowByType(typeWithWorkflow.id, ticket.stateId)
-          }
-        } catch (err) {
-          console.error('[QUEUE-AUTOFILL] Error finding type for workflow:', err)
-        }
-      }
-
-      // Категория: приоритет у значения из очереди
-      if (queue.categoryId) {
-        console.log('[QUEUE-WATCHER-EDIT] setting categoryId from queue', {
-          oldCategory: ticket.categoryId,
-          newCategory: queue.categoryId
-        })
-        ticket.categoryId = queue.categoryId
-      } else if (typeSetFromQueue && ticket.typeId && !ticket.categoryId) {
-        // Fallback: если категория не пришла из очереди — берём единственную категорию типа (как в add.vue)
-        const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
-        if (selectedType?.categoryIds?.length === 1) {
-          ticket.categoryId = selectedType.categoryIds[0]
-        }
-      }
-
-      // Финальная валидация категории после всех изменений
-      if (ticket.typeId && ticket.categoryId) {
-        const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
-        if (selectedType?.categoryIds?.length && !selectedType.categoryIds.includes(ticket.categoryId)) {
-          console.log('[QUEUE-WATCHER-EDIT] category from queue/type is invalid for the type → cleared')
-          ticket.categoryId = undefined
-        }
-      }
-
-    } finally {
-      await nextTick()
-      queueUpdateInProgress.value = false
-      console.log('[QUEUE-WATCHER-EDIT] applyDefaultsFromQueue finished')
     }
+
+    // 3. Тип
+    let targetTypeId = queue.typeId
+    if (!targetTypeId && queue.workflowId) {
+      try {
+        const typesData = await $api("/types")
+        const typesList = (typesData as any).types || []
+        const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
+        if (typeWithWorkflow) targetTypeId = typeWithWorkflow.id
+      } catch (err) {
+        console.error('[QUEUE-AUTOFILL] Error finding type:', err)
+      }
+    }
+
+    if (targetTypeId) {
+      if (forceUpdate || ticket.typeId !== targetTypeId) {
+        ticket.typeId = targetTypeId
+        await fetchWorkflowByType(targetTypeId, ticket.stateId)
+        await nextTick()
+      }
+    } else if (forceUpdate) {
+      ticket.typeId = undefined
+      currentWorkflow.value = null
+      availableStatuses.value = []
+    }
+
+    // 4. Категория
+    if (queue.categoryId) {
+      if (forceUpdate || !ticket.categoryId) {
+        ticket.categoryId = queue.categoryId
+      }
+    } else if (forceUpdate && !queue.categoryId) {
+      ticket.categoryId = undefined
+    }
+
+    // 5. Статус (только если не установлен)
+    if (!ticket.stateId && currentWorkflow.value) {
+      const initialStatus = (currentWorkflow.value as any)?.initialStatus
+      if (initialStatus?.id) {
+        ticket.stateId = initialStatus.id
+      } else if (availableStatuses.value.length > 0) {
+        ticket.stateId = availableStatuses.value[0].id
+      }
+    }
+
+    console.log('[QUEUE-AUTOFILL] Completed')
+  } catch (error) {
+    console.error('[QUEUE-AUTOFILL] Error:', error)
+  } finally {
+    await nextTick()
+    queueUpdateInProgress.value = false
   }
+}
 
   // Загрузка тикета
   const fetchTicket = async () => {
@@ -399,7 +387,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       stateId: ticket.stateId ?? null,
 
       // ownerId всегда примитив (нормализуем на всякий случай)
-      ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? (ticket.ownerId.value ?? ticket.ownerId.id) : ticket.ownerId) ?? null,
+      ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? ((ticket.ownerId as any).value ?? (ticket.ownerId as any).id) : ticket.ownerId) ?? null,
       executorAgentIds: ticket.executorAgentIds,
       executorGroupIds: ticket.executorGroupIds,
       companyId: ticket.companyId ?? null,
@@ -519,20 +507,39 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     }
   })
 
-  // Watcher для изменения очереди — теперь делегирует всю работу в централизованную функцию
-  watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
-    // Пропускаем начальную загрузку
-    if (oldQueueId === undefined)
-      return
+// Watcher для изменения очереди - принудительно обновляет ВСЕ поля
+watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
+  // Пропускаем начальную загрузку
+  if (oldQueueId === undefined) {
+    console.log('[QUEUE-WATCHER] Initial load, skipping')
+    return
+  }
 
-    console.log('[QUEUE-WATCHER-EDIT] fired (delegated)', { newQueueId, oldQueueId })
+  console.log('[QUEUE-WATCHER] Queue changed:', { from: oldQueueId, to: newQueueId })
 
-    if (newQueueId) {
-      await applyDefaultsFromQueue(newQueueId)
-    } else {
-      console.log('[QUEUE-WATCHER-EDIT] queue cleared')
-    }
-  })
+  if (newQueueId) {
+    // forceUpdate = true - принудительно обновляем ВСЕ поля
+    await applyDefaultsFromQueue(newQueueId, true)
+  } else {
+    // Очередь очищена - сбрасываем ВСЕ связанные поля
+    console.log('[QUEUE-WATCHER] Queue cleared, resetting all fields')
+    
+    ticket.typeId = undefined
+    ticket.categoryId = undefined
+    ticket.priorityId = undefined
+    ticket.slaId = undefined
+    ticket.companyId = undefined
+    ticket.serviceId = undefined
+    ticket.executorGroupIds = []
+    ticket.executorAgentIds = []
+    ticket.observerGroupIds = []
+    ticket.observerAgentIds = []
+    ticket.stateId = undefined
+    
+    currentWorkflow.value = null
+    availableStatuses.value = []
+  }
+})
 
   // Watcher для изменения автора - автозаполнение компании
   watch(() => ticket.ownerId, (newOwnerId, oldOwnerId) => {
@@ -541,8 +548,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       return
 
     // Нормализуем: ownerId всегда примитив
-    const ownerId = typeof newOwnerId === 'object' ? (newOwnerId?.value ?? newOwnerId?.id) : newOwnerId
-    const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : null
+    const ownerId = typeof newOwnerId === 'object' && newOwnerId ? ((newOwnerId as any)?.value ?? (newOwnerId as any)?.id) : newOwnerId
+    const customerId = typeof newOwnerId === 'object' && newOwnerId ? (newOwnerId as any)?.customerId : null
 
     if (customerId && !ticket.companyId) {
       ticket.companyId = customerId
@@ -679,5 +686,6 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     originalStateId,
     queueUpdateInProgress, // экспортируем для возможного использования в add.vue и компонентах
     applyDefaultsFromQueue, // публичный доступ при необходимости ручного вызова
+    fetchWorkflowByType, // для делегирования из add.vue (большой рефакторинг)
   }
 }
