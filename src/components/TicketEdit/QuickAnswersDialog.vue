@@ -13,6 +13,14 @@ defineEmits<{
   'update:modelValue': [value: boolean]
   insert: [article: Article]
 }>()
+
+// Очистка HTML для превью
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html) return ''
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
+}
 </script>
 
 <template>
@@ -49,7 +57,7 @@ defineEmits<{
               {{ article.title }}
             </VListItemTitle>
             <VListItemSubtitle class="text-truncate mt-1">
-              {{ article.content?.substring(0, 150) || 'Без содержания' }}...
+              {{ stripHtml(article.content)?.substring(0, 150) || 'Без содержания' }}...
             </VListItemSubtitle>
             <template #append>
               <VBtn

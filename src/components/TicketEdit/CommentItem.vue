@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { formatDateTime } from '@/utils/slaFormatter'
 import type { TicketComment } from '@/types/ticket'
+import TiptapEditor from '@/@core/components/TiptapEditor.vue'
 
 interface Props {
   comment: TicketComment
@@ -86,10 +87,10 @@ defineEmits<{
 
     <!-- Режим редактирования -->
     <div v-if="editingId === comment.id">
-      <AppTextarea
+      <TiptapEditor
         :model-value="editingContent"
-        rows="3"
-        auto-grow
+        placeholder="Редактируйте комментарий..."
+        :min-height="60"
         class="mb-2"
         @update:model-value="$emit('save-edit', $event)"
       />
@@ -136,5 +137,43 @@ defineEmits<{
 
 .comment-content {
   word-break: break-word;
+  padding-left: 8px;           // Отступ от левой рамки (внутренний + border)
+  padding-right: 4px;
+
+  // Хорошая типографика для богатого контента (из Tiptap / быстрых ответов)
+  p {
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    margin: 12px 0 6px 0;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  ul, ol {
+    margin: 0 0 8px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  blockquote {
+    margin: 8px 0;
+    padding-left: 12px;
+    border-left: 3px solid rgba(var(--v-theme-on-surface), 0.2);
+    color: rgba(var(--v-theme-on-surface), 0.7);
+  }
+
+  pre {
+    background: rgba(var(--v-theme-on-surface), 0.05);
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 8px 0;
+  }
 }
 </style>

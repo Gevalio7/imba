@@ -1,7 +1,12 @@
 import { computed, ref } from 'vue'
 import { $api } from '@/utils/api'
 
-export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<any[]>, ticketCompanyId: Ref<number | undefined>) {
+export function useAuthorSearch(
+  customerUsers: Ref<any[]>, 
+  systemConfigs: Ref<any[]>, 
+  ticketCompanyId: Ref<number | undefined>,
+  currentQueueId?: Ref<number | undefined>   // для отправки писем с почты очереди
+) {
   const authorSearch = ref('')
 
   // Флаг - показывать ли опцию создания нового сотрудника
@@ -117,13 +122,12 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
     newAuthorData.value.email = ''
   }
 
-  // Создание нового сотрудника
+  // Создание нового сотрудника "на лету"
   const createNewAuthor = async () => {
     if (!newAuthorData.value.email || !isEmail(newAuthorData.value.email))
       return
 
     try {
-      // Создаем сотрудника
       const newUser = await $api('/customerUsers', {
         method: 'POST',
         body: {
@@ -132,6 +136,10 @@ export function useAuthorSearch(customerUsers: Ref<any[]>, systemConfigs: Ref<an
           lastName: newAuthorData.value.lastName,
           login: newAuthorData.value.email,
           customerId: ticketCompanyId.value || null,
+          // Передаём контекст очереди — на бэкенде сгенерируют пароль и отправят письмо
+          // с почтового ящика этой очереди (если настроен)
+          queueId: currentQueueId?.value || null,
+          sendWelcomeEmail: true,
         },
       })
 

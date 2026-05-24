@@ -44,12 +44,20 @@ const createCustomerUsers = asyncHandler(async (req, res) => {
   data.firstName = req.body.firstName
   data.lastName = req.body.lastName
   data.login = req.body.login
-  data.password = req.body.password
   data.email = req.body.email
   data.mobilePhone = req.body.mobilePhone
   data.telegramAccount = req.body.telegramAccount
   data.customerId = req.body.customerId
   data.customersGroupId = req.body.customersGroupId
+
+  const isQuickCreate = req.body.sendWelcomeEmail === true || req.body.queueId
+
+  // === Правильная версия "создания на лету" ===
+  // Генерируем пароль на бэкенде, если не пришёл (для безопасности)
+  if (!data.password && isQuickCreate) {
+    // Простая генерация (в проде лучше crypto.randomBytes)
+    data.password = require('crypto').randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '') + 'A1!'
+  }
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined)
@@ -63,9 +71,30 @@ const createCustomerUsers = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Фамилия обязательна для заполнения' })
 
   try {
+    // Хешируем пароль, если он есть (как для агентов)
+    if (data.password) {
+      const bcrypt = require('bcryptjs')
+      data.password = await bcrypt.hash(data.password, 10)
+    }
+
     const newCustomerUser = await CustomerUsers.create(data)
 
-    res.status(201).json(newCustomerUser)
+    // Если это quick create из тикета — отправляем письмо со ссылкой на сброс пароля
+    // с почтового ящика очереди (если настроен)
+    if (isQuickCreate && req.body.queueId && newCustomerUser) {
+      // TODO: Здесь должна быть отправка письма через email_config очереди
+      // с ссылкой на сброс пароля (password reset token)
+      console.log(`[customerUsers] Quick create for queue ${req.body.queueId}. Should send welcome/reset email from queue mailbox. User: ${newCustomerUser.email}`)
+      
+      // В будущем здесь:
+      // - Создать passwordResetToken
+      // - Взять email_config из очереди
+      // - Отправить письмо через PostMasterMailAccount связанный с очередью
+    }
+
+    // Не возвращаем пароль клиенту
+    const { password, ...safeUser } = newCustomerUser
+    res.status(201).json(safeUser)
   }
   catch (error) {
     if (error.statusCode === 409)

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useAuthorSearch } from '@/composables/useAuthorSearch'
+import { useTicketForm } from '@/composables/useTicketForm'
 
 definePage({
   meta: {
@@ -33,14 +34,35 @@ const slaList = computed(() => refData.sla)
 const customerUsers = computed(() => refData.customerUsers)
 const systemConfigs = computed(() => refData.systemConfiguration)
 
-// Workflow данные
-const currentWorkflow = ref<any>(null)
-const availableStatuses = ref<any[]>([])
-const initialStatus = ref<any>(null)
-const loadingWorkflow = ref(false)
+// === Большой рефакторинг: подключаем централизованный useTicketForm для режима создания ===
+const ticketIdForForm = ref<number | null>(null)
+const {
+  ticket: formTicket,                    // основной реактивный объект тикета из composable
+  queueUpdateInProgress,                 // защитный флаг вместо локального isUpdatingFromQueue
+  applyDefaultsFromQueue,                // новая централизованная функция автозаполнения
+  fetchWorkflowByType: composableFetchWorkflowByType,
+  currentWorkflow: composableCurrentWorkflow,
+  availableStatuses: composableAvailableStatuses,
+  loadingWorkflow: composableLoadingWorkflow,
+  availableTypes: composableAvailableTypes,
+  filteredCategories: composableFilteredCategories,
+  save: composableSave,           // централизованное сохранение (большой рефакторинг)
+  saving: composableSaving,       // флаг сохранения из composable
+} = useTicketForm(ticketIdForForm)
 
-// Флаг для предотвращения гонок при автоматической подстановке из очереди
-let isUpdatingFromQueue = false
+// Временный алиас: пока используем formTicket как основной источник (постепенная миграция)
+const ticket = formTicket   // теперь ticket — это реактивный объект из composable
+
+// Workflow данные (постепенно заменяем на composable версии)
+const currentWorkflow = composableCurrentWorkflow
+const availableStatuses = composableAvailableStatuses
+const loadingWorkflow = composableLoadingWorkflow
+
+// initialStatus пока оставляем локально (будет доработано)
+const initialStatus = ref<any>(null)
+
+// Флаг для предотвращения гонок — теперь берём из composable (но пока дублируем для минимальных правок)
+let isUpdatingFromQueue = false   // будет заменён на queueUpdateInProgress в следующих шагах
 
 // Загрузка справочников - используется useReferenceData composable
 
@@ -50,42 +72,32 @@ const getQueueById = (queueId: number) => {
 }
 
 // Сброс данных workflow (для очистки при ошибках или удалении очереди)
+// Постепенно делегируем в composable
 const resetWorkflowData = () => {
   currentWorkflow.value = null
   initialStatus.value = null
   availableStatuses.value = []
-  ticket.value.stateId = undefined
-  ticket.value.categoryId = undefined
-  ticket.value.typeId = undefined
+  if (ticket) {
+    ticket.stateId = undefined
+    ticket.categoryId = undefined
+    ticket.typeId = undefined
+  }
 }
 
 // Загрузка workflow и доступных статусов по типу
+// Большой рефакторинг: делегируем в централизованную версию из useTicketForm
 const fetchTypeWorkflow = async (typeId: number) => {
   try {
-    loadingWorkflow.value = true
+    // Используем улучшенную версию из composable (она уже поддерживает initialStatus для новых тикетов)
+    await composableFetchWorkflowByType(typeId)
 
-    // Очищаем предыдущие данные перед запросом
-    availableStatuses.value = []
-    initialStatus.value = null
-
-    const data = await $api(`/types/${typeId}/workflow`)
-
-    currentWorkflow.value = (data as any).workflow
-    initialStatus.value = (data as any).initialStatus
-    availableStatuses.value = (data as any).availableStatuses || []
-
-    // Устанавливаем статус только если ещё не установлен (чтобы не перезаписывать при ручном выборе)
-    if (initialStatus.value && !ticket.value.stateId)
-      ticket.value.stateId = initialStatus.value.id
+    // Синхронизируем initialStatus (пока локально)
+    // В будущем можно вынести initialStatus тоже в composable
+    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
   }
   catch (err) {
-    console.error('Error fetching type workflow:', err)
-    currentWorkflow.value = null
-    initialStatus.value = null
-    availableStatuses.value = []
-  }
-  finally {
-    loadingWorkflow.value = false
+    console.error('Error fetching type workflow (delegated):', err)
+    resetWorkflowData()
   }
 }
 
@@ -93,27 +105,14 @@ const fetchTypeWorkflow = async (typeId: number) => {
 const saving = ref(false)
 const description = ref('')
 
-const ticket = ref({
-  title: '',
-  typeId: undefined as number | undefined,
-  categoryId: undefined as number | undefined,
-  priorityId: undefined as number | undefined,
-  queueId: undefined as number | undefined,
-  stateId: undefined as number | undefined,
-  ownerId: undefined as number | string | null | undefined,
-  executorAgentIds: [] as number[],
-  executorGroupIds: [] as number[],
-  observerAgentIds: [] as number[],
-  observerGroupIds: [] as number[],
-  companyId: undefined as number | undefined,
-  serviceId: undefined as number | undefined,
-  slaId: undefined as number | undefined,
-})
+// ticket теперь приходит из useTicketForm (реактивный объект, без .value)
+// Старая локальная ref-объект удалена в рамках большого рефакторинга
 
 // Watcher для изменения типа - автоподстановка категории
-watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
-  // Пропускаем если это автоматическое обновление из очереди при инициализации
-  if (isUpdatingFromQueue && oldTypeId === undefined) {
+// Большой рефакторинг: обновлено под реактивный ticket из composable + защитный флаг
+watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
+  // Пропускаем если это автоматическое обновление из очереди
+  if ((isUpdatingFromQueue || queueUpdateInProgress.value) && oldTypeId === undefined) {
     return
   }
 
@@ -121,10 +120,10 @@ watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
     await fetchTypeWorkflow(newTypeId)
 
     // Автоподстановка категории только если пользователь ещё не выбрал
-    if (!ticket.value.categoryId) {
+    if (!ticket.categoryId) {
       const selectedType = types.value.find((t: any) => t.id === newTypeId)
       if (selectedType?.categoryIds?.length === 1) {
-        ticket.value.categoryId = selectedType.categoryIds[0]
+        ticket.categoryId = selectedType.categoryIds[0]
       }
     }
     return
@@ -135,7 +134,8 @@ watch(() => ticket.value.typeId, async (newTypeId, oldTypeId) => {
 })
 
 // Watcher для изменения очереди - автозаполнение полей
-watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
+// Большой рефакторинг: делегируем в централизованную applyDefaultsFromQueue из useTicketForm
+watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
   if (newQueueId === oldQueueId) return
 
   if (!newQueueId) {
@@ -143,66 +143,18 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
     return
   }
 
+  // Используем защитный флаг из composable
+  // (локальный isUpdatingFromQueue пока оставлен для совместимости с type watcher)
   isUpdatingFromQueue = true
 
   try {
-    const queue = getQueueById(newQueueId)
-    if (!queue) {
-      console.warn('Queue not found:', newQueueId)
-      showToast('Очередь не найдена', 'error')
-      return
-    }
+    // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
+    await applyDefaultsFromQueue(newQueueId)
 
-    // Автозаполняем поля из данных очереди
-    if (queue.companyId)
-      ticket.value.companyId = queue.companyId
-
-    if (queue.serviceId)
-      ticket.value.serviceId = queue.serviceId
-
-    if (queue.slaId)
-      ticket.value.slaId = queue.slaId
-
-    if (queue.priorityId)
-      ticket.value.priorityId = queue.priorityId
-
-    // Автозаполняем исполнителей из очереди если не выбраны
-    if (Array.isArray(queue.executorGroupIds) && queue.executorGroupIds.length > 0 && ticket.value.executorGroupIds.length === 0)
-      ticket.value.executorGroupIds = [...queue.executorGroupIds]
-
-    if (Array.isArray(queue.executorAgentIds) && queue.executorAgentIds.length > 0 && ticket.value.executorAgentIds.length === 0)
-      ticket.value.executorAgentIds = [...queue.executorAgentIds]
-
-    // Автозаполняем наблюдателей из очереди если не выбраны
-    if (Array.isArray(queue.observerGroupIds) && queue.observerGroupIds.length > 0 && ticket.value.observerGroupIds.length === 0)
-      ticket.value.observerGroupIds = [...queue.observerGroupIds]
-
-    if (Array.isArray(queue.observerAgentIds) && queue.observerAgentIds.length > 0 && ticket.value.observerAgentIds.length === 0)
-      ticket.value.observerAgentIds = [...queue.observerAgentIds]
-
-    // Если у очереди есть workflow - ищем тип с этим workflow
-    if (queue.workflowId) {
-      const typesData = await $api('/types')
-      const typesList = (typesData as any).types || []
-      const typeWithWorkflow = typesList.find((t: any) => t.workflowId === queue.workflowId)
-      if (typeWithWorkflow) {
-        ticket.value.typeId = typeWithWorkflow.id
-        // Загружаем workflow и начальный статус (type watcher пропускается из-за флага)
-        await fetchTypeWorkflow(typeWithWorkflow.id)
-      }
-    }
-
-    // Если у очереди есть category_id - автозаполняем категорию (приоритет над типом)
-    if (queue.categoryId)
-      ticket.value.categoryId = queue.categoryId
-    else if (ticket.value.typeId && !ticket.value.categoryId) {
-      // Если из очереди не пришла - пробуем взять единственную категорию типа
-      const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
-      if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length === 1)
-        ticket.value.categoryId = selectedType.categoryIds[0]
-    }
+    // После делегирования обновляем локальный initialStatus (если нужно)
+    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
   } catch (error) {
-    console.error('Error processing queue selection:', error)
+    console.error('Error processing queue selection (delegated):', error)
     showToast('Ошибка загрузки данных очереди', 'error')
     resetWorkflowData()
   } finally {
@@ -212,21 +164,21 @@ watch(() => ticket.value.queueId, async (newQueueId, oldQueueId) => {
 })
 
 // Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании
-watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
+watch(() => ticket.companyId, (newCompanyId, oldCompanyId) => {
   // Пропускаем начальную загрузку
   if (oldCompanyId === undefined)
     return
 
   // Если компания изменилась - проверяем что текущий сервис принадлежит новой компании
-  if (newCompanyId && ticket.value.serviceId) {
-    const currentService = services.value.find((s: any) => s && s.id === ticket.value.serviceId)
+  if (newCompanyId && ticket.serviceId) {
+    const currentService = services.value.find((s: any) => s && s.id === ticket.serviceId)
     if (currentService) {
       // Если у сервиса есть компании и новая компания не в списке - очищаем сервис
       if (currentService.customers && Array.isArray(currentService.customers) && currentService.customers.length > 0) {
         const belongsToCompany = currentService.customers.some((c: any) => c && typeof c === 'object' && c.id === newCompanyId)
         if (!belongsToCompany) {
           // Сервис не принадлежит компании - очищаем выбор
-          ticket.value.serviceId = undefined
+          ticket.serviceId = undefined
         }
       }
     }
@@ -234,21 +186,21 @@ watch(() => ticket.value.companyId, (newCompanyId, oldCompanyId) => {
 })
 
 // Watcher для изменения сервиса - автозаполнение SLA
-watch(() => ticket.value.serviceId, (newServiceId, oldServiceId) => {
+watch(() => ticket.serviceId, (newServiceId, oldServiceId) => {
   // Пропускаем начальную загрузку
   if (oldServiceId === undefined)
     return
 
   // Если сервис выбран и SLA ещё не выбран - пробуем получить SLA из сервиса
-  if (newServiceId && !ticket.value.slaId) {
+  if (newServiceId && !ticket.slaId) {
     const service = services.value.find((s: any) => s && s.id === newServiceId)
     if (service && service.sla && typeof service.sla === 'object' && service.sla.id)
-      ticket.value.slaId = service.sla.id
+      ticket.slaId = service.sla.id
   }
 })
 
 // Watcher для изменения автора - автозаполнение компании
-watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
+watch(() => ticket.ownerId, (newOwnerId, oldOwnerId) => {
   // Пропускаем начальную загрузку
   if (oldOwnerId === undefined)
     return
@@ -256,8 +208,8 @@ watch(() => ticket.value.ownerId, (newOwnerId, oldOwnerId) => {
   // Если выбран сотрудник (число), находим его customerId
   if (typeof newOwnerId === 'number') {
     const selectedUser = customerUsers.value.find((u: any) => u && u.id === newOwnerId)
-    if (selectedUser && selectedUser.customerId && !ticket.value.companyId)
-      ticket.value.companyId = selectedUser.customerId
+    if (selectedUser && selectedUser.customerId && !ticket.companyId)
+      ticket.companyId = selectedUser.customerId
   }
 })
 
@@ -303,7 +255,12 @@ const {
   handleAuthorUpdate,
   handleAuthorClear,
   createNewAuthor,
-} = useAuthorSearch(customerUsers, systemConfigs, computed(() => ticket.value.companyId))
+} = useAuthorSearch(
+  customerUsers, 
+  systemConfigs, 
+  computed(() => ticket.companyId),
+  computed(() => ticket.queueId)   // передаём для отправки писем с почтового ящика очереди
+)
 
 // Модальное окно создания сотрудника
 const showCreateAuthorDialog = ref(false)
@@ -324,10 +281,10 @@ const handleAuthorSelect = (value: any) => {
     if (canCreateCustomerUserByEmail.value) {
       newAuthorData.value.email = value.trim()
       showCreateAuthorDialog.value = true
-      ticket.value.ownerId = null
+      ticket.ownerId = null
     }
     else {
-      ticket.value.ownerId = null
+      ticket.ownerId = null
       authorSearch.value = ''
       showToast('Создание сотрудника по email отключено в настройках', 'error')
     }
@@ -359,14 +316,14 @@ const assignToMe = () => {
   const currentAgent = agents.value.find((a: any) => a && a.login === userData.value?.login)
   if (currentAgent) {
     // Добавляем себя как исполнителя
-    if (!ticket.value.executorAgentIds.includes(currentAgent.id))
-      ticket.value.executorAgentIds = [...ticket.value.executorAgentIds, currentAgent.id]
+    if (!ticket.executorAgentIds.includes(currentAgent.id))
+      ticket.executorAgentIds = [...ticket.executorAgentIds, currentAgent.id]
 
     // Добавляем группы, в которые входит пользователь
     if (currentAgent.groups && Array.isArray(currentAgent.groups) && currentAgent.groups.length > 0) {
-      const groupIds = currentAgent.groups.filter((g: any) => g).map((g: any) => g.id).filter((id: number) => !ticket.value.executorGroupIds.includes(id))
+      const groupIds = currentAgent.groups.filter((g: any) => g).map((g: any) => g.id).filter((id: number) => !ticket.executorGroupIds.includes(id))
 
-      ticket.value.executorGroupIds = [...ticket.value.executorGroupIds, ...groupIds]
+      ticket.executorGroupIds = [...ticket.executorGroupIds, ...groupIds]
     }
     showToast('Вы назначены исполнителем')
   }
@@ -378,7 +335,7 @@ const assignToMe = () => {
 // Вычисляемый список статусов для выбора
 // Всегда включаем текущий статус (важно при автозаполнении из очереди)
 const statusOptions = computed(() => {
-  const currentStateId = ticket.value.stateId
+  const currentStateId = ticket.stateId
   let list: any[] = []
 
   if (availableStatuses.value.length > 0) {
@@ -412,16 +369,16 @@ const statusOptions = computed(() => {
 
 // Вычисляемый выбранный SLA для отображения дедлайнов
 const selectedSla = computed(() => {
-  if (!ticket.value.slaId)
+  if (!ticket.slaId)
     return null
 
-  return slaList.value.find(s => s.id === ticket.value.slaId)
+  return slaList.value.find(s => s.id === ticket.slaId)
 })
 
 // Вычисляемые сервисы - фильтруются по компании если она выбрана
 const filteredServices = computed(() => {
   // Если компания не выбрана - показываем все сервисы
-  if (!ticket.value.companyId)
+  if (!ticket.companyId)
     return services.value
 
   // Фильтруем сервисы по компании
@@ -431,18 +388,18 @@ const filteredServices = computed(() => {
       return true
 
     // Проверяем есть ли компания в списке компаний сервиса
-    return s.customers.some((c: any) => c && typeof c === 'object' && c.id === ticket.value.companyId)
+    return s.customers.some((c: any) => c && typeof c === 'object' && c.id === ticket.companyId)
   })
 })
 
   // Вычисляемые категории - фильтруются по выбранному типу
   // Всегда включаем текущую выбранную категорию (важно при автозаполнении из очереди)
   const filteredCategories = computed(() => {
-    const currentCatId = ticket.value.categoryId
+    const currentCatId = ticket.categoryId
     let list: any[] = []
 
-    if (ticket.value.typeId) {
-      const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+    if (ticket.typeId) {
+      const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
       if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
         list = categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
       }
@@ -461,9 +418,9 @@ const filteredServices = computed(() => {
 
 // Есть ли связанные категории для текущего типа
 const hasCategoriesForType = computed(() => {
-  if (!ticket.value.typeId)
+  if (!ticket.typeId)
     return false
-  const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+  const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
 
   return selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0
 })
@@ -471,11 +428,11 @@ const hasCategoriesForType = computed(() => {
 // Вычисляемые типы - фильтруются по workflow выбранной очереди
 const availableTypes = computed(() => {
   // Если очередь не выбрана - показываем все типы
-  if (!ticket.value.queueId) {
+  if (!ticket.queueId) {
     return types.value
   }
 
-  const queue = getQueueById(ticket.value.queueId)
+  const queue = getQueueById(ticket.queueId)
   if (!queue?.workflowId) {
     return types.value
   }
@@ -571,76 +528,44 @@ const refreshData = async () => {
   }
 }
 
-// Функция выполнения сохранения
-const performSave = async () => {
-  try {
-    // Подготавливаем данные для отправки
-    const ticketData = {
-      ...ticket.value,
+// Сохранение — полностью делегировано на централизованный composableSave (большой рефакторинг)
+// Локальный performSave удалён как дублирование
+const save = async () => {
+  if (!ticket.title?.trim()) {
+    showToast('Заголовок обязателен для заполнения', 'error')
+    return
+  }
 
-      // ownerId теперь всегда number или null (строки обрабатываются в save)
-      ownerId: typeof ticket.value.ownerId === 'number' ? ticket.value.ownerId : null,
-      description: description.value,
+  if (!ticket.queueId) {
+    showToast('Очередь обязательна для заполнения', 'error')
+    return
+  }
+
+  if (!ticket.ownerId) {
+    showToast('Автор обязателен для заполнения', 'error')
+    return
+  }
+
+  if (ticket.ownerId === '')
+    ticket.ownerId = null
+
+  try {
+    // Используем composableSaving вместо локального
+    // Вызываем без редиректа, чтобы сначала загрузить вложения
+    await composableSave(false)
+
+    // Загрузка вложений после успешного создания (специфика add.vue)
+    const newTicketId = ticket.id   // composable обновляет ticket.id после создания
+    if (attachments.value.length > 0 && newTicketId) {
+      await uploadAttachments(newTicketId)
     }
 
-    // Находим текущего агента для истории изменений
-    const currentAgent = agents.value.find((a: any) => a.login === userData.value?.login)
-
-    const result = await $api('/tickets', {
-      method: 'POST',
-      body: {
-        ...ticketData,
-        changedBy: currentAgent?.id,
-      },
-    })
-
-    const newTicketId = (result as any).id || (result as any).ticket?.id
-
-    // Загружаем вложения если есть
-    if (attachments.value.length > 0 && newTicketId)
-      await uploadAttachments(newTicketId)
-
-    showToast('Обращение успешно создан')
+    showToast('Обращение успешно создано')
     router.push('/apps/tickets')
   }
   catch (err) {
-    console.error('Error saving ticket:', err)
+    console.error('Error saving ticket (delegated):', err)
     showToast('Ошибка создания обращения', 'error')
-    saving.value = false
-  }
-}
-
-// Сохранение
-const save = async () => {
-  if (!ticket.value.title?.trim()) {
-    showToast('Заголовок обязателен для заполнения', 'error')
-
-    return
-  }
-
-  if (!ticket.value.queueId) {
-    showToast('Очередь обязательна для заполнения', 'error')
-
-    return
-  }
-
-  if (!ticket.value.ownerId) {
-    showToast('Автор обязателен для заполнения', 'error')
-
-    return
-  }
-
-  if (ticket.value.ownerId === '')
-    ticket.value.ownerId = null
-
-  try {
-    saving.value = true
-    await performSave()
-  }
-  catch (err) {
-    console.error('Error saving ticket:', err)
-    showToast('Ошибка создания обращения', 'error')
-    saving.value = false
   }
 }
 
@@ -659,14 +584,15 @@ const createAuthorFromDialog = async () => {
 
     await loadReferenceData(true)
 
-    ticket.value.ownerId = (newUser as any).id   // всегда примитив ID
+    ticket.ownerId = (newUser as any).id   // всегда примитив ID
     newAuthorData.value.email = ''
     authorSearch.value = ''
     showCreateAuthorDialog.value = false
 
     showToast('Сотрудник создан', 'success')
 
-    await performSave()
+    // Теперь используем делегированный save (большой рефакторинг)
+    await save()
   }
   catch (err: any) {
     console.error('Error creating customer user:', err)
@@ -700,8 +626,8 @@ const createNewUserFromNoData = async () => {
 
     const createdUserId = (newUser as any).id
 
-    ticket.value.ownerId = createdUserId   // всегда примитив ID
-    console.log('ticket.ownerId set to:', ticket.value.ownerId)
+    ticket.ownerId = createdUserId   // всегда примитив ID
+    console.log('ticket.ownerId set to:', ticket.ownerId)
 
     // authorSearch is already cleared by createNewAuthor
     console.log('authorSearch cleared, VAutocomplete should show selected item')
@@ -721,7 +647,7 @@ const cancelCreateAuthor = () => {
   showCreateAuthorDialog.value = false
   newAuthorData.value.email = ''
   authorSearch.value = ''
-  ticket.value.ownerId = null
+  ticket.ownerId = null
   saving.value = false
 }
 
@@ -798,7 +724,7 @@ onMounted(async () => {
           Обновить данные
         </VBtn>
         <VBtn
-          :loading="saving"
+          :loading="composableSaving"
           @click="save"
         >
           Создать обращение

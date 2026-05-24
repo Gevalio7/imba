@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import QuickAnswersDialog from './QuickAnswersDialog.vue'
+import TiptapEditor from '@/@core/components/TiptapEditor.vue'
 import type { Article } from '@/types/ticket'
 
 interface Props {
@@ -25,9 +26,11 @@ const emit = defineEmits<{
 // Dialog state
 const showQuickAnswersDialog = ref(false)
 
-// Handle quick answer insertion
+// Handle quick answer insertion (rich HTML insertion into Tiptap)
 const handleInsertQuickAnswer = (article: Article) => {
-  // Insert the article content into the comment field
+  // Вставляем полный HTML из быстрого ответа в редактор комментария.
+  // Пользователь может редактировать отформатированный текст.
+  // Оригинал статьи в Базе знаний остаётся неизменным.
   emit('update:newComment', article.content || '')
 
   // Close the dialog
@@ -58,11 +61,10 @@ const openQuickAnswersDialog = () => {
         Быстрые ответы
       </VBtn>
     </div>
-    <AppTextarea
+    <TiptapEditor
       :model-value="newComment"
       placeholder="Напишите комментарий..."
-      rows="3"
-      auto-grow
+      :min-height="80"
       class="mb-3"
       @update:model-value="$emit('update:newComment', $event)"
     />
@@ -77,7 +79,7 @@ const openQuickAnswersDialog = () => {
       />
       <VBtn
         :loading="saving"
-        :disabled="!newComment.trim()"
+        :disabled="!newComment || !newComment.replace(/<[^>]*>/g, '').trim()"
         @click="$emit('add')"
       >
         <VIcon

@@ -65,7 +65,8 @@ class KnowledgeBase {
       const offset = (page - 1) * itemsPerPage
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM ${KnowledgeBase.tableName} ${whereClause}`
+      // Use alias 'kb' so that qualified columns (kb.id, kb.title etc.) work in both count and data queries
+      const countQuery = `SELECT COUNT(*) as total FROM ${KnowledgeBase.tableName} kb ${whereClause}`
       const countResult = await pool.query(countQuery, params)
       const total = Number.parseInt(countResult.rows[0].total)
 

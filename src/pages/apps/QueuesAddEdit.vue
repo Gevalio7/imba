@@ -460,8 +460,7 @@ const selectedArticlesDetails = computed(() => {
 
 const openQuickAnswersDialog = () => {
   showQuickAnswersDialog.value = true
-  if (categoriesList.value.length === 0)
-    fetchCategoriesAndServices()
+  // No longer needed - we use searchArticles + preloadSelectedArticles
 }
 
 const fetchReferenceData = async () => {

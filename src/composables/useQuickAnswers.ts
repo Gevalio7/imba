@@ -35,9 +35,13 @@ export function useQuickAnswers(queue: Ref<any>) {
   }
 
   const insertQuickAnswer = (article: Article) => {
-    // Эта функция должна взаимодействовать с редактором комментариев
-    // Реализация будет в компоненте, использующем этот composable
-    return article.content
+    // Возвращаем очищенный текст (без HTML), чтобы его можно было редактировать в поле комментария.
+    // Оригинальная статья в Базе знаний не меняется.
+    if (!article.content) return ''
+
+    const tmp = document.createElement('div')
+    tmp.innerHTML = article.content
+    return tmp.textContent || tmp.innerText || article.content
   }
 
   const openQuickAnswersDialog = () => {
