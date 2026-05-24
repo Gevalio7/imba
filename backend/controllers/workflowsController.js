@@ -149,6 +149,8 @@ const createTransition = asyncHandler(async (req, res) => {
     isActive: req.body.isActive,
   })
 
+  await WorkflowTransitions.validateExactlyOneNewStatus(workflowId, [req.body])
+
   res.status(201).json(newTransition)
 })
 
@@ -210,7 +212,33 @@ const bulkCreateTransitions = asyncHandler(async (req, res) => {
 
   const results = await WorkflowTransitions.bulkCreate(transitions)
 
+  // Валидация + автопометка первого статуса как 'new' при создании первого перехода
+  await WorkflowTransitions.validateExactlyOneNewStatus(workflowId, transitions)
+
   res.status(201).json({ transitions: results, count: results.length })
+})
+
+// GET /api/workflows/:id/initial-status - Получить начальный статус (статус с type = 'new')
+const getInitialStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const workflowId = Number.parseInt(id, 10)
+
+  if (isNaN(workflowId)) {
+    return res.status(400).json({ message: 'Invalid workflow ID' })
+  }
+
+  const initialTransition = await WorkflowTransitions.getInitialTransition(workflowId)
+
+  res.json({
+    initialStatus: initialTransition
+      ? {
+          id: initialTransition.targetStatusId,
+          name: initialTransition.statusName,
+          color: initialTransition.statusColor,
+          type: initialTransition.statusType || null,
+        }
+      : null,
+  })
 })
 
 module.exports = {
@@ -225,4 +253,5 @@ module.exports = {
   updateTransition,
   deleteTransition,
   bulkCreateTransitions,
+  getInitialStatus,
 }

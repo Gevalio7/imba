@@ -376,22 +376,38 @@ const assignToMe = () => {
 }
 
 // Вычисляемый список статусов для выбора
+// Всегда включаем текущий статус (важно при автозаполнении из очереди)
 const statusOptions = computed(() => {
-  // Если есть workflow и доступные статусы
+  const currentStateId = ticket.value.stateId
+  let list: any[] = []
+
   if (availableStatuses.value.length > 0) {
-    return availableStatuses.value.map(s => ({
+    list = availableStatuses.value.map(s => ({
+      title: s.name,
+      value: s.id,
+      color: s.color,
+    }))
+  } else {
+    list = states.value.map((s: any) => ({
       title: s.name,
       value: s.id,
       color: s.color,
     }))
   }
 
-  // Если нет workflow - возвращаем все статусы
-  return states.value.map((s: any) => ({
-    title: s.name,
-    value: s.id,
-    color: s.color,
-  }))
+  // Если текущий статус не в списке — добавляем его
+  if (currentStateId && !list.some((s: any) => s.value === currentStateId)) {
+    const currentState = states.value.find((s: any) => s.id === currentStateId)
+    if (currentState) {
+      list = [{
+        title: currentState.name,
+        value: currentState.id,
+        color: currentState.color,
+      }, ...list]
+    }
+  }
+
+  return list
 })
 
 // Вычисляемый выбранный SLA для отображения дедлайнов
@@ -419,24 +435,29 @@ const filteredServices = computed(() => {
   })
 })
 
-// Вычисляемые категории - фильтруются по выбранному типу
-const filteredCategories = computed(() => {
-  // Если тип не выбран - показываем пустой массив (категория скрыта)
-  if (!ticket.value.typeId)
-    return []
+  // Вычисляемые категории - фильтруются по выбранному типу
+  // Всегда включаем текущую выбранную категорию (важно при автозаполнении из очереди)
+  const filteredCategories = computed(() => {
+    const currentCatId = ticket.value.categoryId
+    let list: any[] = []
 
-  // Находим тип и его categoryIds
-  const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
-  if (!selectedType)
-    return []
+    if (ticket.value.typeId) {
+      const selectedType = types.value.find((t: any) => t.id === ticket.value.typeId)
+      if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
+        list = categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+      }
+    } else {
+      list = [...categories.value]
+    }
 
-  // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
-  if (!selectedType.categoryIds || selectedType.categoryIds.length === 0)
-    return []
+    // Если текущая категория не в списке — добавляем её (для отображения при pre-fill из очереди)
+    if (currentCatId && !list.some((c: any) => c.id === currentCatId)) {
+      const currentCat = categories.value.find((c: any) => c.id === currentCatId)
+      if (currentCat) list = [currentCat, ...list]
+    }
 
-  // Фильтруем категории по categoryIds типа
-  return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
-})
+    return list
+  })
 
 // Есть ли связанные категории для текущего типа
 const hasCategoriesForType = computed(() => {
@@ -638,7 +659,7 @@ const createAuthorFromDialog = async () => {
 
     await loadReferenceData(true)
 
-    ticket.value.ownerId = (newUser as any).id
+    ticket.value.ownerId = (newUser as any).id   // всегда примитив ID
     newAuthorData.value.email = ''
     authorSearch.value = ''
     showCreateAuthorDialog.value = false
@@ -679,7 +700,7 @@ const createNewUserFromNoData = async () => {
 
     const createdUserId = (newUser as any).id
 
-    ticket.value.ownerId = createdUserId
+    ticket.value.ownerId = createdUserId   // всегда примитив ID
     console.log('ticket.ownerId set to:', ticket.value.ownerId)
 
     // authorSearch is already cleared by createNewAuthor
@@ -921,17 +942,20 @@ onMounted(async () => {
 
 
               <!-- Категория - зависит от типа -->
-              <AppSelect
-                v-model="ticket.categoryId"
-                :items="filteredCategories"
-                item-title="name"
-                item-value="id"
-                label="Категория"
-                :placeholder="hasCategoriesForType ? 'Выберите категорию' : 'Нет категорий для типа'"
-                :disabled="!ticket.typeId || !hasCategoriesForType"
-                clearable
-                density="comfortable"
-              >
+               <AppSelect
+                 v-model="ticket.categoryId"
+                 :items="filteredCategories"
+                 item-title="name"
+                 item-value="id"
+                 label="Категория"
+                 :placeholder="hasCategoriesForType ? 'Выберите категорию' : 'Нет категорий для типа'"
+                 :disabled="!ticket.typeId || !hasCategoriesForType"
+                 clearable
+                 density="comfortable"
+               >
+                 <template #selection="{ item }">
+                   <span>{{ item?.title || item?.raw?.name || item?.name || item || '—' }}</span>
+                 </template>
                 <template #append-inner>
                   <span
                     v-if="!ticket.typeId"
@@ -1000,15 +1024,15 @@ onMounted(async () => {
               >
                 <template #selection="{ item }">
                   <VChip
-                    v-if="item.raw.color"
-                    :color="item.raw.color"
+                    v-if="item?.raw?.color || item?.color"
+                    :color="item.raw?.color || item.color"
                     density="compact"
                     label
                     size="small"
                   >
-                    {{ item.title }}
+                    {{ item?.title || item?.raw?.title || item?.name || item }}
                   </VChip>
-                  <span v-else>{{ item.title }}</span>
+                  <span v-else>{{ item?.title || item?.raw?.title || item?.name || item || '—' }}</span>
                 </template>
                 <template #item="{ props, item }">
                   <VListItem v-bind="props">
@@ -1052,7 +1076,7 @@ onMounted(async () => {
                     label
                     size="small"
                   >
-                    {{ item.title }}
+                    {{ item?.raw?.title || item?.title || (typeof item === 'object' ? (item.name || item.login || item.value) : item) || '—' }}
                   </VChip>
                 </template>
                 <template #no-data>

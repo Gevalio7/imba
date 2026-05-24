@@ -143,7 +143,7 @@ const getTypeWithWorkflow = asyncHandler(async (req, res) => {
   // Получаем workflow
   const workflow = await Workflows.getById(type.workflowId)
 
-  // Получаем начальный статус (переход с source_status_id = null)
+  // Получаем начальный статус (статус с type = 'new')
   const initialTransition = await WorkflowTransitions.getInitialTransition(type.workflowId)
 
   // Получаем доступные переходы из начального статуса (для нового тикета)

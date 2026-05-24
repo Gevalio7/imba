@@ -224,31 +224,17 @@ class Workflows {
     }
   }
 
-  // Получить начальный статус для воркфлоу
+  // Получить начальный статус для воркфлоу (устаревший метод, используй WorkflowTransitions.getInitialTransition)
   static async getInitialStatus(workflowId) {
-    try {
-      // Ищем переход без source_status_id (это начальный переход)
-      const result = await pool.query(
-        `SELECT 
-          wt.target_status_id as "targetStatusId",
-          s.name as "statusName",
-          s.color as "statusColor"
-        FROM workflow_transitions wt
-        LEFT JOIN states s ON wt.target_status_id = s.id
-        WHERE wt.workflow_id = $1 
-          AND wt.source_status_id IS NULL
-          AND wt.is_active = true
-        LIMIT 1`,
-        [workflowId],
-      )
-
-      return result.rows[0] || null
-    }
+    // Делегируем в новую реализацию на базе type = 'new'
+    const WorkflowTransitions = require('./workflowTransitions');
+    return WorkflowTransitions.getInitialTransition(workflowId);
+  }
     catch (error) {
       console.error('Error in getInitialStatus:', error)
       throw error
     }
   }
-}
+
 
 module.exports = Workflows

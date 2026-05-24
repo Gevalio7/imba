@@ -15,6 +15,7 @@ const {
   updateTransition,
   deleteTransition,
   bulkCreateTransitions,
+  getInitialStatus,
 } = require('../controllers/workflowsController')
 
 // =====================================================
@@ -29,6 +30,9 @@ router.get('/:id', getWorkflowById)
 
 // GET /api/workflows/:id/full - Получить воркфлоу с переходами
 router.get('/:id/full', getWorkflowWithTransitions)
+
+// GET /api/workflows/:id/initial-status - Получить начальный статус напрямую по workflowId (для очередей)
+router.get('/:id/initial-status', getInitialStatus)
 
 // POST /api/workflows - Создать воркфлоу
 router.post('/', protect, createWorkflow)

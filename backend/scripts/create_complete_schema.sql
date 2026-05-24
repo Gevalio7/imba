@@ -568,10 +568,23 @@ CREATE TABLE ticket_comments (
 
 CREATE TABLE ticket_attachments (
     id SERIAL PRIMARY KEY,
-    ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
-    attachment_id INTEGER,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER,
+    mime_type VARCHAR(100),
+    uploaded_by INTEGER REFERENCES agents(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id ON ticket_attachments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_attachments_uploaded_by ON ticket_attachments(uploaded_by);
+
+COMMENT ON TABLE ticket_attachments IS 'Вложения к тикетам';
+COMMENT ON COLUMN ticket_attachments.file_name IS 'Имя файла на диске';
+COMMENT ON COLUMN ticket_attachments.file_path IS 'Путь к файлу на сервере';
+COMMENT ON COLUMN ticket_attachments.file_size IS 'Размер файла в байтах';
+COMMENT ON COLUMN ticket_attachments.mime_type IS 'MIME-тип файла';
 
 CREATE TABLE ticket_status_history (
     id SERIAL PRIMARY KEY,
@@ -596,6 +609,8 @@ CREATE TABLE ticket_history (
     field_name VARCHAR(100),
     old_value TEXT,
     new_value TEXT,
+    action_label VARCHAR(255),
+    comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

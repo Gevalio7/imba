@@ -7,7 +7,7 @@ export interface TicketForm {
   priorityId?: number
   queueId?: number
   stateId?: number
-  ownerId?: number | { value: number; customerId: number; customerName?: string }
+  ownerId?: number | null | string
   executorAgentIds: number[]
   executorGroupIds: number[]
   companyId?: number

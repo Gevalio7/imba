@@ -35,7 +35,7 @@ class KnowledgeBase {
       if (ids && Array.isArray(ids) && ids.length > 0) {
         const validIds = ids.map(Number).filter(Boolean)
         if (validIds.length > 0) {
-          filterConditions.push(`id = ANY($${paramIndex})`)
+          filterConditions.push(`kb.id = ANY($${paramIndex})`)
           params.push(validIds)
           paramIndex++
         }
@@ -49,7 +49,7 @@ class KnowledgeBase {
 
       // Поиск по title и content
       if (q) {
-        filterConditions.push(`(title ILIKE $${paramIndex} OR content ILIKE $${paramIndex})`)
+        filterConditions.push(`(kb.title ILIKE $${paramIndex} OR kb.content ILIKE $${paramIndex})`)
         params.push(`%${q}%`)
         paramIndex++
       }

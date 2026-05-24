@@ -44,6 +44,14 @@ kill_port() {
     fi
 }
 
+# Функция очистки кэша Vite (решает "Failed to fetch dynamically imported module")
+clear_vite_cache() {
+    print_color $CYAN "🗑️  Очистка кэша Vite..."
+    rm -rf "$PROJECT_ROOT/node_modules/.vite" 2>/dev/null
+    rm -rf "$PROJECT_ROOT/node_modules/.cache" 2>/dev/null
+    print_color $GREEN "✅ Кэш Vite полностью очищен"
+}
+
 # Функция для очистки при выходе
 cleanup() {
     print_color $YELLOW "\n\n🛑 Останавливаем все процессы..."
@@ -111,13 +119,8 @@ kill_port 5175
 kill_port 5176
 kill_port 3000
 
-print_color $CYAN "\n🗑️  Очистка кэша Vite..."
-if [ -d "$PROJECT_ROOT/node_modules/.vite" ]; then
-    rm -rf "$PROJECT_ROOT/node_modules/.vite"
-    print_color $GREEN "✅ Кэш Vite очищен"
-else
-    print_color $GREEN "✅ Кэш Vite уже пуст"
-fi
+# Первая очистка кэша Vite (перед запуском)
+clear_vite_cache
 
 # Проверка зависимостей
 print_color $CYAN "\n📦 Проверка зависимостей..."
@@ -188,6 +191,10 @@ for i in {1..30}; do
     echo -n "."
 done
 echo ""
+
+# Вторая очистка кэша Vite — непосредственно перед запуском фронтенда
+# (гарантирует свежий HMR после любых правок .vue)
+clear_vite_cache
 
 print_color $CYAN "\n🎨 Запуск фронтенда..."
 ( cd "$PROJECT_ROOT" && npm run dev 2>&1 | tee "$PROJECT_ROOT/logs/frontend.log" ) &

@@ -121,6 +121,15 @@ class WorkflowTransitions {
 
   static async create(transition) {
     try {
+      // Проверяем существование workflow
+      const workflowExists = await pool.query(
+        'SELECT id FROM workflows WHERE id = $1',
+        [transition.workflowId]
+      )
+      if (workflowExists.rowCount === 0) {
+        throw new Error(`Workflow with id ${transition.workflowId} not found`)
+      }
+
       // Получаем максимальный sort_order для этого воркфлоу
       const maxOrderResult = await pool.query(
         `SELECT COALESCE(MAX(sort_order), 0) as max_order 
@@ -260,11 +269,31 @@ class WorkflowTransitions {
   /**
    * Получить доступные переходы для тикета
    * @param {number} workflowId - ID воркфлоу
-   * @param {number|null} currentStatusId - Текущий статус тикета (null для нового тикета)
+   * @param {number|null} currentStatusId - Текущий статус тикета (null = новый тикет)
    * @returns {Array} Массив доступных переходов
    */
   static async getAvailableTransitions(workflowId, currentStatusId) {
     try {
+      let sourceStatusId = currentStatusId
+
+      // Для нового тикета (currentStatusId = null) — используем статус с type = 'new'
+      if (currentStatusId === null || currentStatusId === undefined) {
+        const newStatusResult = await pool.query(
+          `SELECT s.id 
+           FROM states s
+           WHERE s.type = 'new'
+             AND EXISTS (
+               SELECT 1 FROM workflow_transitions wt2
+               WHERE wt2.workflow_id = $1 
+                 AND wt2.is_active = true
+                 AND (wt2.source_status_id = s.id OR wt2.target_status_id = s.id)
+             )
+           LIMIT 1`,
+          [workflowId]
+        )
+        sourceStatusId = newStatusResult.rows[0]?.id || null
+      }
+
       const result = await pool.query(
         `SELECT 
           wt.id,
@@ -281,7 +310,7 @@ class WorkflowTransitions {
           AND wt.is_active = true
           AND (wt.source_status_id = $2 OR ($2 IS NULL AND wt.source_status_id IS NULL))
         ORDER BY wt.sort_order ASC, wt.id ASC`,
-        [workflowId, currentStatusId],
+        [workflowId, sourceStatusId]
       )
 
       return result.rows
@@ -301,6 +330,26 @@ class WorkflowTransitions {
    */
   static async validateTransition(workflowId, sourceStatusId, targetStatusId) {
     try {
+      let effectiveSourceId = sourceStatusId
+
+      // Для нового тикета (sourceStatusId = null) — используем статус с type = 'new'
+      if (sourceStatusId === null || sourceStatusId === undefined) {
+        const newStatusResult = await pool.query(
+          `SELECT s.id 
+           FROM states s
+           WHERE s.type = 'new'
+             AND EXISTS (
+               SELECT 1 FROM workflow_transitions wt2
+               WHERE wt2.workflow_id = $1 
+                 AND wt2.is_active = true
+                 AND (wt2.source_status_id = s.id OR wt2.target_status_id = s.id)
+             )
+           LIMIT 1`,
+          [workflowId]
+        )
+        effectiveSourceId = newStatusResult.rows[0]?.id || null
+      }
+
       const result = await pool.query(
         `SELECT 
           wt.id,
@@ -313,7 +362,7 @@ class WorkflowTransitions {
           AND wt.is_active = true
           AND (wt.source_status_id = $2 OR ($2 IS NULL AND wt.source_status_id IS NULL))
           AND wt.target_status_id = $3`,
-        [workflowId, sourceStatusId, targetStatusId],
+        [workflowId, effectiveSourceId, targetStatusId]
       )
 
       return result.rows[0] || null
@@ -326,28 +375,31 @@ class WorkflowTransitions {
 
   /**
    * Получить начальный статус для воркфлоу
+   * 
+   * ВАЖНО: Начальный статус определяется по полю status.type = 'new'
+   * 
    * @param {number} workflowId - ID воркфлоу
    * @returns {object | null} Начальный статус
    */
   static async getInitialTransition(workflowId) {
     try {
-      // Только один вариант: первый статус с type = 'new' в этом workflow
-      // (по возрастанию sort_order переходов)
       const result = await pool.query(
         `SELECT 
           s.id as "targetStatusId",
           s.name as "statusName",
           s.color as "statusColor",
-          s.type as "statusType",
-          'Первый статус "Новый"' as "actionLabel"
-        FROM workflow_transitions wt
-        JOIN states s ON s.id IN (wt.source_status_id, wt.target_status_id)
-        WHERE wt.workflow_id = $1 
-          AND s.type = 'new'
-          AND wt.is_active = true
-        ORDER BY wt.sort_order ASC
+          s.type as "statusType"
+        FROM states s
+        WHERE s.type = 'new'
+          AND EXISTS (
+            SELECT 1 
+            FROM workflow_transitions wt 
+            WHERE wt.workflow_id = $1 
+              AND wt.is_active = true
+              AND (wt.source_status_id = s.id OR wt.target_status_id = s.id)
+          )
         LIMIT 1`,
-        [workflowId],
+        [workflowId]
       )
 
       return result.rows[0] || null
@@ -355,6 +407,43 @@ class WorkflowTransitions {
     catch (error) {
       console.error('Error in getInitialTransition:', error)
       throw error
+    }
+  }
+
+  /**
+   * Проверяет, что в workflow ровно один статус с type = 'new'.
+   * Если при первом сохранении переходов такого статуса ещё нет —
+   * автоматически помечает sourceStatusId первого перехода как 'new'.
+   */
+  static async validateExactlyOneNewStatus(workflowId, transitions = []) {
+    // Считаем текущие статусы с type = 'new' в этом workflow
+    const countResult = await pool.query(
+      `SELECT COUNT(DISTINCT s.id) as count
+       FROM workflow_transitions wt
+       JOIN states s ON s.id IN (wt.source_status_id, wt.target_status_id)
+       WHERE wt.workflow_id = $1 
+         AND wt.is_active = true
+         AND s.type = 'new'`,
+      [workflowId]
+    )
+
+    let count = parseInt(countResult.rows[0]?.count || 0, 10)
+
+    // Если пока нет ни одного статуса с type='new' и это первое сохранение переходов —
+    // автоматически помечаем первый sourceStatus как 'new'
+    if (count === 0 && transitions.length > 0) {
+      const firstSourceId = transitions[0]?.sourceStatusId
+      if (firstSourceId) {
+        await pool.query(
+          `UPDATE states SET type = 'new', updated_at = NOW() WHERE id = $1`,
+          [firstSourceId]
+        )
+        count = 1
+      }
+    }
+
+    if (count !== 1) {
+      throw new Error(`В workflow должен быть ровно один статус с type = 'new' (начальный). Сейчас найдено: ${count}`)
     }
   }
 

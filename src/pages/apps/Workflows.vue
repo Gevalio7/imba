@@ -1562,10 +1562,10 @@ watch(selectedWorkflowId, () => {
               <AppSelect
                 v-model="transitionForm.sourceStatusId"
                 :items="stateOptions"
-                label="Из статуса"
-                placeholder="Оставьте пустым для начального статуса"
-                clearable
-                hint="NULL = начальный статус для нового тикета"
+                label="Из статуса *"
+                placeholder="Выберите исходный статус"
+                :rules="[v => !!v || 'Обязательное поле']"
+                hint="Начальный статус определяется статусом с type = 'new'"
                 persistent-hint
               />
             </VCol>

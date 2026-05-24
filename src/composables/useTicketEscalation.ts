@@ -7,25 +7,38 @@ export function useTicketEscalation(ticket: TicketForm) {
   const performEscalation = () => {
     console.log('🚀 Выполняем эскалацию...')
 
-    // a) Добавляем старых исполнителей в наблюдатели
-    const previousExecutorAgentIds = ticket.initialExecutorAgentIds || ticket.executorAgentIds
-    const previousExecutorGroupIds = ticket.initialExecutorGroupIds || ticket.executorGroupIds
+    // a) Запоминаем текущих исполнителей
+    const previousExecutorAgentIds = [...(ticket.initialExecutorAgentIds || ticket.executorAgentIds || [])]
+    const previousExecutorGroupIds = [...(ticket.initialExecutorGroupIds || ticket.executorGroupIds || [])]
 
-    ticket.observerAgentIds = [...ticket.observerAgentIds, ...previousExecutorAgentIds.filter((id: number) => !ticket.observerAgentIds.includes(id))]
-    ticket.observerGroupIds = [...ticket.observerGroupIds, ...previousExecutorGroupIds.filter((id: number) => !ticket.observerGroupIds.includes(id))]
+    // b) Перемещаем их в наблюдатели (без дублей)
+    ticket.observerAgentIds = [
+      ...ticket.observerAgentIds,
+      ...previousExecutorAgentIds.filter((id: number) => !ticket.observerAgentIds.includes(id))
+    ]
+    ticket.observerGroupIds = [
+      ...ticket.observerGroupIds,
+      ...previousExecutorGroupIds.filter((id: number) => !ticket.observerGroupIds.includes(id))
+    ]
 
-    console.log('🚀 Добавлены наблюдатели:', {
-      addedAgents: previousExecutorAgentIds,
-      addedGroups: previousExecutorGroupIds,
+    console.log('🚀 Добавлены в наблюдатели:', {
+      agents: previousExecutorAgentIds,
+      groups: previousExecutorGroupIds,
     })
 
-    // b) Увеличиваем счётчик эскалаций
-    ticket.escalationCount += 1
+    // c) Очищаем исполнителей (как и ожидается при эскалации)
+    ticket.executorAgentIds = []
+    ticket.executorGroupIds = []
 
-    // c) Устанавливаем флаг эскалирования
+    console.log('🚀 Очищены исполнители')
+
+    // d) Увеличиваем счётчик
+    ticket.escalationCount = (ticket.escalationCount || 0) + 1
+
+    // e) Ставим флаг
     ticket.isEscalated = true
 
-    console.log('🚀 Установлены флаги эскалации:', {
+    console.log('🚀 Эскалация выполнена:', {
       escalationCount: ticket.escalationCount,
       isEscalated: ticket.isEscalated,
     })

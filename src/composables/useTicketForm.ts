@@ -11,7 +11,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
   const priorities = computed(() => refData.priorities)
   const queues = computed(() => refData.queues)
-  const states = computed(() => refData.states)
+  const states = computed(() => refData.states || [])
   const types = computed(() => refData.types)
   const categories = computed(() => refData.typeCategories)
   const agents = computed(() => refData.agents)
@@ -79,22 +79,27 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   })
 
   // Вычисляемые категории - фильтруются по выбранному типу
+  // Всегда включаем текущую выбранную категорию (важно при загрузке существующего тикета или автозаполнении)
   const filteredCategories = computed(() => {
-    // Если тип не выбран - показываем пустой массив (категория скрыта)
-    if (!ticket.typeId)
-      return []
+    const currentCatId = ticket.categoryId
+    let list: any[] = []
 
-    // Находим тип и его categoryIds
-    const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
-    if (!selectedType)
-      return []
+    if (ticket.typeId) {
+      const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
+      if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
+        list = categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+      }
+    } else {
+      list = [...(categories.value || [])]
+    }
 
-    // Если у типа нет categoryIds или массив пустой - возвращаем пустой массив
-    if (!selectedType.categoryIds || selectedType.categoryIds.length === 0)
-      return []
+    // Если текущая категория не в списке — добавляем её (для корректного отображения)
+    if (currentCatId && !list.some((c: any) => c.id === currentCatId)) {
+      const currentCat = categories.value.find((c: any) => c.id === currentCatId)
+      if (currentCat) list = [currentCat, ...list]
+    }
 
-    // Фильтруем категории по categoryIds типа
-    return categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+    return list
   })
 
   // Есть ли связанные категории для текущего типа
@@ -220,13 +225,11 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       ticket.queueId = t.queueId || undefined
       ticket.stateId = t.stateId || undefined
 
-      // ownerId может быть числом или объектом
+      // ownerId ВСЕГДА должен быть примитивом (id), никогда объектом
       if (t.ownerId) {
         const ownerList = customerUsers.value || []
-        // Исправлено: ищем по id, а не по value (customerUsers приходят с id из referenceData)
         const owner = ownerList.find((a: any) => a.id === Number(t.ownerId) || a.id === t.ownerId)
-
-        ticket.ownerId = owner || t.ownerId
+        ticket.ownerId = owner ? owner.id : Number(t.ownerId) || t.ownerId
       }
       else {
         ticket.ownerId = undefined
@@ -280,8 +283,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       queueId: ticket.queueId ?? null,
       stateId: ticket.stateId ?? null,
 
-      // ownerId может быть объектом (при использовании VAutocomplete с return-object)
-      ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? ticket.ownerId.value : ticket.ownerId) ?? null,
+      // ownerId всегда примитив (нормализуем на всякий случай)
+      ownerId: (typeof ticket.ownerId === 'object' && ticket.ownerId ? (ticket.ownerId.value ?? ticket.ownerId.id) : ticket.ownerId) ?? null,
       executorAgentIds: ticket.executorAgentIds,
       executorGroupIds: ticket.executorGroupIds,
       companyId: ticket.companyId ?? null,
@@ -472,12 +475,12 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     if (oldOwnerId === undefined)
       return
 
-    // ownerId может быть объектом (с customerId) или числом
-    const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : newOwnerId
-    if (customerId) {
-      // Автозаполняем компанию если она ещё не выбрана
-      if (!ticket.companyId)
-        ticket.companyId = customerId
+    // Нормализуем: ownerId всегда примитив
+    const ownerId = typeof newOwnerId === 'object' ? (newOwnerId?.value ?? newOwnerId?.id) : newOwnerId
+    const customerId = typeof newOwnerId === 'object' ? newOwnerId?.customerId : null
+
+    if (customerId && !ticket.companyId) {
+      ticket.companyId = customerId
     }
   })
 
@@ -504,16 +507,57 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     }
   })
 
-  // Watcher для изменения статуса - валидируем переход но не обновляем доступные статусы
+  // Эскалация
+  const ESCALATION_STATUS_TYPE = 'Эскалирована'
+
+  // Watcher для изменения статуса
   watch(() => ticket.stateId, async (newStateId, oldStateId) => {
     // Пропускаем начальную загрузку (обрабатывается в fetchTicket)
     if (oldStateId === undefined)
       return
 
-    // Если статус изменился и есть оригинальный статус, проверяем валидность перехода
+    // Валидация перехода (оставляем как было)
     if (newStateId !== originalStateId.value && originalStateId.value !== undefined) {
-      // Не обновляем availableStatuses - они должны оставаться на основе оригинального статуса
       // Валидация будет происходить при сохранении
+    }
+
+    // === Эскалация ===
+    if (newStateId && newStateId !== oldStateId) {
+      const newStatus = states.value.find((s: any) => s.id === newStateId)
+      if (newStatus?.type === ESCALATION_STATUS_TYPE) {
+        console.log('🚀 Статус изменён на Эскалирована — выполняем эскалацию')
+
+        // Проверка: должны быть исполнители
+        if (ticket.executorAgentIds.length === 0 && ticket.executorGroupIds.length === 0) {
+          console.warn('⚠️ Эскалация: не выбраны исполнители/группы')
+          // Можно показать тост, но поскольку это в composable, оставим лог
+          return
+        }
+
+        // Выполняем эскалацию (очистка исполнителей + перенос в наблюдатели)
+        const previousExecutorAgentIds = [...(ticket.initialExecutorAgentIds || ticket.executorAgentIds || [])]
+        const previousExecutorGroupIds = [...(ticket.initialExecutorGroupIds || ticket.executorGroupIds || [])]
+
+        // Переносим в наблюдатели
+        ticket.observerAgentIds = [
+          ...ticket.observerAgentIds,
+          ...previousExecutorAgentIds.filter((id: number) => !ticket.observerAgentIds.includes(id))
+        ]
+        ticket.observerGroupIds = [
+          ...ticket.observerGroupIds,
+          ...previousExecutorGroupIds.filter((id: number) => !ticket.observerGroupIds.includes(id))
+        ]
+
+        // Очищаем исполнителей
+        ticket.executorAgentIds = []
+        ticket.executorGroupIds = []
+
+        // Увеличиваем счётчик и флаг
+        ticket.escalationCount = (ticket.escalationCount || 0) + 1
+        ticket.isEscalated = true
+
+        console.log('✅ Эскалация выполнена: исполнители очищены и перенесены в наблюдатели')
+      }
     }
   })
 

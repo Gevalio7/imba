@@ -131,18 +131,22 @@ const statusOptions = computed(() => {
         </div>
 
         <!-- Категория - зависит от типа: показываем только если есть связанные категории -->
-        <AppSelect
-          v-if="categoryVisible"
-          v-model="ticket.categoryId"
-          :items="filteredCategories"
-          item-title="name"
-          item-value="id"
-          label="Категория"
-          placeholder="Выберите категорию"
-          :disabled="!ticket.typeId"
-          :error-messages="hasCategoriesForType && !ticket.categoryId ? 'Выберите категорию' : undefined"
-          clearable
-        />
+         <AppSelect
+           v-if="categoryVisible"
+           v-model="ticket.categoryId"
+           :items="filteredCategories"
+           item-title="name"
+           item-value="id"
+           label="Категория"
+           placeholder="Выберите категорию"
+           :disabled="!ticket.typeId"
+           :error-messages="hasCategoriesForType && !ticket.categoryId ? 'Выберите категорию' : undefined"
+           clearable
+         >
+           <template #selection="{ item }">
+             <span>{{ item?.title || item?.raw?.name || item?.name || item || '—' }}</span>
+           </template>
+         </AppSelect>
 
         <!-- Информация о workflow -->
         <VAlert
@@ -191,15 +195,15 @@ const statusOptions = computed(() => {
         >
           <template #selection="{ item }">
             <VChip
-              v-if="item.raw.color"
-              :color="item.raw.color"
+              v-if="item?.raw?.color || item?.color"
+              :color="item.raw?.color || item.color"
               density="compact"
               label
               size="small"
             >
-              {{ item.title }}
+              {{ item?.title || item?.raw?.title || item?.name || item }}
             </VChip>
-            <span v-else>{{ item.title }}</span>
+            <span v-else>{{ item?.title || item?.raw?.title || item?.name || item || '—' }}</span>
           </template>
           <template #item="{ props, item }">
             <VListItem v-bind="props">
@@ -222,12 +226,19 @@ const statusOptions = computed(() => {
         <VAutocomplete
           v-model="ticket.ownerId"
           :items="authorOptions"
+          item-title="title"
+          item-value="value"
           label="Автор"
           placeholder="Введите имя или email для поиска..."
           clearable
           hide-no-data
-          return-object
-        />
+        >
+          <template #selection="{ item }">
+            <VChip density="compact" label size="small">
+              {{ item?.raw?.title || item?.title || (typeof item === 'object' ? (item.name || item.login || item.value) : item) || '—' }}
+            </VChip>
+          </template>
+        </VAutocomplete>
 
         <!-- Группы исполнителей -->
         <AppSelect
