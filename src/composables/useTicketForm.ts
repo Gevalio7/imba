@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useReferenceData } from '@/composables/useReferenceData'
 import type { TicketForm } from '@/types/ticket'
+import { notificationService } from '@/services/notificationService'
 
 export function useTicketForm(ticketId: Ref<number | null>) {
   const router = useRouter()
@@ -421,6 +422,33 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
       // Для нового тикета обновляем ticket.id
       if (isCreating && response.id)
         ticket.id = response.id
+
+      // === ИНТЕГРАЦИЯ УВЕДОМЛЕНИЙ (по ТЗ TemplateQueues) ===
+      if (isCreating && response.id) {
+        try {
+          // Получаем шаблон открытия из очереди
+          const queue = queues.value.find((q: any) => q.id === ticket.queueId)
+          const templateId = queue?.templateOpenTicketId || queue?.templateId
+
+          if (templateId) {
+            await notificationService.send('ticket_open', templateId, {
+              ticket: {
+                id: response.id,
+                ticketNumber: ticket.ticketNumber || response.ticketNumber,
+                title: ticket.title,
+                priority: ticket.priorityId,
+                // owner и др. будут подставлены из данных
+                owner: { name: userData.value?.name || 'Пользователь' },
+              },
+              user: { name: userData.value?.name || '' },
+            })
+            console.log('[NOTIFICATION] ticket_open отправлено')
+          }
+        } catch (notifyErr) {
+          console.warn('[NOTIFICATION] Ошибка отправки при создании:', notifyErr)
+          // Не прерываем сохранение тикета из-за ошибки уведомления
+        }
+      }
 
       // Обновляем оригинальный статус после успешного сохранения
       if (!isCreating)

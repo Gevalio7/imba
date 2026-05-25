@@ -7,7 +7,8 @@ function toSnakeCase(str) {
 
 class Templates {
   static tableName = 'templates'
-  static fields = 'name, message'
+  // Расширенный список полей по ТЗ (TemplateQueues advanced)
+  static fields = 'name, message, subject, cssStyles, eventType, placeholders, previewImage, createdBy, updatedBy, version, category, tags, usageCount, lastTestedAt'
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1 } = options

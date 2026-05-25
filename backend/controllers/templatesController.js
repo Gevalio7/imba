@@ -43,6 +43,16 @@ const createTemplates = asyncHandler(async (req, res) => {
   data.name = req.body.name
   data.message = req.body.message
 
+  // Новые поля по ТЗ (advanced TemplateQueues)
+  if (req.body.subject !== undefined) data.subject = req.body.subject
+  if (req.body.cssStyles !== undefined) data.cssStyles = req.body.cssStyles
+  if (req.body.eventType !== undefined) data.eventType = req.body.eventType
+  if (req.body.placeholders !== undefined) data.placeholders = req.body.placeholders
+  if (req.body.previewImage !== undefined) data.previewImage = req.body.previewImage
+  if (req.body.category !== undefined) data.category = req.body.category
+  if (req.body.tags !== undefined) data.tags = req.body.tags
+  if (req.body.version !== undefined) data.version = req.body.version
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
@@ -68,6 +78,16 @@ const updateTemplates = asyncHandler(async (req, res) => {
     data.name = req.body.name
   if (req.body.message !== undefined)
     data.message = req.body.message
+
+  // Новые поля по ТЗ (advanced)
+  if (req.body.subject !== undefined) data.subject = req.body.subject
+  if (req.body.cssStyles !== undefined) data.cssStyles = req.body.cssStyles
+  if (req.body.eventType !== undefined) data.eventType = req.body.eventType
+  if (req.body.placeholders !== undefined) data.placeholders = req.body.placeholders
+  if (req.body.previewImage !== undefined) data.previewImage = req.body.previewImage
+  if (req.body.category !== undefined) data.category = req.body.category
+  if (req.body.tags !== undefined) data.tags = req.body.tags
+  if (req.body.version !== undefined) data.version = req.body.version
 
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined)
@@ -112,10 +132,23 @@ const deleteTemplates = asyncHandler(async (req, res) => {
   res.status(204).send()
 })
 
+const testTemplate = asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { email } = req.body
+
+  // Заглушка: в реальности отправить email с шаблоном
+  console.log(`[TEST TEMPLATE] Отправка теста шаблона ${id} на ${email || 'test@example.com'}`)
+
+  // Можно добавить реальную отправку здесь (используя notification service)
+
+  res.json({ success: true, message: 'Тестовое письмо поставлено в очередь (stub)' })
+})
+
 module.exports = {
   getTemplates,
   getTemplateById,
   createTemplates,
   updateTemplates,
   deleteTemplates,
+  testTemplate,
 }

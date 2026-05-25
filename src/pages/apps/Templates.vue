@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import TemplateEditorDialog from '@/components/TemplateEditorDialog.vue'
 
 // Типы данных для Шаблон
 interface Templates {
@@ -10,6 +11,10 @@ interface Templates {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  subject?: string
+  cssStyles?: string
+  eventType?: string
+  category?: string
 }
 
 // API base URL
@@ -211,6 +216,8 @@ watch(selectedItems, newValue => {
 // Диалоги
 const editDialog = ref(false)
 const deleteDialog = ref(false)
+const advancedEditorOpen = ref(false)
+const editingTemplate = ref<any>(null)
 
 const defaultItem = ref<Templates>({
   id: -1,
@@ -232,9 +239,8 @@ const statusOptions = [
 
 // Методы
 const editItem = (item: Templates) => {
-  editedIndex.value = templates.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+  editingTemplate.value = { ...item }
+  advancedEditorOpen.value = true
 }
 
 const deleteItem = (item: Templates) => {
@@ -253,6 +259,11 @@ const closeDelete = () => {
   deleteDialog.value = false
   editedIndex.value = -1
   editedItem.value = { ...defaultItem.value }
+}
+
+const createNew = () => {
+  editingTemplate.value = null
+  advancedEditorOpen.value = true
 }
 
 const save = async () => {
@@ -288,16 +299,28 @@ const save = async () => {
   }
 }
 
-const deleteItemConfirm = async () => {
-  try {
-    await deleteTemplates(editedItem.value.id)
-    showToast('Шаблон успешно удален')
-    closeDelete()
+  const deleteItemConfirm = async () => {
+    try {
+      await deleteTemplates(editedItem.value.id)
+      showToast('Шаблон успешно удален')
+      closeDelete()
+    }
+    catch (err: any) {
+      const msg = err?.response?.data?.message || 'Не удалось удалить шаблон'
+      showToast(msg, 'error')
+    }
   }
-  catch (err) {
-    showToast('Ошибка удаления шаблон', 'error')
+
+  const onTemplateSaved = (saved: any) => {
+    fetchTemplates()
+    showToast('Шаблон сохранён')
   }
-}
+
+  const onTemplateDeleted = (id: number) => {
+    templates.value = templates.value.filter((t: any) => t.id !== id)
+    showToast('Шаблон удалён')
+  }
+
 
 // Переключение статуса
 const toggleStatus = async (item: Templates, newValue: boolean | null) => {
@@ -331,11 +354,9 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового шаблон
+// Добавление нового шаблон (используем advanced редактор)
 const addNewTemplates = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
+  createNew()
 }
 </script>
 
@@ -565,6 +586,14 @@ const addNewTemplates = () => {
           </VCardText>
         </VCard>
       </VDialog>
+
+      <!-- Advanced Template Editor (по ТЗ) -->
+      <TemplateEditorDialog
+        v-model="advancedEditorOpen"
+        :template="editingTemplate"
+        @saved="onTemplateSaved"
+        @deleted="onTemplateDeleted"
+      />
 
       <VDivider />
 

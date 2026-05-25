@@ -622,8 +622,25 @@ CREATE TABLE templates (
     message TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Новые поля по ТЗ TemplateQueues / расширенные шаблоны уведомлений
+    subject VARCHAR(500),
+    css_styles TEXT,
+    event_type VARCHAR(100),
+    placeholders JSONB DEFAULT '[]',
+    preview_image TEXT,
+    created_by INTEGER,
+    updated_by INTEGER,
+    version INTEGER DEFAULT 1,
+    category VARCHAR(100),
+    tags TEXT[] DEFAULT '{}',
+    usage_count INTEGER DEFAULT 0,
+    last_tested_at TIMESTAMP
 );
+
+-- Индексы для шаблонов
+CREATE INDEX IF NOT EXISTS idx_templates_event_type ON templates(event_type);
+CREATE INDEX IF NOT EXISTS idx_templates_category ON templates(category);
 
 CREATE TABLE template_queues (
     id SERIAL PRIMARY KEY,
@@ -633,6 +650,46 @@ CREATE TABLE template_queues (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================================
+-- Таблица логов отправки уведомлений (по ТЗ)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS notification_delivery_logs (
+    id SERIAL PRIMARY KEY,
+    event_type VARCHAR(100) NOT NULL,
+    template_id INTEGER REFERENCES templates(id) ON DELETE SET NULL,
+    queue_id INTEGER,
+    ticket_id INTEGER,
+    recipients JSONB,
+    status VARCHAR(50) DEFAULT 'sent',
+    error_message TEXT,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_logs_event_type ON notification_delivery_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_template_id ON notification_delivery_logs(template_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_sent_at ON notification_delivery_logs(sent_at);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_status ON notification_delivery_logs(status);
+
+-- =====================================================
+-- Таблица версий шаблонов (по ТЗ)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS template_versions (
+    id SERIAL PRIMARY KEY,
+    template_id INTEGER REFERENCES templates(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    message TEXT,
+    subject VARCHAR(500),
+    css_styles TEXT,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_template_versions_template_id ON template_versions(template_id);
+CREATE INDEX IF NOT EXISTS idx_template_versions_version ON template_versions(version);
+
+COMMENT ON TABLE notification_delivery_logs IS 'Логи отправки уведомлений по шаблонам (TemplateQueues)';
+COMMENT ON TABLE template_versions IS 'История версий HTML-шаблонов';
 
 CREATE TABLE template_attachments (
     id SERIAL PRIMARY KEY,
