@@ -437,8 +437,18 @@ const availableTypes = computed(() => {
     return types.value
   }
 
-  // Фильтруем только типы, связанные с workflow этой очереди
-  return types.value.filter((t: any) => t.workflowId === queue.workflowId)
+  let filtered = types.value.filter((t: any) => t.workflowId === queue.workflowId)
+
+  // ВАЖНО: всегда оставляем текущий выбранный тип в списке,
+  // даже если он не прошёл фильтр по workflow (иначе VSelect показывает сырой ID вместо названия)
+  if (ticket.typeId != null) {
+    const currentSelected = types.value.find((t: any) => t.id === ticket.typeId)
+    if (currentSelected && !filtered.some((t: any) => t.id === ticket.typeId)) {
+      filtered = [currentSelected, ...filtered]
+    }
+  }
+
+  return filtered
 })
 
 // Форматирование времени SLA (в часах для responseTime, в минутах для solutionTime)

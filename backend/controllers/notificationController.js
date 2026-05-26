@@ -71,7 +71,7 @@ const getLogs = asyncHandler(async (req, res) => {
   const { limit = 50, offset = 0, eventType, status } = req.query
 
   let where = 'WHERE 1=1'
-  const params: any[] = []
+  const params = []
   let i = 1
 
   if (eventType) {

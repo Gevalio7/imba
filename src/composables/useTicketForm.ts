@@ -64,19 +64,34 @@ export function useTicketForm(ticketId: Ref<number | null>) {
 
   // Вычисляемые сервисы - фильтруются по компании если она выбрана
   const filteredServices = computed(() => {
+    const currentServiceId = ticket.serviceId
+    
+    let list: any[] = []
+    
     // Если компания не выбрана - показываем все сервисы
-    if (!ticket.companyId)
-      return services.value
+    if (!ticket.companyId) {
+      list = services.value
+    } else {
+      // Фильтруем сервисы по компании
+      list = services.value.filter((s: any) => {
+        // Сервис без компаний - показываем (глобальный)
+        if (!s.customers || s.customers.length === 0)
+          return true
 
-    // Фильтруем сервисы по компании
-    return services.value.filter((s: any) => {
-      // Сервис без компаний - показываем (глобальный)
-      if (!s.customers || s.customers.length === 0)
-        return true
-
-      // Проверяем есть ли компания в списке компаний сервиса
-      return s.customers.some((c: any) => c.id === ticket.companyId)
-    })
+        // Проверяем есть ли компания в списке компаний сервиса
+        return s.customers.some((c: any) => c.id === ticket.companyId)
+      })
+    }
+    
+    // Защита от потери выбранного сервиса: если текущий сервис не в списке — добавляем его
+    if (currentServiceId && !list.some((s: any) => s.id === currentServiceId)) {
+      const currentService = services.value.find((s: any) => s.id === currentServiceId)
+      if (currentService) {
+        list = [currentService, ...list]
+      }
+    }
+    
+    return list
   })
 
   // Вычисляемые категории - фильтруются по выбранному типу
@@ -89,6 +104,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       const selectedType = types.value.find((t: any) => t.id === ticket.typeId)
       if (selectedType && selectedType.categoryIds && selectedType.categoryIds.length > 0) {
         list = categories.value.filter((c: any) => selectedType.categoryIds.includes(c.id))
+      } else {
+        list = [...(categories.value || [])]
       }
     } else {
       list = [...(categories.value || [])]
@@ -120,14 +137,29 @@ export function useTicketForm(ticketId: Ref<number | null>) {
   // Вычисляемые типы - фильтруются по workflow выбранной очереди (аналогично Add.vue)
   const availableTypes = computed(() => {
     const allTypes = types.value || []
+    let filtered: any[] = []
+    
     if (!ticket.queueId) {
-      return allTypes
+      filtered = allTypes
+    } else {
+      const queue = queues.value.find((q: any) => q.id === ticket.queueId)
+      if (!queue?.workflowId) {
+        filtered = allTypes
+      } else {
+        filtered = allTypes.filter((t: any) => t.workflowId === queue.workflowId)
+      }
     }
-    const queue = queues.value.find((q: any) => q.id === ticket.queueId)
-    if (!queue?.workflowId) {
-      return allTypes
+
+    // ВАЖНО: всегда оставляем текущий выбранный тип в списке,
+    // даже если он не прошёл фильтр по workflow (иначе VSelect показывает сырой ID вместо названия)
+    if (ticket.typeId != null) {
+      const currentSelected = allTypes.find((t: any) => t.id === ticket.typeId)
+      if (currentSelected && !filtered.some((t: any) => t.id === ticket.typeId)) {
+        filtered = [currentSelected, ...filtered]
+      }
     }
-    return allTypes.filter((t: any) => t.workflowId === queue.workflowId)
+    
+    return filtered
   })
 
   // Workflow данные
@@ -537,21 +569,30 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
 
 // Watcher для изменения очереди - принудительно обновляет ВСЕ поля
 watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
-  // Пропускаем начальную загрузку
-  if (oldQueueId === undefined) {
-    console.log('[QUEUE-WATCHER] Initial load, skipping')
+  const isNewTicket = !ticketId.value
+
+  // В режиме редактирования пропускаем самую первую установку значения
+  // (это происходит при загрузке существующего тикета из БД)
+  if (!isNewTicket && oldQueueId === undefined) {
+    console.log('[QUEUE-WATCHER] Edit mode initial load, skipping auto-apply')
     return
   }
 
-  console.log('[QUEUE-WATCHER] Queue changed:', { from: oldQueueId, to: newQueueId })
+  // В режиме создания: применяем при любом выборе очереди (включая первый)
+  // Пропускаем только самое начальное состояние формы (ничего не выбрано)
+  if (isNewTicket && oldQueueId === undefined && !newQueueId) {
+    return
+  }
+
+  console.log('[QUEUE-WATCHER] Queue selection', { from: oldQueueId, to: newQueueId, isNewTicket })
 
   if (newQueueId) {
-    // forceUpdate = true - принудительно обновляем ВСЕ поля
+    // forceUpdate = true — принудительно обновляем ВСЕ поля
     await applyDefaultsFromQueue(newQueueId, true)
   } else {
-    // Очередь очищена - сбрасываем ВСЕ связанные поля
+    // Очередь очищена — сбрасываем ВСЕ связанные поля
     console.log('[QUEUE-WATCHER] Queue cleared, resetting all fields')
-    
+
     ticket.typeId = undefined
     ticket.categoryId = undefined
     ticket.priorityId = undefined
@@ -563,7 +604,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
     ticket.observerGroupIds = []
     ticket.observerAgentIds = []
     ticket.stateId = undefined
-    
+
     currentWorkflow.value = null
     availableStatuses.value = []
   }
