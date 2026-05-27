@@ -1,5 +1,5 @@
 const { simpleParser } = require('mailparser')
-const ImapFlow = require('imapflow')
+const { ImapFlow } = require('imapflow')
 const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const Queues = require('../models/queues')
 const Tickets = require('../models/tickets')
@@ -179,8 +179,10 @@ class MailFetcherService {
               try {
                 // Search for all messages
                 for await (const msg of client.fetch('1:*', { envelope: true, source: true, flags: true })) {
-                  // Process only unseen
-                  if (msg.flags && msg.flags.includes('\\Seen'))
+                  // Process only unseen - ImapFlow returns flags as a Set-like object
+                  if (msg.flags instanceof Set && msg.flags.has('\\Seen'))
+                    continue
+                  else if (msg.flags && (msg.flags.includes ? msg.flags.includes('\\Seen') : false))
                     continue
 
                   emailsFound++
@@ -415,7 +417,7 @@ class MailFetcherService {
     }
 
     return {
-      checkedAccounts,
+      checkedQueues,
       emailsFound,
       ticketsCreated,
       errors,
