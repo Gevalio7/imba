@@ -1,4 +1,5 @@
 const { pool } = require('../config/db')
+const { decrypt } = require('../utils/crypto')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
@@ -13,7 +14,7 @@ function toSnakeCase(str) {
 
 class PostMasterMailAccounts {
   static tableName = 'post_master_mail_accounts'
-  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID'
+  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPassword, smtpAuthType'
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options
@@ -67,6 +68,12 @@ class PostMasterMailAccounts {
 
       const dataResult = await pool.query(dataQuery, params)
 
+      // Расшифровываем пароли для использования в fetcher / sender
+      for (const row of dataResult.rows) {
+        if (row.password) row.password = decrypt(row.password)
+        if (row.smtpPassword) row.smtpPassword = decrypt(row.smtpPassword)
+      }
+
       return {
         postMasterMailAccounts: dataResult.rows,
         total,
@@ -91,7 +98,12 @@ class PostMasterMailAccounts {
         [id],
       )
 
-      return result.rows[0] || null
+      const row = result.rows[0] || null
+      if (row) {
+        if (row.password) row.password = decrypt(row.password)
+        if (row.smtpPassword) row.smtpPassword = decrypt(row.smtpPassword)
+      }
+      return row
     }
     catch (error) {
       console.error('Error in getById:', error)

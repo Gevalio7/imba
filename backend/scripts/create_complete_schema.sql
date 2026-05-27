@@ -496,6 +496,7 @@ CREATE TABLE tickets (
     is_escalated BOOLEAN DEFAULT false,
     created_by_schedule_id INTEGER,
     is_active BOOLEAN DEFAULT true,
+    external_id VARCHAR(255), -- message-id письма для дедупликации
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -505,6 +506,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_queue_id ON tickets(queue_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_state_id ON tickets(state_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_is_active ON tickets(is_active);
 CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_external_id ON tickets(external_id); -- для поиска по message-id
 
 CREATE TABLE ticket_schedules (
     id SERIAL PRIMARY KEY,

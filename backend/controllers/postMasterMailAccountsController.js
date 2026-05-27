@@ -1,5 +1,6 @@
 const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const { asyncHandler } = require('../middleware/errorHandler')
+const { encrypt } = require('../utils/crypto')
 
 const getPostMasterMailAccounts = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query
@@ -64,6 +65,24 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
 
+  // Новые SMTP-поля для отправки уведомлений (2026-05)
+  if (req.body.smtpHost !== undefined)
+    data.smtpHost = req.body.smtpHost
+  if (req.body.smtpPort !== undefined)
+    data.smtpPort = req.body.smtpPort
+  if (req.body.smtpSecure !== undefined)
+    data.smtpSecure = req.body.smtpSecure
+  if (req.body.smtpUser !== undefined)
+    data.smtpUser = req.body.smtpUser
+  if (req.body.smtpPassword !== undefined)
+    data.smtpPassword = req.body.smtpPassword
+  if (req.body.smtpAuthType !== undefined)
+    data.smtpAuthType = req.body.smtpAuthType
+
+  // Шифруем чувствительные пароли (если crypto доступен)
+  if (data.password) data.password = encrypt(data.password)
+  if (data.smtpPassword) data.smtpPassword = encrypt(data.smtpPassword)
+
   // Валидация обязательных полей
   if (!data.name)
     return res.status(400).json({ message: 'name is required' })
@@ -125,6 +144,24 @@ const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
     data.oauth2TokenConfigID = req.body.oauth2TokenConfigID
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
+
+  // Новые SMTP-поля (2026-05)
+  if (req.body.smtpHost !== undefined)
+    data.smtpHost = req.body.smtpHost
+  if (req.body.smtpPort !== undefined)
+    data.smtpPort = req.body.smtpPort
+  if (req.body.smtpSecure !== undefined)
+    data.smtpSecure = req.body.smtpSecure
+  if (req.body.smtpUser !== undefined)
+    data.smtpUser = req.body.smtpUser
+  if (req.body.smtpPassword !== undefined)
+    data.smtpPassword = req.body.smtpPassword
+  if (req.body.smtpAuthType !== undefined)
+    data.smtpAuthType = req.body.smtpAuthType
+
+  // Шифруем чувствительные пароли при обновлении
+  if (data.password) data.password = encrypt(data.password)
+  if (data.smtpPassword) data.smtpPassword = encrypt(data.smtpPassword)
 
   const updatedPostMasterMailAccount = await PostMasterMailAccounts.update(postMasterMailAccountId, data)
 

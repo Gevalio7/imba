@@ -7,6 +7,9 @@ const CustomerUsers = require('../models/customerUsers')
 const SystemConfiguration = require('../models/systemConfiguration')
 const MailFetchLogs = require('../models/mailFetchLogs')
 const TicketAttachments = require('../models/ticketAttachments')
+const TicketComments = require('../models/ticketComments')
+const EmailSenderService = require('./EmailSenderService')
+const Templates = require('../models/templates')
 
 // Helper: retry with exponential backoff
 async function retry(fn, maxRetries = 3, baseDelaySec = 5) {
@@ -25,42 +28,112 @@ async function retry(fn, maxRetries = 3, baseDelaySec = 5) {
   throw lastErr
 }
 
+// === Новые хелперы для обработки ответов на тикеты ===
+function extractTicketIdFromSubject(subject) {
+  if (!subject) return null
+  // Паттерны: [TICKET-123], #123, Ticket #123, TICKET-123
+  const patterns = [
+    /\[TICKET-(\d+)\]/i,
+    /#(\d+)/,
+    /Ticket\s*#?(\d+)/i,
+    /TICKET-(\d+)/i,
+  ]
+  for (const re of patterns) {
+    const m = subject.match(re)
+    if (m) return Number.parseInt(m[1], 10)
+  }
+  return null
+}
+
+async function findTicketByReplyHeaders(parsed) {
+  const headers = parsed.headers || new Map()
+  const inReplyTo = headers.get('in-reply-to') || headers.get('in-reply-to'.toLowerCase())
+  const references = headers.get('references') || headers.get('references'.toLowerCase())
+
+  const candidates = []
+  if (inReplyTo) candidates.push(inReplyTo)
+  if (references) {
+    if (typeof references === 'string') candidates.push(...references.split(/\s+/))
+    else if (Array.isArray(references)) candidates.push(...references)
+  }
+
+  for (const ref of candidates) {
+    if (!ref) continue
+    const clean = String(ref).trim().replace(/[<>]/g, '')
+    if (clean) {
+      const t = await Tickets.findByExternalId(clean) // reuse externalId logic
+      if (t) return t
+      // Также можно искать по messageId в будущем
+    }
+  }
+  return null
+}
+
+async function findRelatedTicket(parsed, subject) {
+  // 1. По заголовкам reply
+  let ticket = await findTicketByReplyHeaders(parsed)
+  if (ticket) return ticket
+
+  // 2. По номеру в теме
+  const ticketNum = extractTicketIdFromSubject(subject)
+  if (ticketNum) {
+    const t = await Tickets.getByNumber ? await Tickets.getByNumber(`TICKET-${ticketNum}`) : null
+    if (t) return t
+    // fallback — поиск по id (если номер == id)
+    try {
+      const byId = await Tickets.getById(ticketNum)
+      if (byId) return byId
+    } catch {}
+  }
+  return null
+}
+
 class MailFetcherService {
   static async fetchAllAccounts() {
+    // Новая рекомендуемая точка входа — по активным очередям
+    return this.fetchForActiveQueues()
+  }
+
+  /**
+   * Основной метод: сбор почты только для активных очередей (queue.isActive === true),
+   * у которых есть привязанный почтовый аккаунт.
+   */
+  static async fetchForActiveQueues() {
     const startedAt = new Date()
-    let checkedAccounts = 0
+    let checkedQueues = 0
     let emailsFound = 0
     let ticketsCreated = 0
     const errors = []
 
-    // Read retry/attachment configs
+    // Глобальные настройки (fallback)
     let maxRetries = 3
-    let baseDelaySec = 5
-    let maxAttachmentMb = 10
+    let baseDelaySec = 30
+    let maxAttachmentMb = 25
     try {
       const cfg = await SystemConfiguration.getAll({ isActive: true })
       const all = cfg.systemConfiguration || []
       const r = all.find(c => c.key === 'mail_fetcher_max_retries' || c.name === 'mail_fetcher_max_retries')
       const d = all.find(c => c.key === 'mail_fetcher_retry_delay_seconds' || c.name === 'mail_fetcher_retry_delay_seconds')
       const m = all.find(c => c.key === 'mail_fetcher_max_attachment_size_mb' || c.name === 'mail_fetcher_max_attachment_size_mb')
-      if (r && Number.parseInt(r.value, 10))
-        maxRetries = Number.parseInt(r.value, 10)
-      if (d && Number.parseInt(d.value, 10))
-        baseDelaySec = Number.parseInt(d.value, 10)
-      if (m && Number.parseInt(m.value, 10))
-        maxAttachmentMb = Number.parseInt(m.value, 10)
-    }
-    catch (cfgErr) {
-      // ignore, use defaults
-    }
+      if (r && Number.parseInt(r.value, 10)) maxRetries = Number.parseInt(r.value, 10)
+      if (d && Number.parseInt(d.value, 10)) baseDelaySec = Number.parseInt(d.value, 10)
+      if (m && Number.parseInt(m.value, 10)) maxAttachmentMb = Number.parseInt(m.value, 10)
+    } catch (cfgErr) {}
 
     const maxAttachmentBytes = maxAttachmentMb * 1024 * 1024
 
     try {
-      const accountsRes = await PostMasterMailAccounts.getAll({ isActive: true })
-      const accounts = accountsRes.postMasterMailAccounts || []
-      for (const account of accounts) {
-        checkedAccounts++
+      // Берём активные очереди с привязанным почтовым аккаунтом
+      const queuesRes = await Queues.getAll({ isActive: true })
+      const activeQueues = (queuesRes.queues || []).filter(q => q.postMasterMailAccountId)
+
+      for (const queue of activeQueues) {
+        checkedQueues++
+
+        const account = await PostMasterMailAccounts.getById(queue.postMasterMailAccountId)
+        if (!account || !account.isActive) {
+          continue
+        }
 
         const logEntry = {
           mail_account_id: account.id,
@@ -72,13 +145,6 @@ class MailFetcherService {
         }
 
         try {
-          const queue = account.queueId ? await Queues.getById(account.queueId) : null
-          if (!queue) {
-            errors.push({ accountId: account.id, message: 'Queue not found' })
-            logEntry.errors = JSON.stringify([{ message: 'Queue not found' }])
-            await MailFetchLogs.create(logEntry)
-            continue
-          }
 
           // Connect to IMAP with retries
           const client = new ImapFlow({
@@ -138,7 +204,33 @@ class MailFetcherService {
                     }
                   }
 
-                  // Determine author
+                  // === НОВАЯ ЛОГИКА: проверка, является ли письмо ответом ===
+                  const relatedTicket = await findRelatedTicket(parsed, subject)
+
+                  if (relatedTicket) {
+                    // Это ответ на существующий тикет → создаём комментарий
+                    let commentCreated = false
+                    try {
+                      await TicketComments.create({
+                        ticketId: relatedTicket.id,
+                        content: body,
+                        authorId: null, // система / из email
+                        isInternal: false,
+                      })
+                      console.log(`[MAIL-FETCHER] Ответ добавлен как комментарий в тикет #${relatedTicket.id}`)
+                      commentCreated = true
+                    } catch (commentErr) {
+                      console.error('[MAIL-FETCHER] Ошибка создания комментария из email:', commentErr.message)
+                      // Логируем ошибку в mail_fetch_logs (приложится к общему логу аккаунта)
+                      logEntry.errors = JSON.stringify([{ message: `comment_creation_failed: ${commentErr.message}` }])
+                    } finally {
+                      // ВСЕГДА помечаем как Seen (даже при ошибке, чтобы не зацикливалось)
+                      try { await client.messageFlagsAdd(msg.uid, ['\\Seen']) } catch (e) {}
+                    }
+                    if (commentCreated) continue
+                  }
+
+                  // Determine author (с поддержкой авто-создания + welcome email через reset token)
                   let ownerId = null
                   if (from) {
                     const existingUser = await CustomerUsers.getByEmail(from)
@@ -149,14 +241,43 @@ class MailFetcherService {
                       const shouldCreate = await SystemConfiguration.getAll({}).then(r => (r.systemConfiguration || []).find(c => c.key === 'create_customer_user_by_email' || c.name === 'create_customer_user_by_email'))
                       const createFlag = shouldCreate ? (shouldCreate.value === 'true') : false
                       if (createFlag) {
+                        // Генерируем одноразовый токен для сброса пароля вместо пароля в письме
+                        const resetToken = require('crypto').randomBytes(32).toString('hex')
+                        const resetExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 дней
+
                         const newUser = await CustomerUsers.create({
                           firstName: 'Авто',
                           lastName: 'Пользователь',
                           email: from,
                           login: from,
+                          passwordResetToken: resetToken,
+                          passwordResetExpires: resetExpires,
                         })
 
                         ownerId = newUser.id
+
+                        // === Отправка welcome email с ссылкой сброса (если в очереди настроен шаблон) ===
+                        if (queue.templateCustomerWelcomeId && resetToken) {
+                          try {
+                            const template = await Templates.getById(queue.templateCustomerWelcomeId)
+                            if (template && template.isActive !== false) {
+                              const resetLink = `${process.env.APP_URL || 'http://localhost:5050'}/reset-password?token=${resetToken}`
+                              let welcomeHtml = (template.message || '').replace(/\{\{email\}\}/g, from)
+                                .replace(/\{\{resetLink\}\}/g, resetLink)
+                                .replace(/\{\{login\}\}/g, from)
+
+                              await EmailSenderService.send({
+                                queueId: queue.id,
+                                to: from,
+                                subject: template.name || 'Добро пожаловать в систему поддержки',
+                                html: welcomeHtml,
+                              })
+                              console.log(`[MAIL-FETCHER] Welcome email отправлен новому клиенту ${from}`)
+                            }
+                          } catch (welcomeErr) {
+                            console.warn('[MAIL-FETCHER] Не удалось отправить welcome email:', welcomeErr.message)
+                          }
+                        }
                       }
                     }
                   }

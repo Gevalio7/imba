@@ -7,7 +7,7 @@ function toSnakeCase(str) {
 
 class Queues {
   static tableName = 'queues'
-  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId'
+  static fields = 'name, description, companyId, departmentId, serviceId, slaId, workflowId, priorityId, executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds, keywords, quickAnswerArticleIds, typeId, categoryId, postMasterMailAccountId, templateOpenTicketId, templateCloseTicketId, templateConfirmTicketId, templateStatusChangeId, templateCommentTicketId, mailFetchInterval, mailFolder, autoCreateTicket, autoReplyEnabled, signatureEnabled, signatureText, templateCustomerWelcomeId'
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, filters = {}, isActive } = options

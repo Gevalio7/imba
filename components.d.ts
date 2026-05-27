@@ -89,6 +89,7 @@ declare module 'vue' {
     SlaDeadlineBadge: typeof import('./src/components/TicketEdit/SlaDeadlineBadge.vue')['default']
     TablePagination: typeof import('./src/@core/components/TablePagination.vue')['default']
     TemplateCards: typeof import('./src/views/apps/template-queues/TemplateCards.vue')['default']
+    TemplateEditorDialog: typeof import('./src/components/TemplateEditorDialog.vue')['default']
     TheCustomizer: typeof import('./src/@core/components/TheCustomizer.vue')['default']
     ThemeSwitcher: typeof import('./src/@core/components/ThemeSwitcher.vue')['default']
     TicketAttachments: typeof import('./src/components/TicketEdit/TicketAttachments.vue')['default']

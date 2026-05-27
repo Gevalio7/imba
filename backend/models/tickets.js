@@ -429,6 +429,38 @@ class Tickets {
       return String(lastNumber + 1)
     }
   }
+
+  static async findByExternalId(externalId) {
+    // Выбираем только нужные поля (не SELECT *) для производительности
+    // NOTE: требуется индекс на tickets(external_id)
+    if (!externalId) return null
+    try {
+      const result = await pool.query(
+        'SELECT id, ticket_number, title, state_id FROM tickets WHERE external_id = $1 LIMIT 1',
+        [externalId]
+      )
+      return result.rows[0] || null
+    } catch (e) {
+      console.error('Tickets.findByExternalId error:', e)
+      return null
+    }
+  }
+
+  static async getByNumber(ticketNumber) {
+    // Выбираем только нужные поля для производительности
+    // NOTE: требуется индекс на tickets(ticket_number)
+    if (!ticketNumber) return null
+    try {
+      const result = await pool.query(
+        'SELECT id, ticket_number, title, state_id FROM tickets WHERE ticket_number = $1 LIMIT 1',
+        [ticketNumber]
+      )
+      return result.rows[0] || null
+    } catch (e) {
+      console.error('Tickets.getByNumber error:', e)
+      return null
+    }
+  }
 }
 
 // Helper function to calculate age

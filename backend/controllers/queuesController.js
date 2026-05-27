@@ -78,42 +78,50 @@ const createQueues = asyncHandler(async (req, res) => {
   if (req.body.templateCommentTicketId !== undefined)
     data.templateCommentTicketId = req.body.templateCommentTicketId
 
+  if (req.body.postMasterMailAccountId !== undefined)
+    data.postMasterMailAccountId = req.body.postMasterMailAccountId
+
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
 
-  // Новые поля: companyId, departmentId, serviceId, slaId, workflowId, agentGroupId, priorityId
+  // Стандартные поля очереди (восстановлено после регрессии в правке)
   if (req.body.companyId !== undefined)
     data.companyId = req.body.companyId
-
   if (req.body.departmentId !== undefined)
     data.departmentId = req.body.departmentId
-
   if (req.body.serviceId !== undefined)
     data.serviceId = req.body.serviceId
-
   if (req.body.slaId !== undefined)
     data.slaId = req.body.slaId
-
   if (req.body.workflowId !== undefined)
     data.workflowId = req.body.workflowId
-
   if (req.body.agentGroupId !== undefined)
     data.agentGroupId = req.body.agentGroupId
-
   if (req.body.priorityId !== undefined)
     data.priorityId = req.body.priorityId
-
   if (req.body.typeId !== undefined)
     data.typeId = req.body.typeId
-
   if (req.body.categoryId !== undefined)
     data.categoryId = req.body.categoryId
 
-  if (req.body.postMasterMailAccountId !== undefined)
-    data.postMasterMailAccountId = req.body.postMasterMailAccountId
+  // Новые почтовые и welcome настройки очереди (2026-05)
+  if (req.body.mailFetchInterval !== undefined)
+    data.mailFetchInterval = req.body.mailFetchInterval
+  if (req.body.mailFolder !== undefined)
+    data.mailFolder = req.body.mailFolder
+  if (req.body.autoCreateTicket !== undefined)
+    data.autoCreateTicket = req.body.autoCreateTicket
+  if (req.body.autoReplyEnabled !== undefined)
+    data.autoReplyEnabled = req.body.autoReplyEnabled
+  if (req.body.signatureEnabled !== undefined)
+    data.signatureEnabled = req.body.signatureEnabled
+  if (req.body.signatureText !== undefined)
+    data.signatureText = req.body.signatureText
+  if (req.body.templateCustomerWelcomeId !== undefined)
+    data.templateCustomerWelcomeId = req.body.templateCustomerWelcomeId
 
-  // Новые поля: executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds
+  // Новые поля: executorGroupIds, executorAgentIds, observerGroupIds, observerAgentIds, approverGroupIds, approverAgentIds
   if (req.body.executorGroupIds !== undefined) {
     if (Array.isArray(req.body.executorGroupIds))
       data.executorGroupIds = req.body.executorGroupIds
