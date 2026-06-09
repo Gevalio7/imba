@@ -2,6 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
 
+definePage({
+  meta: {
+    navActiveLink: 'apps-priorities',
+    action: 'read',
+    subject: 'menu_priorities'
+  }
+})
+
 // Типы данных для Приоритет
 interface Priorities {
   id: number

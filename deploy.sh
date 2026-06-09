@@ -61,7 +61,9 @@ SKIP_BACKUP=false
 RESTART_ONLY=false
 SHOW_LOGS=false
 DO_ROLLBACK=false
+DO_MIGRATE=false
 ENVIRONMENT="production"
+MIGRATE_FILES=()
 
 # ========================== ПАРСИНГ АРГУМЕНТОВ ==========================
 print_usage() {
@@ -80,6 +82,8 @@ print_usage() {
       --restart-only       Только перезапустить контейнер
       --logs               Показать логи после деплоя
       --rollback           Откат к последнему бэкапу
+      --migrate            Запустить миграции (только .sql файлы)
+      --migrate-only       Только применить миграции, без деплоя кода
       --env ENV            Окружение (production/staging/dev)
   -h, --help               Показать эту справку
 
@@ -87,6 +91,7 @@ print_usage() {
   $0 -f src/composables/useTicketForm.ts
   $0 -c HEAD~1
   $0 --interactive
+  $0 --migrate backend/migrations/003_add_template_advanced_fields_and_logs.sql
 EOF
 }
 
@@ -137,6 +142,27 @@ parse_args() {
             --env)
                 ENVIRONMENT="$2"
                 shift 2
+                ;;
+            --migrate)
+                DO_MIGRATE=true
+                shift
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    while [[ $# -gt 0 && ! $1 =~ ^- ]]; do
+                        MIGRATE_FILES+=("$1")
+                        shift
+                    done
+                fi
+                ;;
+            --migrate-only)
+                DO_MIGRATE=true
+                MIGRATE_FILES_ONLY=true
+                shift
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    while [[ $# -gt 0 && ! $1 =~ ^- ]]; do
+                        MIGRATE_FILES+=("$1")
+                        shift
+                    done
+                fi
                 ;;
             -h|--help)
                 print_usage
@@ -214,7 +240,12 @@ main() {
         exit 0
     fi
 
-    if [ -z "$MODE" ] && [ "$RESTART_ONLY" = false ]; then
+    # Если --migrate-only — нам не нужен MODE
+    if [ "$MIGRATE_FILES_ONLY" = true ]; then
+        DO_MIGRATE=true
+    fi
+
+    if [ -z "$MODE" ] && [ "$RESTART_ONLY" = false ] && [ "$DO_MIGRATE" = false ]; then
         log ERROR "Не указан режим работы (--file, --commit или --interactive)"
         print_usage
         exit 1
@@ -248,11 +279,19 @@ main() {
         esac
     fi
 
-    # Docker операции
-    if [ "$DRY_RUN" = false ]; then
+    # Docker операции (если не только миграции)
+    if [ "$DRY_RUN" = false ] && [ "$MIGRATE_FILES_ONLY" != true ]; then
         perform_docker_operations
     else
         log INFO "[DRY-RUN] Пропущены операции с Docker"
+    fi
+
+    # Миграции (если указаны)
+    if [ "$DO_MIGRATE" = true ]; then
+        run_migrations || {
+            log ERROR "Миграции завершились с ошибкой"
+            exit 1
+        }
     fi
 
     local end_time
@@ -332,6 +371,19 @@ deploy_files() {
     # Сохраняем информацию о типе изменений для последующих шагов
     export HAS_FRONTEND_CHANGE=$has_frontend
     export HAS_BACKEND_CHANGE=$has_backend
+
+    # Автоматически добавить .sql файлы из миграций, если они есть в FILES
+    if [ "$DO_MIGRATE" = false ]; then
+        for f in "${FILES[@]}"; do
+            if [[ "$f" == *.sql ]]; then
+                MIGRATE_FILES+=("$f")
+            fi
+        done
+        if [ ${#MIGRATE_FILES[@]} -gt 0 ]; then
+            DO_MIGRATE=true
+            log INFO "Автоматически найдены SQL миграции в FILES: ${MIGRATE_FILES[*]}"
+        fi
+    fi
 }
 
 # ========================== ДЕПЛОЙ ИЗ КОММИТА ==========================
@@ -371,8 +423,62 @@ deploy_commit() {
         return 0
     fi
 
+    # Автоматически добавить .sql файлы из миграций, если они есть в коммите
+    if [ "$DO_MIGRATE" = false ]; then
+        for f in "${files_to_deploy[@]}"; do
+            if [[ "$f" == *.sql && -f "$f" ]]; then
+                MIGRATE_FILES+=("$f")
+            fi
+        done
+        if [ ${#MIGRATE_FILES[@]} -gt 0 ]; then
+            DO_MIGRATE=true
+            log INFO "Автоматически найдены SQL миграции: ${MIGRATE_FILES[*]}"
+        fi
+    fi
+
     FILES=("${files_to_deploy[@]}")
     deploy_files
+}
+
+# ========================== МИГРАЦИИ ==========================
+run_migrations() {
+    if [ ${#MIGRATE_FILES[@]} -eq 0 ]; then
+        log INFO "Миграционные файлы не указаны явно и не найдены в коммите"
+        return 0
+    fi
+
+    log INFO "🔄 Выполнение SQL миграций..."
+
+    if [ "$DRY_RUN" = true ]; then
+        log INFO "[DRY-RUN] Будут применены миграции:"
+        printf '  - %s\n' "${MIGRATE_FILES[@]}"
+        return 0
+    fi
+
+    # Проверяем подключение к БД
+    log INFO "Проверка соединения с PostgreSQL..."
+
+    # Получаем пароль из .env на сервере
+    local db_password
+    db_password=$(ssh "$SERVER_USER@$SERVER_HOST" "cat '$SERVER_PROJECT_PATH/.env' | grep DB_PASSWORD | cut -d '=' -f2" 2>/dev/null || echo "postgres")
+
+    for sql_file in "${MIGRATE_FILES[@]}"; do
+        # Преобразуем локальный путь в серверный
+        local remote_sql_path="${SERVER_PROJECT_PATH}/${sql_file}"
+
+        log INFO "Применение миграции: $sql_file"
+
+        ssh "$SERVER_USER@$SERVER_HOST" "
+            PGPASSWORD='$db_password' psql -h localhost -p 5432 -U postgres -d test_entities_db -f '$remote_sql_path'
+        " || {
+            log ERROR "Ошибка при применении миграции: $sql_file"
+            return 1
+        }
+
+        log SUCCESS "Миграция применена: $sql_file"
+    done
+
+    log SUCCESS "Все миграции успешно применены"
 }
 
 # ========================== DOCKER / BACKEND ОПЕРАЦИИ (DreamDesc) ==========================

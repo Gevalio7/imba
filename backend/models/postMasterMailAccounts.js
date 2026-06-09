@@ -1,5 +1,5 @@
 const { pool } = require('../config/db')
-const { decrypt } = require('../utils/crypto')
+const { encrypt, decrypt } = require('../utils/crypto')
 
 // Функция для преобразования camelCase в snake_case
 function toSnakeCase(str) {
@@ -14,7 +14,7 @@ function toSnakeCase(str) {
 
 class PostMasterMailAccounts {
   static tableName = 'post_master_mail_accounts'
-  static fields = 'name, type, authenticationType, login, password, host, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPassword, smtpAuthType'
+  static fields = 'name, type, authenticationType, login, password, host, port, imapFolder, trusted, dispatchingBy, queueId, comment, oauth2TokenConfigID, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPassword, smtpAuthType, smtpFromEmail, smtpFromName, useForOutgoing'
 
   static async getAll(options = {}) {
     const { q, sortBy, orderBy = 'asc', itemsPerPage = 1000, page = 1, isActive } = options
@@ -115,7 +115,23 @@ class PostMasterMailAccounts {
     try {
       const fieldList = this.fields.split(', ')
       const placeholders = fieldList.map((_, i) => `$${i + 1}`).join(', ')
-      const values = fieldList.map(field => postMasterMailAccount[field])
+      let values = fieldList.map(field => {
+        if (['executorGroupIds', 'executorAgentIds', 'observerGroupIds', 'observerAgentIds'].includes(field)) {
+          return postMasterMailAccount[field] && Array.isArray(postMasterMailAccount[field]) ? `{${postMasterMailAccount[field].join(',')}}` : null
+        }
+        if (field === 'keywords') {
+          return postMasterMailAccount[field] && Array.isArray(postMasterMailAccount[field]) ? `{${postMasterMailAccount[field].map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}` : null
+        }
+
+        if (field === 'password') {
+          return encrypt(postMasterMailAccount[field])
+        }
+        if (field === 'smtpPassword') {
+          return encrypt(postMasterMailAccount[field])
+        }
+
+        return postMasterMailAccount[field] !== undefined ? postMasterMailAccount[field] : null
+      })
 
       // Добавляем isActive
       values.push(postMasterMailAccount.isActive !== undefined ? postMasterMailAccount.isActive : true)
@@ -151,7 +167,16 @@ class PostMasterMailAccounts {
       fieldList.forEach(field => {
         if (postMasterMailAccount[field] !== undefined) {
           updates.push(`${toSnakeCase(field)} = $${paramIndex}`)
-          values.push(postMasterMailAccount[field])
+          // Шифруем пароли при обновлении
+          if (field === 'password') {
+            values.push(encrypt(postMasterMailAccount[field]))
+          }
+          else if (field === 'smtpPassword') {
+            values.push(encrypt(postMasterMailAccount[field]))
+          }
+          else {
+            values.push(postMasterMailAccount[field])
+          }
           paramIndex++
         }
       })

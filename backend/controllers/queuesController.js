@@ -85,7 +85,17 @@ const createQueues = asyncHandler(async (req, res) => {
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
 
-  // Стандартные поля очереди (восстановлено после регрессии в правке)
+  // Синхронизация autoCreateTicket с isActive: если очередь активна — создаём тикеты
+  if (data.isActive !== undefined)
+    data.autoCreateTicket = data.isActive
+
+  // Дефолты для булевых NOT NULL полей
+  if (data.autoReplyEnabled === undefined)
+    data.autoReplyEnabled = false
+  if (data.signatureEnabled === undefined)
+    data.signatureEnabled = false
+
+  // Стандартные поля очереди
   if (req.body.companyId !== undefined)
     data.companyId = req.body.companyId
   if (req.body.departmentId !== undefined)
@@ -168,9 +178,7 @@ const createQueues = asyncHandler(async (req, res) => {
   if (req.body.autoResponseTemplate !== undefined)
     data.autoResponseTemplate = req.body.autoResponseTemplate
 
-  console.log('📝 Данные для создания:', data)
-
-  // Валидация обязательных полей
+  // Валидация обязательных полей — только название
   if (!data.name)
     return res.status(400).json({ message: 'name is required' })
 
@@ -217,6 +225,10 @@ const updateQueues = asyncHandler(async (req, res) => {
   // Добавляем isActive если передан
   if (req.body.isActive !== undefined)
     data.isActive = req.body.isActive
+
+  // Синхронизация autoCreateTicket с isActive
+  if (data.isActive !== undefined)
+    data.autoCreateTicket = data.isActive
 
   // Новые поля: companyId, departmentId, serviceId, slaId, workflowId, agentGroupId, priorityId
   if (req.body.companyId !== undefined)

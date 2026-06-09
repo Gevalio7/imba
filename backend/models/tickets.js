@@ -240,63 +240,65 @@ class Tickets {
     }
   }
 
-  static async create(ticket) {
-    try {
-      const query = `
-        INSERT INTO ${Tickets.tableName} (
-          ticket_number, title, description, type_id, category_id, priority_id, queue_id, state_id,
-          owner_id, executor_agent_ids, executor_group_ids, company_id, service_id, sla_id, response_deadline, resolution_deadline,
-          first_response_at, sla_violated, pending_start_at, observer_agent_ids, observer_group_ids, escalation_count, is_escalated, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-        RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId",
-          category_id as "categoryId", priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
-          owner_id as "ownerId", executor_agent_ids as "executorAgentIds", executor_group_ids as "executorGroupIds",
-          company_id as "companyId", service_id as "serviceId",
-          sla_id as "slaId", response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
-          first_response_at as "firstResponseAt", sla_violated as "slaViolated",
-          pending_start_at as "pendingStartAt", observer_agent_ids as "observerAgentIds", observer_group_ids as "observerGroupIds",
-          escalation_count as "escalationCount", is_escalated as "isEscalated",
-          created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive"
-      `
+   static async create(ticket) {
+     try {
+       const query = `
+         INSERT INTO ${Tickets.tableName} (
+           ticket_number, title, description, type_id, category_id, priority_id, queue_id, state_id,
+           owner_id, executor_agent_ids, executor_group_ids, company_id, service_id, sla_id, response_deadline, resolution_deadline,
+           first_response_at, sla_violated, pending_start_at, observer_agent_ids, observer_group_ids, escalation_count, is_escalated, is_active, external_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+         RETURNING id, ticket_number as "ticketNumber", title, description, type_id as "typeId",
+           category_id as "categoryId", priority_id as "priorityId", queue_id as "queueId", state_id as "stateId",
+           owner_id as "ownerId", executor_agent_ids as "executorAgentIds", executor_group_ids as "executorGroupIds",
+           company_id as "companyId", service_id as "serviceId",
+           sla_id as "slaId", response_deadline as "responseDeadline", resolution_deadline as "resolutionDeadline",
+           first_response_at as "firstResponseAt", sla_violated as "slaViolated",
+           pending_start_at as "pendingStartAt", observer_agent_ids as "observerAgentIds", observer_group_ids as "observerGroupIds",
+           escalation_count as "escalationCount", is_escalated as "isEscalated",
+           created_at as "createdAt", updated_at as "updatedAt", is_active as "isActive", external_id as "externalId"
+       `
 
-      const values = [
-        ticket.ticketNumber,
-        ticket.title,
-        ticket.description || null,
-        ticket.typeId || null,
-        ticket.categoryId || null,
-        ticket.priorityId || null,
-        ticket.queueId || null,
-        ticket.stateId || null,
-        ticket.ownerId || null,
-        ticket.executorAgentIds || [],
-        ticket.executorGroupIds || [],
-        ticket.companyId || null,
-        ticket.serviceId || null,
-        ticket.slaId || null,
-        ticket.responseDeadline || null,
-        ticket.resolutionDeadline || null,
-        ticket.firstResponseAt || null,
-        ticket.slaViolated !== undefined ? ticket.slaViolated : false,
-        ticket.pendingStartAt || null,
-        ticket.observerAgentIds || [],
-        ticket.observerGroupIds || [],
-        ticket.escalationCount || 0,
-        ticket.isEscalated !== undefined ? ticket.isEscalated : false,
+       const values = [
+         ticket.ticketNumber,
+         ticket.title,
+         ticket.description || null,
+         ticket.typeId || null,
+         ticket.categoryId || null,
+         ticket.priorityId || null,
+         ticket.queueId || null,
+         ticket.stateId || null,
+         ticket.ownerId || null,
+         ticket.executorAgentIds || [],
+         ticket.executorGroupIds || [],
+         ticket.companyId || null,
+         ticket.serviceId || null,
+         ticket.slaId || null,
+         ticket.responseDeadline || null,
+         ticket.resolutionDeadline || null,
+         ticket.firstResponseAt || null,
+         ticket.slaViolated !== undefined ? ticket.slaViolated : false,
+         ticket.pendingStartAt || null,
+         ticket.observerAgentIds || [],
+         ticket.observerGroupIds || [],
+         ticket.escalationCount || 0,
+         ticket.isEscalated !== undefined ? ticket.isEscalated : false,
 
-        // Простая конвертация в boolean
-        ticket.isActive !== undefined ? Boolean(ticket.isActive) : true,
-      ]
+         // Простая конвертация в boolean
+         ticket.isActive !== undefined ? Boolean(ticket.isActive) : true,
 
-      const result = await pool.query(query, values)
+         ticket.externalId || null,
+       ]
 
-      return result.rows[0]
-    }
-    catch (error) {
-      console.error('Error in create:', error)
-      throw error
-    }
-  }
+       const result = await pool.query(query, values)
+
+       return result.rows[0]
+     }
+     catch (error) {
+       console.error('Error in create:', error)
+       throw error
+     }
+   }
 
   static async update(id, ticket) {
     try {

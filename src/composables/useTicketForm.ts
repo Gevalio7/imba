@@ -250,7 +250,14 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
     return
   }
 
-  console.log('[QUEUE-AUTOFILL] Start', { queueId, forceUpdate })
+  console.log('[QUEUE-AUTOFILL] Start', { 
+    queueId, 
+    forceUpdate,
+    queueObserverGroups: queue.observerGroupIds,
+    queueObserverAgents: queue.observerAgentIds,
+    queueHasGroups: !!queue.observerGroupIds?.length,
+    queueHasAgents: !!queue.observerAgentIds?.length,
+  })
 
   queueUpdateInProgress.value = true
 
@@ -324,7 +331,12 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
       }
     }
 
-    console.log('[QUEUE-AUTOFILL] Completed')
+    console.log('[QUEUE-AUTOFILL] Completed', {
+      observerGroupIds: ticket.observerGroupIds,
+      observerAgentIds: ticket.observerAgentIds,
+      executorGroupIds: ticket.executorGroupIds,
+      executorAgentIds: ticket.executorAgentIds,
+    })
   } catch (error) {
     console.error('[QUEUE-AUTOFILL] Error:', error)
   } finally {
@@ -567,24 +579,23 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
     }
   })
 
-// Watcher для изменения очереди - принудительно обновляет ВСЕ поля
+// Watcher для очереди - ВНИМАНИЕ: этот watcher работает только в режиме создания (add.vue)
+// В режиме редактирования (edit.vue) очередь управляется локальным watcher'ом
 watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
   const isNewTicket = !ticketId.value
 
-  // В режиме редактирования пропускаем самую первую установку значения
-  // (это происходит при загрузке существующего тикета из БД)
-  if (!isNewTicket && oldQueueId === undefined) {
-    console.log('[QUEUE-WATCHER] Edit mode initial load, skipping auto-apply')
+  // Пропускаем в режиме редактирования - useTicketForm НЕ должен обрабатывать очередь в edit.vue
+  // (edit.vue имеет свой watcher, который вызывает applyDefaultsFromQueue с forceUpdate=false)
+  if (!isNewTicket) {
     return
   }
 
-  // В режиме создания: применяем при любом выборе очереди (включая первый)
-  // Пропускаем только самое начальное состояние формы (ничего не выбрано)
-  if (isNewTicket && oldQueueId === undefined && !newQueueId) {
+  // В режиме создания: пропускаем только начальную инициализацию формы
+  if (oldQueueId === undefined && !newQueueId) {
     return
   }
 
-  console.log('[QUEUE-WATCHER] Queue selection', { from: oldQueueId, to: newQueueId, isNewTicket })
+  console.log('[QUEUE-WATCHER] Queue selection (create mode)', { from: oldQueueId, to: newQueueId })
 
   if (newQueueId) {
     // forceUpdate = true — принудительно обновляем ВСЕ поля

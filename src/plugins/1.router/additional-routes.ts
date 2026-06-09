@@ -63,4 +63,21 @@ export const routes: RouteRecordRaw[] = [
     name: 'apps-queues-edit',
     component: () => import('@/pages/apps/QueuesAddEdit.vue'),
   },
+
+  {
+    path: '/apps/PostMasterMailAccounts/add',
+    name: 'apps-post-master-mail-accounts-add',
+    component: () => import('@/pages/apps/PostMasterMailAccounts/add.vue'),
+  },
+  {
+    path: '/apps/PostMasterMailAccounts/edit/:id',
+    name: 'apps-post-master-mail-accounts-edit',
+    component: () => import('@/pages/apps/PostMasterMailAccounts/edit.vue'),
+  },
+  {
+    path: '/apps/PostMasterMailAccounts',
+    name: 'apps-post-master-mail-accounts',
+    component: () => import('@/pages/apps/PostMasterMailAccounts/index.vue'),
+  },
 ]
+

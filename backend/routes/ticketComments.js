@@ -2,81 +2,21 @@ const express = require('express')
 
 const router = express.Router()
 const { protect } = require('../middleware/auth')
-const TicketComments = require('../models/ticketComments')
+const controller = require('../controllers/ticketCommentsController')
 
 // GET /ticket-comments - список с query params
-router.get('/', async (req, res) => {
-  try {
-    const { ticketId, q, sortBy, orderBy, itemsPerPage, page } = req.query
-
-    const result = await TicketComments.getAll({
-      ticketId,
-      q,
-      sortBy,
-      orderBy,
-      itemsPerPage: itemsPerPage ? Number.parseInt(itemsPerPage) : 100,
-      page: page ? Number.parseInt(page) : 1,
-    })
-
-    res.json(result)
-  }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
+router.get('/', controller.getAll)
 
 // GET /ticket-comments/:id
-router.get('/:id', async (req, res) => {
-  try {
-    const comment = await TicketComments.getById(req.params.id)
-    if (!comment)
-      return res.status(404).json({ error: 'Comment not found' })
-
-    res.json(comment)
-  }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
+router.get('/:id', controller.getById)
 
 // POST /ticket-comments
-router.post('/', protect, async (req, res) => {
-  try {
-    const comment = await TicketComments.create(req.body)
-
-    res.status(201).json(comment)
-  }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
+router.post('/', protect, controller.create)
 
 // PUT /ticket-comments/:id
-router.put('/:id', protect, async (req, res) => {
-  try {
-    const comment = await TicketComments.update(req.params.id, req.body)
-    if (!comment)
-      return res.status(404).json({ error: 'Comment not found' })
-
-    res.json(comment)
-  }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
+router.put('/:id', protect, controller.update)
 
 // DELETE /ticket-comments/:id
-router.delete('/:id', protect, async (req, res) => {
-  try {
-    const deleted = await TicketComments.delete(req.params.id)
-    if (!deleted)
-      return res.status(404).json({ error: 'Comment not found' })
-
-    res.json({ success: true })
-  }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
+router.delete('/:id', protect, controller.remove)
 
 module.exports = router

@@ -1,5 +1,18 @@
 console.log('🚀 Запуск server.js...')
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[SERVER] Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[SERVER] Uncaught Exception:', err.message)
+  // Don't exit for IMAP timeout errors - just log them
+  if (err.code !== 'ETIMEOUT') {
+    process.exit(1)
+  }
+})
+
 const fs = require('node:fs')
 const path = require('node:path')
 const express = require('express')
@@ -286,15 +299,10 @@ app.listen(PORT, async () => {
     }
   }
 
-  let mailFetcherInterval = null
-  async function runMailFetcher() {
-    const minutes = await getMailFetchIntervalMinutes()
-    const ms = (minutes || 5) * 60 * 1000
-    if (mailFetcherInterval)
-      clearInterval(mailFetcherInterval)
-    mailFetcherInterval = setInterval(runMailFetcher, ms)
+  // Function to run mail fetcher (runs once per interval)
+  async function runMailFetcherOnce() {
     try {
-      console.log(`[MAIL-FETCHER] run (interval:${minutes}min)`, new Date().toISOString())
+      console.log(`[MAIL-FETCHER] run`, new Date().toISOString())
 
       const res = await MailFetcherService.fetchAllAccounts()
 
@@ -305,24 +313,20 @@ app.listen(PORT, async () => {
     }
   }
 
-  // Start immediately
-  runMailFetcher().catch(err => console.error('❌ Failed to start mail fetcher', err))
+  // Start the scheduler
+  async function startMailFetcherScheduler() {
+    // Run immediately once
+    await runMailFetcherOnce()
 
-  // keep compatibility: expose start function
-  async function startMailFetcherScheduler() { return runMailFetcher() }
+    // Then set up interval for periodic runs
+    const minutes = await getMailFetchIntervalMinutes()
+    const ms = (minutes || 5) * 60 * 1000
+
+    setInterval(runMailFetcherOnce, ms)
+    console.log(`[MAIL-FETCHER] scheduler started with interval: ${minutes}min`)
+  }
+
   startMailFetcherScheduler().catch(err => console.error('❌ Failed to start mail fetcher scheduler', err))
-
-  // Запускаем cron для завершения неактивных сессий
-  console.log('⏰ Запуск планировщика завершения сессий...')
-  setInterval(terminateIdleSessions, 5 * 60 * 1000) // Каждые 5 минут
-  setTimeout(terminateIdleSessions, 10000) // Через 10 секунд после запуска
-
-  // Для тестирования - запускаем сразу
-  console.log('🧪 Тестируем расписания сразу...')
-  setTimeout(() => {
-    console.log('🔥 Вызываем processDueSchedules...')
-    processDueSchedules().catch(err => console.error('❌ Ошибка в processDueSchedules:', err))
-  }, 1000)
 
   // Запускаем cron для завершения неактивных сессий
   console.log('⏰ Запуск планировщика завершения сессий...')

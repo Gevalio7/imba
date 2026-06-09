@@ -58,6 +58,7 @@ const {
   loadingWorkflow,
   allowMultipleExecutorGroups,
   allowMultipleExecutors,
+  applyDefaultsFromQueue,
 } = useTicketForm(ticketId)
 
 // Comments
@@ -202,6 +203,36 @@ watch(newAttachments, (newFiles, oldFiles) => {
 
 onBeforeUnmount(() => {
   cleanupAttachmentUrls()
+})
+
+// Watcher для изменения очереди - автозаполнение наблюдателей и групп наблюдателей
+// (для ручного создания/изменения тикета)
+watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
+  // Пропускаем: начальную инициализацию формы
+  if (oldQueueId === undefined && !newQueueId) {
+    return
+  }
+  
+  // Пропускаем: начальную загрузку существующего тикета
+  if (ticketId.value && oldQueueId === undefined) {
+    console.log('[EDIT-Q-QUEUE-WATCHER] Initial load, skipping auto-apply')
+    return
+  }
+  // Пропускаем: сброс формы (newQueueId === null/undefined)
+  if (!newQueueId) {
+    console.log('[EDIT-Q-QUEUE-WATCHER] Queue cleared, skipping')
+    return
+  }
+
+  // Дополнительная проверка: справочники должны быть загружены
+  if (!refData.queues || refData.queues.length === 0) {
+    console.log('[EDIT-Q-QUEUE-WATCHER] Reference data not loaded yet, skipping')
+    return
+  }
+
+  console.log('[EDIT-Q-QUEUE-WATCHER] Queue changed', { from: oldQueueId, to: newQueueId })
+  // forceUpdate = false — НЕ перезаписываем уже заполненные поля, только добавляем наблюдателей если их нет
+  await applyDefaultsFromQueue(newQueueId, false)
 })
 
 // Data loading

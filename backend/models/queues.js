@@ -144,7 +144,7 @@ class Queues {
           return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].join(',')}}` : null
         }
         if (field === 'keywords') {
-          // Keywords обрабатывается отдельно как TEXT[]
+          // Keywords обрабатывается отдечно как TEXT[]
           return queue[field] && Array.isArray(queue[field]) ? `{${queue[field].map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}` : null
         }
 

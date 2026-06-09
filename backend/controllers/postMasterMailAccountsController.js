@@ -1,3 +1,4 @@
+const nodemailer = require('nodemailer')
 const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { encrypt } = require('../utils/crypto')
@@ -78,6 +79,12 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
     data.smtpPassword = req.body.smtpPassword
   if (req.body.smtpAuthType !== undefined)
     data.smtpAuthType = req.body.smtpAuthType
+  if (req.body.smtpFromEmail !== undefined)
+    data.smtpFromEmail = req.body.smtpFromEmail
+  if (req.body.smtpFromName !== undefined)
+    data.smtpFromName = req.body.smtpFromName
+  if (req.body.useForOutgoing !== undefined)
+    data.useForOutgoing = req.body.useForOutgoing
 
   // Шифруем чувствительные пароли (если crypto доступен)
   if (data.password) data.password = encrypt(data.password)
@@ -158,6 +165,12 @@ const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
     data.smtpPassword = req.body.smtpPassword
   if (req.body.smtpAuthType !== undefined)
     data.smtpAuthType = req.body.smtpAuthType
+  if (req.body.smtpFromEmail !== undefined)
+    data.smtpFromEmail = req.body.smtpFromEmail
+  if (req.body.smtpFromName !== undefined)
+    data.smtpFromName = req.body.smtpFromName
+  if (req.body.useForOutgoing !== undefined)
+    data.useForOutgoing = req.body.useForOutgoing
 
   // Шифруем чувствительные пароли при обновлении
   if (data.password) data.password = encrypt(data.password)
@@ -428,6 +441,77 @@ const testConnectionById = asyncHandler(async (req, res) => {
   console.log('=== END TEST BY ID DEBUG ===')
 })
 
+// =====================================================
+// ТЕСТ SMTP ПОДКЛЮЧЕНИЯ
+// POST /api/postMasterMailAccounts/:id/test-smtp
+// =====================================================
+const testSmtpConnection = asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const account = await PostMasterMailAccounts.getById(Number.parseInt(id, 10))
+
+  if (!account)
+    return res.status(404).json({ success: false, message: 'Account not found' })
+
+  const smtpHost = account.smtpHost || account.host
+  const smtpPort = account.smtpPort || (account.smtpSecure ? 465 : 587)
+  const smtpUser = account.smtpUser || account.login
+  const smtpPass = account.smtpPassword || account.password
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return res.status(400).json({ success: false, message: 'SMTP credentials incomplete on account' })
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: !!account.smtpSecure,
+      auth: { user: smtpUser, pass: smtpPass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+    })
+
+    await transporter.verify()
+
+    res.json({ success: true, message: 'SMTP connection successful' })
+  }
+  catch (err) {
+    console.error('[SMTP-TEST] Error:', err.message)
+    res.status(400).json({ success: false, message: err.message })
+  }
+})
+
+// =====================================================
+// ТЕСТ SMTP ПОДКЛЮЧЕНИЯ ИЗ BODY (для формы)
+// POST /api/postMasterMailAccounts/test-smtp
+// =====================================================
+const testSmtpConnectionFromBody = asyncHandler(async (req, res) => {
+  const { host, port, secure, username, password } = req.body
+
+  if (!host || !username || !password) {
+    return res.status(400).json({ success: false, message: 'SMTP credentials required' })
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port: port || (secure ? 465 : 587),
+      secure: !!secure,
+      auth: { user: username, pass: password },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+    })
+
+    await transporter.verify()
+
+    res.json({ success: true, message: 'SMTP connection successful' })
+  }
+  catch (err) {
+    console.error('[SMTP-TEST] Error:', err.message)
+    res.status(400).json({ success: false, message: err.message })
+  }
+})
+
 module.exports = {
   getPostMasterMailAccounts,
   getPostMasterMailAccountById,
@@ -436,4 +520,6 @@ module.exports = {
   deletePostMasterMailAccount,
   testConnection,
   testConnectionById,
+  testSmtpConnection,
+  testSmtpConnectionFromBody,
 }

@@ -64,6 +64,10 @@ class EmailSenderService {
         tls: {
           rejectUnauthorized: false,
         },
+        // Таймауты для предотвращения бесконечного ожидания
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
       })
 
       // Добавляем подпись если включена

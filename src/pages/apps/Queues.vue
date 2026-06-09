@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { type ColumnSetting, useFilters } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
@@ -20,7 +20,7 @@ interface Queues {
   workflowId: number | null
 
   priorityId: number | null
-  keywords: string[] | null
+  keywords: string | null // Изменено с string[] | null на string | null
   quickAnswerArticleIds: number[] | null
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
@@ -170,7 +170,7 @@ const referenceData = ref<ReferenceData>({
 const fetchReferenceData = async () => {
   try {
     const data = await $api<ReferenceData>(`${API_BASE}/referenceData`)
-
+    
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -188,6 +188,21 @@ const fetchReferenceData = async () => {
   }
   catch (err) {
     console.error('Error fetching reference data:', err)
+    // Устанавливаем пустые массивы при ошибке
+    referenceData.value = {
+      services: [],
+      sla: [],
+      workflows: [],
+      agentGroups: [],
+      priorities: [],
+      customers: [],
+      customersGroups: [],
+      agents: [],
+      types: [],
+      typeCategories: [],
+      postMasterMailAccounts: [],
+      templates: [],
+    }
   }
 }
 
@@ -314,6 +329,9 @@ const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Поиск
+const searchQuery = ref('')
+
 // Загрузка данных из API
 const fetchQueues = async () => {
   try {
@@ -392,50 +410,20 @@ const deleteQueues = async (id: number) => {
 }
 
 // Watcher для обновления данных при возврате со страницы редактирования
-watch(() => route.query.refresh, newVal => {
-  if (newVal)
-    fetchQueues()
-})
-
-// Инициализация
-onMounted(async () => {
-  await fetchReferenceData()
-  fetchQueues()
-})
-
-const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Название', key: 'name', sortable: true },
-  { title: 'Описание', key: 'description', sortable: true },
-  { title: 'Организация', key: 'companyId', sortable: false },
-  { title: 'Подразделение', key: 'departmentId', sortable: false },
-  { title: 'Тип', key: 'typeId', sortable: false },
-  { title: 'Категория', key: 'categoryId', sortable: false },
-  { title: 'Почтовый аккаунт', key: 'postMasterMailAccountId', sortable: false },
-  { title: 'Сервис', key: 'serviceId', sortable: false },
-  { title: 'SLA', key: 'slaId', sortable: false },
-  { title: 'Рабочий процесс', key: 'workflowId', sortable: false },
-  { title: 'Приоритет (справочник)', key: 'priorityId', sortable: false },
-  { title: 'Группы исполнителей', key: 'executorGroupIds', sortable: false },
-  { title: 'Исполнители', key: 'executorAgentIds', sortable: false },
-  { title: 'Наблюдатели', key: 'observerAgentIds', sortable: false },
-  { title: 'Группы согласующих', key: 'approverGroupIds', sortable: false },
-  { title: 'Согласующие', key: 'approverAgentIds', sortable: false },
-  { title: 'Шаблон открытия', key: 'templateOpenTicketId', sortable: false },
-  { title: 'Шаблон закрытия', key: 'templateCloseTicketId', sortable: false },
-  { title: 'Шаблон подтверждения', key: 'templateConfirmTicketId', sortable: false },
-  { title: 'Шаблон изменения статуса', key: 'templateStatusChangeId', sortable: false },
-  { title: 'Шаблон комментария', key: 'templateCommentTicketId', sortable: false },
-  { title: 'Ключевые слова', key: 'keywords', sortable: false },
-  { title: 'Создано', key: 'createdAt', sortable: true },
-  { title: 'Изменено', key: 'updatedAt', sortable: true },
-  { title: 'Активен', key: 'isActive', sortable: false },
-  { title: 'Действия', key: 'actions', sortable: false },
-]
+let stopWatchRefresh: (() => void) | null = null
 
 // Фильтрация
 const filteredQueues = computed(() => {
   let filtered = queues.value
+
+  // Поиск
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(q => 
+      q.name?.toLowerCase().includes(query) ||
+      q.description?.toLowerCase().includes(query)
+    )
+  }
 
   if (statusFilter.value !== null) {
     // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
@@ -448,40 +436,69 @@ const filteredQueues = computed(() => {
 // Сброс фильтров
 const clearFilters = () => {
   statusFilter.value = null
+  searchQuery.value = ''
 }
 
 // Массовые действия
+const selectedItems = ref<Queues[]>([])
+const bulkDeleting = ref(false)
+const bulkStatusChanging = ref(false)
+const isBulkActionsMenuOpen = ref(false)
+const isBulkDeleteDialogOpen = ref(false)
+const isBulkStatusDialogOpen = ref(false)
+const bulkStatusValue = ref<number>(1)
+
 const bulkDelete = () => {
+  if (selectedItems.value.length === 0) {
+    showToast('Нет выбранных элементов', 'warning')
+    return
+  }
   console.log('🗑️ Массовое удаление - вызвано')
   console.log('📋 Выбранные элементы:', selectedItems.value)
   console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkDeleteDialogOpen.value = true
+  isBulkActionsMenuOpen.value = false
 }
 
 const bulkChangeStatus = () => {
+  if (selectedItems.value.length === 0) {
+    showToast('Нет выбранных элементов', 'warning')
+    return
+  }
   console.log('🔄 Массовое изменение статуса - вызвано')
   console.log('📋 Выбранные элементы:', selectedItems.value)
   console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
   isBulkStatusDialogOpen.value = true
+  isBulkActionsMenuOpen.value = false
 }
 
 const confirmBulkDelete = async () => {
+  if (bulkDeleting.value) return
+  
   try {
+    bulkDeleting.value = true
     const count = selectedItems.value.length
-    for (const item of selectedItems.value)
+    for (const item of selectedItems.value) {
       await deleteQueues(item.id)
-
+    }
     selectedItems.value = []
-    showToast(`Удалено ${count} очереди`)
+    showToast(`Удалено ${count} очередей`)
     isBulkDeleteDialogOpen.value = false
   }
   catch (err) {
+    console.error('Bulk delete error:', err)
     showToast('Ошибка массового удаления', 'error')
+  }
+  finally {
+    bulkDeleting.value = false
   }
 }
 
 const confirmBulkStatusChange = async () => {
+  if (bulkStatusChanging.value) return
+  
   try {
+    bulkStatusChanging.value = true
     const count = selectedItems.value.length
     for (const item of selectedItems.value) {
       await updateQueues(item.id, {
@@ -490,11 +507,15 @@ const confirmBulkStatusChange = async () => {
       })
     }
     selectedItems.value = []
-    showToast(`Статус изменен для ${count} очереди`)
+    showToast(`Статус изменен для ${count} очередей`)
     isBulkStatusDialogOpen.value = false
   }
   catch (err) {
+    console.error('Bulk status change error:', err)
     showToast('Ошибка массового изменения статуса', 'error')
+  }
+  finally {
+    bulkStatusChanging.value = false
   }
 }
 
@@ -513,19 +534,11 @@ const itemsPerPage = ref(10)
 const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
 // Отслеживание изменений выбранных элементов
 watch(selectedItems, newValue => {
   console.log('✅ Изменение выбранных элементов')
   console.log('📋 Новое значение selectedItems:', newValue)
   console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
 }, { deep: true })
 
 // Диалоги
@@ -599,34 +612,33 @@ const closeDelete = () => {
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-
     return
   }
 
   try {
     // Подготавливаем данные для отправки
-    const dataToSave = {
-      ...editedItem.value,
-      keywords: editedItem.value.keywords
-        ? editedItem.value.keywords.join(', ')
-        : null,
-    }
+    const dataToSave = { ...editedItem.value }
+    
+    // Удаляем поля, которые не должны отправляться
+    delete (dataToSave as any).id
+    delete (dataToSave as any).createdAt
+    delete (dataToSave as any).updatedAt
 
     if (editedIndex.value > -1) {
       // Обновление существующего
-      const updated = await updateQueues(editedItem.value.id, dataToSave)
-
+      await updateQueues(editedItem.value.id, dataToSave as Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>)
       showToast('Очередь успешно сохранена')
     }
     else {
       // Добавление нового
-      const created = await createQueues(dataToSave)
-
+      await createQueues(dataToSave as Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>)
       showToast('Очередь успешно добавлена')
     }
     close()
+    await fetchQueues() // Обновляем список
   }
   catch (err) {
+    console.error('Save error:', err)
     showToast('Ошибка сохранения очереди', 'error')
   }
 }
@@ -634,11 +646,12 @@ const save = async () => {
 const deleteItemConfirm = async () => {
   try {
     await deleteQueues(editedItem.value.id)
-    showToast('Очередь успешно удален')
+    showToast('Очередь успешно удалена')
     closeDelete()
   }
   catch (err) {
-    showToast('Ошибка удаления очередь', 'error')
+    console.error('Delete error:', err)
+    showToast('Ошибка удаления очереди', 'error')
   }
 }
 
@@ -656,9 +669,10 @@ const toggleStatus = async (item: Queues, newValue: boolean | null) => {
       ...item,
       isActive: newValue,
     })
-    showToast('Статус очередь изменен')
+    showToast('Статус очереди изменен')
   }
   catch (err) {
+    console.error('Toggle status error:', err)
     showToast('Ошибка изменения статуса', 'error')
   }
 }
@@ -674,10 +688,28 @@ const showToast = (message: string, color: string = 'success') => {
   isToastVisible.value = true
 }
 
-// Добавление нового очередь
+// Добавление нового очереди
 const addNewQueues = () => {
   router.push('/apps/queues/add')
 }
+
+// Инициализация и очистка
+onMounted(async () => {
+  await fetchReferenceData()
+  await fetchQueues()
+  
+  // Настройка watcher с очисткой
+  stopWatchRefresh = watch(() => route.query.refresh, newVal => {
+    if (newVal) fetchQueues()
+  })
+})
+
+onBeforeUnmount(() => {
+  // Очищаем watcher при размонтировании
+  if (stopWatchRefresh) {
+    stopWatchRefresh()
+  }
+})
 </script>
 
 <template>
@@ -714,9 +746,12 @@ const addNewQueues = () => {
         <div class="d-flex align-center">
           <!-- Поиск -->
           <AppTextField
+            v-model="searchQuery"
             placeholder="Поиск очереди"
             style="inline-size: 250px;"
             class="me-3"
+            clearable
+            clear-icon="bx-x"
           />
         </div>
 
@@ -748,18 +783,12 @@ const addNewQueues = () => {
           </template>
           <VList>
             <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
+              @click="bulkDelete"
             >
               <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
             <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
+              @click="bulkChangeStatus"
             >
               <VListItemTitle>Изменить статус</VListItemTitle>
             </VListItem>
@@ -864,6 +893,7 @@ const addNewQueues = () => {
               <VBtn
                 color="error"
                 variant="outlined"
+                :disabled="bulkDeleting"
                 @click="isBulkDeleteDialogOpen = false"
               >
                 Отмена
@@ -871,6 +901,7 @@ const addNewQueues = () => {
               <VBtn
                 color="success"
                 variant="elevated"
+                :loading="bulkDeleting"
                 @click="confirmBulkDelete"
               >
                 Удалить
@@ -900,6 +931,7 @@ const addNewQueues = () => {
               <VBtn
                 color="error"
                 variant="outlined"
+                :disabled="bulkStatusChanging"
                 @click="isBulkStatusDialogOpen = false"
               >
                 Отмена
@@ -907,6 +939,7 @@ const addNewQueues = () => {
               <VBtn
                 color="success"
                 variant="elevated"
+                :loading="bulkStatusChanging"
                 @click="confirmBulkStatusChange"
               >
                 Применить
@@ -969,18 +1002,18 @@ const addNewQueues = () => {
         <!-- Ключевые слова -->
         <template #item.keywords="{ item }">
           <div
-            v-if="item.keywords && Array.isArray(item.keywords)"
+            v-if="item.keywords"
             class="d-flex flex-wrap gap-1"
           >
             <VChip
-              v-for="keyword in item.keywords"
+              v-for="keyword in item.keywords.split(',')"
               :key="keyword"
               size="small"
               color="primary"
               variant="flat"
               prepend-icon="bx-tag"
             >
-              {{ keyword }}
+              {{ keyword.trim() }}
             </VChip>
           </div>
           <span
@@ -1287,6 +1320,16 @@ const addNewQueues = () => {
               />
             </VCol>
 
+            <!-- Ключевые слова -->
+            <VCol cols="12">
+              <AppTextField
+                v-model="editedItem.keywords"
+                label="Ключевые слова (через запятую)"
+                placeholder="например: срочно, важно, баг"
+                hint="Введите ключевые слова через запятую"
+              />
+            </VCol>
+
             <!-- Активен -->
             <VCol
               cols="12"
@@ -1327,7 +1370,7 @@ const addNewQueues = () => {
       v-model="deleteDialog"
       max-width="500px"
     >
-      <VCard title="Вы уверены, что хотите удалить этот очередь?">
+      <VCard title="Вы уверены, что хотите удалить эту очередь?">
         <VCardText>
           <div class="d-flex justify-center gap-4">
             <VBtn

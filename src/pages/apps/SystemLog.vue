@@ -101,8 +101,24 @@ const deleteSystemLog = async (id: number) => {
 // Инициализация
 const activeTab = ref('system-log')
 
+// Fetch logs for the active tab
+const fetchLogsForActiveTab = async () => {
+  // Reset pagination when switching tabs
+  currentPage.value = 1
+  
+  if (activeTab.value === 'system-log') {
+    await fetchSystemLog()
+  } else if (activeTab.value === 'mail-fetcher') {
+    await fetchMailFetchLogs()
+  }
+}
+
 onMounted(() => {
-  fetchSystemLog()
+  fetchLogsForActiveTab()
+})
+
+watch(activeTab, () => {
+  fetchLogsForActiveTab()
 })
 
 // --- Mail fetcher logs state ---
@@ -149,6 +165,27 @@ const openMailFetchDetails = async (id: number) => {
   }
   catch (err) {
     console.error('Error fetching mail fetch details', err)
+  }
+}
+
+// Manual trigger for mail fetcher
+const runMailFetcher = async () => {
+  try {
+    mailFetchLoading.value = true
+    const res = await $api<{ checkedQueues: number; emailsFound: number; ticketsCreated: number; errors: any }>(`${API_BASE}/mailFetcher/run`, {
+      method: 'POST',
+    })
+    console.log('Mail fetcher result:', res)
+    showToast('Сбор почты завершен', 'success')
+    // Refresh logs
+    await fetchMailFetchLogs()
+  }
+  catch (err) {
+    console.error('Error running mail fetcher', err)
+    showToast('Ошибка при запуске сборщика почты', 'error')
+  }
+  finally {
+    mailFetchLoading.value = false
   }
 }
 
@@ -651,7 +688,7 @@ const addNewSystemLog = () => {
                     :model-value="item.isActive"
                     color="primary"
                     hide-details
-                    @update:model-value="(val) => toggleStatus(item, val)"
+                    @update:model-value="(val) => toggleStatus(item, val ?? false)"
                   />
                   <VChip
                     v-bind="resolveStatusVariant(item.isActive)"
@@ -694,6 +731,16 @@ const addNewSystemLog = () => {
 
         <VTabItem value="mail-fetcher">
           <VCard title="Логи сборщика почты">
+            <div class="pa-4">
+              <VBtn
+                color="primary"
+                prepend-icon="bx-mail-send"
+                @click="runMailFetcher"
+                :loading="mailFetchLoading"
+              >
+                Запустить сбор почты
+              </VBtn>
+            </div>
             <div
               v-if="mailFetchLoading"
               class="d-flex justify-center pa-6"

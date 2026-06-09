@@ -267,10 +267,10 @@ const statusOptions = computed(() => {
           v-model="ticket.observerGroupIds"
           :items="agentGroupOptions"
           label="Группы наблюдателей"
-          placeholder="Наблюдатели добавляются автоматически при эскалации"
+          placeholder="Выберите группы наблюдателей"
           multiple
           chips
-          readonly
+          clearable
         />
 
         <!-- Наблюдатели -->
@@ -278,10 +278,10 @@ const statusOptions = computed(() => {
           v-model="ticket.observerAgentIds"
           :items="agentOptions"
           label="Наблюдатели"
-          placeholder="Наблюдатели добавляются автоматически при эскалации"
+          placeholder="Выберите наблюдателей"
           multiple
           chips
-          readonly
+          clearable
         />
 
         <!-- Счётчик эскалаций -->

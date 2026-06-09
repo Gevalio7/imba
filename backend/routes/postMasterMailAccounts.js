@@ -9,6 +9,10 @@ const {
   createPostMasterMailAccount,
   updatePostMasterMailAccount,
   deletePostMasterMailAccount,
+  testConnection,
+  testConnectionById,
+  testSmtpConnection,
+  testSmtpConnectionFromBody,
 } = require('../controllers/postMasterMailAccountsController')
 
 // additionally expose mail fetcher run endpoint under admin
@@ -53,10 +57,16 @@ router.delete('/:id', protect, async (req, res, next) => {
   }
 })
 
-// POST /postMasterMailAccounts/test - test with body params
-router.post('/test', protect, require('../controllers/postMasterMailAccountsController').testConnection)
+// POST /postMasterMailAccounts/test - test IMAP with body params
+router.post('/test', protect, testConnection)
 
-// POST /postMasterMailAccounts/:id/test - test saved account
-router.post('/:id/test', protect, require('../controllers/postMasterMailAccountsController').testConnectionById)
+// POST /postMasterMailAccounts/:id/test - test saved IMAP account
+router.post('/:id/test', protect, testConnectionById)
+
+// POST /postMasterMailAccounts/:id/test-smtp - test SMTP connection
+router.post('/:id/test-smtp', protect, testSmtpConnection)
+
+// POST /postMasterMailAccounts/test-smtp - test SMTP with body params
+router.post('/test-smtp', protect, testSmtpConnectionFromBody)
 
 module.exports = router

@@ -133,34 +133,43 @@ watch(() => ticket.typeId, async (newTypeId, oldTypeId) => {
   resetWorkflowData()
 })
 
-// УДАЛЕН дублирующий watcher для очереди (логика теперь полностью в useTicketForm.ts)
-// watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
-//   if (newQueueId === oldQueueId) return
-// 
-//   if (!newQueueId) {
-//     resetWorkflowData()
-//     return
-//   }
-// 
-//   // Используем защитный флаг из composable
-//   // (локальный isUpdatingFromQueue пока оставлен для совместимости с type watcher)
-//   isUpdatingFromQueue = true
-// 
-//   try {
-//     // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
-//     await applyDefaultsFromQueue(newQueueId)
-// 
-//     // После делегирования обновляем локальный initialStatus (если нужно)
-//     initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
-//   } catch (error) {
-//     console.error('Error processing queue selection (delegated):', error)
-//     showToast('Ошибка загрузки данных очереди', 'error')
-//     resetWorkflowData()
-//   } finally {
-//     await nextTick()
-//     isUpdatingFromQueue = false
-//   }
-// })
+// Watcher для очереди - автозаполнение из неё
+watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
+  // Пропускаем: начальная инициализация (старое значение undefined, новое тоже undefined)
+  if (oldQueueId === undefined && !newQueueId) {
+    return
+  }
+  
+  // Пропускаем: очередь не выбрана
+  if (!newQueueId) {
+    resetWorkflowData()
+    return
+  }
+
+  // Дополнительная проверка: справочники должны быть загружены
+  if (!queues.value || queues.value.length === 0) {
+    console.log('[QUEUE-WATCHER] Reference data not loaded yet, skipping')
+    return
+  }
+
+  // Используем защитный флаг из composable
+  isUpdatingFromQueue = true
+
+  try {
+    // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
+    await applyDefaultsFromQueue(newQueueId, true)
+
+    // После делегирования обновляем локальный initialStatus (если нужно)
+    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
+  } catch (error) {
+    console.error('Error processing queue selection (delegated):', error)
+    showToast('Ошибка загрузки данных очереди', 'error')
+    resetWorkflowData()
+  } finally {
+    await nextTick()
+    isUpdatingFromQueue = false
+  }
+})
 
 
 // Watcher для изменения компании - очищаем сервис если он не принадлежит новой компании

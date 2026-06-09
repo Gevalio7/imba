@@ -12,6 +12,9 @@ const Customers = require('../models/customers')
 const Services = require('../models/services')
 const Sla = require('../models/sla')
 const CustomerUsers = require('../models/customerUsers')
+const Templates = require('../models/templates')
+const EmailSenderService = require('../services/EmailSenderService')
+const notificationService = require('../services/notificationService')
 const SystemConfiguration = require('../models/systemConfiguration')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getTicketVisibilityFilter } = require('../middleware/permissions')
@@ -355,6 +358,48 @@ const createTicket = asyncHandler(async (req, res) => {
     )
   }
 
+  // =====================================================
+  // Отправка уведомления о создании тикета (если есть шаблон в очереди)
+  // =====================================================
+  if (newTicket.queueId) {
+    // Асинхронная отправка - не ждём завершения
+    setImmediate(async () => {
+      try {
+        const queue = await Queues.getById(newTicket.queueId)
+        if (queue && queue.templateOpenTicketId) {
+          const template = await Templates.getById(queue.templateOpenTicketId)
+          if (template && template.isActive !== false) {
+            // Получаем email владельца тикета
+            let ownerEmail = null
+            if (newTicket.ownerId) {
+              const owner = await CustomerUsers.getById(newTicket.ownerId)
+              ownerEmail = owner?.email
+            }
+
+            if (ownerEmail) {
+              let html = template.message || ''
+              // Заменяем плейсхолдеры
+              html = html.replace(/\{\{ticketNumber\}\}/g, newTicket.ticketNumber || newTicket.id)
+                .replace(/\{\{title\}\}/g, newTicket.title || '')
+                .replace(/\{\{description\}\}/g, newTicket.description || '')
+                .replace(/\{\{state\}\}/g, newTicket.stateName || '')
+
+              const result = await EmailSenderService.send({
+                queueId: newTicket.queueId,
+                to: ownerEmail,
+                subject: (template.subject || template.name || 'Новый тикет').replace(/\{\{ticketNumber\}\}/g, newTicket.ticketNumber || newTicket.id),
+                html,
+              })
+              console.log(`[TICKETS] Welcome notification sent for ticket ${newTicket.id}:`, result.success ? 'ok' : result.error)
+            }
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('[TICKETS] Failed to send ticket creation notification:', notifyErr.message)
+      }
+    })
+  }
+
   res.status(201).json(newTicket)
 })
 
@@ -475,6 +520,54 @@ const updateTicket = asyncHandler(async (req, res) => {
 
   if (!updatedTicket)
     return res.status(404).json({ message: 'Ticket not found' })
+
+  // =====================================================
+  // Уведомления при изменении тикета
+  // =====================================================
+  if (updatedTicket.queueId) {
+    try {
+      const queue = await Queues.getById(updatedTicket.queueId)
+      if (queue) {
+        // Уведомление при смене статуса
+        if (req.body.stateId !== undefined && req.body.stateId !== currentTicket.stateId) {
+          const newState = await States.getById(req.body.stateId)
+          const oldState = await States.getById(currentTicket.stateId)
+          const isClosed = newState?.isClosed === true || newState?.name?.toLowerCase().includes('закрыт')
+
+          const templateId = isClosed ? queue.templateCloseTicketId : queue.templateStatusChangeId
+          if (templateId) {
+            await notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
+              event: 'status_changed',
+              oldState: oldState?.name || currentTicket.stateId,
+              newState: newState?.name || req.body.stateId,
+            })
+          }
+        }
+
+        // Уведомление при назначении исполнителя (ownerId или executorAgentIds)
+        const ownerChanged = req.body.ownerId !== undefined && req.body.ownerId !== currentTicket.ownerId
+        const executorChanged = req.body.executorAgentIds !== undefined &&
+          JSON.stringify(req.body.executorAgentIds) !== JSON.stringify(currentTicket.executorAgentIds || [])
+
+        if (ownerChanged || executorChanged) {
+          if (queue.templateConfirmTicketId) {
+            const newOwner = req.body.ownerId ? await CustomerUsers.getById(req.body.ownerId) : null
+            const newExecutor = (req.body.executorAgentIds && req.body.executorAgentIds[0])
+              ? await Agents.getById(req.body.executorAgentIds[0])
+              : null
+
+            await notificationService.sendTicketNotification(updatedTicket, queue, queue.templateConfirmTicketId, {
+              event: 'assigned',
+              newOwner: newOwner?.email || newExecutor?.email || req.body.ownerId || req.body.executorAgentIds?.[0],
+              executorName: newExecutor ? `${newExecutor.firstName || ''} ${newExecutor.lastName || ''}`.trim() : '',
+            })
+          }
+        }
+      }
+    } catch (notifyErr) {
+      console.warn('[TICKETS] Failed to send notification on update:', notifyErr.message)
+    }
+  }
 
   // =====================================================
   // Пересчет SLA дедлайнов при изменении SLA
@@ -823,6 +916,32 @@ const changeTicketStatus = asyncHandler(async (req, res) => {
     changedBy,
     validTransition.actionLabel, // actionLabel из workflow
   )
+
+  // =====================================================
+  // Уведомление при смене статуса через change-status
+  // =====================================================
+  if (updatedTicket.queueId) {
+    try {
+      const queue = await Queues.getById(updatedTicket.queueId)
+      if (queue) {
+        const newState = await States.getById(targetStatusId)
+        const oldState = await States.getById(currentTicket.stateId)
+        const isClosed = newState?.isClosed === true || newState?.name?.toLowerCase().includes('закрыт')
+
+        const templateId = isClosed ? queue.templateCloseTicketId : queue.templateStatusChangeId
+        if (templateId) {
+          await notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
+            event: 'status_changed',
+            oldState: oldState?.name || currentTicket.stateId,
+            newState: newState?.name || targetStatusId,
+            transitionLabel: validTransition.actionLabel,
+          })
+        }
+      }
+    } catch (notifyErr) {
+      console.warn('[TICKETS] Failed to send status change notification:', notifyErr.message)
+    }
+  }
 
   res.json({
     ...updatedTicket,

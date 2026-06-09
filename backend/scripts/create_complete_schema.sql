@@ -828,13 +828,18 @@ CREATE TABLE system_configuration (
 
 CREATE TABLE mail_fetch_logs (
     id SERIAL PRIMARY KEY,
-    account_id INTEGER,
-    status VARCHAR(50),
-    message TEXT,
-    fetched_count INTEGER DEFAULT 0,
-    error_message TEXT,
+    mail_account_id INTEGER,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP,
+    emails_found INTEGER DEFAULT 0,
+    tickets_created INTEGER DEFAULT 0,
+    errors TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_mail_fetch_logs_account_id ON mail_fetch_logs(mail_account_id);
+CREATE INDEX IF NOT EXISTS idx_mail_fetch_logs_started_at ON mail_fetch_logs(started_at);
+CREATE INDEX IF NOT EXISTS idx_mail_fetch_logs_errors ON mail_fetch_logs(errors);
 
 -- =====================================================
 -- 3. ТРИГГЕРЫ ДЛЯ АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ updated_at

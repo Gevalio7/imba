@@ -8,12 +8,26 @@ import { errorHandler, notFound } from './middleware/errorHandler'
 
 console.log('🚀 Запуск server.ts...')
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[SERVER] Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[SERVER] Uncaught Exception:', err)
+  if ((err as any).code !== 'ETIMEOUT') {
+    process.exit(1)
+  }
+})
+
 // Используем require для JS-модулей без типов
 const TicketSchedules = require('./models/ticketSchedules')
 const Tickets = require('./models/tickets')
 const { cleanupOldBackups } = require('./controllers/backupController')
 const { pool } = require('./config/db')
 const { TicketScheduleLogs } = require('./models/ticketSchedules')
+const MailFetcherService = require('./services/MailFetcherService')
+const SystemConfiguration = require('./models/systemConfiguration')
 
 const app: Application = express()
 const PORT: string | number = process.env.PORT || 3000
@@ -304,4 +318,42 @@ app.listen(PORT, async () => {
       console.error('❌ Ошибка в processDueSchedules:', err)
     }
   }, 5000)
+
+  // Запускаем планировщик почты
+  console.log('⏰ Запуск планировщика MailFetcher...')
+
+  async function getMailFetchIntervalMinutes() {
+    try {
+      const configs = await SystemConfiguration.getAll({})
+      const all = configs.systemConfiguration || []
+      const found = all.find((c: any) => c.key === 'mail_fetch_interval_minutes' || c.name === 'mail_fetch_interval_minutes')
+      const val = found ? found.value : null
+      const parsed = val ? Number.parseInt(val, 10) : 5
+      return isNaN(parsed) ? 5 : parsed
+    }
+    catch (err) {
+      return 5
+    }
+  }
+
+  async function runMailFetcherOnce() {
+    try {
+      console.log(`[MAIL-FETCHER] run`, new Date().toISOString())
+      const res = await MailFetcherService.fetchAllAccounts()
+      console.log('[MAIL-FETCHER] result', res)
+    }
+    catch (err) {
+      console.error('[MAIL-FETCHER] error', err)
+    }
+  }
+
+  async function startMailFetcherScheduler() {
+    await runMailFetcherOnce()
+    const minutes = await getMailFetchIntervalMinutes()
+    const ms = (minutes || 5) * 60 * 1000
+    setInterval(runMailFetcherOnce, ms)
+    console.log(`[MAIL-FETCHER] scheduler started with interval: ${minutes}min`)
+  }
+
+  startMailFetcherScheduler().catch(err => console.error('❌ Failed to start mail fetcher scheduler', err))
 })
