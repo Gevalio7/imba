@@ -2,8 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 
 const router = useRouter()
+const { ensureLoaded } = useGlobalPermissions()
 
 definePage({
   meta: {
@@ -167,9 +169,9 @@ const deletePostMasterMailAccount = async (id: number) => {
   }
 }
 
-onMounted(() => {
-  fetchPostMasterMailAccounts()
-  fetchQueues()
+onMounted(async () => {
+  await ensureLoaded()
+  await Promise.all([fetchPostMasterMailAccounts(), fetchQueues()])
 })
 
 const headers = [
@@ -394,6 +396,14 @@ const toggleStatus = async (item: PostMasterMailAccount, val: boolean) => {
 
 <template>
   <div>
+     <VCard class="mb-4" color="info" variant="tonal">
+      <VCardTitle>Отладка прав</VCardTitle>
+      <VCardText>
+        <div>Read: {{ $can('read', 'menu_post_master_mail_accounts') ? '✅' : '❌' }}</div>
+        <div>Write: {{ $can('write', 'menu_post_master_mail_accounts') ? '✅' : '❌' }}</div>
+        <div>Delete: {{ $can('delete', 'menu_post_master_mail_accounts') ? '✅' : '❌' }}</div>
+      </VCardText>
+    </VCard>
     <VCard title="Почтовые аккаунты PostMaster">
       <div
         v-if="loading"

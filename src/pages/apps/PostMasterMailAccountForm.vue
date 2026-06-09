@@ -223,171 +223,171 @@ const showToast = (message: string, color: string = 'success') => {
          <VTab>SMTP настройки</VTab>
        </VTabs>
 
-       <VWindow v-model="activeTab" class="mb-4">
-        <VWindowItem value="0">
-          <VCardText>
-            <VRow>
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.name"
-                  label="Название *"
-                  placeholder="Введите название аккаунта"
-                />
-              </VCol>
+        <VWindow v-model="activeTab" class="mb-4">
+         <VWindowItem :value="0">
+           <VCardText>
+             <VRow>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.name"
+                   label="Название *"
+                   placeholder="Введите название аккаунта"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppSelect
-                  v-model="editedItem.type"
-                  label="Тип протокола *"
-                  :items="typeOptions"
-                  item-title="title"
-                  item-value="value"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppSelect
+                   v-model="editedItem.type"
+                   label="Тип протокола *"
+                   :items="typeOptions"
+                   item-title="title"
+                   item-value="value"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppSelect
-                  v-model="editedItem.authenticationType"
-                  label="Тип аутентификации *"
-                  :items="authenticationTypeOptions"
-                  item-title="title"
-                  item-value="value"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppSelect
+                   v-model="editedItem.authenticationType"
+                   label="Тип аутентификации *"
+                   :items="authenticationTypeOptions"
+                   item-title="title"
+                   item-value="value"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.host"
-                  label="Хост *"
-                  placeholder="mail.example.com"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.host"
+                   label="Хост *"
+                   placeholder="mail.example.com"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model.number="editedItem.port"
-                  label="Порт"
-                  type="number"
-                  placeholder="993"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model.number="editedItem.port"
+                   label="Порт"
+                   type="number"
+                   placeholder="993"
+                 />
+               </VCol>
 
-              <VCol
-                v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')"
-                cols="12"
-              >
-                <VAlert
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                >
-                  Для Gmail используйте <strong>пароль приложения (App Password)</strong>, а не обычный пароль аккаунта.
-                  <a
-                    href="https://support.google.com/accounts/answer/185833"
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    Инструкция по созданию
-                  </a>
-                </VAlert>
-              </VCol>
+               <VCol
+                 v-if="editedItem.host?.toString().toLowerCase().includes('gmail.com')"
+                 cols="12"
+               >
+                 <VAlert
+                   type="info"
+                   variant="tonal"
+                   density="compact"
+                 >
+                   Для Gmail используйте <strong>пароль приложения (App Password)</strong>, а не обычный пароль аккаунта.
+                   <a
+                     href="https://support.google.com/accounts/answer/185833"
+                     target="_blank"
+                     rel="noopener"
+                   >
+                     Инструкция по созданию
+                   </a>
+                 </VAlert>
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.login"
-                  label="Логин *"
-                  placeholder="user@example.com"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.login"
+                   label="Логин *"
+                   placeholder="user@example.com"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.password"
-                  label="Пароль *"
-                  :type="showPassword ? 'text' : 'password'"
-                  placeholder="Введите пароль"
-                >
-                  <template #append-inner>
-                    <IconBtn
-                      variant="text"
-                      density="compact"
-                      @click="togglePassword"
-                    >
-                      <VIcon :icon="showPassword ? 'bx-show' : 'bx-hide'" />
-                    </IconBtn>
-                  </template>
-                </AppTextField>
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.password"
+                   label="Пароль *"
+                   :type="showPassword ? 'text' : 'password'"
+                   placeholder="Введите пароль"
+                 >
+                   <template #append-inner>
+                     <IconBtn
+                       variant="text"
+                       density="compact"
+                       @click="togglePassword"
+                     >
+                       <VIcon :icon="showPassword ? 'bx-show' : 'bx-hide'" />
+                     </IconBtn>
+                   </template>
+                 </AppTextField>
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.imapFolder"
-                  label="IMAP папка"
-                  placeholder="INBOX"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.imapFolder"
+                   label="IMAP папка"
+                   placeholder="INBOX"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <VSwitch
-                  v-model="editedItem.trusted"
-                  label="Доверенный аккаунт"
-                  color="primary"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <VSwitch
+                   v-model="editedItem.trusted"
+                   label="Доверенный аккаунт"
+                   color="primary"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppSelect
-                  v-model="editedItem.dispatchingBy"
-                  label="Маршрутизация"
-                  :items="dispatchingByOptions"
-                  item-title="title"
-                  item-value="value"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppSelect
+                   v-model="editedItem.dispatchingBy"
+                   label="Маршрутизация"
+                   :items="dispatchingByOptions"
+                   item-title="title"
+                   item-value="value"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppSelect
-                  v-model="editedItem.queueId"
-                  label="Очередь"
-                  :items="queues.map(q => ({ title: q.name, value: q.id }))"
-                  item-title="title"
-                  item-value="value"
-                  clearable
-                  clear-icon="bx-x"
-                  placeholder="Выберите очередь"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppSelect
+                   v-model="editedItem.queueId"
+                   label="Очередь"
+                   :items="queues.map(q => ({ title: q.name, value: q.id }))"
+                   item-title="title"
+                   item-value="value"
+                   clearable
+                   clear-icon="bx-x"
+                   placeholder="Выберите очередь"
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <AppTextField
-                  v-model="editedItem.oauth2TokenConfigID"
-                  label="OAuth2 Token Config ID"
-                  type="number"
-                  placeholder="ID конфигурации OAuth2"
-                />
-              </VCol>
+               <VCol cols="12" sm="6">
+                 <AppTextField
+                   v-model="editedItem.oauth2TokenConfigID"
+                   label="OAuth2 Token Config ID"
+                   type="number"
+                   placeholder="ID конфигурации OAuth2"
+                 />
+               </VCol>
 
-              <VCol cols="12">
-                <AppTextarea
-                  v-model="editedItem.comment"
-                  label="Комментарий"
-                  rows="2"
-                  placeholder="Введите комментарий..."
-                />
-              </VCol>
+               <VCol cols="12">
+                 <AppTextarea
+                   v-model="editedItem.comment"
+                   label="Комментарий"
+                   rows="2"
+                   placeholder="Введите комментарий..."
+                 />
+               </VCol>
 
-              <VCol cols="12" sm="6">
-                <VSwitch
-                  v-model="editedItem.isActive"
-                  label="Активен"
-                  color="primary"
-                />
-              </VCol>
-            </VRow>
-          </VCardText>
+               <VCol cols="12" sm="6">
+                 <VSwitch
+                   v-model="editedItem.isActive"
+                   label="Активен"
+                   color="primary"
+                 />
+               </VCol>
+             </VRow>
+           </VCardText>
         </VWindowItem>
 
-        <VWindowItem value="1">
+        <VWindowItem :value="1">
           <VCardText>
             <VRow>
               <VCol cols="12" class="text-body-2 text-secondary mb-4">

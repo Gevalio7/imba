@@ -2,10 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 import PostMasterMailAccountForm from '@/pages/apps/PostMasterMailAccountForm.vue'
 
-
 const router = useRouter()
+const { ensureLoaded } = useGlobalPermissions()
 
 definePage({
   meta: {
@@ -80,6 +81,7 @@ const handleCancel = () => {
 }
 
 onMounted(async () => {
+  await ensureLoaded()
   await fetchQueues()
 })
 </script>

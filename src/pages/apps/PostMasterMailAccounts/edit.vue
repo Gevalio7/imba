@@ -69,12 +69,12 @@
 import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 import PostMasterMailAccountForm from '@/pages/apps/PostMasterMailAccountForm.vue'
-
-
 
 const router = useRouter()
 const route = useRoute()
+const { ensureLoaded } = useGlobalPermissions()
 
 definePage({
   meta: {
@@ -208,6 +208,7 @@ const showToast = (message: string, color: string = 'success') => {
 }
 
 onMounted(async () => {
+  await ensureLoaded()
   await fetchQueues()
   const id = Number(route.params.id)
   await fetchAccount(id)

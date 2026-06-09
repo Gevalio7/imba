@@ -19,21 +19,17 @@ export const canRead = (subject: string): boolean => {
     return true
 
   // 1. Точное совпадение
-  if (permissionsMap.value.has(subject)) {
-    const perm = permissionsMap.value.get(subject)!
-    if (perm.read === true)
-      return true
-  }
+  if (permissionsMap.value[subject]?.read === true)
+    return true
 
   // 2. Совпадение с суффиксом _read (на случай если subject передан без суффикса)
-  const permWithSuffix = permissionsMap.value.get(`${subject}_read`)
-  if (permWithSuffix?.read === true)
+  if (permissionsMap.value[`${subject}_read`]?.read === true)
     return true
 
   // 3. Иерархия: если subject — это «группа», ищем дочерние коды вида `${subject}_*_read`
   //    Используем строгий префикс `${subject}_`, чтобы избежать ложных срабатываний по подстроке.
-  for (const [key, perm] of permissionsMap.value) {
-    if (key.startsWith(`${subject}_`) && perm.read === true)
+  for (const key of Object.keys(permissionsMap.value)) {
+    if (key.startsWith(`${subject}_`) && permissionsMap.value[key].read === true)
       return true
   }
 

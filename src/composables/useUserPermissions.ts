@@ -22,6 +22,14 @@ let globalError: string | null = null
 let globalPermissionCacheTimestamp = 0
 let globalPermissionLoadingPromise: Promise<void> | null = null
 
+export function resetPermissionCache() {
+  globalLoaded = false
+  globalLoading = false
+  globalError = null
+  globalPermissionCacheTimestamp = 0
+  globalPermissionLoadingPromise = null
+}
+
 function getStoredRules(): AbilityRule[] {
   if (typeof sessionStorage === 'undefined')
     return []
@@ -54,8 +62,9 @@ function getStoredRules(): AbilityRule[] {
   }
 }
 
-function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules: AbilityRule[]) {
-  permissionsMap.clear()
+function loadPermissionsFromRules(permissionsMap: Record<string, Permission>, rules: AbilityRule[]) {
+  // Очищаем объект
+  Object.keys(permissionsMap).forEach(key => delete permissionsMap[key])
 
   console.log('Processing rules:', rules.length)
   console.log('Sample rules (first 3):', JSON.stringify(rules.slice(0, 3), null, 2))
@@ -79,17 +88,16 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
 
     // helper to set permission entry if not exists
     const setPerm = (key: string, t: 'read' | 'write' | 'delete' | null) => {
-      if (!permissionsMap.has(key)) {
-        permissionsMap.set(key, {
+      if (!permissionsMap[key]) {
+        permissionsMap[key] = {
           code: key,
           read: false,
           write: false,
           delete: false,
-        })
+        }
       }
       if (t) {
-        const p = permissionsMap.get(key)!
-
+        const p = permissionsMap[key]!
         p[t] = true
       }
     }
@@ -115,16 +123,16 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
   rules.forEach(rule => {
     if (rule.action && rule.subject && !rule.subject.endsWith(`_${rule.action}`)) {
       const suffixedSubject = `${rule.subject}_${rule.action}`
-      if (!permissionsMap.has(suffixedSubject)) {
-        permissionsMap.set(suffixedSubject, {
+      if (!permissionsMap[suffixedSubject]) {
+        permissionsMap[suffixedSubject] = {
           code: suffixedSubject,
           read: rule.action === 'read',
           write: rule.action === 'write',
           delete: rule.action === 'delete',
-        })
+        }
       }
       else {
-        const perm = permissionsMap.get(suffixedSubject)!
+        const perm = permissionsMap[suffixedSubject]!
         if (rule.action === 'read')
           perm.read = true
         if (rule.action === 'write')
@@ -141,23 +149,24 @@ function loadPermissionsFromRules(permissionsMap: Map<string, Permission>, rules
 
         // Avoid creating duplicate menu_menu_... keys when base already starts with 'menu_'
         const menuKey = base.startsWith('menu_') ? `${base}_${action}` : `menu_${base}_${action}`
-        if (!permissionsMap.has(menuKey)) {
-          permissionsMap.set(menuKey, {
+        if (!permissionsMap[menuKey]) {
+          permissionsMap[menuKey] = {
             code: menuKey,
             read: action === 'read',
             write: action === 'write',
             delete: action === 'delete',
-          })
+          }
         }
       }
     }
   })
 
-  console.log('Final permissions map:', Array.from(permissionsMap.keys()))
+  console.log('Final permissions map:', Array.from(Object.keys(permissionsMap)))
 }
 
 export function useUserPermissions() {
-  const permissionsMap = ref<Map<string, Permission>>(new Map())
+  // ИСПРАВЛЕНО: объект вместо Map для корректной реактивности Vue 3
+  const permissionsMap = ref<Record<string, Permission>>({})
   const loaded = computed(() => globalLoaded)
   const loading = computed(() => globalLoading)
   const error = computed(() => globalError)
@@ -198,8 +207,7 @@ export function useUserPermissions() {
         else
           console.warn('No rules found in sessionStorage')
 
-        console.log('Permissions loaded, total count:', permissionsMap.value.size)
-
+        console.log('Permissions loaded, total count:', Object.keys(permissionsMap.value).length)
         globalLoaded = true
         globalPermissionCacheTimestamp = now
       })()
@@ -217,46 +225,34 @@ export function useUserPermissions() {
 
   const canRead = (code: string): boolean => {
     // 1. Проверяем точное совпадение
-    if (permissionsMap.value.has(code)) {
-      const perm = permissionsMap.value.get(code)!
-      if (perm.read === true)
-        return true
-    }
+    if (permissionsMap.value[code]?.read === true)
+      return true
 
     // 2. Проверяем с суффиксом _read
-    const permWithSuffix = permissionsMap.value.get(`${code}_read`)
-    if (permWithSuffix?.read === true)
+    if (permissionsMap.value[`${code}_read`]?.read === true)
       return true
 
     // 3. Проверяем дочерние разрешения
-    return Array.from(permissionsMap.value.keys()).some(key =>
+    return Object.keys(permissionsMap.value).some(key =>
       key !== code && key.startsWith(`${code}_`),
     )
   }
 
   const canWrite = (code: string): boolean => {
-    if (permissionsMap.value.has(code)) {
-      const perm = permissionsMap.value.get(code)!
+    if (permissionsMap.value[code]?.write === true)
+      return true
 
-      return perm.write === true
-    }
-
-    const permWithSuffix = permissionsMap.value.get(`${code}_write`)
-    if (permWithSuffix?.write === true)
+    if (permissionsMap.value[`${code}_write`]?.write === true)
       return true
 
     return false
   }
 
   const canDelete = (code: string): boolean => {
-    if (permissionsMap.value.has(code)) {
-      const perm = permissionsMap.value.get(code)!
+    if (permissionsMap.value[code]?.delete === true)
+      return true
 
-      return perm.delete === true
-    }
-
-    const permWithSuffix = permissionsMap.value.get(`${code}_delete`)
-    if (permWithSuffix?.delete === true)
+    if (permissionsMap.value[`${code}_delete`]?.delete === true)
       return true
 
     return false
@@ -289,5 +285,6 @@ export function useUserPermissions() {
     canDelete,
     can,
     hasAnyPermission,
+    resetPermissionCache,
   }
 }
