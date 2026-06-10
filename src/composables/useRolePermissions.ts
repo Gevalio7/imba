@@ -15,12 +15,10 @@ interface Permission {
 }
 
 export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
-  const permissionsMap = ref<Map<string, Permission>>(new Map())
+  const permissionsMap = ref<Record<string, Permission>>({})
 
   const getChildPermission = (childCode: string, type: 'read' | 'write' | 'delete') => {
-    if (!permissionsMap.value)
-      return false
-    const permission = permissionsMap.value.get(`${childCode}_${type}`)
+    const permission = (permissionsMap.value as any)[`${childCode}_${type}`]
 
     return permission ? permission[type] : false
   }
@@ -33,7 +31,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
       return
 
     const key = `${childCode}_${type}`
-    const permission = permissionsMap.value.get(key)
+    const permission = (permissionsMap.value as any)[key]
     if (permission) {
       const oldRead = permission.read
       const oldWrite = permission.write
@@ -58,7 +56,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
         }
 
         Object.entries(permissionsToUpdate).forEach(([permKey, permValue]) => {
-          const p = permissionsMap.value.get(permKey)
+          const p = (permissionsMap.value as any)[permKey]
           if (p) {
             const permType = permKey.endsWith('_read') ? 'read' : permKey.endsWith('_write') ? 'write' : 'delete'
 
@@ -101,8 +99,8 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
       )
 
       const parentKey = `${category.category}_${type}`
-      if (!permissionsMap.value.get(parentKey)) {
-        permissionsMap.value.set(parentKey, {
+      if (!(permissionsMap.value as any)[parentKey]) {
+        (permissionsMap.value as any)[parentKey] = {
           code: parentKey,
           name: category.label,
           category: category.category,
@@ -110,10 +108,10 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
           read: false,
           write: false,
           delete: false,
-        })
+        }
       }
 
-      const parentPerm = permissionsMap.value.get(parentKey)!
+      const parentPerm = (permissionsMap.value as any)[parentKey]!
 
       parentPerm[type] = allChecked
       ;(parentPerm as any)[`${type}_indeterminate`] = someChecked && !allChecked
@@ -153,7 +151,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
       })
 
       Object.entries(permissionsToUpdate).forEach(([permKey, permValue]) => {
-        const permission = permissionsMap.value.get(permKey)
+        const permission = (permissionsMap.value as any)[permKey]
         if (permission) {
           const permType = permKey.endsWith('_read') ? 'read' : permKey.endsWith('_write') ? 'write' : 'delete'
 
@@ -175,7 +173,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
 
   const getParentState = (category: MenuCategory, type: 'read' | 'write' | 'delete') => {
     const key = `${category.category}_${type}`
-    const perm = permissionsMap.value.get(key)
+    const perm = (permissionsMap.value as any)[key]
     if (!perm) {
       const allChecked = category.children.every(child =>
         getChildPermission(child.code!, type),
@@ -199,7 +197,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
 
   const getPermissionLevel = (childCode: string, type: 'read' | 'write' | 'delete') => {
     const key = `${childCode}_${type}`
-    const p = permissionsMap.value.get(key)
+    const p = (permissionsMap.value as any)[key]
 
     return p?.level ?? 0
   }
@@ -208,7 +206,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
     if (!roleId.value || roleId.value === 0)
       return
     const key = `${childCode}_${type}`
-    const permission = permissionsMap.value.get(key)
+    const permission = (permissionsMap.value as any)[key]
     if (!permission)
       return
 
@@ -250,7 +248,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
         const defaultLevel = typeof perm.default_level === 'number' ? perm.default_level : level
 
         if (type) {
-          permissionsMap.value.set(perm.code, {
+          (permissionsMap.value as any)[perm.code] = {
             code: perm.code,
             name: perm.name,
             category: perm.category,
@@ -259,10 +257,10 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
             read: type === 'read' ? perm.is_granted === true : false,
             write: type === 'write' ? perm.is_granted === true : false,
             delete: type === 'delete' ? perm.is_granted === true : false,
-          })
+          }
         }
         else {
-          permissionsMap.value.set(perm.code, {
+          (permissionsMap.value as any)[perm.code] = {
             code: perm.code,
             name: perm.name,
             category: perm.category,
@@ -271,7 +269,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
             read: perm.is_granted === true,
             write: false,
             delete: false,
-          })
+          }
         }
       })
 
@@ -287,8 +285,8 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
           ]
 
           variants.forEach(v => {
-            if (!permissionsMap.value.has(v.code)) {
-              permissionsMap.value.set(v.code, {
+            if (!(permissionsMap.value as any)[v.code]) {
+              (permissionsMap.value as any)[v.code] = {
                 code: v.code,
                 name: child.label,
                 category: category.category,
@@ -297,7 +295,7 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
                 read: false,
                 write: false,
                 delete: false,
-              })
+              }
             }
           })
         })
@@ -313,8 +311,8 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
             const level = typeof perm.level === 'number' ? perm.level : 0
             const defaultLevel = typeof perm.default_level === 'number' ? perm.default_level : level
 
-            if (!permissionsMap.value.has(perm.code)) {
-              permissionsMap.value.set(perm.code, {
+            if (!(permissionsMap.value as any)[perm.code]) {
+              (permissionsMap.value as any)[perm.code] = {
                 code: perm.code,
                 name: perm.name || perm.code,
                 category: perm.category || 'other',
@@ -323,9 +321,9 @@ export function useRolePermissions(roleId: Ref<number>, isNew: Ref<boolean>) {
                 read: false,
                 write: false,
                 delete: false,
-              })
+              }
             }
-            const p = permissionsMap.value.get(perm.code)!
+            const p = (permissionsMap.value as any)[perm.code]!
 
             p.level = level
             p.defaultLevel = defaultLevel

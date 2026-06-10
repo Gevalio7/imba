@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, Ref } from 'vue'
 import { $api } from '@/utils/api'
 
 interface Permission {
@@ -16,18 +16,18 @@ interface AbilityRule {
 const PERMISSION_CACHE_TTL = 5 * 60 * 1000
 
 // module-level singleton state shared across all composable instances
-let globalLoaded = false
-let globalLoading = false
-let globalError: string | null = null
-let globalPermissionCacheTimestamp = 0
-let globalPermissionLoadingPromise: Promise<void> | null = null
+const globalLoaded = ref(false)
+const globalLoading = ref(false)
+const globalError = ref<string | null>(null)
+const globalPermissionCacheTimestamp = ref(0)
+const globalPermissionLoadingPromise = ref<Promise<void> | null>(null)
 
 export function resetPermissionCache() {
-  globalLoaded = false
-  globalLoading = false
-  globalError = null
-  globalPermissionCacheTimestamp = 0
-  globalPermissionLoadingPromise = null
+  globalLoaded.value = false
+  globalLoading.value = false
+  globalError.value = null
+  globalPermissionCacheTimestamp.value = 0
+  globalPermissionLoadingPromise.value = null
 }
 
 function getStoredRules(): AbilityRule[] {
@@ -172,32 +172,32 @@ export function useUserPermissions() {
   const error = computed(() => globalError)
 
   const ensureLoaded = async () => {
-    if (!globalLoaded && !globalLoading)
+    if (!globalLoaded.value && !globalLoading.value)
       await loadPermissions()
-    else if (globalLoading && globalPermissionLoadingPromise)
-      await globalPermissionLoadingPromise
+    else if (globalLoading.value && globalPermissionLoadingPromise.value)
+      await globalPermissionLoadingPromise.value
   }
 
   const loadPermissions = async () => {
     const now = Date.now()
 
-    if (now - globalPermissionCacheTimestamp < PERMISSION_CACHE_TTL && globalLoaded) {
+    if (now - globalPermissionCacheTimestamp.value < PERMISSION_CACHE_TTL && globalLoaded.value) {
       console.log('Using cached permissions')
 
       return
     }
 
-    if (globalPermissionLoadingPromise) {
+    if (globalPermissionLoadingPromise.value) {
       console.log('Permissions loading already in progress, waiting...')
 
-      return globalPermissionLoadingPromise
+      return globalPermissionLoadingPromise.value
     }
 
-    globalLoading = true
-    globalError = null
+    globalLoading.value = true
+    globalError.value = null
 
     try {
-      globalPermissionLoadingPromise = (async () => {
+      globalPermissionLoadingPromise.value = (async () => {
         const rules = getStoredRules()
 
         console.log('Loaded rules count:', rules.length)
@@ -208,18 +208,19 @@ export function useUserPermissions() {
           console.warn('No rules found in sessionStorage')
 
         console.log('Permissions loaded, total count:', Object.keys(permissionsMap.value).length)
-        globalLoaded = true
-        globalPermissionCacheTimestamp = now
+
+        globalLoaded.value = true
+        globalPermissionCacheTimestamp.value = now
       })()
-      await globalPermissionLoadingPromise
+      await globalPermissionLoadingPromise.value
     }
     catch (err: any) {
-      globalError = err?.message || 'Failed to load permissions'
+      globalError.value = err?.message || 'Failed to load permissions'
       console.error('Failed to load permissions:', err)
     }
     finally {
-      globalLoading = false
-      globalPermissionLoadingPromise = null
+      globalLoading.value = false
+      globalPermissionLoadingPromise.value = null
     }
   }
 
