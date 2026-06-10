@@ -37,9 +37,6 @@ export const canRead = (subject: string): boolean => {
   return false
 }
 
-  return false
-}
-
 export const canViewNavMenuGroup = (item: NavGroup) => {
   const hasOwnPerm = !!(item.action && item.subject)
   const children = item.children ?? []
