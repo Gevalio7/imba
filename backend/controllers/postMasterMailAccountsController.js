@@ -3,6 +3,15 @@ const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { encrypt } = require('../utils/crypto')
 
+function normalizePassword(password) {
+  if (!password || typeof password !== 'string') return password
+  return password.replace(/\s/g, '')
+}
+
+function normalizeSmtpSecure(value) {
+  return value === true || value === 'ssl' || value === 'true'
+}
+
 const getPostMasterMailAccounts = asyncHandler(async (req, res) => {
   const { q, sortBy, orderBy, itemsPerPage, page } = req.query
 
@@ -50,7 +59,7 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
 
   // Опциональные поля
   if (req.body.password !== undefined)
-    data.password = req.body.password
+    data.password = normalizePassword(req.body.password)
   if (req.body.imapFolder !== undefined)
     data.imapFolder = req.body.imapFolder
   if (req.body.trusted !== undefined)
@@ -72,11 +81,11 @@ const createPostMasterMailAccount = asyncHandler(async (req, res) => {
   if (req.body.smtpPort !== undefined)
     data.smtpPort = req.body.smtpPort
   if (req.body.smtpSecure !== undefined)
-    data.smtpSecure = req.body.smtpSecure
+    data.smtpSecure = normalizeSmtpSecure(req.body.smtpSecure)
   if (req.body.smtpUser !== undefined)
     data.smtpUser = req.body.smtpUser
   if (req.body.smtpPassword !== undefined)
-    data.smtpPassword = req.body.smtpPassword
+    data.smtpPassword = normalizePassword(req.body.smtpPassword)
   if (req.body.smtpAuthType !== undefined)
     data.smtpAuthType = req.body.smtpAuthType
   if (req.body.smtpFromEmail !== undefined)
@@ -134,7 +143,7 @@ const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
   if (req.body.login !== undefined)
     data.login = req.body.login
   if (req.body.password !== undefined)
-    data.password = req.body.password
+    data.password = normalizePassword(req.body.password)
   if (req.body.host !== undefined)
     data.host = req.body.host
   if (req.body.imapFolder !== undefined)
@@ -158,7 +167,7 @@ const updatePostMasterMailAccount = asyncHandler(async (req, res) => {
   if (req.body.smtpPort !== undefined)
     data.smtpPort = req.body.smtpPort
   if (req.body.smtpSecure !== undefined)
-    data.smtpSecure = req.body.smtpSecure
+    data.smtpSecure = normalizeSmtpSecure(req.body.smtpSecure)
   if (req.body.smtpUser !== undefined)
     data.smtpUser = req.body.smtpUser
   if (req.body.smtpPassword !== undefined)
@@ -319,7 +328,7 @@ const testConnection = asyncHandler(async (req, res) => {
     // Нормализация
     host = host?.toString().trim() || ''
     username = username?.toString().trim().replace(/,/g, '.') || ''
-    password = password?.toString().trim() || ''
+    password = normalizePassword(password?.toString()) || ''
 
     console.log('Normalized fields ->', { host, port, protocol, username, password: password || 'empty', type, authenticationType })
 
@@ -453,15 +462,17 @@ const testSmtpConnection = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Account not found' })
 
   const smtpHost = account.smtpHost || account.host
-  const smtpPort = account.smtpPort || (account.smtpSecure === 'ssl' ? 465 : 587)
+  const isSsl = normalizeSmtpSecure(account.smtpSecure)
+  const smtpPort = account.smtpPort || (isSsl ? 465 : 587)
   const smtpUser = account.smtpUser || account.login
-  const smtpPass = account.smtpPassword || account.password
+  let smtpPass = account.smtpPassword || account.password
+  if (smtpPass) smtpPass = normalizePassword(smtpPass)
 
   if (!smtpHost || !smtpUser || !smtpPass) {
     return res.status(400).json({ success: false, message: 'SMTP credentials incomplete on account' })
   }
 
-  const smtpSecure = account.smtpSecure === 'ssl'
+  const smtpSecure = isSsl
 
   try {
     const transporter = nodemailer.createTransport({
@@ -488,7 +499,8 @@ const testSmtpConnection = asyncHandler(async (req, res) => {
 // POST /api/postMasterMailAccounts/test-smtp
 // =====================================================
 const testSmtpConnectionFromBody = asyncHandler(async (req, res) => {
-  const { host, port, secure, username, password } = req.body
+  let { host, port, secure, username, password } = req.body
+  if (password) password = normalizePassword(password)
 
   if (!host || !username || !password) {
     return res.status(400).json({ success: false, message: 'SMTP credentials required' })

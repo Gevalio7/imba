@@ -156,6 +156,7 @@ const testSmtpConnection = () => emit('testSmtp', form)
             v-model="form.password"
             label="Пароль"
             :type="passwordVisible ? 'text' : 'password'"
+            @blur="form.password = typeof form.password === 'string' ? form.password.trim() : form.password"
           >
             <template #append-inner>
               <VIcon
@@ -214,6 +215,7 @@ const testSmtpConnection = () => emit('testSmtp', form)
                 v-model="form.smtpPassword"
                 label="SMTP пароль"
                 :type="smtpPasswordVisible ? 'text' : 'password'"
+                @blur="form.smtpPassword = typeof form.smtpPassword === 'string' ? form.smtpPassword.replace(/\s/g, '') : form.smtpPassword"
               >
                 <template #append-inner>
                   <VIcon
