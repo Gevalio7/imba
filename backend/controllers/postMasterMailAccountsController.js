@@ -453,7 +453,7 @@ const testSmtpConnection = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Account not found' })
 
   const smtpHost = account.smtpHost || account.host
-  const smtpPort = account.smtpPort || (account.smtpSecure ? 465 : 587)
+  const smtpPort = account.smtpPort || (account.smtpSecure === 'ssl' ? 465 : 587)
   const smtpUser = account.smtpUser || account.login
   const smtpPass = account.smtpPassword || account.password
 
@@ -461,11 +461,13 @@ const testSmtpConnection = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'SMTP credentials incomplete on account' })
   }
 
+  const smtpSecure = account.smtpSecure === 'ssl'
+
   try {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: !!account.smtpSecure,
+      secure: smtpSecure,
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
       connectionTimeout: 10000,

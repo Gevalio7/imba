@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
@@ -169,9 +169,16 @@ const deletePostMasterMailAccount = async (id: number) => {
   }
 }
 
-onMounted(async () => {
+const loadData = async () => {
   await ensureLoaded()
   await Promise.all([fetchPostMasterMailAccounts(), fetchQueues()])
+}
+
+onMounted(loadData)
+
+onActivated(() => {
+  console.log('Component activated - reloading data')
+  loadData()
 })
 
 const headers = [
@@ -270,7 +277,7 @@ const navigateToCreate = () => {
 }
 
 const navigateToEdit = (id: number) => {
-  router.push(`/apps/PostMasterMailAccounts/edit/${id}`)
+  router.push({ path: '/apps/PostMasterMailAccounts/edit', query: { id } })
 }
 
 const confirmBulkDelete = async () => {

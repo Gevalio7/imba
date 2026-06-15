@@ -3,7 +3,8 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
-import PostMasterMailAccountForm from '@/pages/apps/PostMasterMailAccountForm.vue'
+// Временный импорт простой формы
+import SimpleForm from '@/components/PostMaster/SimpleForm.vue'
 
 const router = useRouter()
 const { ensureLoaded } = useGlobalPermissions()
@@ -17,62 +18,77 @@ definePage({
 })
 
 const queues = ref<any[]>([])
-const queuesLoading = ref(false)
+const loading = ref(false)
+const isToastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
 
-const typeOptions = [
-  { title: 'IMAP', value: 'IMAP' },
-  { title: 'IMAPS', value: 'IMAPS' },
-  { title: 'IMAPTLS', value: 'IMAPTLS' },
-  { title: 'MSGraph', value: 'MSGraph' },
-  { title: 'POP3', value: 'POP3' },
-  { title: 'POP3S', value: 'POP3S' },
-  { title: 'POP3TLS', value: 'POP3TLS' },
-]
-
-const authenticationTypeOptions = [
-  { title: 'OAuth2 Token', value: 'oauth2_token' },
-  { title: 'Password', value: 'password' },
-]
-
-const smtpSecureOptions = [
-  { title: 'None', value: 'none' },
-  { title: 'STARTTLS', value: 'starttls' },
-  { title: 'SSL/TLS', value: 'ssl' },
-]
-
-const dispatchingByOptions = [
-  { title: 'Queue', value: 'Queue' },
-  { title: 'From', value: 'From' },
-]
-
-const testingRowId = ref<number | null>(null)
-const testingSmtpRowId = ref<number | null>(null)
-const canTestForm = ref(false)
+const showToast = (message: string, color: string = 'success') => {
+  toastMessage.value = message
+  toastColor.value = color
+  isToastVisible.value = true
+}
 
 const fetchQueues = async () => {
   try {
-    queuesLoading.value = true
+    loading.value = true
     const data = await $api<{ queues: any[]; total: number }>(`/queues`)
     queues.value = data.queues
+    console.log('Queues loaded:', queues.value.length)
   }
   catch (err) {
     console.error('Error fetching queues:', err)
   }
   finally {
-    queuesLoading.value = false
+    loading.value = false
   }
 }
 
 const handleSave = async (data: any) => {
+  // Валидация обязательных полей
+  if (!data.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+  
+  if (!data.login?.trim()) {
+    showToast('Логин обязателен для заполнения', 'error')
+    return
+  }
+  
+  if (!data.host?.trim()) {
+    showToast('Хост обязателен для заполнения', 'error')
+    return
+  }
+  
   try {
+    console.log('Saving data:', data)
+    // smtpSecure уже конвертирован в SimpleForm.onSubmit, но на всякий случай
+    const saveData = {
+      ...data,
+      type: 'IMAP',
+      authenticationType: 'password',
+      isActive: true,
+      dispatchingBy: 'Queue',
+      trusted: false,
+    }
+    // Конвертируем smtpSecure в boolean если остался строкой
+    if (saveData.smtpSecure === 'none' || saveData.smtpSecure === 'starttls') {
+      saveData.smtpSecure = false
+    }
+    else if (saveData.smtpSecure === 'ssl') {
+      saveData.smtpSecure = true
+    }
     await $api(`/postMasterMailAccounts`, {
       method: 'POST',
-      body: data,
+      body: saveData,
     })
+    showToast('Почтовый аккаунт успешно создан')
     router.push('/apps/PostMasterMailAccounts')
   }
   catch (err) {
     console.error('Error creating account:', err)
+    showToast('Ошибка создания почтового аккаунта', 'error')
   }
 }
 
@@ -91,10 +107,10 @@ onMounted(async () => {
     <div class="d-flex flex-wrap justify-start justify-sm-space-between gap-y-4 gap-x-6 mb-6">
       <div class="d-flex flex-column justify-center">
         <h4 class="text-h4 mb-1">
-          Создание почтового аккаунта
+          Создание почтового аккаунта (ТЕСТ)
         </h4>
         <div class="text-body-1">
-          Заполните данные для создания нового почтового аккаунта
+          Упрощенная форма для тестирования
         </div>
       </div>
 
@@ -110,22 +126,23 @@ onMounted(async () => {
       </div>
     </div>
 
-    <VRow>
+    <div v-if="loading" class="d-flex justify-center pa-6">
+      <VProgressCircular indeterminate color="primary" />
+    </div>
+
+    <VRow v-else>
       <VCol cols="12">
-<PostMasterMailAccountForm
+<SimpleForm
            mode="create"
            :queues="queues"
-           :type-options="typeOptions"
-           :authentication-type-options="authenticationTypeOptions"
-           :smtp-secure-options="smtpSecureOptions"
-           :dispatching-by-options="dispatchingByOptions"
-           :testing-row-id="testingRowId"
-           :testing-smtp-row-id="testingSmtpRowId"
-           :can-test-form="canTestForm"
            @save="handleSave"
            @cancel="handleCancel"
          />
-      </VCol>
-    </VRow>
-  </div>
-</template>
+
+         <VSnackbar v-model="isToastVisible" :color="toastColor" location="top">
+           {{ toastMessage }}
+         </VSnackbar>
+       </VCol>
+     </VRow>
+   </div>
+ </template>

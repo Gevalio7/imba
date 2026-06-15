@@ -42,7 +42,6 @@ declare module 'vue-router/auto-routes' {
     'apps-organization-structure': RouteRecordInfo<'apps-organization-structure', '/apps/OrganizationStructure', Record<never, never>, Record<never, never>>,
     'apps-permissions': RouteRecordInfo<'apps-permissions', '/apps/permissions', Record<never, never>, Record<never, never>>,
     'apps-permissions': RouteRecordInfo<'apps-permissions', '/apps/Permissions', Record<never, never>, Record<never, never>>,
-    'apps-post-master-mail-account-form': RouteRecordInfo<'apps-post-master-mail-account-form', '/apps/PostMasterMailAccountForm', Record<never, never>, Record<never, never>>,
     'apps-post-master-mail-accounts': RouteRecordInfo<'apps-post-master-mail-accounts', '/apps/PostMasterMailAccounts', Record<never, never>, Record<never, never>>,
     'apps-post-master-mail-accounts-add': RouteRecordInfo<'apps-post-master-mail-accounts-add', '/apps/PostMasterMailAccounts/add', Record<never, never>, Record<never, never>>,
     'apps-post-master-mail-accounts-edit': RouteRecordInfo<'apps-post-master-mail-accounts-edit', '/apps/PostMasterMailAccounts/edit', Record<never, never>, Record<never, never>>,

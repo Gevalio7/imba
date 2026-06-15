@@ -22,38 +22,37 @@
       </div>
     </div>
 
-    <div
-      v-if="loading"
-      class="d-flex justify-center pa-6"
-    >
+    <div v-if="loading" class="d-flex justify-center pa-6">
       <VProgressCircular
         indeterminate
         color="primary"
       />
     </div>
 
-    <template v-else-if="account">
+    <div v-else-if="account">
       <VRow>
         <VCol cols="12">
-          <PostMasterMailAccountForm
+          <SimpleForm
+            :key="account?.id"
             mode="edit"
             :initial-data="account"
             :queues="queues"
-            :type-options="typeOptions"
-            :authentication-type-options="authenticationTypeOptions"
-            :smtp-secure-options="smtpSecureOptions"
-            :dispatching-by-options="dispatchingByOptions"
             :testing-row-id="testingRowId"
             :testing-smtp-row-id="testingSmtpRowId"
-            :can-test-form="canTestForm"
             @save="handleSave"
             @cancel="handleCancel"
-            @test-connection="testConnection"
+            @test-connection="testConnectionForItem"
             @test-smtp="testSmtpConnection"
           />
         </VCol>
       </VRow>
-    </template>
+    </div>
+
+    <div v-else class="d-flex justify-center pa-6">
+      <VAlert type="warning">
+        Почтовый аккаунт не найден или у вас нет прав на его просмотр
+      </VAlert>
+    </div>
 
     <VSnackbar
       v-model="isToastVisible"
@@ -66,15 +65,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
-import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
-import PostMasterMailAccountForm from '@/pages/apps/PostMasterMailAccountForm.vue'
+import SimpleForm from '@/components/PostMaster/SimpleForm.vue'
 
 const router = useRouter()
 const route = useRoute()
-const { ensureLoaded } = useGlobalPermissions()
 
 definePage({
   meta: {
@@ -84,39 +81,14 @@ definePage({
   }
 })
 
+const ticketId = computed(() => {
+  const id = route.query.id
+  return id ? Number(id) : null
+})
+
 const account = ref<any | null>(null)
 const loading = ref(true)
 const queues = ref<any[]>([])
-
-const typeOptions = [
-  { title: 'IMAP', value: 'IMAP' },
-  { title: 'IMAPS', value: 'IMAPS' },
-  { title: 'IMAPTLS', value: 'IMAPTLS' },
-  { title: 'MSGraph', value: 'MSGraph' },
-  { title: 'POP3', value: 'POP3' },
-  { title: 'POP3S', value: 'POP3S' },
-  { title: 'POP3TLS', value: 'POP3TLS' },
-]
-
-const authenticationTypeOptions = [
-  { title: 'OAuth2 Token', value: 'oauth2_token' },
-  { title: 'Password', value: 'password' },
-]
-
-const smtpSecureOptions = [
-  { title: 'None', value: 'none' },
-  { title: 'STARTTLS', value: 'starttls' },
-  { title: 'SSL/TLS', value: 'ssl' },
-]
-
-const dispatchingByOptions = [
-  { title: 'Queue', value: 'Queue' },
-  { title: 'From', value: 'From' },
-]
-
-const testingRowId = ref<number | null>(null)
-const testingSmtpRowId = ref<number | null>(null)
-const canTestForm = ref(false)
 const saving = ref(false)
 const isToastVisible = ref(false)
 const toastMessage = ref('')
@@ -134,7 +106,6 @@ const fetchQueues = async () => {
 
 const fetchAccount = async (id: number) => {
   try {
-    loading.value = true
     console.log('Fetching account with ID:', id)
     const data = await $api<any>(`/postMasterMailAccounts/${id}`)
     console.log('API response:', data)
@@ -149,18 +120,113 @@ const fetchAccount = async (id: number) => {
   }
 }
 
+const testingRowId = ref<number | null>(null)
+const testingSmtpRowId = ref<number | null>(null)
+
+const testConnectionForItem = async (item: any) => {
+  try {
+    testingRowId.value = item.id
+    const res = await $api(`/postMasterMailAccounts/${item.id}/test`, {
+      method: 'POST',
+    })
+    if (res && res.success) {
+      showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
+    }
+    else {
+      const msg = getApiErrorMessage(res)
+      showToast(`Ошибка подключения: ${msg}`, 'error')
+    }
+  }
+  catch (err: any) {
+    console.error('Error testing connection for item:', err)
+    const msg = getApiErrorMessage(err)
+    showToast(`Ошибка подключения: ${msg}`, 'error')
+  }
+  finally {
+    testingRowId.value = null
+  }
+}
+
+const testSmtpConnection = async (account: any) => {
+  try {
+    testingSmtpRowId.value = account.id
+    const res = await $api(`/postMasterMailAccounts/${account.id}/test-smtp`, {
+      method: 'POST',
+    })
+    if (res && res.success) {
+      showToast('SMTP подключение успешно', 'success')
+    }
+    else {
+      const msg = getApiErrorMessage(res)
+      showToast(`Ошибка SMTP: ${msg}`, 'error')
+    }
+  }
+  catch (err: any) {
+    console.error('Error testing SMTP connection:', err)
+    const msg = getApiErrorMessage(err)
+    // Детали ошибки в консоль
+    console.log('SMTP error details:', {
+      message: err?.message,
+      data: err?.data,
+      response: err?.response?._data,
+      url: err?.response?.url,
+      status: err?.response?.status,
+    })
+    showToast(`Ошибка SMTP: ${msg}`, 'error')
+  }
+  finally {
+    testingSmtpRowId.value = null
+  }
+}
+
+const getApiErrorMessage = (errOrRes: any): string => {
+  if (!errOrRes)
+    return 'Неизвестная ошибка'
+  const data = errOrRes?.data ?? errOrRes?.response?._data ?? errOrRes?.data?.data ?? errOrRes
+  if (data?.message)
+    return data.message
+  if (typeof data === 'string')
+    return data
+  if (data?.error)
+    return data.error
+  if (errOrRes?.message)
+    return errOrRes.message
+  if (errOrRes?.response?.statusText)
+    return errOrRes.response.statusText
+  return 'Неизвестная ошибка'
+}
+
 const handleSave = async (data: any) => {
+  // Валидация обязательных полей
+  if (!data.name?.trim()) {
+    showToast('Название обязательно для заполнения', 'error')
+    return
+  }
+  
+  if (!data.login?.trim()) {
+    showToast('Логин обязателен для заполнения', 'error')
+    return
+  }
+  
+  if (!data.host?.trim()) {
+    showToast('Хост обязателен для заполнения', 'error')
+    return
+  }
+
   try {
     saving.value = true
-    const id = Number(route.params.id)
-    await $api(`/postMasterMailAccounts/${id}`, {
-      method: 'PUT',
-      body: data,
-    })
+    if (ticketId.value) {
+      await $api(`/postMasterMailAccounts/${ticketId.value}`, {
+        method: 'PUT',
+        body: data,
+      })
+    }
+    showToast('Почтовый аккаунт успешно обновлён')
     router.push('/apps/PostMasterMailAccounts')
   }
   catch (err) {
     console.error('Error updating account:', err)
+    showToast('Ошибка обновления почтового аккаунта', 'error')
   }
   finally {
     saving.value = false
@@ -171,36 +237,6 @@ const handleCancel = () => {
   router.push('/apps/PostMasterMailAccounts')
 }
 
-const testConnection = async () => {
-  testingRowId.value = Number(route.params.id)
-  try {
-    await $api(`/postMasterMailAccounts/${route.params.id}/test`, {
-      method: 'POST',
-    })
-  }
-  catch (err) {
-    console.error('Error testing connection:', err)
-  }
-  finally {
-    testingRowId.value = null
-  }
-}
-
-const testSmtpConnection = async () => {
-  testingSmtpRowId.value = Number(route.params.id)
-  try {
-    await $api(`/postMasterMailAccounts/${route.params.id}/test-smtp`, {
-      method: 'POST',
-    })
-  }
-  catch (err) {
-    console.error('Error testing SMTP connection:', err)
-  }
-  finally {
-    testingSmtpRowId.value = null
-  }
-}
-
 const showToast = (message: string, color: string = 'success') => {
   toastMessage.value = message
   toastColor.value = color
@@ -208,10 +244,13 @@ const showToast = (message: string, color: string = 'success') => {
 }
 
 onMounted(async () => {
-  await ensureLoaded()
   await fetchQueues()
-  const id = Number(route.params.id)
-  await fetchAccount(id)
+  if (ticketId.value) {
+    await fetchAccount(ticketId.value)
+  } else {
+    console.warn('No ticket ID in query params')
+    loading.value = false
+  }
 })
 </script>
 

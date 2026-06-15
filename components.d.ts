@@ -86,6 +86,7 @@ declare module 'vue' {
     ShareMenu: typeof import('./src/components/TicketEdit/ShareMenu.vue')['default']
     ShareProjectDialog: typeof import('./src/components/dialogs/ShareProjectDialog.vue')['default']
     Shortcuts: typeof import('./src/@core/components/Shortcuts.vue')['default']
+    SimpleForm: typeof import('./src/components/PostMaster/SimpleForm.vue')['default']
     SlaDeadlineBadge: typeof import('./src/components/TicketEdit/SlaDeadlineBadge.vue')['default']
     TablePagination: typeof import('./src/@core/components/TablePagination.vue')['default']
     TemplateCards: typeof import('./src/views/apps/template-queues/TemplateCards.vue')['default']
