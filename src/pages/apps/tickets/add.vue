@@ -44,6 +44,7 @@ const {
   currentWorkflow: composableCurrentWorkflow,
   availableStatuses: composableAvailableStatuses,
   loadingWorkflow: composableLoadingWorkflow,
+  initialStatus: composableInitialStatus, // начальный статус из workflow
   availableTypes: composableAvailableTypes,
   filteredCategories: composableFilteredCategories,
   save: composableSave,           // централизованное сохранение (большой рефакторинг)
@@ -57,9 +58,7 @@ const ticket = formTicket   // теперь ticket — это реактивны
 const currentWorkflow = composableCurrentWorkflow
 const availableStatuses = composableAvailableStatuses
 const loadingWorkflow = composableLoadingWorkflow
-
-// initialStatus пока оставляем локально (будет доработано)
-const initialStatus = ref<any>(null)
+const initialStatus = composableInitialStatus // Новый реактивный ref из composable
 
 // Флаг для предотвращения гонок — теперь берём из composable (но пока дублируем для минимальных правок)
 let isUpdatingFromQueue = false   // будет заменён на queueUpdateInProgress в следующих шагах
@@ -90,10 +89,7 @@ const fetchTypeWorkflow = async (typeId: number) => {
   try {
     // Используем улучшенную версию из composable (она уже поддерживает initialStatus для новых тикетов)
     await composableFetchWorkflowByType(typeId)
-
-    // Синхронизируем initialStatus (пока локально)
-    // В будущем можно вынести initialStatus тоже в composable
-    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
+    // initialStatus теперь обновляется автоматически через composableInitialStatus
   }
   catch (err) {
     console.error('Error fetching type workflow (delegated):', err)
@@ -152,16 +148,14 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
     return
   }
 
-  // Используем защитный флаг из composable
-  isUpdatingFromQueue = true
+// Используем защитный флаг из composable
+   isUpdatingFromQueue = true
 
-  try {
-    // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
-    await applyDefaultsFromQueue(newQueueId, true)
-
-    // После делегирования обновляем локальный initialStatus (если нужно)
-    initialStatus.value = (currentWorkflow.value as any)?.initialStatus || null
-  } catch (error) {
+   try {
+     // Главный шаг большого рефакторинга — вся логика автозаполнения теперь здесь
+     await applyDefaultsFromQueue(newQueueId, true)
+     // initialStatus теперь обновляется автоматически через composableInitialStatus
+   } catch (error) {
     console.error('Error processing queue selection (delegated):', error)
     showToast('Ошибка загрузки данных очереди', 'error')
     resetWorkflowData()

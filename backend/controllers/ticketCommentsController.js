@@ -42,10 +42,15 @@ const create = asyncHandler(async (req, res) => {
           // Получить имя автора
           const author = comment.authorName || comment.authorLogin || `Agent #${comment.authorId}`
 
-          await notificationService.sendTicketNotification(ticket, queue, queue.templateCommentTicketId, {
+notificationService.sendTicketNotification(ticket, queue, queue.templateCommentTicketId, {
             event: 'agent_reply',
-            comment: comment.content,
-            author,
+            comment: {
+              text: comment.content,
+              author: author,
+              content: comment.content,
+            },
+          }).catch(err => {
+            console.warn('[TICKET_COMMENTS] Failed to queue comment notification:', err.message)
           })
         }
       }

@@ -227,14 +227,9 @@ class Workflows {
   // Получить начальный статус для воркфлоу (устаревший метод, используй WorkflowTransitions.getInitialTransition)
   static async getInitialStatus(workflowId) {
     // Делегируем в новую реализацию на базе type = 'new'
-    const WorkflowTransitions = require('./workflowTransitions');
-    return WorkflowTransitions.getInitialTransition(workflowId);
+    const WorkflowTransitions = require('./workflowTransitions')
+    return WorkflowTransitions.getInitialTransition(workflowId)
   }
-    catch (error) {
-      console.error('Error in getInitialStatus:', error)
-      throw error
-    }
-  }
-
+}
 
 module.exports = Workflows

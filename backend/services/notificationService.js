@@ -1,5 +1,5 @@
 const Templates = require('../models/templates')
-const EmailSenderService = require('./EmailSenderService')
+const EmailNotificationQueueService = require('./EmailNotificationQueueService')
 const CustomerUsers = require('../models/customerUsers')
 const Agents = require('../models/agents')
 
@@ -12,32 +12,72 @@ const Agents = require('../models/agents')
 function replacePlaceholders(template, data) {
   if (!template) return ''
 
-  let result = template
+  const appUrl = process.env.APP_URL || 'localhost:5173'
+  const ticket = data.ticket || {}
+  const user = data.user || {}
+  const status = data.status || {}
+  const comment = data.comment || {}
 
-  // Общие плейсхолдеры
-  const placeholders = {
-    '{{ticketNumber}}': data.ticket?.ticketNumber || data.ticketNumber || '',
-    '{{ticketId}}': data.ticket?.id || data.ticketId || '',
-    '{{title}}': data.ticket?.title || data.title || '',
-    '{{description}}': data.ticket?.description || data.description || '',
-    '{{state}}': data.ticket?.stateName || data.state || '',
-    '{{oldState}}': data.oldState || '',
-    '{{newState}}': data.newState || '',
-    '{{comment}}': data.comment || '',
-    '{{author}}': data.author || '',
-    '{{ownerEmail}}': data.ownerEmail || '',
-    '{{ownerName}}': data.ownerName || '',
-    '{{executorName}}': data.executorName || '',
-    '{{queueName}}': data.queue?.name || data.queueName || '',
-    '{{createdAt}}': data.ticket?.createdAt ? new Date(data.ticket.createdAt).toLocaleString('ru-RU') : '',
-    '{{updatedAt}}': data.ticket?.updatedAt ? new Date(data.ticket.updatedAt).toLocaleString('ru-RU') : '',
-  }
+  console.log(`[REPLACE-PLACEHOLDERS] Processing template with keys:`, Object.keys(data))
+  console.log(`[REPLACE-PLACEHOLDERS] user.name=${user?.name}, ticket.number=${ticket?.number}, status.old=${status?.old}, status.new=${status?.new}`)
 
-  for (const [placeholder, value] of Object.entries(placeholders)) {
-    result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value)
-  }
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+    const trimmed = key.trim()
+    const parts = trimmed.split('.')
+    let value
 
-  return result
+    if (parts[0] === 'ticket' && parts.length > 1) {
+      const field = parts[1]
+      if (field === 'url') return `${appUrl}/apps/tickets/view?id=${ticket.id || ''}`
+      // Map common field aliases to actual database fields
+      if (field === 'priority') value = ticket.priorityName || ticket.priority
+      else if (field === 'type') value = ticket.typeName || ticket.typeId
+      else if (field === 'category') value = ticket.categoryName || ticket.categoryId
+      else if (field === 'queue') value = ticket.queueName || ticket.queueId
+      else value = ticket[field]
+    } else if (parts[0] === 'user' && parts.length > 1) {
+      value = user[parts[1]]
+    } else if (parts[0] === 'status' && parts.length > 1) {
+      value = status[parts[1]]
+    } else if (parts[0] === 'comment' && parts.length > 1) {
+      value = comment[parts[1]]
+    } else if (trimmed === 'ticketNumber') {
+      value = ticket.ticketNumber || data.ticketNumber
+    } else if (trimmed === 'ticketId') {
+      value = ticket.id || data.ticketId
+    } else if (trimmed === 'title') {
+      value = ticket.title || data.title
+    } else if (trimmed === 'description') {
+      value = ticket.description || data.description
+    } else if (trimmed === 'state') {
+      value = ticket.stateName || data.state
+    } else if (trimmed === 'oldState') {
+      value = data.oldState
+    } else if (trimmed === 'newState') {
+      value = data.newState
+    } else if (trimmed === 'ownerEmail') {
+      value = data.ownerEmail
+    } else if (trimmed === 'ownerName') {
+      value = data.ownerName
+    } else if (trimmed === 'executorName') {
+      value = data.executorName
+    } else if (trimmed === 'queueName') {
+      value = data.queue?.name || data.queueName
+    } else if (trimmed === 'createdAt') {
+      value = ticket.createdAt ? new Date(ticket.createdAt).toLocaleString('ru-RU') : ''
+    } else if (trimmed === 'updatedAt') {
+      value = ticket.updatedAt ? new Date(ticket.updatedAt).toLocaleString('ru-RU') : ''
+    } else {
+      value = data[trimmed]
+    }
+
+    if (value !== undefined && value !== null && value !== '') return String(value)
+    if (trimmed === 'date.now') return new Date().toLocaleString('ru-RU')
+    if (trimmed === 'system.name') return 'DreamDesc'
+
+    console.log(`[REPLACE-PLACEHOLDERS] Unresolved placeholder: ${trimmed}`)
+    return match
+  })
 }
 
 /**
@@ -106,28 +146,82 @@ async function sendTicketNotification(ticket, queue, templateId, eventData) {
       return { success: false, error: 'No recipients' }
     }
 
-    // 3. Заменить плейсхолдеры
-    const html = replacePlaceholders(template.message || '', {
-      ticket,
-      queue,
-      ...eventData,
-    })
+    console.log(`[NOTIFICATION] Found ${recipients.length} recipients for ticket ${ticket.id}:`, recipients.map(r => r.email).join(', '))
 
-    const subject = replacePlaceholders(template.subject || template.name || 'Уведомление', {
-      ticket,
-      queue,
-      ...eventData,
-    })
+    // 3. Собираем полные данные для плейсхолдеров
+    const ticketData = {
+      ...ticket,
+      number: ticket.ticketNumber || ticket.number,
+    }
 
-    // 4. Отправить через EmailSenderService
-    const result = await EmailSenderService.send({
+    let userData = {}
+    if (ticket.ownerId) {
+      try {
+        const owner = await CustomerUsers.getById(ticket.ownerId)
+        if (owner) {
+          userData = {
+            name: `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || owner.login,
+            email: owner.email,
+            login: owner.login,
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+          }
+        } else {
+          console.warn(`[NOTIFICATION] CustomerUsers.getById(${ticket.ownerId}) returned null/undefined`)
+        }
+      } catch (userErr) {
+        console.warn(`[NOTIFICATION] Failed to load owner ${ticket.ownerId}:`, userErr.message)
+      }
+    } else {
+      console.warn(`[NOTIFICATION] Ticket ${ticket.id} has no ownerId`)
+    }
+
+    let commentData = {}
+    if (eventData?.comment) {
+      const isCommentObject = typeof eventData.comment === 'object'
+      commentData = isCommentObject
+        ? eventData.comment
+        : {
+            text: eventData.comment,
+            author: eventData.author || '',
+            content: eventData.comment,
+          }
+    }
+
+    const statusData = {
+      old: eventData?.oldState || eventData?.oldStatus || '',
+      new: eventData?.newState || eventData?.newStatus || '',
+    }
+
+    const data = {
+      ticket: ticketData,
+      queue,
+      user: userData,
+      comment: commentData,
+      status: statusData,
+      oldState: eventData?.oldState || '',
+      newState: eventData?.newState || '',
+      ...eventData,
+    }
+
+    // 4. Заменить плейсхолдеры
+    const html = replacePlaceholders(template.message || '', data)
+    const subject = replacePlaceholders(template.subject || template.name || 'Уведомление', data)
+
+    // 5. Сохранить письмо в очередь, чтобы SMTP не блокировал PUT-запросы
+    console.log(`[NOTIFICATION] Enqueuing email for ticket ${ticket.id}, queue ${queue?.id || 'no-queue'}`)
+    const queued = await EmailNotificationQueueService.enqueue({
+      eventType: eventData?.event || 'ticket_notification',
+      templateId,
       queueId: queue.id,
-      to: recipients.map(r => r.email),
+      ticketId: ticket.id,
+      recipients: recipients.map(r => r.email),
       subject,
       html,
     })
 
-    return result
+    console.log(`[NOTIFICATION] Email queued with id ${queued?.id || 'unknown'}`)
+    return queued
   }
   catch (err) {
     console.error('[NOTIFICATION] Error sending ticket notification:', err)

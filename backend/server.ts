@@ -28,6 +28,7 @@ const { pool } = require('./config/db')
 const { TicketScheduleLogs } = require('./models/ticketSchedules')
 const MailFetcherService = require('./services/MailFetcherService')
 const SystemConfiguration = require('./models/systemConfiguration')
+const EmailNotificationQueueService = require('./services/EmailNotificationQueueService')
 
 const app: Application = express()
 const PORT: string | number = process.env.PORT || 3000
@@ -356,4 +357,11 @@ app.listen(PORT, async () => {
   }
 
   startMailFetcherScheduler().catch(err => console.error('❌ Failed to start mail fetcher scheduler', err))
+
+  // Запускаем worker очереди email-уведомлений
+  console.log('⏰ Запуск worker очереди email-уведомлений...')
+  EmailNotificationQueueService.startWorker({
+    intervalMs: Number.parseInt(process.env.EMAIL_QUEUE_INTERVAL_MS || '15000', 10),
+    limit: Number.parseInt(process.env.EMAIL_QUEUE_BATCH_SIZE || '10', 10),
+  })
 })

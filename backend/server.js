@@ -272,6 +272,14 @@ app.listen(PORT, async () => {
   await cleanupOldBackups()
   console.log('✅ Очистка бэкапов завершена')
 
+  // Запускаем worker очереди email-уведомлений
+  console.log('⏰ Запуск worker очереди email-уведомлений...')
+  const EmailNotificationQueueService = require('./services/EmailNotificationQueueService')
+  EmailNotificationQueueService.startWorker({
+    intervalMs: Number.parseInt(process.env.EMAIL_QUEUE_INTERVAL_MS || '15000', 10),
+    limit: Number.parseInt(process.env.EMAIL_QUEUE_BATCH_SIZE || '10', 10),
+  })
+
   // Запускаем cron для расписаний
   console.log('⏰ Запуск планировщика расписаний...')
   setInterval(processDueSchedules, 60 * 1000) // Каждую минуту

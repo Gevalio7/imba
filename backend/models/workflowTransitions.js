@@ -276,12 +276,12 @@ class WorkflowTransitions {
     try {
       let sourceStatusId = currentStatusId
 
-      // Для нового тикета (currentStatusId = null) — используем статус с type = 'new'
+      // Для нового тикета (currentStatusId = null) — используем статус с type = 'Новая' (рус. значение)
       if (currentStatusId === null || currentStatusId === undefined) {
         const newStatusResult = await pool.query(
           `SELECT s.id 
            FROM states s
-           WHERE s.type = 'new'
+           WHERE (s.type = 'new' OR s.type = 'Новая')
              AND EXISTS (
                SELECT 1 FROM workflow_transitions wt2
                WHERE wt2.workflow_id = $1 
@@ -332,12 +332,12 @@ class WorkflowTransitions {
     try {
       let effectiveSourceId = sourceStatusId
 
-      // Для нового тикета (sourceStatusId = null) — используем статус с type = 'new'
+      // Для нового тикета (sourceStatusId = null) — используем статус с type = 'Новая' (рус. значение)
       if (sourceStatusId === null || sourceStatusId === undefined) {
         const newStatusResult = await pool.query(
           `SELECT s.id 
            FROM states s
-           WHERE s.type = 'new'
+           WHERE (s.type = 'new' OR s.type = 'Новая')
              AND EXISTS (
                SELECT 1 FROM workflow_transitions wt2
                WHERE wt2.workflow_id = $1 
@@ -376,7 +376,7 @@ class WorkflowTransitions {
   /**
    * Получить начальный статус для воркфлоу
    * 
-   * ВАЖНО: Начальный статус определяется по полю status.type = 'new'
+   * ВАЖНО: Начальный статус определяется по полю status.type = 'Новая' (рус. значение)
    * 
    * @param {number} workflowId - ID воркфлоу
    * @returns {object | null} Начальный статус
@@ -390,7 +390,7 @@ class WorkflowTransitions {
           s.color as "statusColor",
           s.type as "statusType"
         FROM states s
-        WHERE s.type = 'new'
+        WHERE (s.type = 'new' OR s.type = 'Новая')
           AND EXISTS (
             SELECT 1 
             FROM workflow_transitions wt 
@@ -411,9 +411,9 @@ class WorkflowTransitions {
   }
 
   /**
-   * Проверяет, что в workflow ровно один статус с type = 'new'.
+   * Проверяет, что в workflow ровно один статус с type = 'Новая'.
    * Если при первом сохранении переходов такого статуса ещё нет —
-   * автоматически помечает sourceStatusId первого перехода как 'new'.
+   * автоматически помечает sourceStatusId первого перехода как 'Новая'.
    */
   static async validateExactlyOneNewStatus(workflowId, transitions = []) {
     // Считаем текущие статусы с type = 'new' в этом workflow
@@ -423,19 +423,19 @@ class WorkflowTransitions {
        JOIN states s ON s.id IN (wt.source_status_id, wt.target_status_id)
        WHERE wt.workflow_id = $1 
          AND wt.is_active = true
-         AND s.type = 'new'`,
+         AND (s.type = 'new' OR s.type = 'Новая')`,
       [workflowId]
     )
 
     let count = parseInt(countResult.rows[0]?.count || 0, 10)
 
     // Если пока нет ни одного статуса с type='new' и это первое сохранение переходов —
-    // автоматически помечаем первый sourceStatus как 'new'
+    // автоматически помечаем первый sourceStatus как 'Новая'
     if (count === 0 && transitions.length > 0) {
       const firstSourceId = transitions[0]?.sourceStatusId
       if (firstSourceId) {
         await pool.query(
-          `UPDATE states SET type = 'new', updated_at = NOW() WHERE id = $1`,
+          `UPDATE states SET type = 'Новая', updated_at = NOW() WHERE id = $1`,
           [firstSourceId]
         )
         count = 1
@@ -443,7 +443,7 @@ class WorkflowTransitions {
     }
 
     if (count !== 1) {
-      throw new Error(`В workflow должен быть ровно один статус с type = 'new' (начальный). Сейчас найдено: ${count}`)
+      throw new Error(`В workflow должен быть ровно один статус с type = 'Новая' (начальный). Сейчас найдено: ${count}`)
     }
   }
 

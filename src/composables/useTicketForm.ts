@@ -162,10 +162,11 @@ export function useTicketForm(ticketId: Ref<number | null>) {
     return filtered
   })
 
-  // Workflow данные
+// Workflow данные
   const currentWorkflow = ref<any>(null)
   const availableStatuses = ref<any[]>([])
   const loadingWorkflow = ref(false)
+  const initialStatus = ref<any>(null) // Храним начальный статус отдельно
 
   // Защитный флаг: предотвращает гонки и побочные эффекты watchers при автозаполнении из очереди
   const queueUpdateInProgress = ref(false)
@@ -213,6 +214,7 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       const data = await $api(url)
 
       currentWorkflow.value = (data as any).workflow
+      initialStatus.value = (data as any).initialStatus // Сохраняем начальный статус отдельно
 
       if (statusForWorkflow && currentWorkflow.value && (data as any).currentStatusTransitions) {
         availableStatuses.value = (data as any).currentStatusTransitions
@@ -237,6 +239,8 @@ export function useTicketForm(ticketId: Ref<number | null>) {
       console.error('Error fetching type workflow:', err)
       currentWorkflow.value = null
       availableStatuses.value = []
+      initialStatus.value = null
+      loadingWorkflow.value = false
     }
     finally {
       loadingWorkflow.value = false
@@ -303,13 +307,16 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
     if (targetTypeId) {
       if (forceUpdate || ticket.typeId !== targetTypeId) {
         ticket.typeId = targetTypeId
-        await fetchWorkflowByType(targetTypeId, ticket.stateId)
+        // Для нового тикета передаём null, чтобы получить начальные статусы
+        // Для существующего тикета передаём текущий статус
+        await fetchWorkflowByType(targetTypeId, !ticketId.value ? null : ticket.stateId)
         await nextTick()
       }
     } else if (forceUpdate) {
       ticket.typeId = undefined
       currentWorkflow.value = null
       availableStatuses.value = []
+      initialStatus.value = null
     }
 
     // 4. Категория
@@ -322,10 +329,10 @@ const applyDefaultsFromQueue = async (queueId: number, forceUpdate: boolean = tr
     }
 
     // 5. Статус (только если не установлен)
-    if (!ticket.stateId && currentWorkflow.value) {
-      const initialStatus = (currentWorkflow.value as any)?.initialStatus
-      if (initialStatus?.id) {
-        ticket.stateId = initialStatus.id
+    if (!ticket.stateId && (currentWorkflow.value || initialStatus.value)) {
+      const initStatus = initialStatus.value
+      if (initStatus?.id) {
+        ticket.stateId = initStatus.id
       } else if (availableStatuses.value.length > 0) {
         ticket.stateId = availableStatuses.value[0].id
       }
@@ -618,6 +625,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
 
     currentWorkflow.value = null
     availableStatuses.value = []
+    initialStatus.value = null
   }
 })
 
@@ -669,6 +677,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
     else {
       currentWorkflow.value = null
       availableStatuses.value = []
+      initialStatus.value = null
     }
   })
 
@@ -761,6 +770,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
     currentWorkflow,
     availableStatuses,
     loadingWorkflow,
+    initialStatus, // экспортируем для доступа в add.vue
     allowMultipleExecutorGroups,
     allowMultipleExecutors,
     originalStateId,

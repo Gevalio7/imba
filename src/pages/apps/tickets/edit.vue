@@ -231,8 +231,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
   }
 
   console.log('[EDIT-Q-QUEUE-WATCHER] Queue changed', { from: oldQueueId, to: newQueueId })
-  // forceUpdate = false — НЕ перезаписываем уже заполненные поля, только добавляем наблюдателей если их нет
-  await applyDefaultsFromQueue(newQueueId, false)
+  await applyDefaultsFromQueue(newQueueId, true)
 })
 
 // Data loading

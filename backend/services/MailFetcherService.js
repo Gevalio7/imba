@@ -8,8 +8,73 @@ const SystemConfiguration = require('../models/systemConfiguration')
 const MailFetchLogs = require('../models/mailFetchLogs')
 const TicketAttachments = require('../models/ticketAttachments')
 const TicketComments = require('../models/ticketComments')
-const EmailSenderService = require('./EmailSenderService')
+const EmailNotificationQueueService = require('./EmailNotificationQueueService')
 const Templates = require('../models/templates')
+
+// Универсальная замена плейсхолдеров {{...}} на значения
+function replacePlaceholders(text, data = {}) {
+  if (!text) return ''
+  const appUrl = process.env.APP_URL || 'http://localhost:5173'
+
+  return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+    const trimmed = key.trim()
+    const parts = trimmed.split('.')
+    let value
+
+    // ticket.* плейсхолдеры ({{ticket.number}}, {{ticket.id}}, {{ticket.title}} и т.д.)
+    if (parts[0] === 'ticket' && parts.length > 1) {
+      const ticketField = parts[1]
+      if (data.ticket) {
+        if (ticketField === 'url') {
+          return `${appUrl}/apps/tickets/view?id=${data.ticket.id || ''}`
+        }
+        value = data.ticket[ticketField]
+        // Fallback: ticket.title -> ticket.title
+        if (value === undefined && data.ticket.title !== undefined && ticketField === 'title') {
+          value = data.ticket.title
+        }
+        if (value === undefined && data.ticket.description !== undefined && ticketField === 'description') {
+          value = data.ticket.description
+        }
+      }
+    }
+    // user.* плейсхолдеры
+    else if (parts[0] === 'user' && parts.length > 1) {
+      const userField = parts[1]
+      if (data.user) {
+        value = data.user[userField]
+      }
+    }
+    // status.* плейсхолдеры
+    else if (parts[0] === 'status' && parts.length > 1) {
+      const statusField = parts[1]
+      if (data.status) {
+        value = data.status[statusField]
+      }
+    }
+    // comment.* плейсхолдеры
+    else if (parts[0] === 'comment' && parts.length > 1) {
+      const commentField = parts[1]
+      if (data.comment) {
+        value = data.comment[commentField]
+      }
+    }
+    // Прямые плейсхолдеры (ticketNumber, title, description, state)
+    else {
+      value = data[trimmed]
+    }
+
+    if (value !== undefined && value !== null) {
+      return String(value)
+    }
+
+    // Специальные плейсхолдеры
+    if (trimmed === 'date.now') return new Date().toLocaleString('ru-RU')
+    if (trimmed === 'system.name') return 'DreamDesc'
+
+    return match // не заменено
+  })
+}
 
 async function retry(fn, maxRetries = 3, baseDelaySec = 5) {
   let lastErr
@@ -286,13 +351,15 @@ class MailFetcherService {
                                 .replace(/\{\{resetLink\}\}/g, resetLink)
                                 .replace(/\{\{login\}\}/g, from)
 
-                              await EmailSenderService.send({
+                              await EmailNotificationQueueService.enqueue({
+                                eventType: 'customer_welcome',
+                                templateId: queue.templateCustomerWelcomeId,
                                 queueId: queue.id,
-                                to: from,
+                                recipients: [from],
                                 subject: template.name || 'Добро пожаловать в систему поддержки',
                                 html: welcomeHtml,
                               })
-                              console.log(`[MAIL-FETCHER] Welcome email отправлен новому клиенту ${from}`)
+                              console.log(`[MAIL-FETCHER] Welcome email queued for new client ${from}`)
                             }
                           } catch (welcomeErr) {
                             console.warn('[MAIL-FETCHER] Не удалось отправить welcome email:', welcomeErr.message)
@@ -301,6 +368,31 @@ class MailFetcherService {
                       }
                     }
                   }
+
+// Определяем начальный статус (stateId) на основе workflow
+                   let stateId = null
+                   const Types = require('../models/types')
+                   const WorkflowTransitions = require('../models/workflowTransitions')
+                   // Получаем workflow из типа очереди или напрямую из очереди
+                   let workflowId = null
+                   if (queue.typeId) {
+                     const type = await Types.getById(queue.typeId)
+                     workflowId = type?.workflowId
+                   } else if (queue.workflowId) {
+                     workflowId = queue.workflowId
+                   }
+
+                   if (workflowId) {
+                     try {
+                       const initialTransition = await WorkflowTransitions.getInitialTransition(workflowId)
+                       if (initialTransition) {
+                         stateId = initialTransition.targetStatusId
+                         console.log(`[MAIL-FETCHER] Found initial status from workflow: ${stateId}`)
+                       }
+                     } catch (workflowErr) {
+                       console.warn('[MAIL-FETCHER] Failed to get initial status from workflow:', workflowErr.message)
+                     }
+                   }
 
                   const ticketNumber = await Tickets.generateTicketNumber()
                   const ticketData = {
@@ -312,14 +404,16 @@ class MailFetcherService {
                     priorityId: queue.priorityId,
                     queueId: queue.id,
                     slaId: queue.slaId,
+                    stateId: stateId,
                     ownerId,
                     source: 'email',
                     externalId: messageId,
-                  }
-
-                  if (queue.assignee_id) {
-                    ticketData.executorAgentIds = queue.assignee_type === 'user' ? [queue.assignee_id] : []
-                    ticketData.executorGroupIds = queue.assignee_type === 'group' ? [queue.assignee_id] : []
+                    companyId: queue.companyId,
+                    serviceId: queue.serviceId,
+                    executorAgentIds: queue.executorAgentIds || [],
+                    executorGroupIds: queue.executorGroupIds || [],
+                    observerAgentIds: queue.observerAgentIds || [],
+                    observerGroupIds: queue.observerGroupIds || [],
                   }
 
                   console.log(`[MAIL-FETCHER] Creating new ticket from email`)
@@ -355,18 +449,96 @@ class MailFetcherService {
                       }
                     }
 
-                    try {
-                      const websocket = require('../websocket')
-                      if (websocket && websocket.broadcast) {
-                        websocket.broadcast('new_ticket', {
-                          id: created.id,
-                          subject: created.title,
-                          status: created.stateName || null,
-                          createdAt: new Date(),
-                        })
-                      }
-                    } catch (wsErr) {}
-                  } catch (createErr) {
+try {
+                       const websocket = require('../websocket')
+                       if (websocket && websocket.broadcast) {
+                         websocket.broadcast('new_ticket', {
+                           id: created.id,
+                           subject: created.title,
+                           status: created.stateName || null,
+                           createdAt: new Date(),
+                         })
+                       }
+                     } catch (wsErr) {}
+
+                     // Отправка уведомления о создании тикета через шаблон
+                     ;(async () => {
+                       try {
+                         const ticketWithQueue = await Tickets.getById(created.id, true)
+                         if (!ticketWithQueue) {
+                           console.warn('[MAIL-FETCHER] WARNING: ticketWithQueue is null for ticket', created.id)
+                           return
+                         }
+                         if (ticketWithQueue.ownerId) {
+                           const owner = await CustomerUsers.getById(ticketWithQueue.ownerId)
+                           const ownerEmail = owner?.email
+                           if (!ownerEmail) {
+                             console.warn('[MAIL-FETCHER] WARNING: No ownerEmail for ticket', created.id)
+                             return
+                           }
+
+                           const templateId = queue.templateOpenTicketId || queue.templateId
+                           const template = await Templates.getById(templateId)
+                           if (!template) {
+                             console.warn('[MAIL-FETCHER] WARNING: template not found for templateId', templateId)
+                             return
+                           }
+                           if (template.isActive !== false) {
+                             const ticketNum = ticketWithQueue.ticketNumber || String(created.id)
+                             const templateData = {
+                               ticketNumber: ticketNum,
+                               title: ticketWithQueue.title,
+                               description: ticketWithQueue.description,
+                               state: ticketWithQueue.stateName,
+                               ticket: {
+                                 id: ticketWithQueue.id,
+                                 number: ticketNum,
+                                 title: ticketWithQueue.title,
+                                 description: ticketWithQueue.description,
+                                 priority: ticketWithQueue.priorityName,
+                                 url: `${process.env.APP_URL || 'http://localhost:5173'}/apps/tickets/view?id=${ticketWithQueue.id}`,
+                                 queue: ticketWithQueue.queueName,
+                                 state: ticketWithQueue.stateName,
+                                 category: ticketWithQueue.categoryName,
+                                 type: ticketWithQueue.typeName,
+                               },
+                               user: {
+                                 email: ownerEmail,
+                                 name: `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || ownerEmail,
+                               },
+                               status: {
+                                 old: 'Создан',
+                                 new: ticketWithQueue.stateName || 'Новый',
+                               },
+                             }
+
+                             const html = replacePlaceholders(template.message || '', templateData)
+                             const subjectText = replacePlaceholders(template.subject || template.name || 'Новый тикет', templateData)
+
+                             const unparsedHtml = html.match(/\{\{[^}]+\}\}/g)
+                             if (unparsedHtml) {
+                               console.log('[MAIL-FETCHER] WARNING: Unreplaced placeholders in HTML:', unparsedHtml)
+                             } else {
+                               console.log('[MAIL-FETCHER] All placeholders replaced successfully')
+                             }
+
+                             await EmailNotificationQueueService.enqueue({
+                               eventType: 'ticket_open',
+                               templateId,
+                               queueId: queue.id,
+                               ticketId: created.id,
+                               recipients: [ownerEmail],
+                               subject: subjectText,
+                               html,
+                             })
+                             console.log(`[MAIL-FETCHER] Notification queued for new ticket ${created.id}`)
+                           }
+                         }
+                       } catch (notifyErr) {
+                         console.warn('[MAIL-FETCHER] Failed to queue ticket creation notification:', notifyErr.message)
+                       }
+                     })()
+                   } catch (createErr) {
                     console.error('[MAIL-FETCHER] FAILED TO CREATE TICKET:', createErr.stack || createErr.message)
                     errors.push({ accountId: account.id, message: 'Failed to create ticket', error: createErr.message })
                     logEntry.errors = JSON.stringify([{ message: createErr.message, stack: createErr.stack }])

@@ -13,7 +13,6 @@ const Services = require('../models/services')
 const Sla = require('../models/sla')
 const CustomerUsers = require('../models/customerUsers')
 const Templates = require('../models/templates')
-const EmailSenderService = require('../services/EmailSenderService')
 const notificationService = require('../services/notificationService')
 const SystemConfiguration = require('../models/systemConfiguration')
 const { asyncHandler } = require('../middleware/errorHandler')
@@ -362,40 +361,20 @@ const createTicket = asyncHandler(async (req, res) => {
   // Отправка уведомления о создании тикета (если есть шаблон в очереди)
   // =====================================================
   if (newTicket.queueId) {
-    // Асинхронная отправка - не ждём завершения
     setImmediate(async () => {
       try {
         const queue = await Queues.getById(newTicket.queueId)
         if (queue && queue.templateOpenTicketId) {
-          const template = await Templates.getById(queue.templateOpenTicketId)
-          if (template && template.isActive !== false) {
-            // Получаем email владельца тикета
-            let ownerEmail = null
-            if (newTicket.ownerId) {
-              const owner = await CustomerUsers.getById(newTicket.ownerId)
-              ownerEmail = owner?.email
-            }
-
-            if (ownerEmail) {
-              let html = template.message || ''
-              // Заменяем плейсхолдеры
-              html = html.replace(/\{\{ticketNumber\}\}/g, newTicket.ticketNumber || newTicket.id)
-                .replace(/\{\{title\}\}/g, newTicket.title || '')
-                .replace(/\{\{description\}\}/g, newTicket.description || '')
-                .replace(/\{\{state\}\}/g, newTicket.stateName || '')
-
-              const result = await EmailSenderService.send({
-                queueId: newTicket.queueId,
-                to: ownerEmail,
-                subject: (template.subject || template.name || 'Новый тикет').replace(/\{\{ticketNumber\}\}/g, newTicket.ticketNumber || newTicket.id),
-                html,
-              })
-              console.log(`[TICKETS] Welcome notification sent for ticket ${newTicket.id}:`, result.success ? 'ok' : result.error)
-            }
-          }
+          await notificationService.sendTicketNotification(newTicket, queue, queue.templateOpenTicketId, {
+            event: 'ticket_open',
+            ticketNumber: newTicket.ticketNumber,
+            title: newTicket.title,
+            description: newTicket.description,
+            state: newTicket.stateName || '',
+          })
         }
       } catch (notifyErr) {
-        console.warn('[TICKETS] Failed to send ticket creation notification:', notifyErr.message)
+        console.warn('[TICKETS] Failed to queue ticket creation notification:', notifyErr.message)
       }
     })
   }
@@ -536,10 +515,12 @@ const updateTicket = asyncHandler(async (req, res) => {
 
           const templateId = isClosed ? queue.templateCloseTicketId : queue.templateStatusChangeId
           if (templateId) {
-            await notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
+            notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
               event: 'status_changed',
               oldState: oldState?.name || currentTicket.stateId,
               newState: newState?.name || req.body.stateId,
+            }).catch(err => {
+              console.warn('[TICKETS] Failed to queue status notification:', err.message)
             })
           }
         }
@@ -556,10 +537,12 @@ const updateTicket = asyncHandler(async (req, res) => {
               ? await Agents.getById(req.body.executorAgentIds[0])
               : null
 
-            await notificationService.sendTicketNotification(updatedTicket, queue, queue.templateConfirmTicketId, {
+            notificationService.sendTicketNotification(updatedTicket, queue, queue.templateConfirmTicketId, {
               event: 'assigned',
               newOwner: newOwner?.email || newExecutor?.email || req.body.ownerId || req.body.executorAgentIds?.[0],
               executorName: newExecutor ? `${newExecutor.firstName || ''} ${newExecutor.lastName || ''}`.trim() : '',
+            }).catch(err => {
+              console.warn('[TICKETS] Failed to queue assignment notification:', err.message)
             })
           }
         }
@@ -930,11 +913,13 @@ const changeTicketStatus = asyncHandler(async (req, res) => {
 
         const templateId = isClosed ? queue.templateCloseTicketId : queue.templateStatusChangeId
         if (templateId) {
-          await notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
+          notificationService.sendTicketNotification(updatedTicket, queue, templateId, {
             event: 'status_changed',
             oldState: oldState?.name || currentTicket.stateId,
             newState: newState?.name || targetStatusId,
             transitionLabel: validTransition.actionLabel,
+          }).catch(err => {
+            console.warn('[TICKETS] Failed to queue status notification:', err.message)
           })
         }
       }

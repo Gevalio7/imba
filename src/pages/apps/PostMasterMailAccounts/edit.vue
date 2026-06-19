@@ -46,6 +46,30 @@
           />
         </VCol>
       </VRow>
+
+      <VAlert
+        v-if="testResult"
+        class="mt-4"
+        :type="testResult.success ? 'success' : 'error'"
+        variant="tonal"
+      >
+        <div>
+          <b>Результат:</b>
+          {{ testResult.success ? 'Успешно' : 'Ошибка' }}
+        </div>
+
+        <div v-if="testResult.message">
+          <b>Сообщение:</b>
+          {{ testResult.message }}
+        </div>
+
+        <div v-if="testResult.status">
+          <b>HTTP статус:</b>
+          {{ testResult.status }}
+        </div>
+
+        <pre v-if="testResult.data" class="mt-2">{{ JSON.stringify(testResult.data, null, 2) }}</pre>
+      </VAlert>
     </div>
 
     <div v-else class="d-flex justify-center pa-6">
@@ -93,6 +117,7 @@ const saving = ref(false)
 const isToastVisible = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
+const testResult = ref<any>(null)
 
 const fetchQueues = async () => {
   try {
@@ -124,23 +149,38 @@ const testingRowId = ref<number | null>(null)
 const testingSmtpRowId = ref<number | null>(null)
 
 const testConnectionForItem = async (item: any) => {
+  testResult.value = null
+
   try {
     testingRowId.value = item.id
     const res = await $api(`/postMasterMailAccounts/${item.id}/test`, {
       method: 'POST',
     })
-    if (res && res.success) {
-      showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
+    const message = res?.message || 'Подключение успешно'
+
+    testResult.value = {
+      success: true,
+      message,
+      data: res,
     }
-    else {
-      const msg = getApiErrorMessage(res)
-      showToast(`Ошибка подключения: ${msg}`, 'error')
-    }
+
+    showToast('Подключение успешно: сервер ответил, логин и пароль верны', 'success')
   }
   catch (err: any) {
+    const data = getResponseData(err)
+    const message = getApiErrorMessage(err)
+
     console.error('Error testing connection for item:', err)
-    const msg = getApiErrorMessage(err)
-    showToast(`Ошибка подключения: ${msg}`, 'error')
+
+    testResult.value = {
+      success: false,
+      message,
+      status: err?.status,
+      statusText: err?.statusText,
+      data,
+    }
+
+    showToast(`Ошибка подключения: ${message}`, 'error')
   }
   finally {
     testingRowId.value = null
@@ -148,51 +188,87 @@ const testConnectionForItem = async (item: any) => {
 }
 
 const testSmtpConnection = async (account: any) => {
+  testResult.value = null
+
   try {
     testingSmtpRowId.value = account.id
     const res = await $api(`/postMasterMailAccounts/${account.id}/test-smtp`, {
       method: 'POST',
     })
-    if (res && res.success) {
-      showToast('SMTP подключение успешно', 'success')
+    const message = res?.message || 'SMTP подключение успешно'
+
+    testResult.value = {
+      success: true,
+      message,
+      data: res,
     }
-    else {
-      const msg = getApiErrorMessage(res)
-      showToast(`Ошибка SMTP: ${msg}`, 'error')
-    }
+
+    showToast('SMTP подключение успешно', 'success')
   }
   catch (err: any) {
+    const data = getResponseData(err)
+    const message = getApiErrorMessage(err)
+
     console.error('Error testing SMTP connection:', err)
-    const msg = getApiErrorMessage(err)
-    // Детали ошибки в консоль
     console.log('SMTP error details:', {
-      message: err?.message,
-      data: err?.data,
+      message,
+      status: err?.status,
+      responseStatus: err?.response?.status,
+      statusText: err?.statusText,
+      data,
       response: err?.response?._data,
       url: err?.response?.url,
-      status: err?.response?.status,
     })
-    showToast(`Ошибка SMTP: ${msg}`, 'error')
+
+    testResult.value = {
+      success: false,
+      message,
+      status: err?.status,
+      statusText: err?.statusText,
+      data,
+    }
+
+    showToast(`Ошибка SMTP: ${message}`, 'error')
   }
   finally {
     testingSmtpRowId.value = null
   }
 }
 
+const getResponseData = (errOrRes: any): any => {
+  return (
+    errOrRes?._data ??
+    errOrRes?.data ??
+    errOrRes?.response?._data ??
+    errOrRes?.response?.data ??
+    errOrRes
+  )
+}
+
 const getApiErrorMessage = (errOrRes: any): string => {
   if (!errOrRes)
     return 'Неизвестная ошибка'
-  const data = errOrRes?.data ?? errOrRes?.response?._data ?? errOrRes?.data?.data ?? errOrRes
+
+  const data = getResponseData(errOrRes)
+
   if (data?.message)
     return data.message
-  if (typeof data === 'string')
-    return data
+
+  if (data?.data?.message)
+    return data.data.message
+
   if (data?.error)
     return data.error
+
+  if (data?.data?.error)
+    return data.data.error
+
   if (errOrRes?.message)
     return errOrRes.message
-  if (errOrRes?.response?.statusText)
-    return errOrRes.response.statusText
+
+  if (errOrRes?.statusText)
+    return errOrRes.statusText
+
   return 'Неизвестная ошибка'
 }
 

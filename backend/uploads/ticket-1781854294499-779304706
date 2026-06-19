@@ -1,0 +1,50 @@
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1781854285; x=1782459085; darn=dreamdesc.ru;
+        h=mime-version:date:message-id:subject:to:from:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=tPYi1xymWpAv88s3QDpUu9/ta2E9bCWT89wycqsi/sw=;
+        b=I7mf/oK3Trz9tjQfIZAD8otGU2oFdeVBW0cOnmeGwnmaRyXmRtY8yS+jQeQ4YHiJtk
+         pZA+CQ+fDVSNZnTpIwjMOOvwZkGmmcBm4XWUyM+fKOaaattVbAqHKBCm0OgJgq4xkoaN
+         E4mGKmNqvfNmNt9AfATNBrMUCHuRfJhqW5MEtXhTAn181+9SJmq4psHrw/NoZ9guMi9B
+         M1cNuClx/PRl+OfbVpn8mSKvP2gpvGaKiuZERaBVHFfTlS94bVhruzUSXP+cQs9Qegpc
+         HZH/+X8tD/OVJGq9C01nVq+x3HzldnxV07Z24JHyPJ5q7t1fu62oAzqOwqDtKAw7eaqY
+         0t8A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1781854285; x=1782459085;
+        h=mime-version:date:message-id:subject:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=tPYi1xymWpAv88s3QDpUu9/ta2E9bCWT89wycqsi/sw=;
+        b=VeT5CRDyjCyLyHMTnehEpBYo8Rxd2BYNMnZd9ngLj6jEiRvQlYA/oTjYoe7X/ytkA6
+         I+gU24K+awKxSuAvrE960bNsr6kIfChmynHiOoNiYdBhQtyitN/Vkd0lOGPiq+YDRKe7
+         UoTLqsWvyaK0+Fy+5SVGvVtWpP6KxWVcOjoGLqIEgEQSgc8gKpLJBaANwdRYkaerIV5k
+         C4Zv9aLF2cT3Z1aJj5YKa9/3XW68dpgAzyp7ux/K43caOo0ljOVhCOYXUgbKAhUg7WjA
+         fpQhG1uqGy5rSuwlf56Ia9hDYs14gcsTRGHIzkRu/+mdyk0tB3/ye3e5hWEkGtPPur0C
+         IsRw==
+X-Forwarded-Encrypted: i=1; AFNElJ/sXmr6PfGow8LEqTHWbowQx23iGk75dyAN/Tn9qW8jEH4rRqeahF+oxJkB+f5g9qqtVm171peZ@dreamdesc.ru
+X-Gm-Message-State: AOJu0Yzk6PVBdVMV5j+rtOZFugGWORuTaqYRuj2YDN+jqijevYZo+VfP
+	1zTC0d+cI0B1BjLJx+xrHe9PF7A+L7Y/Y9mQ0IbdyTvn1XfXFtuq5C5Et8WXmwh2S1bADA==
+X-Gm-Gg: AfdE7clOohN9iKDtQ+N8Ejqi+ULKWVZFdHk8/mTFeD0+CIGOjsUPLFbMfhSTKHoRU3R
+	Z5Rru5f7ltV3Y1Jp2Ug+OMw084i0tR3PH7k/2NXIhjpLWN7kZmeCJ9T/3aIBd6dVmlpLucmCNcK
+	VmzUzhDnysJ9np6iFuomNpO73OIUcZpdyytYNy39pT7fj2sNFE0pVYzuqCRHofCvZ2ivMKLdt3A
+	ki6yiMfvoygG/I9/vdqGn+w7N9aI/a2S5IFWPGahlr7IZ4AbvdHfKgwuY2/DzTirOLBMZ/yyN94
+	CajLbNrTdC6OgeFLVSI8tm/7iB0KYE25KR1ZkLgxrO6Pj6LPmKVLlLSGULzC5j5ZqvRAi/b+BzU
+	1vX/yiuwdnNRk4CBnCF27/6hf+sux6gQ16WSxpfJSfHQiNWc6P6krZozI8DTjvRz0PgPLZ/r+FJ
+	I+xkFHXrQRKgzfUqIPcSeGIYPTo7ZhjIdIneJeMo2BxPQhlfty4Pk/
+X-Received: by 2002:a05:600c:6989:b0:492:3445:ecf8 with SMTP id 5b1f17b1804b1-49242326ca4mr20555585e9.3.1781854284518;
+        Fri, 19 Jun 2026 00:31:24 -0700 (PDT)
+Return-Path: <bitterliterr@gmail.com>
+Received: from [127.0.0.1] (109-252-142-15.dynamic.spd-mgts.ru. [109.252.142.15])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4923fcd7027sm47965945e9.1.2026.06.19.00.31.23
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 19 Jun 2026 00:31:23 -0700 (PDT)
+From: =?UTF-8?B?0J/QvtGH0YLQsCDQtNC70Y8g0YLQtdGB0YLQsA==?=
+ <bitterliterr@gmail.com>
+To: vps.dan@yandex.ru, petrova@dreamdesc.ru
+Subject: =?UTF-8?B?0JjQt9C80LXQvdC10L3QuNC1INGB0YLQsNGC0YM=?=
+ =?UTF-8?B?0YHQsA==?=
+Message-ID: <afcf8c84-6796-6893-b3fa-4ce500d342a4@gmail.com>
+Date: Fri, 19 Jun 2026 07:31:22 +0000
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="--_NmP-d4efec1fcc930e14-Part_1"
+

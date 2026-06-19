@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { type ColumnSetting, useFilters } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
 
@@ -79,14 +79,38 @@ const tickets = ref<Ticket[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const maxTicketId = ref(0)
+const refreshInterval = ref<number | null>(null)
+const isInitialLoad = ref(true) // Флаг для отслеживания первой загрузки
 
 // Загрузка данных
-const fetchTickets = async () => {
-  try {
+const fetchTickets = async (showLoading = true) => {
+  // При автообновлении не показываем индикатор загрузки
+  if (showLoading) {
     loading.value = true
     error.value = null
+  }
 
+  try {
     const data = await $api<{ tickets: Ticket[]; total: number }>(`/tickets`)
+
+    // Проверяем наличие новых тикетов для toast-уведомления (только после первой загрузки)
+    if (!isInitialLoad.value && showLoading === false && data.tickets.length > 0) {
+      const newMaxId = Math.max(...data.tickets.map(t => t.id))
+      if (newMaxId > maxTicketId.value) {
+        const newTicketsCount = data.tickets.filter(t => t.id > maxTicketId.value).length
+        showToast(`Создано ${newTicketsCount} новых обращений`, 'info')
+        maxTicketId.value = newMaxId
+      }
+    }
+
+    if (isInitialLoad.value) {
+      isInitialLoad.value = false
+      // Вычисляем максимальный ID при первой загрузке
+      if (data.tickets.length > 0) {
+        maxTicketId.value = Math.max(...data.tickets.map(t => t.id))
+      }
+    }
 
     tickets.value = data.tickets
     total.value = data.total
@@ -100,7 +124,9 @@ const fetchTickets = async () => {
     console.error('Error fetching tickets:', err)
   }
   finally {
-    loading.value = false
+    if (showLoading) {
+      loading.value = false
+    }
   }
 }
 
@@ -586,6 +612,19 @@ const loadUniqueValuesFromTickets = () => {
 onMounted(() => {
   fetchTickets()
   loadSavedPresets(FILTER_PRESETS_KEY)
+
+  // Автообновление списка тикетов каждые 30 секунд (без индикатора загрузки)
+  refreshInterval.value = window.setInterval(() => {
+    fetchTickets(false)
+  }, 30000)
+})
+
+// Очистка интервала при размонтировании
+onUnmounted(() => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+    refreshInterval.value = null
+  }
 })
 </script>
 
@@ -704,22 +743,31 @@ onMounted(() => {
             Колонки
           </VBtn>
 
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            prepend-icon="bx-export"
-          >
-            Экспорт
-          </VBtn>
+<VBtn
+             variant="tonal"
+             color="secondary"
+             prepend-icon="bx-export"
+           >
+             Экспорт
+           </VBtn>
 
-          <VBtn
-            v-if="$can('write', 'menu_tickets_create')"
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="createTicket"
-          >
-            Создать обращение
-          </VBtn>
+           <VBtn
+             variant="tonal"
+             color="primary"
+             prepend-icon="bx-refresh"
+             @click="fetchTickets"
+           >
+             Обновить
+           </VBtn>
+
+           <VBtn
+             v-if="$can('write', 'menu_tickets_create')"
+             color="primary"
+             prepend-icon="bx-plus"
+             @click="createTicket"
+           >
+             Создать обращение
+           </VBtn>
         </div>
       </div>
 
