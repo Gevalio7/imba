@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import AddEditGroupDialog from './AddEditGroupDialog.vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -146,16 +147,7 @@ const addNewGroup = () => {
   isEditDialogVisible.value = true
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 const toggleStatus = async (group: AgentsGroups, newValue: boolean) => {
   const previousValue = group.isActive
@@ -432,15 +424,6 @@ onMounted(() => {
         </VCardText>
       </VCard>
     </VDialog>
-
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
 
     <!-- Диалог редактирования/создания группы -->
     <AddEditGroupDialog

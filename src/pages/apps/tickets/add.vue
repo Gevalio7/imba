@@ -5,6 +5,7 @@ import { $api } from '@/utils/api'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useAuthorSearch } from '@/composables/useAuthorSearch'
 import { useTicketForm } from '@/composables/useTicketForm'
+import { useToast } from '@/composables/useToast'
 
 definePage({
   meta: {
@@ -519,16 +520,7 @@ const formatDeadline = (date: Date | null) => {
   })
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Обновление справочных данных
 const refreshData = async () => {
@@ -1159,15 +1151,6 @@ onMounted(async () => {
         </VCard>
       </VCol>
     </VRow>
-
-    <!-- Snackbar -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
 
     <!-- Модальное окно создания сотрудника -->
     <VDialog

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { type ColumnSetting, useFilters } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 import TicketScheduleDialog from '@/components/TicketEdit/TicketScheduleDialog.vue'
 
 definePage({
@@ -499,16 +500,7 @@ const runScheduleNow = async () => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Инициализация
 onMounted(() => {
@@ -1239,14 +1231,6 @@ onMounted(() => {
       @run-now="runScheduleNow"
     />
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="5000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

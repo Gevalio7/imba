@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Агент
 interface Agents {
@@ -594,16 +595,7 @@ watch(searchQuery, newValue => {
   }, 300)
 })
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Переключение статуса
 const toggleStatus = async (item: Agents, newValue: boolean | null) => {
@@ -1449,15 +1441,6 @@ defineExpose({
         </VCardText>
       </VCard>
     </VDialog>
-
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
 
     <!-- Диалог добавления агента в группу -->
     <VDialog

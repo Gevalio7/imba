@@ -3,6 +3,7 @@ import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const { ensureLoaded } = useGlobalPermissions()
@@ -363,15 +364,7 @@ const testSmtpConnection = async (account: any) => {
   }
 }
 
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 const getApiErrorMessage = (errOrRes: any): string => {
   if (!errOrRes)
@@ -702,12 +695,5 @@ const toggleStatus = async (item: PostMasterMailAccount, val: boolean) => {
       </VCard>
     </VDialog>
 
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>

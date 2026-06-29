@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Images
 import kbIllustration1 from '@images/pages/academy-course-illustration1.png'
@@ -204,15 +205,7 @@ const closeDelete = () => {
   deletingItem.value = null
 }
 
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 const createArticle = () => router.push('/apps/knowledge-base/add')
 const editArticle = (id: number) => router.push({ path: '/apps/knowledge-base/edit', query: { id } })
@@ -931,14 +924,6 @@ const getCardImage = (index: number) => cardImages[index % cardImages.length]
       </VCard>
     </VDialog>
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

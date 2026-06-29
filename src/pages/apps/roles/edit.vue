@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import RoleInfoCard from './components/RoleInfoCard.vue'
 import RoleExtendedPermissions from './components/RoleExtendedPermissions.vue'
 import { categoryIcons, menuConfig } from '@/constants/roleMenuConfig'
@@ -28,9 +29,7 @@ const {
 
 const expandedPanels = ref(menuConfig.map(c => c.category))
 const loading = ref(false)
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
+const { showToast } = useToast()
 
 const canChangeStatus = ref(false)
 const canChangePriority = ref(false)
@@ -65,12 +64,6 @@ const selectedCompanies = ref<number[]>([])
 const onlyOwnTickets = ref(false)
 const canReply = ref(true)
 const canInternalNotes = ref(false)
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
 
 // Обёртка сохранения роли: сначала сохранение, затем загрузка permissions для новой роли
 const saveRole = async () => {
@@ -402,13 +395,6 @@ onMounted(async () => {
     </VCol>
   </VRow>
 
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style scoped>

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 definePage({
   meta: {
@@ -111,16 +112,7 @@ const cancel = () => {
   router.push('/apps/knowledge-base')
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Инициализация
 onMounted(async () => {
@@ -280,14 +272,6 @@ onMounted(async () => {
       </VCol>
     </VRow>
 
-    <!-- Snackbar -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

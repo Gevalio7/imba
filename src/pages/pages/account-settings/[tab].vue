@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 
 // Получаем параметр tab из URL
 const route = useRoute()
@@ -32,15 +33,7 @@ const changingPassword = ref(false)
 const savingNotifications = ref(false)
 
 // Toast уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Методы
 const saveAccountSettings = async () => {
@@ -305,13 +298,5 @@ loadUserData()
       </VTabsWindow>
     </VCard>
 
-    <!-- Toast уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>

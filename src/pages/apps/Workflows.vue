@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных
 interface WorkflowTransition {
@@ -98,11 +99,6 @@ const workflowForm = ref<Partial<Workflow>>({})
 const transitionForm = ref<Partial<WorkflowTransition>>({})
 const editedTransitionIndex = ref(-1)
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
 // Визуальный редактор
 const viewMode = ref<'table' | 'visual'>('visual')
 const svgContainer = ref<SVGSVGElement | null>(null)
@@ -143,11 +139,7 @@ const NODE_WIDTH = 140
 const NODE_HEIGHT = 50
 const NODE_RADIUS = 8
 
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Загрузка данных
 const fetchWorkflows = async () => {
@@ -1671,14 +1663,6 @@ watch(selectedWorkflowId, () => {
       </VCard>
     </VDialog>
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

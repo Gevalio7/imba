@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { createObjectUrl, isImageFile, isImageType } from '@/utils/fileUtils'
 
 // Composables
+import { useToast } from '@/composables/useToast'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useTicketForm } from '@/composables/useTicketForm'
 import { useTicketComments } from '@/composables/useTicketComments'
@@ -152,19 +153,11 @@ const {
   closeQuickAnswersDialog,
 } = useQuickAnswers(currentQueue)
 
+const { showToast } = useToast()
+
 // Local state
 const scheduleDialog = ref(false)
 const activeTab = ref('comments')
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-// Toast helper
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
 
 // Управление blob URL для новых вложений (исправление утечки памяти)
 // Создаём URL один раз на файл, очищаем при удалении/размонтировании
@@ -654,15 +647,6 @@ const updateIsInternalComment = (value: boolean) => {
          />
       </VCol>
     </VRow>
-
-    <!-- Snackbar -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
 
     <!-- Диалог подтверждения удаления комментария -->
     <VDialog

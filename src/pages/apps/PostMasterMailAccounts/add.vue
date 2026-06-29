@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
+import { useToast } from '@/composables/useToast'
 // Временный импорт простой формы
 import SimpleForm from '@/components/PostMaster/SimpleForm.vue'
 
@@ -19,15 +20,7 @@ definePage({
 
 const queues = ref<any[]>([])
 const loading = ref(false)
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 const fetchQueues = async () => {
   try {
@@ -139,9 +132,6 @@ onMounted(async () => {
            @cancel="handleCancel"
          />
 
-         <VSnackbar v-model="isToastVisible" :color="toastColor" location="top">
-           {{ toastMessage }}
-         </VSnackbar>
        </VCol>
      </VRow>
    </div>

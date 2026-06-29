@@ -78,13 +78,6 @@
       </VAlert>
     </div>
 
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 
@@ -92,6 +85,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 import SimpleForm from '@/components/PostMaster/SimpleForm.vue'
 
 const router = useRouter()
@@ -114,9 +108,7 @@ const account = ref<any | null>(null)
 const loading = ref(true)
 const queues = ref<any[]>([])
 const saving = ref(false)
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
+const { showToast } = useToast()
 const testResult = ref<any>(null)
 
 const fetchQueues = async () => {
@@ -311,12 +303,6 @@ const handleSave = async (data: any) => {
 
 const handleCancel = () => {
   router.push('/apps/PostMasterMailAccounts')
-}
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
 }
 
 onMounted(async () => {

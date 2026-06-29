@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
+import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 
 // Типы данных для Шаблон
 interface Templates {
@@ -759,16 +761,7 @@ const toggleQueuesStatus = async (item: Queues, newValue: boolean | null) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Добавление новых элементов
 const addNewTemplates = () => {
@@ -1954,14 +1947,6 @@ watch(emailConfig, newVal => {
     </VDialog>
   </VRow>
 
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>

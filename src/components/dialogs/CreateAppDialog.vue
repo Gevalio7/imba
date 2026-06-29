@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useToast } from '@/composables/useToast'
 import laptopGirl from '@images/illustrations/illustration-john.png'
 
 const props = defineProps<{
@@ -140,16 +142,7 @@ watch(props, () => {
     currentStep.value = 0
 })
 
-// Snackbar for non-blocking notifications
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref<'success' | 'error' | 'info'>('success')
-
-const showToast = (message: string, color: 'success' | 'error' | 'info' = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 const onSubmit = () => {
   // non-blocking notification instead of alert
@@ -459,13 +452,6 @@ const onSubmit = () => {
     </VCard>
   </VDialog>
 
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="1500"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style lang="scss">

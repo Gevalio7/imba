@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Группа агентов
 interface AgentsGroups {
@@ -198,16 +199,7 @@ const closeDialog = () => {
   emit('update:groupDetail', undefined)
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Загрузка актуальных данных группы с сервера
 const fetchGroupById = async (groupId: number) => {
@@ -395,13 +387,5 @@ watch(() => props.isDialogVisible, async newVal => {
       </VCardActions>
     </VCard>
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </VDialog>
 </template>
