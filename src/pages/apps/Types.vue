@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Тип
 interface Types {
@@ -586,16 +587,7 @@ const toggleStatus = async (item: Types, newValue: boolean | null) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Добавление нового тип
 const addNewTypes = () => {
@@ -1322,14 +1314,7 @@ const removeCategoryFromType = async (type: Types, categoryId: number) => {
     </VDialog>
   </div>
 
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
+
 
   <!-- Аккордеон для Категорий и связей -->
   <VExpansionPanels

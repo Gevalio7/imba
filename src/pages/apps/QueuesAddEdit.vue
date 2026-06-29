@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 interface Queue {
   id: number
@@ -637,15 +639,7 @@ const cancel = () => {
   router.push('/apps/Queues')
 }
 
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Watch for companyId changes to reset related fields (only if user changed, not on load)
 watch(() => queue.value.companyId, (newCompanyId, oldCompanyId) => {
@@ -1135,14 +1129,6 @@ onMounted(async () => {
         </div>
       </VCardText>
     </VCard>
-
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
 
     <VDialog
       v-model="showQuickAnswersDialog"

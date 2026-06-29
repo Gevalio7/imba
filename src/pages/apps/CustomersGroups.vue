@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Группа клиентов
 interface CustomersGroups {
@@ -376,16 +377,7 @@ const toggleStatus = async (item: CustomersGroups, newValue: boolean) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Добавление нового группа клиентов
 const addNewCustomersGroups = () => {
@@ -796,15 +788,6 @@ const addNewCustomersGroups = () => {
       </VCard>
     </VDialog>
   </div>
-
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>

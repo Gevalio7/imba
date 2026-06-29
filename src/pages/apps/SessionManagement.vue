@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Управление сессией
 interface SessionManagement {
@@ -302,16 +303,7 @@ const selectedItems = ref<any[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkTerminateAllDialogOpen = ref(false)
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 </script>
 
 <template>
@@ -566,15 +558,6 @@ const showToast = (message: string, color: string = 'success') => {
       </div>
     </VCard>
   </div>
-
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>

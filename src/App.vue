@@ -4,6 +4,7 @@ import ScrollToTop from '@core/components/ScrollToTop.vue'
 import initCore from '@core/initCore'
 import { initConfigStore, useConfigStore } from '@core/stores/config'
 import { hexToRgb } from '@core/utils/colorConverter'
+import ToastProvider from '@/components/ToastProvider.vue'
 
 const { global } = useTheme()
 
@@ -19,6 +20,7 @@ const configStore = useConfigStore()
     <VApp :style="`--v-global-theme-primary: ${hexToRgb(global.current.value.colors.primary)}`">
       <RouterView />
       <ScrollToTop />
+      <ToastProvider />
     </VApp>
   </VLocaleProvider>
 </template>

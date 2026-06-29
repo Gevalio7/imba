@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
 import TemplateEditorDialog from '@/components/TemplateEditorDialog.vue'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Шаблон
 interface Templates {
@@ -321,7 +322,6 @@ const save = async () => {
     showToast('Шаблон удалён')
   }
 
-
 // Переключение статуса
 const toggleStatus = async (item: Templates, newValue: boolean | null) => {
   console.log('🔄 toggleStatus вызван')
@@ -343,18 +343,9 @@ const toggleStatus = async (item: Templates, newValue: boolean | null) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
+const { showToast } = useToast()
 
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
-
-// Добавление нового шаблон (используем advanced редактор)
+// Добавление нового
 const addNewTemplates = () => {
   createNew()
 }
@@ -748,15 +739,6 @@ const addNewTemplates = () => {
       </VCard>
     </VDialog>
   </div>
-
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 </template>
 
 <style lang="scss" scoped>

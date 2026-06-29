@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для резервного копирования
 interface Backup {
@@ -349,15 +350,7 @@ const formatBytes = (bytes: number) => {
 }
 
 // Toast уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Инициализация
 onMounted(() => {
@@ -953,14 +946,6 @@ onMounted(() => {
       </VCard>
     </VDialog>
 
-    <!-- Toast уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

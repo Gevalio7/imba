@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Группа клиентов
 interface CustomersGroups {
@@ -380,17 +381,10 @@ const onDropWithoutGroup = async (event: DragEvent) => {
 }
 
 // ========== УВЕДОМЛЕНИЯ ==========
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Генерирует инициалы для аватара
+
 const getInitials = (firstName: string, lastName: string) => {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
 }
@@ -1536,14 +1530,6 @@ const getGroupName = (groupId: number | undefined) => {
       </VCard>
     </VDialog>
 
-    <!-- Уведомления -->
-    <VSnackbar
-      v-model="isToastVisible"
-      :color="toastColor"
-      timeout="3000"
-    >
-      {{ toastMessage }}
-    </VSnackbar>
   </div>
 </template>
 

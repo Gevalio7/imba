@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { type ColumnSetting, useFilters } from '@/composables/useFilters'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // CASL helpers
 import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
@@ -677,16 +678,7 @@ const toggleStatus = async (item: Queues, newValue: boolean | null) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Добавление нового очереди
 const addNewQueues = () => {
@@ -1451,14 +1443,7 @@ onBeforeUnmount(() => {
     </VCard>
   </VDialog>
 
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
+
 </template>
 
 <style lang="scss" scoped>

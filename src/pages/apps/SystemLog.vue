@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Типы данных для Системный журнал
 interface SystemLog {
@@ -403,16 +404,7 @@ const toggleStatus = async (item: SystemLog, newValue: boolean) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Добавление нового системный журнал
 const addNewSystemLog = () => {
@@ -888,15 +880,6 @@ const addNewSystemLog = () => {
       </VCard>
     </VDialog>
   </div>
-
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
 
   <!-- Mail fetch error dialog -->
   <VDialog v-model="mailFetchErrorDialog" max-width="800px">

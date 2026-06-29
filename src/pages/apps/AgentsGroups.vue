@@ -5,6 +5,7 @@ import AgentsGroupsCards from '@/views/apps/groups/AgentsGroupsCards.vue'
 import AgentsGroupsTable from '@/views/apps/groups/AgentsGroupsTable.vue'
 import AgentsTable from '@/views/apps/groups/AgentsTable.vue'
 import { $api } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Переключатель вида групп (карточки/таблица)
 const groupsViewMode = ref<'cards' | 'table'>(
@@ -175,16 +176,7 @@ const deleteGroup = async (group: AgentsGroups) => {
   }
 }
 
-// Уведомления
-const isToastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-
-const showToast = (message: string, color: string = 'success') => {
-  toastMessage.value = message
-  toastColor.value = color
-  isToastVisible.value = true
-}
+const { showToast } = useToast()
 
 // Переключение статуса группы
 const toggleGroupStatus = async (group: AgentsGroups, newValue: boolean) => {
@@ -708,14 +700,7 @@ const statusOptions = [
     </VCol>
   </VRow>
 
-  <!-- Уведомления -->
-  <VSnackbar
-    v-model="isToastVisible"
-    :color="toastColor"
-    timeout="3000"
-  >
-    {{ toastMessage }}
-  </VSnackbar>
+
 
   <!-- Диалог редактирования/создания группы -->
   <AddEditGroupDialog
