@@ -1,121 +1,127 @@
-# Code Review: Интеграция Workflow для тикетов
+# Оставшиеся замечания и планы по рефакторингу
 
-**Дата:** 2026-02-22  
-**Ветка:** main  
-**Статус:** APPROVE WITH SUGGESTIONS
+> Файл создан 30 июня 2026. Содержит все замечания, которые не были исправлены в ходе рефакторинга тостов.
 
-## Summary
+---
 
-Данные изменения реализуют интеграцию workflow-системы для тикетов: автоматическое определение начального статуса, валидация переходов статусов, запись истории изменений с человекочитаемыми именами. Качество кода хорошее, архитектура изменений логична, но есть несколько проблем производительности и дублирования кода.
+## 🔴 Высокий приоритет
 
-## Изменённые файлы (8)
+### 1. Создать useEntityCrud composable (Generic CRUD)
+**Проблема:** Большинство страниц админки (States, Priorities, Types, TypeCategories, Queues, SLA, Greetings, Signatures, Attachments, Customers, CustomersGroups, EmailAddresses, Backup, Services, IntegrityCheck, AutoResponses, Templates и др.) — это огромные файлы по 600–1300 строк с идентичными CRUD-операциями:
+- `fetchItems()`, `createItem()`, `updateItem()`, `deleteItem()`
+- `confirmBulkDelete()`, `confirmBulkStatusChange()`
+- `resolveStatusVariant()`, `toggleStatus()`
+- Пагинация, диалоги фильтра, диалоги удаления
+- Массовые действия (selectedItems, bulkDelete, bulkChangeStatus)
 
-- [modified] backend/controllers/ticketsController.js
-- [modified] backend/controllers/typesController.js
-- [modified] backend/models/ticketHistory.js
-- [modified] backend/routes/ticketAttachments.js
-- [modified] backend/routes/types.js
-- [modified] src/pages/apps/settings/ticket-settings/Types.vue
-- [modified] src/pages/apps/tickets/add.vue
-- [modified] src/pages/apps/tickets/edit.vue
+**Решение:** Создать `useEntityCrud<T>(endpoint, config)` composable + переиспользуемый `<EntityList>` компонент.
 
-## Issues Found
+**Файлы для изменения:** ~30 страниц в `imba/src/pages/apps/`
 
-| Severity | File:Line | Issue |
-|----------|-----------|-------|
-| WARNING | backend/controllers/ticketsController.js:265-273 | Проблема производительности: загрузка всех справочников при каждом обновлении |
-| WARNING | backend/routes/ticketAttachments.js:108 | Использование req.user без проверки аутентификации |
-| SUGGESTION | backend/controllers/ticketsController.js:14-26 | Дублирование маппинга fieldDisplayNames с ticketHistory.js |
+---
 
-## Detailed Findings
+### 2. Исправить типы `any` в selectedItems
+**Проблема:** В 20+ файлах используется `selectedItems = ref<any[]>([])` вместо типизированной версии:
+- `imba/src/pages/apps/Agents/index.vue`
+- `imba/src/pages/apps/States.vue`
+- `imba/src/pages/apps/Priorities.vue`
+- `imba/src/pages/apps/Types.vue`
+- `imba/src/pages/apps/TypeCategories.vue`
+- `imba/src/pages/apps/Queues.vue`
+- `imba/src/pages/apps/Roles.vue`
+- `imba/src/pages/apps/SLA.vue`
+- `imba/src/pages/apps/Greetings.vue`
+- `imba/src/pages/apps/Signatures.vue`
+- `imba/src/pages/apps/Attachments.vue`
+- `imba/src/pages/apps/Customers.vue`
+- `imba/src/pages/apps/CustomersGroups.vue`
+- `imba/src/pages/apps/EmailAddresses.vue`
+- `imba/src/pages/apps/Backup.vue`
+- `imba/src/pages/apps/Services.vue`
+- `imba/src/pages/apps/IntegrityCheck.vue`
+- `imba/src/pages/apps/AutoResponses.vue`
+- `imba/src/pages/apps/Templates.vue`
+- `imba/src/pages/apps/TemplateQueues.vue`
+- `imba/src/pages/apps/Workflows.vue`
+- `imba/src/pages/apps/Calendars.vue`
 
-### 1. WARNING: Проблема производительности при обновлении тикета
+**Решение:** Заменить на `ref<EntityType[]>([])` с конкретным интерфейсом.
 
-- **File:** `backend/controllers/ticketsController.js:265-273`
-- **Confidence:** 90%
-- **Problem:** При каждом обновлении тикета загружаются 7 справочников (Types, Priorities, Queues, States, Agents, Customers, Sla) с лимитом 1000 записей каждый. Это создаёт избыточную нагрузку на БД, даже если изменяется только одно поле.
-- **Suggestion:** Загружать только необходимые справочники в зависимости от изменяемых полей:
+---
 
-```javascript
-// Определяем какие справочники нужны
-const neededLookups = new Set();
-for (const field of fieldsToTrack) {
-  if (data[field] !== undefined && currentTicket[field] !== data[field]) {
-    if (field === 'typeId') neededLookups.add('types');
-    else if (field === 'priorityId') neededLookups.add('priorities');
-    else if (field === 'queueId') neededLookups.add('queues');
-    else if (field === 'stateId') neededLookups.add('states');
-    else if (field === 'ownerId') neededLookups.add('agents');
-    else if (field === 'companyId') neededLookups.add('customers');
-    else if (field === 'slaId') neededLookups.add('sla');
-  }
-}
-
-// Загружаем только нужные справочники параллельно
-const lookupPromises = [];
-if (neededLookups.has('types')) lookupPromises.push(Types.getAll({ itemsPerPage: 1000 }));
-if (neededLookups.has('priorities')) lookupPromises.push(Priorities.getAll({ itemsPerPage: 1000 }));
-// ... и т.д.
-
-const results = await Promise.all(lookupPromises);
+### 3. Типизировать useReferenceData.ts
+**Проблема:** Все поля в `useReferenceData.ts` имеют тип `any[]`:
+```ts
+priorities: ref<any[]>([])
+queues: ref<any[]>([])
+states: ref<any[]>([])
+types: ref<any[]>([])
+// ... итого ~20 полей
 ```
 
-### 2. WARNING: Использование req.user без middleware аутентификации
+**Решение:** Создать отдельный файл с интерфейсами и использовать конкретные типы.
 
-- **File:** `backend/routes/ticketAttachments.js:108`
-- **Confidence:** 85%
-- **Problem:** В обработчике DELETE используется `req.user?.id`, но маршрут не имеет middleware аутентификации. Если пользователь не аутентифицирован, `req.user` будет undefined, и в историю запишется `null` как changedBy.
-- **Suggestion:** Либо добавить middleware аутентификации на маршрут, либо явно обрабатывать отсутствие пользователя:
+---
 
-```javascript
-// Вариант 1: добавить middleware
-const { authenticate } = require('../middleware/auth');
-router.delete('/:id', authenticate, async (req, res) => { ... });
+### 4. Стандартизовать API-клиент
+**Проблема:** Некоторые файлы используют `$api` (из `utils/api.ts`), другие — `$fetch` напрямую, третьи используют `useApi` composable. Надо везде использовать единый клиент.
 
-// Вариант 2: проверять наличие пользователя
-if (!req.user) {
-  return res.status(401).json({ error: 'Authentication required' });
-}
-```
+**Файлы с прямым `$fetch`:**
+- `imba/src/pages/apps/tickets/*.vue` — используют `import.meta.env.VITE_API_BASE_URL` напрямую
 
-### 3. SUGGESTION: Дублирование маппинга имён полей
+**Решение:** Провести единообразное использование `$api` во всех файлах.
 
-- **File:** `backend/controllers/ticketsController.js:14-26`
-- **Confidence:** 80%
-- **Problem:** Маппинг `fieldDisplayNames` определён и в ticketsController.js, и в `ticketHistory.js:13-25`. Это нарушает принцип DRY и может привести к рассинхронизации.
-- **Suggestion:** Вынести маппинг в отдельный модуль или использовать маппинг из модели:
+---
 
-```javascript
-// Создать файл: backend/constants/fieldNames.js
-const FIELD_DISPLAY_NAMES = {
-  title: 'Заголовок',
-  description: 'Описание',
-  typeId: 'Тип',
-  priorityId: 'Приоритет',
-  queueId: 'Очередь',
-  stateId: 'Статус',
-  ownerId: 'Владелец',
-  companyId: 'Компания',
-  slaId: 'SLA',
-  isActive: 'Активен',
-  attachment: 'Вложение',
-};
+## 🟡 Средний приоритет
 
-module.exports = { FIELD_DISPLAY_NAMES };
+### 5. Стандартизовать утилиты
+**Проблема:** Функции вроде `formatDate`, `resolveStatusVariant`, `getOwnerName` дублируются во многих страницах. Нужно вынести в общие утилиты.
 
-// В ticketsController.js и ticketHistory.js:
-const { FIELD_DISPLAY_NAMES } = require('../constants/fieldNames');
-```
+---
 
-## Recommendation
+### 6. Предсуществующие баги (не связаны с рефакторингом)
+- **knowledge-base/index.vue**: Дублирующиеся кнопки удаления в карточках популярных статей (вторая без проверки прав `$can`)
+- **knowledge-base/index.vue**: Использует `useGenerateImageVariant` из auto-imports (возможно, больше не автоимпортируется)
 
-**APPROVE WITH SUGGESTIONS**
+---
 
-Изменения функционально корректны и реализуют важную бизнес-логику. Проблемы производительности и дублирования кода не являются критичными для работы, но их стоит устранить для улучшения поддерживаемости и масштабируемости системы. Рекомендуется исправить warning-проблемы перед мержем в production.
+### 7. Удалить дублирующиеся компоненты и страницы
+**Проблема:** В `imba/src/pages/apps/` и `imba/src/views/apps/` есть дублирующиеся или пересекающиеся компоненты. Например:
+- `pages/apps/Roles.vue` и `views/apps/groups/RolesTable.vue`
+- `pages/apps/AgentsGroups.vue` и `views/apps/groups/AgentsGroupsTable.vue`
+- `pages/apps/Agents/index.vue` и `views/apps/groups/AgentsTable.vue`
 
-## Положительные аспекты
+**Решение:** Проанализировать, какие страницы используются, и удалить дубли.
 
-1. **Хорошая архитектура workflow:** Логика валидации переходов статусов вынесена в отдельные методы WorkflowTransitions
-2. **История изменений:** Запись человекочитаемых имён вместо ID улучшает читаемость истории
-3. **Автоматическое определение статуса:** Удобный UX при создании тикета
-4. **Обратная совместимость:** Если workflow не настроен, система продолжает работать без ограничений
+---
+
+### 8. Разделить backend/server.ts
+**Проблема:** Один файл на 300+ строк, где смешаны настройка сервера, роуты, планировщик задач и бэкапы.
+
+**Решение:** Разделить на модули (routes/, scheduler/, backup/).
+
+---
+
+### 9. useReferenceData кеш
+**Проблема:** Кеш на 30 секунд, но много страниц всё равно загружает данные отдельно, а не через него.
+
+**Решение:** Увеличить время кеша и убедиться, что все компоненты используют `useReferenceData`.
+
+---
+
+## 🟢 Низкий приоритет / Косметика
+
+### 10. Везде использовать единый формат даты
+Разные страницы форматируют даты по-разному. Нужна единая утилита.
+
+### 11. Удалить `any` касты в composables
+Например `useCookie<any>('userData')` — нужно типизировать.
+
+### 12. Проверить импорты auto-imports
+Многие функции больше не автоимпортируются (см. git-diff в начале). Нужно добавить явные импорты.
+
+---
+
+## ✅ Выполненные рефакторинги
+- ✅ **Toast notification system** — июнь 2026 (3 коммита, ~50+ файлов, -958 строк)
