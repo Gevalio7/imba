@@ -2,11 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import QueueCards from '@/views/apps/queues/QueueCards.vue'
 import TemplateCards from '@/views/apps/template-queues/TemplateCards.vue'
+import { useEntityCrud } from '@/composables/useEntityCrud'
 import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
-import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 
-// Типы данных для Шаблон
+// Типы данных для Шаблон (не extends BaseEntity — совместимость с TemplateCards)
 interface Templates {
   id: number
   name: string
@@ -14,9 +13,10 @@ interface Templates {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  [key: string]: any
 }
 
-// Типы данных для Очередь
+// Типы данных для Очередь (не extends BaseEntity — совместимость с QueueCards)
 interface Queues {
   id: number
   name: string
@@ -27,109 +27,133 @@ interface Queues {
   isActive: boolean
   createdAt: string
   updatedAt: string
-
-  // Новые поля
   companyId: number | null
   serviceId: number | null
   slaId: number | null
   workflowId: number | null
   agentGroupId: number | null
   priorityId: number | null
-  emailConfig: {
-    host: string
-    port: number
-    username: string
-    password: string
-    useSSL: boolean
-  } | null
+  emailConfig: { host: string; port: number; username: string; password: string; useSSL: boolean } | null
   keywords: string[]
   autoResponseTemplate: string
+  [key: string]: any
 }
 
-// Типы для справочников
-interface Companies {
-  id: number
-  name: string
-}
+// ======== Шаблоны (useEntityCrud) ========
+const {
+  items: templates,
+  loading: templatesLoading,
+  error: templatesError,
+  fetchItems: fetchTemplates,
+  editDialog: templatesEditDialog,
+  deleteDialog: templatesDeleteDialog,
+  editedItem: editedTemplatesItem,
+  editedIndex: editedTemplatesIndex,
+  selectedItems: templatesSelectedItems,
+  isBulkActionsMenuOpen: templatesBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen: isTemplatesBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen: isTemplatesBulkStatusDialogOpen,
+  bulkStatusValue: templatesBulkStatusValue,
+  bulkDelete: templatesBulkDelete,
+  bulkChangeStatus: templatesBulkChangeStatus,
+  confirmBulkDelete: confirmTemplatesBulkDelete,
+  confirmBulkStatusChange: confirmTemplatesBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus: toggleTemplatesStatus,
+  hasActiveFilters: templatesHasActiveFilters,
+  currentPage: templatesCurrentPage,
+  itemsPerPage: templatesItemsPerPage,
+  searchQuery: templatesSearchQuery,
+  statusFilter: templatesStatusFilter,
+  isFilterDialogOpen: templatesFilterDialogOpen,
+  clearFilters: clearTemplatesFilters,
+  filteredItems: filteredTemplates,
+  editItem: editTemplatesItem,
+  deleteItem: deleteTemplatesItem,
+  close: closeTemplates,
+  closeDelete: closeTemplatesDelete,
+  save: saveTemplates,
+  deleteItemConfirm: deleteTemplatesItemConfirm,
+  statusOptions,
+} = useEntityCrud<Templates>({
+  endpoint: '/templates',
+  itemName: 'шаблоны',
+  defaultItem: {
+    id: -1,
+    name: '',
+    message: '',
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+})
 
-interface Services {
-  id: number
-  name: string
-}
-
-interface Sla {
-  id: number
-  name: string
-}
-
-interface Workflows {
-  id: number
-  name: string
-}
-
-interface Priorities {
-  id: number
-  name: string
-  value: number
-}
-
-// Данные шаблонов
-const templates = ref<Templates[]>([])
-const templatesTotal = ref(0)
-const templatesLoading = ref(false)
-const templatesError = ref<string | null>(null)
-
-// Данные очередей
-const queues = ref<Queues[]>([])
-const queuesTotal = ref(0)
-const queuesLoading = ref(false)
-const queuesError = ref<string | null>(null)
-
-// Загрузка данных шаблонов из API
-const fetchTemplates = async () => {
-  try {
-    templatesLoading.value = true
-    templatesError.value = null
-    console.log('Fetching templates from:', `/templates`)
-
-    const data = await $api<{ templates: Templates[]; total: number }>(`/templates`)
-
-    console.log('Fetched templates data:', data)
-    templates.value = data.templates
-    templatesTotal.value = data.total
-  }
-  catch (err) {
-    templatesError.value = 'Ошибка загрузки шаблонов'
-    console.error('Error fetching templates:', err)
-  }
-  finally {
-    templatesLoading.value = false
-  }
-}
-
-// Загрузка данных очередей из API
-const fetchQueues = async () => {
-  try {
-    queuesLoading.value = true
-    queuesError.value = null
-    console.log('Fetching queues from:', `/queues`)
-
-    const data = await $api<{ queues: Queues[]; total: number }>(`/queues`)
-
-    console.log('Fetched queues data:', data)
-    queues.value = data.queues
-    queuesTotal.value = data.total
-  }
-  catch (err) {
-    queuesError.value = 'Ошибка загрузки очередей'
-    console.error('Error fetching queues:', err)
-  }
-  finally {
-    queuesLoading.value = false
-  }
-}
+// ======== Очереди (useEntityCrud) ========
+const {
+  items: queues,
+  loading: queuesLoading,
+  error: queuesError,
+  fetchItems: fetchQueues,
+  editDialog: queuesEditDialog,
+  deleteDialog: queuesDeleteDialog,
+  editedItem: editedQueuesItem,
+  editedIndex: editedQueuesIndex,
+  selectedItems: queuesSelectedItems,
+  isBulkActionsMenuOpen: queuesBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen: isQueuesBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen: isQueuesBulkStatusDialogOpen,
+  bulkStatusValue: queuesBulkStatusValue,
+  bulkDelete: queuesBulkDelete,
+  bulkChangeStatus: queuesBulkChangeStatus,
+  confirmBulkDelete: confirmQueuesBulkDelete,
+  confirmBulkStatusChange: confirmQueuesBulkStatusChange,
+  toggleStatus: toggleQueuesStatus,
+  hasActiveFilters: queuesHasActiveFilters,
+  currentPage: queuesCurrentPage,
+  itemsPerPage: queuesItemsPerPage,
+  searchQuery: queuesSearchQuery,
+  statusFilter: queuesStatusFilter,
+  isFilterDialogOpen: queuesFilterDialogOpen,
+  clearFilters: clearQueuesFilters,
+  filteredItems: baseFilteredQueues,
+  editItem: editQueuesItem,
+  deleteItem: deleteQueuesItem,
+  close: closeQueues,
+  closeDelete: closeQueuesDelete,
+  save: saveQueues,
+  deleteItemConfirm: deleteQueuesItemConfirm,
+} = useEntityCrud<Queues>({
+  endpoint: '/queues',
+  itemName: 'очереди',
+  defaultItem: {
+    id: -1,
+    name: '',
+    description: '',
+    maxTickets: 0,
+    priority: 0,
+    templateId: null,
+    companyId: null,
+    serviceId: null,
+    slaId: null,
+    workflowId: null,
+    agentGroupId: null,
+    priorityId: null,
+    emailConfig: null,
+    keywords: [],
+    autoResponseTemplate: '',
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+})
 
 // Справочники для новых полей
+interface Companies { id: number; name: string }
+interface Services { id: number; name: string }
+interface Sla { id: number; name: string }
+interface Workflows { id: number; name: string }
+interface Priorities { id: number; name: string; value: number }
+
 const companies = ref<Companies[]>([])
 const services = ref<Services[]>([])
 const slaList = ref<Sla[]>([])
@@ -137,11 +161,9 @@ const workflows = ref<Workflows[]>([])
 const prioritiesList = ref<Priorities[]>([])
 const agentsGroups = ref<any[]>([])
 
-// Загрузка справочников
 const fetchCompanies = async () => {
   try {
     const data = await $api(`/customers`)
-
     companies.value = data.customers || []
   }
   catch (err) {
@@ -152,7 +174,6 @@ const fetchCompanies = async () => {
 const fetchServices = async () => {
   try {
     const data = await $api(`/services`)
-
     services.value = data.services || []
   }
   catch (err) {
@@ -163,7 +184,6 @@ const fetchServices = async () => {
 const fetchSla = async () => {
   try {
     const data = await $api(`/sla`)
-
     slaList.value = data.sla || []
   }
   catch (err) {
@@ -174,7 +194,6 @@ const fetchSla = async () => {
 const fetchWorkflows = async () => {
   try {
     const data = await $api(`/workflows`)
-
     workflows.value = data.workflows || []
   }
   catch (err) {
@@ -185,7 +204,6 @@ const fetchWorkflows = async () => {
 const fetchPriorities = async () => {
   try {
     const data = await $api(`/priorities`)
-
     prioritiesList.value = data.priorities || []
   }
   catch (err) {
@@ -196,121 +214,10 @@ const fetchPriorities = async () => {
 const fetchAgentsGroups = async () => {
   try {
     const data = await $api(`/agentsGroups`)
-
     agentsGroups.value = data.agentsGroups || []
   }
   catch (err) {
     console.log('Error fetching agentsGroups:', err)
-  }
-}
-
-// Создание шаблона
-const createTemplates = async (item: Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Templates>(`/templates`, {
-      method: 'POST',
-      body: item,
-    })
-
-    templates.value.unshift(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating templates:', err)
-    throw err
-  }
-}
-
-// Обновление шаблона
-const updateTemplates = async (id: number, updates: Partial<Omit<Templates, 'id' | 'createdAt' | 'updatedAt'>>) => {
-  try {
-    const data = await $api<Templates>(`/templates/${id}`, {
-      method: 'PUT',
-      body: updates,
-    })
-
-    const index = templates.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      templates.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating templates:', err)
-    throw err
-  }
-}
-
-// Удаление шаблона
-const deleteTemplates = async (id: number) => {
-  try {
-    await $api(`/templates/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = templates.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      templates.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting templates:', err)
-    throw err
-  }
-}
-
-// Создание очереди
-const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Queues>(`/queues`, {
-      method: 'POST',
-      body: item,
-    })
-
-    queues.value.unshift(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating queues:', err)
-    throw err
-  }
-}
-
-// Обновление очереди
-const updateQueues = async (id: number, updates: Partial<Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>>) => {
-  try {
-    const data = await $api<Queues>(`/queues/${id}`, {
-      method: 'PUT',
-      body: updates,
-    })
-
-    const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      queues.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating queues:', err)
-    throw err
-  }
-}
-
-// Удаление очереди
-const deleteQueues = async (id: number) => {
-  try {
-    await $api(`/queues/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      queues.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting queues:', err)
-    throw err
   }
 }
 
@@ -351,221 +258,13 @@ const queuesHeaders = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация шаблонов
-const filteredTemplates = computed(() => {
-  let filtered = templates.value
-
-  if (templatesSearchQuery.value.trim()) {
-    const query = templatesSearchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (templatesStatusFilter.value !== null)
-    filtered = filtered.filter(p => p.isActive === (templatesStatusFilter.value === 1))
-
-  return filtered
-})
-
-// Фильтрация очередей
+// Фильтрация очередей (с добавлением templateName)
 const filteredQueues = computed(() => {
-  let filtered = queues.value.map(queue => ({
+  return baseFilteredQueues.value.map(queue => ({
     ...queue,
     templateName: templates.value.find(t => t.id === queue.templateId)?.name || 'Не указан',
-  }))
-
-  if (queuesSearchQuery.value.trim()) {
-    const query = queuesSearchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (queuesStatusFilter.value !== null)
-    filtered = filtered.filter(p => p.isActive === (queuesStatusFilter.value === 1))
-
-  return filtered
+  })) as Queues[]
 })
-
-// Проверка активных фильтров
-const templatesHasActiveFilters = computed(() => templatesStatusFilter.value !== null)
-const queuesHasActiveFilters = computed(() => queuesStatusFilter.value !== null)
-
-// Сброс фильтров
-const clearTemplatesFilters = () => {
-  templatesSearchQuery.value = ''
-  templatesStatusFilter.value = null
-}
-
-const clearQueuesFilters = () => {
-  queuesSearchQuery.value = ''
-  queuesStatusFilter.value = null
-}
-
-// Массовые действия для шаблонов
-const templatesBulkDelete = () => {
-  isTemplatesBulkDeleteDialogOpen.value = true
-}
-
-const templatesBulkChangeStatus = () => {
-  isTemplatesBulkStatusDialogOpen.value = true
-}
-
-const confirmTemplatesBulkDelete = async () => {
-  try {
-    const count = templatesSelectedItems.value.length
-    for (const item of templatesSelectedItems.value)
-      await deleteTemplates(item.id)
-
-    templatesSelectedItems.value = []
-    showToast(`Удалено ${count} шаблонов`)
-    isTemplatesBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmTemplatesBulkStatusChange = async () => {
-  try {
-    const count = templatesSelectedItems.value.length
-    for (const item of templatesSelectedItems.value) {
-      await updateTemplates(item.id, {
-        ...item,
-        isActive: templatesBulkStatusValue.value === 1,
-      })
-    }
-    templatesSelectedItems.value = []
-    showToast(`Статус изменен для ${count} шаблонов`)
-    isTemplatesBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-// Массовые действия для очередей
-const queuesBulkDelete = () => {
-  isQueuesBulkDeleteDialogOpen.value = true
-}
-
-const queuesBulkChangeStatus = () => {
-  isQueuesBulkStatusDialogOpen.value = true
-}
-
-const confirmQueuesBulkDelete = async () => {
-  try {
-    const count = queuesSelectedItems.value.length
-    for (const item of queuesSelectedItems.value)
-      await deleteQueues(item.id)
-
-    queuesSelectedItems.value = []
-    showToast(`Удалено ${count} очередей`)
-    isQueuesBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmQueuesBulkStatusChange = async () => {
-  try {
-    const count = queuesSelectedItems.value.length
-    for (const item of queuesSelectedItems.value) {
-      await updateQueues(item.id, {
-        ...item,
-        isActive: queuesBulkStatusValue.value === 1,
-      })
-    }
-    queuesSelectedItems.value = []
-    showToast(`Статус изменен для ${count} очередей`)
-    isQueuesBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const templatesCurrentPage = ref(1)
-const templatesItemsPerPage = ref(10)
-const queuesCurrentPage = ref(1)
-const queuesItemsPerPage = ref(10)
-
-// Фильтры
-const templatesSearchQuery = ref('')
-const queuesSearchQuery = ref('')
-const templatesStatusFilter = ref<number | null>(null)
-const queuesStatusFilter = ref<number | null>(null)
-const templatesFilterDialogOpen = ref(false)
-const queuesFilterDialogOpen = ref(false)
-
-// Массовые действия
-const templatesSelectedItems = ref<any[]>([])
-const queuesSelectedItems = ref<any[]>([])
-const templatesBulkActionsMenuOpen = ref(false)
-const queuesBulkActionsMenuOpen = ref(false)
-const isTemplatesBulkDeleteDialogOpen = ref(false)
-const isTemplatesBulkStatusDialogOpen = ref(false)
-const isQueuesBulkDeleteDialogOpen = ref(false)
-const isQueuesBulkStatusDialogOpen = ref(false)
-const templatesBulkStatusValue = ref<number>(1)
-const queuesBulkStatusValue = ref<number>(1)
-
-// Диалоги
-const templatesEditDialog = ref(false)
-const templatesDeleteDialog = ref(false)
-const queuesEditDialog = ref(false)
-const queuesDeleteDialog = ref(false)
-
-const defaultTemplatesItem = ref<Templates>({
-  id: -1,
-  name: '',
-  message: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const defaultQueuesItem = ref<Queues>({
-  id: -1,
-  name: '',
-  description: '',
-  maxTickets: 0,
-  priority: 0,
-  templateId: null,
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-
-  // Новые поля
-  companyId: null,
-  serviceId: null,
-  slaId: null,
-  workflowId: null,
-  agentGroupId: null,
-  priorityId: null,
-  emailConfig: null,
-  keywords: [],
-  autoResponseTemplate: '',
-})
-
-const editedTemplatesItem = ref<Templates>({ ...defaultTemplatesItem.value })
-const editedQueuesItem = ref<Queues>({ ...defaultQueuesItem.value })
-const editedTemplatesIndex = ref(-1)
-const editedQueuesIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
 
 // Опции шаблонов для выбора
 const templateOptions = computed(() => {
@@ -573,211 +272,34 @@ const templateOptions = computed(() => {
 })
 
 // Опции для новых полей
-const companyOptions = computed(() => {
-  return companies.value.map(c => ({ title: c.name, value: c.id }))
-})
+const companyOptions = computed(() => companies.value.map(c => ({ title: c.name, value: c.id })))
+const serviceOptions = computed(() => services.value.map(s => ({ title: s.name, value: s.id })))
+const slaOptions = computed(() => slaList.value.map(s => ({ title: s.name, value: s.id })))
+const workflowOptions = computed(() => workflows.value.map(w => ({ title: w.name, value: w.id })))
+const priorityIdOptions = computed(() => prioritiesList.value.map(p => ({ title: p.name, value: p.id })))
+const agentsGroupsOptions = computed(() => agentsGroups.value.map((ag: any) => ({ title: ag.name, value: ag.id })))
 
-const serviceOptions = computed(() => {
-  return services.value.map(s => ({ title: s.name, value: s.id }))
-})
+// Значения по умолчанию для добавления новых элементов
+const defaultTemplatesItem: Templates = { id: -1, name: '', message: '', isActive: true, createdAt: '', updatedAt: '' }
+const defaultQueuesItem: Queues = {
+  id: -1, name: '', description: '', maxTickets: 0, priority: 0,
+  templateId: null, companyId: null, serviceId: null, slaId: null,
+  workflowId: null, agentGroupId: null, priorityId: null,
+  emailConfig: null, keywords: [], autoResponseTemplate: '', isActive: true,
+  createdAt: '', updatedAt: '',
+}
 
-const slaOptions = computed(() => {
-  return slaList.value.map(s => ({ title: s.name, value: s.id }))
-})
-
-const workflowOptions = computed(() => {
-  return workflows.value.map(w => ({ title: w.name, value: w.id }))
-})
-
-const priorityIdOptions = computed(() => {
-  return prioritiesList.value.map(p => ({ title: p.name, value: p.id }))
-})
-
-const agentsGroupsOptions = computed(() => {
-  return agentsGroups.value.map(ag => ({ title: ag.name, value: ag.id }))
-})
-
-// Методы для шаблонов
-const editTemplatesItem = (item: Templates) => {
-  editedTemplatesIndex.value = templates.value.indexOf(item)
-  editedTemplatesItem.value = { ...item }
+// Добавление новых элементов (с проверкой прав)
+const addNewTemplates = () => {
+  editedTemplatesItem.value = { ...defaultTemplatesItem }
+  editedTemplatesIndex.value = -1
   templatesEditDialog.value = true
 }
 
-const deleteTemplatesItem = (item: Templates) => {
-  editedTemplatesIndex.value = templates.value.indexOf(item)
-  editedTemplatesItem.value = { ...item }
-  templatesDeleteDialog.value = true
-}
-
-const closeTemplates = () => {
-  templatesEditDialog.value = false
-  editedTemplatesIndex.value = -1
-  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
-}
-
-const closeTemplatesDelete = () => {
-  templatesDeleteDialog.value = false
-  editedTemplatesIndex.value = -1
-  editedTemplatesItem.value = { ...defaultTemplatesItem.value }
-}
-
-const saveTemplates = async () => {
-  if (!editedTemplatesItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedTemplatesIndex.value > -1) {
-      const updated = await updateTemplates(editedTemplatesItem.value.id, {
-        ...editedTemplatesItem.value,
-        isActive: editedTemplatesItem.value.isActive,
-      })
-
-      showToast('Шаблон успешно сохранен')
-    }
-    else {
-      const created = await createTemplates({
-        ...editedTemplatesItem.value,
-        isActive: editedTemplatesItem.value.isActive,
-      })
-
-      showToast('Шаблон успешно добавлен')
-    }
-    closeTemplates()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения шаблона', 'error')
-  }
-}
-
-const deleteTemplatesItemConfirm = async () => {
-  try {
-    await deleteTemplates(editedTemplatesItem.value.id)
-    showToast('Шаблон успешно удален')
-    closeTemplatesDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления шаблона', 'error')
-  }
-}
-
-const toggleTemplatesStatus = async (item: Templates, newValue: boolean | null) => {
-  if (newValue === null)
-    return
-  try {
-    await updateTemplates(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус шаблона изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-// Методы для очередей
-const editQueuesItem = (item: Queues) => {
-  editedQueuesIndex.value = queues.value.indexOf(item)
-  editedQueuesItem.value = { ...item }
-  queuesEditDialog.value = true
-}
-
-const deleteQueuesItem = (item: Queues) => {
-  editedQueuesIndex.value = queues.value.indexOf(item)
-  editedQueuesItem.value = { ...item }
-  queuesDeleteDialog.value = true
-}
-
-const closeQueues = () => {
-  queuesEditDialog.value = false
-  editedQueuesIndex.value = -1
-  editedQueuesItem.value = { ...defaultQueuesItem.value }
-}
-
-const closeQueuesDelete = () => {
-  queuesDeleteDialog.value = false
-  editedQueuesIndex.value = -1
-  editedQueuesItem.value = { ...defaultQueuesItem.value }
-}
-
-const saveQueues = async () => {
-  if (!editedQueuesItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedQueuesIndex.value > -1) {
-      const updated = await updateQueues(editedQueuesItem.value.id, {
-        ...editedQueuesItem.value,
-        isActive: editedQueuesItem.value.isActive,
-      })
-
-      showToast('Очередь успешно сохранена')
-    }
-    else {
-      const created = await createQueues({
-        ...editedQueuesItem.value,
-        isActive: editedQueuesItem.value.isActive,
-      })
-
-      showToast('Очередь успешно добавлена')
-    }
-    closeQueues()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения очереди', 'error')
-  }
-}
-
-const deleteQueuesItemConfirm = async () => {
-  try {
-    await deleteQueues(editedQueuesItem.value.id)
-    showToast('Очередь успешно удалена')
-    closeQueuesDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления очереди', 'error')
-  }
-}
-
-const toggleQueuesStatus = async (item: Queues, newValue: boolean | null) => {
-  if (newValue === null)
-    return
-  try {
-    await updateQueues(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус очереди изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление новых элементов
-const addNewTemplates = () => {
-  if (useGlobalPermissions().can('write', 'menu_templates')) {
-    editedTemplatesItem.value = { ...defaultTemplatesItem.value }
-    editedTemplatesIndex.value = -1
-    templatesEditDialog.value = true
-  }
-}
-
 const addNewQueues = () => {
-  if (useGlobalPermissions().can('write', 'menu_queues')) {
-    editedQueuesItem.value = { ...defaultQueuesItem.value }
-    editedQueuesIndex.value = -1
-    queuesEditDialog.value = true
-  }
+  editedQueuesItem.value = { ...defaultQueuesItem }
+  editedQueuesIndex.value = -1
+  queuesEditDialog.value = true
 }
 
 // Переключатель вида шаблонов (карточки/таблица)
@@ -990,6 +512,7 @@ watch(emailConfig, newVal => {
             </VBtn>
 
             <VBtn
+              v-if="$can('write', 'menu_templates')"
               color="primary"
               prepend-icon="bx-plus"
               @click="addNewTemplates"
@@ -1333,6 +856,7 @@ watch(emailConfig, newVal => {
             </VBtn>
 
             <VBtn
+              v-if="$can('write', 'menu_queues')"
               color="primary"
               prepend-icon="bx-plus"
               @click="addNewQueues"

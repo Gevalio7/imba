@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { $api } from '@/utils/api'
+import { useEntityCrud } from '@/composables/useEntityCrud'
 import { useToast } from '@/composables/useToast'
 
 // Типы данных для Тип
@@ -35,28 +36,53 @@ interface TypeCategory {
   updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Store
-const searchQuery = ref('')
-const itemsPerPage = ref(10)
-const page = ref(1)
-const sortBy = ref()
-const orderBy = ref()
-
-// Данные типы
-const types = ref<Types[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
+// Универсальный CRUD (create/update/delete по /types, fetch — кастомный)
+const {
+  loading,
+  error,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  isFilterDialogOpen,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  selectedItems,
+  toggleStatus,
+  resolveStatusVariant,
+  deleteItem,
+  deleteItemById,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  addNewItem: addNewTypes,
+} = useEntityCrud<Types>({
+  endpoint: '/types',
+  itemName: 'типа',
+  defaultItem: {
+    id: -1,
+    name: '',
+    comment: '',
+    workflowId: null,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+})
 
 // Состояние аккордеонов
 const expandedPanels = ref<number[]>(
   (() => {
     try {
       const stored = localStorage.getItem('typesExpandedPanels')
-
       return stored ? JSON.parse(stored) : []
     }
     catch {
@@ -65,10 +91,13 @@ const expandedPanels = ref<number[]>(
   })(),
 )
 
-// Сохраняем состояние аккордеонов
 watch(expandedPanels, newValue => {
   localStorage.setItem('typesExpandedPanels', JSON.stringify(newValue))
 }, { deep: true })
+
+// Данные типы
+const types = ref<Types[]>([])
+const total = ref(0)
 
 // Данные воркфлоу
 const workflows = ref<Workflow[]>([])
@@ -77,11 +106,10 @@ const workflows = ref<Workflow[]>([])
 const typeCategories = ref<TypeCategory[]>([])
 const loadingCategories = ref(false)
 
-// Загрузка списка воркфлоу
+// Загрузка справочников
 const fetchWorkflows = async () => {
   try {
-    const data = await $api<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
-
+    const data = await $api<{ workflows: Workflow[] }>('/workflows')
     workflows.value = data.workflows || []
   }
   catch (err) {
@@ -89,16 +117,12 @@ const fetchWorkflows = async () => {
   }
 }
 
-// Загрузка категорий
 const fetchCategories = async () => {
   try {
     loadingCategories.value = true
-
-    // Получаем все категории (включая неактивные для админ-функций)
-    const data = await $api<{ typeCategories: TypeCategory[]; total: number }>(`${API_BASE}/typeCategories`, {
-      query: { itemsPerPage: 1000, isActive: 'all' },
+    const data = await $api<{ typeCategories: TypeCategory[]; total: number }>('/typeCategories', {
+      params: { itemsPerPage: 1000, isActive: 'all' },
     })
-
     typeCategories.value = data.typeCategories || []
   }
   catch (err) {
@@ -109,66 +133,12 @@ const fetchCategories = async () => {
   }
 }
 
-// Доступные категории для конкретного типа (те, которые еще не добавлены)
-const availableCategoriesForType = (type: Types): TypeCategory[] => {
-  const typeCategoryIds = type.categoryIds || []
-
-  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
-}
-
-// Добавить категорию к типу из таблицы
-const addCategoryToTypeFromTable = async (type: Types, categoryId: number) => {
-  try {
-    await $api(`${API_BASE}/types/${type.id}/categories`, {
-      method: 'POST',
-      body: { categoryId },
-    })
-    showToast('Категория добавлена')
-    await fetchTypes()
-  }
-  catch (err: any) {
-    if (err.data?.message?.includes('already added'))
-      showToast('Категория уже добавлена', 'error')
-    else
-      showToast('Ошибка добавления категории', 'error')
-  }
-}
-
-// Получить типы с категориями из API
-const fetchTypesWithCategories = async () => {
-  try {
-    loading.value = true
-
-    const data = await $api<{ types: Types[]; total: number }>(`${API_BASE}/typeCategories/with-types`)
-
-    types.value = data.types
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки типов'
-    console.error('Error fetching types with categories:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Опции для селекта воркфлоу
-const workflowOptions = computed(() => [
-  { title: 'Не выбрано', value: null },
-  ...workflows.value.filter(w => w.isActive).map(w => ({ title: w.name, value: w.id })),
-])
-
-// Загрузка данных из API
+// Загрузка данных из API (композитный эндпоинт)
 const fetchTypes = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching types from:', `${API_BASE}/typeCategories/with-types`)
-
-    const data = await $api<{ types: Types[]; total: number }>(`${API_BASE}/typeCategories/with-types`)
-
-    console.log('Fetched types data:', data)
+    const data = await $api<{ types: Types[]; total: number }>('/typeCategories/with-types')
     types.value = data.types
     total.value = data.total
   }
@@ -181,69 +151,18 @@ const fetchTypes = async () => {
   }
 }
 
-// Создание тип
-const createTypes = async (item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Types>(`${API_BASE}/types`, {
-      method: 'POST',
-      body: item,
-    })
-
-    types.value.unshift(data) // Добавляем в начало массива
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating types:', err)
-    throw err
-  }
-}
-
-// Обновление тип
-const updateTypes = async (id: number, item: Omit<Types, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Types>(`${API_BASE}/types/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = types.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      types.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating types:', err)
-    throw err
-  }
-}
-
-// Удаление тип
-const deleteTypes = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/types/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = types.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      types.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting types:', err)
-    throw err
-  }
-}
-
-// Инициализация
 onMounted(() => {
   fetchTypes()
   fetchWorkflows()
   fetchCategories()
 })
 
-// Опции категорий для селекта
+// Опции
+const workflowOptions = computed(() => [
+  { title: 'Не выбрано', value: null },
+  ...workflows.value.filter(w => w.isActive).map(w => ({ title: w.name, value: w.id })),
+])
+
 const categoryOptions = computed(() => {
   return typeCategories.value
     .filter(c => c.isActive)
@@ -262,343 +181,173 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredTypes = computed(() => {
-  let filtered = types.value
+// === Фильтрация (кастомная) ===
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
 
-  if (searchQuery.value.trim()) {
-    // Фильтруем по поисковому запросу (по названию)
-    const query = searchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  if (selectedNames.value.length > 0) {
-    // Фильтруем по выбранным названиям
-    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
-  }
-
-  return filtered
+const uniqueNames = computed(() => {
+  const names = types.value.map(p => p.name)
+  return [...new Set(names)].sort()
 })
 
-// Сброс фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = null
   selectedNames.value = []
 }
 
-// Уникальные названия для фильтра
-const uniqueNames = computed(() => {
-  const names = types.value.map(p => p.name)
+const filteredTypes = computed(() => {
+  let filtered = types.value
 
-  return [...new Set(names)].sort()
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+  }
+
+  if (statusFilter.value !== null) {
+    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
+  }
+
+  if (selectedNames.value.length > 0) {
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  }
+
+  return filtered
 })
 
-// Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0
-})
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteTypes(item.id)
-
-    selectedItems.value = []
-    showToast(count === 1 ? `Удален 1 тип` : count <= 4 ? `Удалено ${count} типа` : `Удалено ${count} типов`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateTypes(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(count === 1 ? `Статус изменен для 1 типа` : count <= 4 ? `Статус изменен для ${count} типов` : `Статус изменен для ${count} типов`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const selectedNames = ref<string[]>([])
-const searchNames = ref<string | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Ограничение количества выбранных названий
 watch(selectedNames, value => {
   if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
 })
 
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Types>({
+// === Диалоги (кастомные) ===
+const defaultItem: Types = {
   id: -1,
   name: '',
   comment: '',
   workflowId: null,
+  isActive: true,
   createdAt: '',
   updatedAt: '',
-  isActive: true,
-})
+}
 
-const editedItem = ref<Types>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Выбранные категории в диалоге редактирования
 const selectedCategoryIds = ref<number[]>([])
 
-// Выбранные категории в меню таблицы (для множественного добавления)
-const selectedCategoriesForMenu = ref<number[]>([])
-
-// Переключить категорию в меню
-const toggleCategoryForMenu = (categoryId: number) => {
-  const index = selectedCategoriesForMenu.value.indexOf(categoryId)
-  if (index === -1)
-    selectedCategoriesForMenu.value.push(categoryId)
-  else
-    selectedCategoriesForMenu.value.splice(index, 1)
-}
-
-// Добавить выбранные категории к типу
-const addSelectedCategoriesToType = async (item: Types) => {
-  const categoryIds = [...selectedCategoriesForMenu.value]
-  if (categoryIds.length === 0)
-    return
-
-  console.log('Добавляем категории:', categoryIds, 'к типу:', item.id)
-
-  try {
-    for (const catId of categoryIds) {
-      await $api(`${API_BASE}/types/${item.id}/categories`, {
-        method: 'POST',
-        body: { categoryId: catId },
-      })
-    }
-    const count = categoryIds.length
-
-    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
-    selectedCategoriesForMenu.value = []
-    await fetchTypes()
-  }
-  catch (err: any) {
-    console.error('Ошибка добавления:', err)
-    if (err.data?.message?.includes('already added'))
-      showToast('Некоторые категории уже добавлены', 'error')
-    else
-      showToast('Ошибка добавления категорий', 'error')
-  }
-}
-
-// Методы
 const editItem = (item: Types) => {
   editedIndex.value = types.value.indexOf(item)
   editedItem.value = { ...item }
-
-  // Загружаем выбранные категории
   selectedCategoryIds.value = item.categoryIds || []
-
-  // Сбрасываем выбор в меню таблицы
   selectedCategoriesForMenu.value = []
   editDialog.value = true
-}
-
-const deleteItem = (item: Types) => {
-  editedIndex.value = types.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
 }
 
 const close = () => {
   editDialog.value = false
   editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+  editedItem.value = { ...defaultItem }
   selectedCategoryIds.value = []
 }
 
 const closeDelete = () => {
   deleteDialog.value = false
   editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+  editedItem.value = { ...defaultItem }
 }
 
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
     return
   }
 
   try {
     if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateTypes(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
+      const updated = await $api<Types>(`/types/${editedItem.value.id}`, {
+        method: 'PUT',
+        body: { ...editedItem.value, isActive: editedItem.value.isActive },
       })
 
-      // Синхронизируем категории: удаляем старые и добавляем новые
+      // Синхронизируем категории
       const currentCategoryIds = updated.categoryIds || []
       const newCategoryIds = selectedCategoryIds.value
 
-      // Удаляем старые категории
       for (const catId of currentCategoryIds) {
         if (!newCategoryIds.includes(catId)) {
-          await $api(`${API_BASE}/types/${updated.id}/categories/${catId}`, {
-            method: 'DELETE',
-          })
+          await $api(`/types/${updated.id}/categories/${catId}`, { method: 'DELETE' })
         }
       }
-
-      // Добавляем новые категории
       for (const catId of newCategoryIds) {
         if (!currentCategoryIds.includes(catId)) {
-          await $api(`${API_BASE}/types/${updated.id}/categories`, {
-            method: 'POST',
-            body: { categoryId: catId },
-          })
+          await $api(`/types/${updated.id}/categories`, { method: 'POST', body: { categoryId: catId } })
         }
       }
-
-      showToast('Тип успешно сохранен')
     }
     else {
-      // Добавление нового
-      const created = await createTypes({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
+      const created = await $api<Types>('/types', {
+        method: 'POST',
+        body: { ...editedItem.value, isActive: editedItem.value.isActive },
       })
 
-      // Добавляем категории для нового типа
       for (const catId of selectedCategoryIds.value) {
-        await $api(`${API_BASE}/types/${created.id}/categories`, {
-          method: 'POST',
-          body: { categoryId: catId },
-        })
+        await $api(`/types/${created.id}/categories`, { method: 'POST', body: { categoryId: catId } })
       }
-
-      showToast('Тип успешно добавлен')
     }
+    showToast('Тип успешно сохранен')
     close()
     await fetchTypes()
   }
   catch (err) {
     showToast('Ошибка сохранения типа', 'error')
+    console.error('Error saving type:', err)
   }
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteTypes(editedItem.value.id)
+    await deleteItemById(editedItem.value.id)
     showToast('Тип успешно удален')
     closeDelete()
   }
   catch (err) {
     showToast('Ошибка удаления типа', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Types, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateTypes(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус типа изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
+    console.error('Error deleting type:', err)
   }
 }
 
 const { showToast } = useToast()
 
-// Добавление нового тип
-const addNewTypes = () => {
-  // Навигация на страницу добавления — доступ только при наличии права записи
-  if (useGlobalPermissions().can('write', 'menu_types'))
-    router.push('/apps/types/add')
+// === Категории (выбор в меню таблицы) ===
+const selectedCategoriesForMenu = ref<number[]>([])
+
+const availableCategoriesForType = (type: Types): TypeCategory[] => {
+  const typeCategoryIds = type.categoryIds || []
+  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
 }
 
-// === Функционал категорий ===
+const addSelectedCategoriesToType = async (item: Types) => {
+  const categoryIds = [...selectedCategoriesForMenu.value]
+  if (categoryIds.length === 0)
+    return
 
-// Диалоги категорий
+  try {
+    for (const catId of categoryIds) {
+      await $api(`/types/${item.id}/categories`, { method: 'POST', body: { categoryId: catId } })
+    }
+    const count = categoryIds.length
+    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
+    selectedCategoriesForMenu.value = []
+    await fetchTypes()
+  }
+  catch (err: any) {
+    showToast('Ошибка добавления категорий', 'error')
+    console.error('Error adding categories:', err)
+  }
+}
+
+// === Категории (CRUD + связи) ===
 const categoryDialog = ref(false)
 const deleteCategoryDialog = ref(false)
 const linkCategoryDialog = ref(false)
@@ -611,121 +360,47 @@ const selectedTypesForLink = ref<number[]>([])
 const selectedCategoriesForLink = ref<number[]>([])
 const savingCategory = ref(false)
 
-// Доступные категории для связывания с типом (те, которые ещё не привязаны)
-const availableCategoriesForLinkToType = computed(() => {
-  if (!linkingTypeForCategories.value)
-    return []
-  const typeCategoryIds = linkingTypeForCategories.value.categoryIds || []
-
-  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
-})
-
-// Открыть диалог добавления категорий к типу
-const openLinkCategoriesToTypeDialog = (type: Types) => {
-  linkingTypeForCategories.value = type
-  selectedCategoriesForLink.value = []
-  linkCategoriesToTypeDialog.value = true
-}
-
-// Добавить выбранные категории к типу
-const addCategoriesToType = async () => {
-  if (!linkingTypeForCategories.value || selectedCategoriesForLink.value.length === 0)
-    return
-
-  try {
-    for (const catId of selectedCategoriesForLink.value) {
-      await $api(`${API_BASE}/types/${linkingTypeForCategories.value.id}/categories`, {
-        method: 'POST',
-        body: { categoryId: catId },
-      })
-    }
-    const count = selectedCategoriesForLink.value.length
-
-    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
-    linkCategoriesToTypeDialog.value = false
-    await fetchTypes()
-  }
-  catch (err: any) {
-    if (err.data?.message?.includes('already added'))
-      showToast('Некоторые категории уже добавлены', 'error')
-    else
-      showToast('Ошибка добавления категорий', 'error')
-  }
-}
-
-// Форма категории
-const defaultCategoryForm = {
-  name: '',
-  laborHours: 0,
-  isActive: true,
-}
-
-const categoryForm = ref({ ...defaultCategoryForm })
-
-// Получить типы для категории
-const getTypesForCategory = (categoryId: number): Types[] => {
-  return types.value.filter(t =>
-    t.categoryIds && t.categoryIds.includes(categoryId),
-  )
-}
-
-// Доступные типы для связывания (те, которые еще не имеют эту категорию)
 const availableTypesForLink = computed(() => {
   if (!linkingCategory.value)
     return []
   const categoryId = linkingCategory.value.id
-
-  return types.value.filter(t =>
-    !t.categoryIds || !t.categoryIds.includes(categoryId),
-  )
+  return types.value.filter(t => !t.categoryIds || !t.categoryIds.includes(categoryId))
 })
 
-// Открыть диалог создания категории
+const availableCategoriesForLinkToType = computed(() => {
+  if (!linkingTypeForCategories.value)
+    return []
+  const typeCategoryIds = linkingTypeForCategories.value.categoryIds || []
+  return typeCategories.value.filter(c => !typeCategoryIds.includes(c.id))
+})
+
 const openCategoryDialog = () => {
   editingCategory.value = null
   categoryForm.value = { ...defaultCategoryForm }
   categoryDialog.value = true
 }
 
-// Редактировать категорию
 const editCategory = (category: TypeCategory) => {
   editingCategory.value = category
-  categoryForm.value = {
-    name: category.name,
-    laborHours: category.laborHours,
-    isActive: category.isActive,
-  }
+  categoryForm.value = { name: category.name, laborHours: category.laborHours, isActive: category.isActive }
   categoryDialog.value = true
 }
 
-// Удалить категорию
 const deleteCategory = (category: TypeCategory) => {
   deletingCategory.value = category
   deleteCategoryDialog.value = true
 }
 
-// Подтвердить удаление категории
 const confirmDeleteCategory = async () => {
   if (!deletingCategory.value)
     return
   try {
     const categoryId = deletingCategory.value.id
-
-    // Сначала очищаем связи в типах
-    const typesWithCategory = types.value.filter(t =>
-      t.categoryIds && t.categoryIds.includes(categoryId),
-    )
-
+    const typesWithCategory = types.value.filter(t => t.categoryIds && t.categoryIds.includes(categoryId))
     for (const type of typesWithCategory) {
-      await $api(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
-        method: 'DELETE',
-      })
+      await $api(`/types/${type.id}/categories/${categoryId}`, { method: 'DELETE' })
     }
-
-    // Теперь удаляем саму категорию
-    await $api(`${API_BASE}/typeCategories/${categoryId}`, {
-      method: 'DELETE',
-    })
+    await $api(`/typeCategories/${categoryId}`, { method: 'DELETE' })
     showToast('Категория удалена')
     await fetchCategories()
     await fetchTypes()
@@ -733,99 +408,104 @@ const confirmDeleteCategory = async () => {
   }
   catch (err) {
     showToast('Ошибка удаления категории', 'error')
+    console.error('Error deleting category:', err)
   }
 }
 
-// Сохранить категорию
-const saveCategory = async () => {
-  if (!categoryForm.value.name?.trim()) {
-    showToast('Название обязательно', 'error')
+const defaultCategoryForm = { name: '', laborHours: 0, isActive: true }
+const categoryForm = ref({ ...defaultCategoryForm })
 
+const saveCategory = async () => {
+  if (!categoryForm.value.name?.trim())
     return
-  }
   try {
     savingCategory.value = true
     if (editingCategory.value) {
-      // Обновление
-      await $api(`${API_BASE}/typeCategories/${editingCategory.value.id}`, {
-        method: 'PUT',
-        body: categoryForm.value,
-      })
-      showToast('Категория обновлена')
+      await $api(`/typeCategories/${editingCategory.value.id}`, { method: 'PUT', body: categoryForm.value })
     }
     else {
-      // Создание
-      await $api(`${API_BASE}/typeCategories`, {
-        method: 'POST',
-        body: categoryForm.value,
-      })
-      showToast('Категория создана')
+      await $api('/typeCategories', { method: 'POST', body: categoryForm.value })
     }
     categoryDialog.value = false
+    showToast(editingCategory.value ? 'Категория обновлена' : 'Категория создана')
     await fetchCategories()
     await fetchTypes()
   }
   catch (err) {
     showToast('Ошибка сохранения категории', 'error')
+    console.error('Error saving category:', err)
   }
   finally {
     savingCategory.value = false
   }
 }
 
-// Открыть диалог связывания
+const getTypesForCategory = (categoryId: number): Types[] => {
+  return types.value.filter(t => t.categoryIds && t.categoryIds.includes(categoryId))
+}
+
 const openLinkCategoryDialog = async (category: TypeCategory) => {
   linkingCategory.value = category
   selectedTypesForLink.value = []
-
-  // Всегда загружаем свежие данные перед открытием диалога
   await fetchTypes()
-
   linkCategoryDialog.value = true
-  console.log('Открыт диалог связывания, доступные типы:', availableTypesForLink.value)
 }
 
-// Добавить категорию к типам
 const addCategoryToType = async () => {
   if (!linkingCategory.value || selectedTypesForLink.value.length === 0)
     return
-
   try {
-    // Добавляем категорию к каждому выбранному типу
     for (const typeId of selectedTypesForLink.value) {
-      await $api(`${API_BASE}/types/${typeId}/categories`, {
-        method: 'POST',
-        body: { categoryId: linkingCategory.value.id },
-      })
+      await $api(`/types/${typeId}/categories`, { method: 'POST', body: { categoryId: linkingCategory.value.id } })
     }
-
     const count = selectedTypesForLink.value.length
-
     showToast(count === 1 ? 'Связь добавлена' : `Связи добавлены к ${count} типам`)
     linkCategoryDialog.value = false
     await fetchTypes()
   }
   catch (err: any) {
-    if (err.data?.message?.includes('already added'))
-      showToast('Категория уже добавлена к некоторым типам', 'error')
-    else
-      showToast('Ошибка добавления связей', 'error')
+    showToast('Ошибка добавления связей', 'error')
+    console.error('Error adding category to type:', err)
   }
 }
 
-// Удалить категорию из типа
+const openLinkCategoriesToTypeDialog = (type: Types) => {
+  linkingTypeForCategories.value = type
+  selectedCategoriesForLink.value = []
+  linkCategoriesToTypeDialog.value = true
+}
+
+const addCategoriesToType = async () => {
+  if (!linkingTypeForCategories.value || selectedCategoriesForLink.value.length === 0)
+    return
+  try {
+    for (const catId of selectedCategoriesForLink.value) {
+      await $api(`/types/${linkingTypeForCategories.value.id}/categories`, { method: 'POST', body: { categoryId: catId } })
+    }
+    const count = selectedCategoriesForLink.value.length
+    showToast(count === 1 ? 'Категория добавлена' : `Добавлено ${count} категорий`)
+    linkCategoriesToTypeDialog.value = false
+    await fetchTypes()
+  }
+  catch (err: any) {
+    showToast('Ошибка добавления категорий', 'error')
+    console.error('Error adding categories to type:', err)
+  }
+}
+
 const removeCategoryFromType = async (type: Types, categoryId: number) => {
   try {
-    await $api(`${API_BASE}/types/${type.id}/categories/${categoryId}`, {
-      method: 'DELETE',
-    })
+    await $api(`/types/${type.id}/categories/${categoryId}`, { method: 'DELETE' })
     showToast('Связь удалена')
     await fetchTypes()
   }
   catch (err) {
     showToast('Ошибка удаления связи', 'error')
+    console.error('Error removing category from type:', err)
   }
 }
+
+// Массовые действия делегированы composable
 </script>
 
 <template>
@@ -1313,8 +993,6 @@ const removeCategoryFromType = async (type: Types, categoryId: number) => {
       </VCard>
     </VDialog>
   </div>
-
-
 
   <!-- Аккордеон для Категорий и связей -->
   <VExpansionPanels

@@ -1,161 +1,83 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { computed, watch, onMounted } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Компания
-interface Customers {
-  id: number
+interface Customers extends BaseEntity {
   name: string
   street: string
   zip: string
   city: string
   comment: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// ========== ПАГИНАЦИЯ КОМПАНИЙ ==========
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Вычисляем количество страниц
-const paginationLength = computed(() => {
-  const total = filteredCustomers.value.length
-  const perPage = itemsPerPage.value
-
-  return Math.ceil(total / perPage) || 1
+// Универсальный CRUD
+const {
+  items: customers,
+  loading,
+  error,
+  fetchItems: fetchCustomers,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: baseFilteredItems,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  clearFilters: baseClearFilters,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewCustomers,
+  save,
+} = useEntityCrud<Customers>({
+  endpoint: '/customers',
+  itemName: 'компании',
+  defaultItem: {
+    id: -1,
+    name: '',
+    street: '',
+    zip: '',
+    city: '',
+    comment: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
-// ========== ФИЛЬТРАЦИЯ ==========
+// === Инициализация ===
+onMounted(() => fetchCustomers())
+
+// === Пагинация (клиентская) ===
+const currentPage = ref(1)
+
+// === Поиск ===
 const searchQuery = ref('')
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
 
 // Сброс страницы при изменении фильтров
 watch([searchQuery, statusFilter], () => {
   currentPage.value = 1
 })
 
-// Сброс страницы при изменении количества элементов на странице
 watch(itemsPerPage, () => {
   currentPage.value = 1
 })
 
-// ========== КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ ==========
-const filteredCustomers = computed(() => {
-  let filtered = customers.value
-
-  // Фильтр по статусу
-  if (statusFilter.value !== null)
-    filtered = filtered.filter(c => c.isActive === (statusFilter.value === 1))
-
-  // Поиск по названию, городу, улице
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase().trim()
-
-    filtered = filtered.filter(c =>
-      c.name?.toLowerCase().includes(query)
-      || c.city?.toLowerCase().includes(query)
-      || c.street?.toLowerCase().includes(query)
-      || c.comment?.toLowerCase().includes(query),
-    )
-  }
-
-  return filtered
-})
-
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// ========== КОМПАНИИ ==========
-const customers = ref<Customers[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchCustomers = async () => {
-  try {
-    loading.value = true
-    error.value = null
-
-    const data = await $api<{ customers: Customers[]; total: number }>(`${API_BASE}/customers`)
-
-    customers.value = data.customers
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки компании'
-    console.error('Error fetching customers:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание компании
-const createCustomers = async (item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Customers>(`${API_BASE}/customers`, {
-      method: 'POST',
-      body: item,
-    })
-
-    customers.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating customers:', err)
-    throw err
-  }
-}
-
-// Обновление компании
-const updateCustomers = async (id: number, item: Omit<Customers, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Customers>(`${API_BASE}/customers/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = customers.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      customers.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating customers:', err)
-    throw err
-  }
-}
-
-// Удаление компании
-const deleteCustomers = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/customers/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = customers.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      customers.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting customers:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchCustomers()
-})
-
-// ========== ЗАГОЛОВКИ ТАБЛИЦ КОМПАНИЙ ==========
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -169,98 +91,33 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Сброс фильтров компаний
+// === Фильтрация ===
+const filteredCustomers = computed(() => {
+  let filtered = baseFilteredItems.value
+
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    filtered = filtered.filter(c =>
+      c.name?.toLowerCase().includes(query)
+      || c.city?.toLowerCase().includes(query)
+      || c.street?.toLowerCase().includes(query)
+      || c.comment?.toLowerCase().includes(query),
+    )
+  }
+
+  return filtered
+})
+
+const paginationLength = computed(() => {
+  return Math.ceil(filteredCustomers.value.length / itemsPerPage.value) || 1
+})
+
+// === Сброс фильтров ===
 const clearFilters = () => {
   statusFilter.value = null
 }
 
-// ========== МАССОВЫЕ ДЕЙСТВИЯ ДЛЯ КОМПАНИЙ ==========
-const bulkDelete = () => {
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteCustomers(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} компаний`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateCustomers(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} компаний`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-
-  return { color: 'error', text: 'Не активен' }
-}
-
-// Массовые действия для компаний
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов компаний
-watch(selectedItems, () => {
-  // Можно добавить логику при изменении выбранных элементов
-}, { deep: true })
-
-// ========== ДИАЛОГИ КОМПАНИЙ ==========
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Customers>({
-  id: -1,
-  name: '',
-  street: '',
-  zip: '',
-  city: '',
-  comment: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Customers>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// ========== МЕТОДЫ КОМПАНИЙ ==========
+// === Методы ===
 const editItem = (item: Customers) => {
   editedIndex.value = customers.value.indexOf(item)
   editedItem.value = { ...item }
@@ -271,83 +128,6 @@ const deleteItem = (item: Customers) => {
   editedIndex.value = customers.value.indexOf(item)
   editedItem.value = { ...item }
   deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      await updateCustomers(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-      showToast('Компания успешно сохранена')
-    }
-    else {
-      // Добавление нового
-      await createCustomers({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-      showToast('Компания успешно добавлена')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения компании', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteCustomers(editedItem.value.id)
-    showToast('Компания успешно удалена')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления компании', 'error')
-  }
-}
-
-// Переключение статуса компании
-const toggleStatus = async (item: Customers, newValue: boolean) => {
-  try {
-    await updateCustomers(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус компании изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового клиент
-const addNewCustomers = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
 }
 </script>
 

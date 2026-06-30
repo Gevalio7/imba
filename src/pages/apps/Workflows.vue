@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 import { $api } from '@/utils/api'
 import { useToast } from '@/composables/useToast'
 
@@ -19,11 +20,9 @@ interface WorkflowTransition {
   targetStatusColor?: string
 }
 
-interface Workflow {
-  id: number
+interface Workflow extends BaseEntity {
   name: string
   description: string
-  isActive: boolean
   transitionsCount?: number
   transitions?: WorkflowTransition[]
 }
@@ -55,6 +54,23 @@ interface WorkflowEdge {
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 // Тема
+// Универсальный CRUD для списка воркфлоу (визуальный редактор и переходы — кастомные)
+const {
+  items: workflows,
+  loading,
+  error,
+  fetchItems: fetchWorkflows,
+} = useEntityCrud<Workflow>({
+  endpoint: '/workflows',
+  itemName: 'воркфлоу',
+  defaultItem: {
+    id: -1,
+    name: '',
+    description: '',
+    isActive: true,
+  },
+})
+
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 
@@ -78,11 +94,7 @@ const themeColors = computed(() => ({
   scrollbarThumbHover: isDark.value ? '#666666' : '#a1a1a1',
 }))
 
-// Store
-const workflows = ref<Workflow[]>([])
 const states = ref<State[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
 
 // Выбранный воркфлоу
 const selectedWorkflow = ref<Workflow | null>(null)
@@ -140,24 +152,6 @@ const NODE_HEIGHT = 50
 const NODE_RADIUS = 8
 
 const { showToast } = useToast()
-
-// Загрузка данных
-const fetchWorkflows = async () => {
-  try {
-    loading.value = true
-
-    const data = await $api<{ workflows: Workflow[] }>(`${API_BASE}/workflows`)
-
-    workflows.value = data.workflows || []
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки воркфлоу'
-    console.error('Error fetching workflows:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
 
 const fetchStates = async () => {
   try {

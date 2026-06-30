@@ -1,110 +1,69 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { onMounted } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Приветствие
-interface Greetings {
-  id: number
+interface Greetings extends BaseEntity {
   name: string
   content: string
   comment: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Данные приветствия
-const greetings = ref<Greetings[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchGreetings = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching greetings from:', `${API_BASE}/greetings`)
-
-    const data = await $api<{ greetings: Greetings[]; total: number }>(`${API_BASE}/greetings`)
-
-    console.log('Fetched greetings data:', data)
-    greetings.value = data.greetings
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки приветствия'
-    console.error('Error fetching greetings:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание приветствие
-const createGreetings = async (item: Omit<Greetings, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Greetings>(`${API_BASE}/greetings`, {
-      method: 'POST',
-      body: item,
-    })
-
-    greetings.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating greetings:', err)
-    throw err
-  }
-}
-
-// Обновление приветствие
-const updateGreetings = async (id: number, item: Omit<Greetings, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Greetings>(`${API_BASE}/greetings/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = greetings.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      greetings.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating greetings:', err)
-    throw err
-  }
-}
-
-// Удаление приветствие
-const deleteGreetings = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/greetings/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = greetings.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      greetings.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting greetings:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchGreetings()
+// Универсальный CRUD
+const {
+  items: greetings,
+  loading,
+  error,
+  fetchItems: fetchGreetings,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  filteredItems: filteredGreetings,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewGreetings,
+  clearFilters,
+  hasActiveFilters,
+  save,
+} = useEntityCrud<Greetings>({
+  endpoint: '/greetings',
+  itemName: 'приветствия',
+  defaultItem: {
+    id: -1,
+    name: '',
+    content: '',
+    comment: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => fetchGreetings())
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -116,229 +75,9 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Функция для удаления HTML-тегов
+// === Хелперы ===
 const stripHtmlTags = (html: string) => {
   return html.replace(/<[^>]*>/g, '')
-}
-
-// Фильтрация
-const filteredGreetings = computed(() => {
-  let filtered = greetings.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteGreetings(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} приветствия`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateGreetings(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} приветствия`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Greetings>({
-  id: -1,
-  name: '',
-  content: '',
-  comment: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Greetings>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: Greetings) => {
-  editedIndex.value = greetings.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: Greetings) => {
-  editedIndex.value = greetings.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateGreetings(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Приветствие успешно сохранен')
-    }
-    else {
-      // Добавление нового
-      const created = await createGreetings({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Приветствие успешно добавлен')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения приветствие', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteGreetings(editedItem.value.id)
-    showToast('Приветствие успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления приветствие', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Greetings, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateGreetings(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус приветствие изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового приветствие
-const addNewGreetings = () => {
-  // Проверяем право на создание
-  if (useGlobalPermissions().can('write', 'menu_greetings')) {
-    editedItem.value = { ...defaultItem.value }
-    editedIndex.value = -1
-    editDialog.value = true
-  }
 }
 </script>
 

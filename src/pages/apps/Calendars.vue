@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { onMounted } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Календарь
-interface Calendars {
-  id: number
+interface Calendars extends BaseEntity {
   name: string
   description: string
   timezone: string
@@ -15,102 +13,66 @@ interface Calendars {
   color: string
   dateFrom: string | null
   dateTo: string | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Данные календари
-const calendars = ref<Calendars[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchCalendars = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching calendars from:', `${API_BASE}/calendars`)
-
-    const data = await $api<{ calendars: Calendars[]; total: number }>(`${API_BASE}/calendars`)
-
-    console.log('Fetched calendars data:', data)
-    calendars.value = data.calendars
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки календари'
-    console.error('Error fetching calendars:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание календарь
-const createCalendars = async (item: Omit<Calendars, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Calendars>(`${API_BASE}/calendars`, {
-      method: 'POST',
-      body: item,
-    })
-
-    calendars.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating calendars:', err)
-    throw err
-  }
-}
-
-// Обновление календарь
-const updateCalendars = async (id: number, item: Omit<Calendars, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Calendars>(`${API_BASE}/calendars/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = calendars.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      calendars.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating calendars:', err)
-    throw err
-  }
-}
-
-// Удаление календарь
-const deleteCalendars = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/calendars/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = calendars.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      calendars.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting calendars:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchCalendars()
+// Универсальный CRUD
+const {
+  items: calendars,
+  loading,
+  error,
+  fetchItems: fetchCalendars,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: filteredCalendars,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  clearFilters,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewCalendars,
+  save,
+} = useEntityCrud<Calendars>({
+  endpoint: '/calendars',
+  itemName: 'календари',
+  defaultItem: {
+    id: -1,
+    name: '',
+    description: '',
+    timezone: '',
+    workHoursFrom: '',
+    workHoursTo: '',
+    workDaysPerWeek: 5,
+    color: '',
+    dateFrom: '',
+    dateTo: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => fetchCalendars())
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -128,131 +90,7 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredCalendars = computed(() => {
-  let filtered = calendars.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteCalendars(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} календари`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateCalendars(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} календари`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Calendars>({
-  id: -1,
-  name: '',
-  description: '',
-  timezone: '',
-  workHoursFrom: '',
-  workHoursTo: '',
-  workDaysPerWeek: 5,
-  color: 'primary',
-  dateFrom: '',
-  dateTo: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Calendars>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Опции часовых поясов
+// === Опции часовых поясов ===
 const timezoneOptions = [
   { text: 'UTC', value: 'UTC' },
   { text: 'Europe/Moscow', value: 'Europe/Moscow' },
@@ -263,7 +101,7 @@ const timezoneOptions = [
   { text: 'Australia/Sydney', value: 'Australia/Sydney' },
 ]
 
-// Методы
+// === Переопределяем editItem чтобы преобразовать даты ===
 const editItem = (item: Calendars) => {
   editedIndex.value = calendars.value.indexOf(item)
   editedItem.value = {
@@ -271,105 +109,6 @@ const editItem = (item: Calendars) => {
     dateFrom: item.dateFrom ? new Date(item.dateFrom).toISOString().split('T')[0] : '',
     dateTo: item.dateTo ? new Date(item.dateTo).toISOString().split('T')[0] : '',
   }
-  editDialog.value = true
-}
-
-const deleteItem = (item: Calendars) => {
-  editedIndex.value = calendars.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  console.log('DEBUG: Saving calendar with color:', editedItem.value.color)
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    // Преобразуем даты в формат ISO для отправки на сервер
-    const dataToSend = {
-      ...editedItem.value,
-      dateFrom: editedItem.value.dateFrom ? new Date(editedItem.value.dateFrom).toISOString() : null,
-      dateTo: editedItem.value.dateTo ? new Date(editedItem.value.dateTo).toISOString() : null,
-      isActive: editedItem.value.isActive,
-    }
-
-    console.log('DEBUG: Data to send:', dataToSend)
-
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateCalendars(editedItem.value.id, dataToSend)
-
-      console.log('DEBUG: Updated calendar:', updated)
-      showToast('Календарь успешно сохранен')
-    }
-    else {
-      // Добавление нового
-      const created = await createCalendars(dataToSend)
-
-      console.log('DEBUG: Created calendar:', created)
-      showToast('Календарь успешно добавлен')
-    }
-    close()
-  }
-  catch (err) {
-    console.error('DEBUG: Error saving calendar:', err)
-    showToast('Ошибка сохранения календарь', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteCalendars(editedItem.value.id)
-    showToast('Календарь успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления календарь', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Calendars, newValue: boolean | null) => {
-  if (newValue === null)
-    return
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  try {
-    await updateCalendars(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус календарь изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового календарь
-const addNewCalendars = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
   editDialog.value = true
 }
 </script>

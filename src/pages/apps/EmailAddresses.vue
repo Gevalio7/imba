@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted } from 'vue'
 import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Email адрес
-interface EmailAddresses {
-  id: number
+interface EmailAddresses extends BaseEntity {
   name: string
   message: string
   queueId: number | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 // Типы данных для Очереди
@@ -26,56 +22,18 @@ interface Queue {
   updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Данные email адреса
-const emailAddresses = ref<EmailAddresses[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
 // Данные очередей
 const queues = ref<Queue[]>([])
 const queuesLoading = ref(false)
-const queuesError = ref<string | null>(null)
 
-// Загрузка данных из API
-const fetchEmailAddresses = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching emailAddresses from:', `${API_BASE}/emailAddresses`)
-
-    const data = await $api<{ emailAddresses: EmailAddresses[]; total: number }>(`${API_BASE}/emailAddresses`)
-
-    console.log('Fetched emailAddresses data:', data)
-    emailAddresses.value = data.emailAddresses
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки email адреса'
-    console.error('Error fetching emailAddresses:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Загрузка данных очередей
+// Загрузка очередей
 const fetchQueues = async () => {
   try {
     queuesLoading.value = true
-    queuesError.value = null
-    console.log('Fetching queues from:', `${API_BASE}/queues`)
-
-    const data = await $api<{ queues: Queue[]; total: number }>(`${API_BASE}/queues`)
-
-    console.log('Fetched queues data:', data)
+    const data = await $api<{ queues: Queue[]; total: number }>(`/queues`)
     queues.value = data.queues
   }
   catch (err) {
-    queuesError.value = 'Ошибка загрузки очередей'
     console.error('Error fetching queues:', err)
   }
   finally {
@@ -83,67 +41,70 @@ const fetchQueues = async () => {
   }
 }
 
-// Создание email адрес
-const createEmailAddresses = async (item: Omit<EmailAddresses, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses`, {
-      method: 'POST',
-      body: item,
-    })
-
-    emailAddresses.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating emailAddresses:', err)
-    throw err
-  }
+// Получение имени очереди по ID
+const getQueueName = (queueId: number | null) => {
+  if (!queueId)
+    return '-'
+  const queue = queues.value.find(q => q.id === queueId)
+  return queue ? queue.name : '-'
 }
 
-// Обновление email адрес
-const updateEmailAddresses = async (id: number, item: Omit<EmailAddresses, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<EmailAddresses>(`${API_BASE}/emailAddresses/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = emailAddresses.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      emailAddresses.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating emailAddresses:', err)
-    throw err
-  }
-}
-
-// Удаление email адрес
-const deleteEmailAddresses = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/emailAddresses/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = emailAddresses.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      emailAddresses.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting emailAddresses:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchEmailAddresses()
-  fetchQueues()
+// Универсальный CRUD
+const {
+  items: emailAddresses,
+  loading,
+  error,
+  fetchItems: fetchEmailAddresses,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: filteredEmailAddresses,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  clearFilters,
+  editItem,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewEmailAddresses,
+  save,
+} = useEntityCrud<EmailAddresses>({
+  endpoint: '/emailAddresses',
+  itemName: 'email адреса',
+  defaultItem: {
+    id: -1,
+    name: '',
+    message: '',
+    queueId: null,
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => {
+  fetchQueues()
+  fetchEmailAddresses()
+})
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Адрес электронной почты', key: 'name', sortable: true },
@@ -154,229 +115,6 @@ const headers = [
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false },
 ]
-
-// Фильтрация
-const filteredEmailAddresses = computed(() => {
-  let filtered = emailAddresses.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Получение имени очереди по ID
-const getQueueName = (queueId: number | null) => {
-  if (!queueId)
-    return '-'
-  const queue = queues.value.find(q => q.id === queueId)
-
-  return queue ? queue.name : '-'
-}
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteEmailAddresses(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} email адреса`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateEmailAddresses(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} email адреса`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<EmailAddresses>({
-  id: -1,
-  name: '',
-  message: '',
-  queueId: null,
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<EmailAddresses>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: EmailAddresses) => {
-  editedIndex.value = emailAddresses.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: EmailAddresses) => {
-  editedIndex.value = emailAddresses.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Адрес электронной почты обязателен для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateEmailAddresses(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Email адрес успешно сохранен')
-    }
-    else {
-      // Добавление нового
-      const created = await createEmailAddresses({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Email адрес успешно добавлен')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения email адрес', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteEmailAddresses(editedItem.value.id)
-    showToast('Email адрес успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления email адрес', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: EmailAddresses, newValue: boolean) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  try {
-    await updateEmailAddresses(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус email адрес изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового email адрес
-const addNewEmailAddresses = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>

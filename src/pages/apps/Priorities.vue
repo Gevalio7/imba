@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 definePage({
   meta: {
@@ -12,113 +11,63 @@ definePage({
 })
 
 // Типы данных для Приоритет
-interface Priorities {
-  id: number
+interface Priorities extends BaseEntity {
   name: string
   color: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Store
-const searchQuery = ref('')
-const itemsPerPage = ref(10)
-const page = ref(1)
-const sortBy = ref()
-const orderBy = ref()
-
-// Данные приоритеты
-const priorities = ref<Priorities[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchPriorities = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching priorities from:', `${API_BASE}/priorities`)
-
-    const data = await $api<{ priorities: Priorities[]; total: number }>(`${API_BASE}/priorities`)
-
-    console.log('Fetched priorities data:', data)
-    priorities.value = data.priorities
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки приоритеты'
-    console.error('Error fetching priorities:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание приоритет
-const createPriorities = async (item: Omit<Priorities, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Priorities>(`${API_BASE}/priorities`, {
-      method: 'POST',
-      body: item,
-    })
-
-    priorities.value.unshift(data) // Добавляем в начало массива
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating priorities:', err)
-    throw err
-  }
-}
-
-// Обновление приоритет
-const updatePriorities = async (id: number, item: Omit<Priorities, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Priorities>(`${API_BASE}/priorities/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = priorities.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      priorities.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating priorities:', err)
-    throw err
-  }
-}
-
-// Удаление приоритет
-const deletePriorities = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/priorities/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = priorities.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      priorities.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting priorities:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchPriorities()
+// Универсальный CRUD
+const {
+  items: priorities,
+  loading,
+  error,
+  fetchItems: fetchPriorities,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  filteredItems: baseFilteredItems,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewPriorities,
+  save,
+} = useEntityCrud<Priorities>({
+  endpoint: '/priorities',
+  itemName: 'приоритеты',
+  defaultItem: {
+    id: -1,
+    name: '',
+    color: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => fetchPriorities())
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -129,254 +78,36 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredPriorities = computed(() => {
-  let filtered = priorities.value
+// === Специфичные для страницы фильтры ===
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
 
-  if (searchQuery.value.trim()) {
-    // Фильтруем по поисковому запросу (по названию)
-    const query = searchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  if (selectedNames.value.length > 0) {
-    // Фильтруем по выбранным названиям
-    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
-  }
-
-  return filtered
+const uniqueNames = computed(() => {
+  const names = priorities.value.map(p => p.name)
+  return [...new Set(names)].sort()
 })
 
-// Сброс фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = null
   selectedNames.value = []
 }
 
-// Уникальные названия для фильтра
-const uniqueNames = computed(() => {
-  const names = priorities.value.map(p => p.name)
-
-  return [...new Set(names)].sort()
+const filteredPriorities = computed(() => {
+  let filtered = baseFilteredItems.value
+  if (selectedNames.value.length > 0)
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  return filtered
 })
 
-// Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0
-})
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deletePriorities(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} приоритеты`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updatePriorities(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} приоритеты`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const selectedNames = ref<string[]>([])
-const searchNames = ref<string | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Ограничение количества выбранных названий
 watch(selectedNames, value => {
   if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
 })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Priorities>({
-  id: -1,
-  name: '',
-  color: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Priorities>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: Priorities) => {
-  editedIndex.value = priorities.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: Priorities) => {
-  editedIndex.value = priorities.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updatePriorities(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Приоритет успешно сохранен')
-    }
-    else {
-      // Добавление нового
-      const created = await createPriorities({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Приоритет успешно добавлен')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения приоритет', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deletePriorities(editedItem.value.id)
-    showToast('Приоритет успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления приоритет', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Priorities, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updatePriorities(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус приоритет изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового приоритет
-const addNewPriorities = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>

@@ -1,262 +1,67 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Категория типа
-interface TypeCategories {
-  id: number
+interface TypeCategories extends BaseEntity {
   name: string
   laborHours: number
   comment: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Store
-const searchQuery = ref('')
-const itemsPerPage = ref(10)
-const page = ref(1)
-const sortBy = ref()
-const orderBy = ref()
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const selectedNames = ref<string[]>([])
-const searchNames = ref<string | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Данные категории типов
-const typeCategories = ref<TypeCategories[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchTypeCategories = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching type categories from:', `${API_BASE}/typeCategories`)
-
-    const data = await $api<{ typeCategories: TypeCategories[]; total: number }>(`${API_BASE}/typeCategories`)
-
-    console.log('Fetched type categories data:', data)
-    typeCategories.value = data.typeCategories
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки категории типов'
-    console.error('Error fetching type categories:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание категория типа
-const createTypeCategory = async (typeCategory: Omit<TypeCategories, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const newTypeCategory = await $api<TypeCategories>(`${API_BASE}/typeCategories`, {
-      method: 'POST',
-      body: typeCategory,
-    })
-
-    typeCategories.value.push(newTypeCategory)
-    total.value++
-  }
-  catch (err) {
-    console.error('Error creating type category:', err)
-    throw err
-  }
-}
-
-// Обновление категория типа
-const updateTypeCategory = async (id: number, typeCategory: Partial<TypeCategories>) => {
-  try {
-    const updatedTypeCategory = await $api<TypeCategories>(`${API_BASE}/typeCategories/${id}`, {
-      method: 'PUT',
-      body: typeCategory,
-    })
-
-    const index = typeCategories.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      typeCategories.value[index] = updatedTypeCategory
-  }
-  catch (err) {
-    console.error('Error updating type category:', err)
-    throw err
-  }
-}
-
-// Удаление категория типа
-const deleteTypeCategory = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/typeCategories/${id}`, {
-      method: 'DELETE',
-    })
-    typeCategories.value = typeCategories.value.filter(p => p.id !== id)
-    total.value--
-  }
-  catch (err) {
-    console.error('Error deleting type category:', err)
-    throw err
-  }
-}
-
-// Фильтрация
-const filteredTypeCategories = computed(() => {
-  let filtered = typeCategories.value
-
-  if (searchQuery.value.trim()) {
-    // Фильтруем по поисковому запросу (по названию)
-    const query = searchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  if (selectedNames.value.length > 0) {
-    // Фильтруем по выбранным названиям
-    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
-  }
-
-  return filtered
+// Универсальный CRUD
+const {
+  items: typeCategories,
+  loading,
+  error,
+  fetchItems: fetchTypeCategories,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  filteredItems: baseFilteredItems,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem,
+  deleteItem,
+  close: closeEdit,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewTypeCategories,
+  save,
+} = useEntityCrud<TypeCategories>({
+  endpoint: '/typeCategories',
+  itemName: 'категории типов',
+  defaultItem: {
+    id: -1,
+    name: '',
+    comment: '',
+    laborHours: 0,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
 })
 
-// Сброс фильтров
-const clearFilters = () => {
-  searchQuery.value = ''
-  statusFilter.value = null
-  selectedNames.value = []
-}
+// === Инициализация ===
+onMounted(() => fetchTypeCategories())
 
-// Уникальные названия для фильтра
-const uniqueNames = computed(() => {
-  const names = typeCategories.value.map(p => p.name)
-
-  return [...new Set(names)].sort()
-})
-
-// Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0
-})
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteTypeCategory(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} категорий типов`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateTypeCategory(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} категорий типов`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Уведомления
-const { showToast } = useToast()
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Ограничение количества выбранных названий
-watch(selectedNames, value => {
-  if (value.length > 10)
-    nextTick(() => selectedNames.value.pop())
-})
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<TypeCategories>({
-  id: -1,
-  name: '',
-  comment: '',
-  laborHours: 0,
-  isActive: true,
-  createdAt: '',
-  updatedAt: '',
-})
-
-const editedItem = ref<TypeCategories>({ ...defaultItem.value })
-
-const editedIndex = ref(-1)
-
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -268,104 +73,35 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Методы для работы с диалогами
-const editItem = (item: TypeCategories) => {
-  editedIndex.value = typeCategories.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
+// === Специфичные для страницы фильтры ===
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
+
+const uniqueNames = computed(() => {
+  const names = typeCategories.value.map(p => p.name)
+  return [...new Set(names)].sort()
+})
+
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = null
+  selectedNames.value = []
 }
 
-const deleteItem = (item: TypeCategories) => {
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
+const filteredTypeCategories = computed(() => {
+  let filtered = baseFilteredItems.value
+  if (selectedNames.value.length > 0)
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  return filtered
+})
 
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedItem.value = { ...defaultItem.value }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteTypeCategory(editedItem.value.id)
-    showToast('Категория типа успешно удалена')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления категории типа', 'error')
-  }
-}
-
-const closeEdit = () => {
-  editDialog.value = false
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateTypeCategory(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Категория типа успешно сохранена')
-    }
-    else {
-      // Добавление нового
-      const created = await createTypeCategory({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Категория типа успешно добавлена')
-    }
-    closeEdit()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения категории типа', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: TypeCategories, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateTypeCategory(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус категории типа изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-// Добавление новой категории типа
-const addNewTypeCategories = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
-
-// Загрузка данных при монтировании
-onMounted(() => {
-  fetchTypeCategories()
+watch(selectedNames, value => {
+  if (value.length > 10)
+    nextTick(() => selectedNames.value.pop())
 })
 </script>
 

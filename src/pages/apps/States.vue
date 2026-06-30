@@ -48,7 +48,6 @@ const {
 } = useEntityCrud<States>({
   endpoint: '/states',
   itemName: 'состояния',
-  // headers: [...] — определены локально для гибкости шаблона
   defaultItem: {
     id: -1,
     name: '',

@@ -1,117 +1,67 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Подпись
-interface Signatures {
-  id: number
+interface Signatures extends BaseEntity {
   name: string
   content: string
   comment: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Store
-const searchQuery = ref('')
-const itemsPerPage = ref(10)
-const page = ref(1)
-const sortBy = ref()
-const orderBy = ref()
-
-// Данные подписи
-const signatures = ref<Signatures[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchSignatures = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching signatures from:', `${API_BASE}/signatures`)
-
-    const data = await $api<{ signatures: Signatures[]; total: number }>(`${API_BASE}/signatures`)
-
-    console.log('Fetched signatures data:', data)
-    signatures.value = data.signatures
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки подписи'
-    console.error('Error fetching signatures:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание подпись
-const createSignatures = async (item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Signatures>(`${API_BASE}/signatures`, {
-      method: 'POST',
-      body: item,
-    })
-
-    signatures.value.unshift(data) // Добавляем в начало массива
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating signatures:', err)
-    throw err
-  }
-}
-
-// Обновление подпись
-const updateSignatures = async (id: number, item: Omit<Signatures, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Signatures>(`${API_BASE}/signatures/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = signatures.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      signatures.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating signatures:', err)
-    throw err
-  }
-}
-
-// Удаление подпись
-const deleteSignatures = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/signatures/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = signatures.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      signatures.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting signatures:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchSignatures()
+// Универсальный CRUD
+const {
+  items: signatures,
+  loading,
+  error,
+  fetchItems: fetchSignatures,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  filteredItems: baseFilteredItems,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewSignatures,
+  save,
+} = useEntityCrud<Signatures>({
+  endpoint: '/signatures',
+  itemName: 'подписи',
+  defaultItem: {
+    id: -1,
+    name: '',
+    content: '',
+    comment: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => fetchSignatures())
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -123,260 +73,36 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Функция для удаления HTML-тегов
-const stripHtmlTags = (html: string) => {
-  return html.replace(/<[^>]*>/g, '')
-}
+// === Специфичные для страницы фильтры ===
+const selectedNames = ref<string[]>([])
+const searchNames = ref<string | null>(null)
 
-// Фильтрация
-const filteredSignatures = computed(() => {
-  let filtered = signatures.value
-
-  if (searchQuery.value.trim()) {
-    // Фильтруем по поисковому запросу (по названию)
-    const query = searchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  if (selectedNames.value.length > 0) {
-    // Фильтруем по выбранным названиям
-    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
-  }
-
-  return filtered
+const uniqueNames = computed(() => {
+  const names = signatures.value.map(p => p.name)
+  return [...new Set(names)].sort()
 })
 
-// Сброс фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0
+})
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = null
   selectedNames.value = []
 }
 
-// Уникальные названия для фильтра
-const uniqueNames = computed(() => {
-  const names = signatures.value.map(p => p.name)
-
-  return [...new Set(names)].sort()
+const filteredSignatures = computed(() => {
+  let filtered = baseFilteredItems.value
+  if (selectedNames.value.length > 0)
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  return filtered
 })
 
-// Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0
-})
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteSignatures(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} подписи`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateSignatures(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} подписи`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const selectedNames = ref<string[]>([])
-const searchNames = ref<string | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Ограничение количества выбранных названий
 watch(selectedNames, value => {
   if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
 })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Signatures>({
-  id: -1,
-  name: '',
-  content: '',
-  comment: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Signatures>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: Signatures) => {
-  editedIndex.value = signatures.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: Signatures) => {
-  editedIndex.value = signatures.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateSignatures(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Подпись успешно сохранен')
-    }
-    else {
-      // Добавление нового
-      const created = await createSignatures({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Подпись успешно добавлен')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения подпись', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteSignatures(editedItem.value.id)
-    showToast('Подпись успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления подпись', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Signatures, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateSignatures(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус подпись изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового подпись
-const addNewSignatures = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>

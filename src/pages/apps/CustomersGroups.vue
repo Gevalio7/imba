@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted } from 'vue'
 import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для Группа клиентов
-interface CustomersGroups {
-  id: number
+interface CustomersGroups extends BaseEntity {
   name: string
   message: string
   customerId?: number
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 // Типы данных для Компания
@@ -27,18 +23,13 @@ interface Customer {
   updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Данные компании
+// Данные компаний
 const customers = ref<Customer[]>([])
 
 // Загрузка компаний
 const fetchCustomers = async () => {
   try {
-    const data = await $api<{ customers: Customer[]; total: number }>(`${API_BASE}/customers`)
-
-    console.log('📥 Загружены компании:', data.customers)
+    const data = await $api<{ customers: Customer[]; total: number }>(`/customers`)
     customers.value = data.customers
   }
   catch (err) {
@@ -48,107 +39,68 @@ const fetchCustomers = async () => {
 
 // Получить название компании по ID
 const getCustomerName = (customerId: number | undefined) => {
-  console.log('🔍 getCustomerName вызвана с customerId:', customerId, 'тип:', typeof customerId)
-  console.log('🔍 customers.value:', JSON.stringify(customers.value))
   if (!customerId)
     return 'Не назначена'
   const customer = customers.value.find(c => c.id === customerId || c.id === Number(customerId))
-
-  console.log('🔍 Найденный customer:', customer)
-
   return customer?.name || 'Не назначена'
 }
 
-// Данные группы клиентов
-const customersGroups = ref<CustomersGroups[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Загрузка данных из API
-const fetchCustomersGroups = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching customersGroups from:', `${API_BASE}/customersGroups`)
-
-    const data = await $api<{ customersGroups: CustomersGroups[]; total: number }>(`${API_BASE}/customersGroups`)
-
-    console.log('Fetched customersGroups data:', data)
-    customersGroups.value = data.customersGroups
-    console.log('📊 customersGroups.value после загрузки:', JSON.stringify(customersGroups.value))
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки группы клиентов'
-    console.error('Error fetching customersGroups:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание группа клиентов
-const createCustomersGroups = async (item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<CustomersGroups>(`${API_BASE}/customersGroups`, {
-      method: 'POST',
-      body: item,
-    })
-
-    customersGroups.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating customersGroups:', err)
-    throw err
-  }
-}
-
-// Обновление группа клиентов
-const updateCustomersGroups = async (id: number, item: Omit<CustomersGroups, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<CustomersGroups>(`${API_BASE}/customersGroups/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = customersGroups.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      customersGroups.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating customersGroups:', err)
-    throw err
-  }
-}
-
-// Удаление группа клиентов
-const deleteCustomersGroups = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/customersGroups/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = customersGroups.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      customersGroups.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting customersGroups:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchCustomersGroups()
-  fetchCustomers()
+// Универсальный CRUD
+const {
+  items: customersGroups,
+  loading,
+  error,
+  fetchItems: fetchCustomersGroups,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: filteredCustomersGroups,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  clearFilters,
+  editItem,
+  deleteItem,
+  close,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewCustomersGroups,
+  save,
+} = useEntityCrud<CustomersGroups>({
+  endpoint: '/customersGroups',
+  itemName: 'группы клиентов',
+  defaultItem: {
+    id: -1,
+    name: '',
+    message: '',
+    customerId: undefined,
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => {
+  fetchCustomers()
+  fetchCustomersGroups()
+})
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -159,232 +111,6 @@ const headers = [
   { title: 'Активен', key: 'isActive', sortable: false },
   { title: 'Действия', key: 'actions', sortable: false },
 ]
-
-// Фильтрация
-const filteredCustomersGroups = computed(() => {
-  let filtered = customersGroups.value
-
-  // Логируем для отладки
-  console.log('🔄 filteredCustomersGroups вычислен, количество:', filtered.length)
-  filtered.forEach((cg, i) => {
-    console.log(`🔄 Элемент ${i}: customerId=${cg.customerId}, company=${getCustomerName(cg.customerId)}`)
-  })
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteCustomersGroups(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} группы клиентов`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateCustomersGroups(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} группы клиентов`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<CustomersGroups>({
-  id: -1,
-  name: '',
-  message: '',
-  customerId: undefined,
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<CustomersGroups>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: CustomersGroups) => {
-  editedIndex.value = customersGroups.value.indexOf(item)
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: CustomersGroups) => {
-  editedIndex.value = customersGroups.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-
-    return
-  }
-
-  try {
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateCustomersGroups(editedItem.value.id, {
-        name: editedItem.value.name,
-        message: editedItem.value.message,
-        customerId: editedItem.value.customerId,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Группа клиентов успешно сохранена')
-    }
-    else {
-      // Добавление нового
-      const created = await createCustomersGroups({
-        name: editedItem.value.name,
-        message: editedItem.value.message,
-        customerId: editedItem.value.customerId,
-        isActive: editedItem.value.isActive,
-      })
-
-      showToast('Группа клиентов успешно добавлена')
-    }
-    close()
-  }
-  catch (err) {
-    showToast('Ошибка сохранения группы клиентов', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteCustomersGroups(editedItem.value.id)
-    showToast('Группа клиентов успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления группа клиентов', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: CustomersGroups, newValue: boolean) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  try {
-    await updateCustomersGroups(item.id, {
-      name: item.name,
-      message: item.message,
-      customerId: item.customerId,
-      isActive: newValue,
-    })
-    showToast('Статус группы клиентов изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового группа клиентов
-const addNewCustomersGroups = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  editDialog.value = true
-}
 </script>
 
 <template>
@@ -741,7 +467,7 @@ const addNewCustomersGroups = () => {
         </VCardText>
 
         <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
+          <div class="d-flex gap-4 justify-end">
             <VBtn
               color="error"
               variant="outlined"

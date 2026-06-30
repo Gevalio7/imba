@@ -1,132 +1,73 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { $api } from '@/utils/api'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 import { useToast } from '@/composables/useToast'
 
 // Типы данных для Вложение
-interface Attachments {
-  id: number
+interface Attachments extends BaseEntity {
   name: string
   fileName: string
   type: number
   comment: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Данные вложения
-const attachments = ref<Attachments[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
+// Универсальный CRUD (без save — используем кастомный)
+const {
+  items: attachments,
+  loading,
+  error,
+  fetchItems: fetchAttachments,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: filteredAttachments,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  clearFilters,
 
-// Загрузка данных из API
-const fetchAttachments = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching attachments from:', `${API_BASE}/attachments`)
-
-    const data = await $api<{ attachments: Attachments[]; total: number }>(`${API_BASE}/attachments`)
-
-    console.log('Fetched attachments data:', data)
-    attachments.value = data.attachments
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки вложения'
-    console.error('Error fetching attachments:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание вложение
-const createAttachments = async (item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>, file?: File | null) => {
-  try {
-    if (file) {
-      const formData = new FormData()
-
-      formData.append('name', item.name)
-      formData.append('fileName', item.fileName)
-      formData.append('type', item.type.toString())
-      formData.append('comment', item.comment)
-      formData.append('isActive', item.isActive.toString())
-      formData.append('file', file)
-
-      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      attachments.value.push(data)
-
-      return data
-    }
-    else {
-      const data = await $api<Attachments>(`${API_BASE}/attachments`, {
-        method: 'POST',
-        body: item,
-      })
-
-      attachments.value.push(data)
-
-      return data
-    }
-  }
-  catch (err) {
-    console.error('Error creating attachments:', err)
-    throw err
-  }
-}
-
-// Обновление вложение
-const updateAttachments = async (id: number, item: Omit<Attachments, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Attachments>(`${API_BASE}/attachments/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = attachments.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      attachments.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating attachments:', err)
-    throw err
-  }
-}
-
-// Удаление вложение
-const deleteAttachments = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/attachments/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = attachments.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      attachments.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting attachments:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchAttachments()
+  deleteItem,
+  close: baseClose,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewAttachments,
+} = useEntityCrud<Attachments>({
+  endpoint: '/attachments',
+  itemName: 'вложения',
+  defaultItem: {
+    id: -1,
+    name: '',
+    fileName: '',
+    type: 0,
+    comment: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
 })
 
+// === Инициализация ===
+onMounted(() => fetchAttachments())
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -139,126 +80,9 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredAttachments = computed(() => {
-  let filtered = attachments.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteAttachments(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} вложения`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateAttachments(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} вложения`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Attachments>({
-  id: -1,
-  name: '',
-  fileName: '',
-  type: 0,
-  comment: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Attachments>({ ...defaultItem.value })
-const editedIndex = ref(-1)
+// === Специфичные поля ===
 const selectedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
 
 // Опции типов файлов
 const typeOptions = [
@@ -269,146 +93,89 @@ const typeOptions = [
   { text: 'Текст', value: 4, icon: 'bx-text' },
 ]
 
-// Методы
+// === Методы ===
 const editItem = (item: Attachments) => {
   editedIndex.value = attachments.value.indexOf(item)
   editedItem.value = { ...item }
   editDialog.value = true
 }
 
-const deleteItem = (item: Attachments) => {
-  editedIndex.value = attachments.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
 const close = () => {
   editDialog.value = false
   editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+  editedItem.value = {
+    id: -1,
+    name: '',
+    fileName: '',
+    type: 0,
+    comment: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  }
   selectedFile.value = null
   if (fileInput.value)
     fileInput.value.value = ''
 }
 
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-
     return
   }
 
   try {
     if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateAttachments(editedItem.value.id, {
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      })
+      const payload = { ...editedItem.value } as any
+      delete payload.id
+      delete payload.createdAt
+      delete payload.updatedAt
 
-      showToast('Вложение успешно сохранен')
+      const data = await $api<Attachments>(`${API_BASE}/attachments/${editedItem.value.id}`, {
+        method: 'PUT',
+        body: payload,
+      })
+      const index = attachments.value.findIndex(p => p.id === editedItem.value.id)
+      if (index !== -1)
+        attachments.value[index] = data
+
+      showToast('Вложение успешно сохранено')
     }
     else {
-      // Добавление нового
-      const created = await createAttachments({
-        ...editedItem.value,
-        isActive: editedItem.value.isActive,
-      }, selectedFile.value)
+      if (selectedFile.value) {
+        const formData = new FormData()
+        formData.append('name', editedItem.value.name)
+        formData.append('fileName', editedItem.value.fileName)
+        formData.append('type', editedItem.value.type.toString())
+        formData.append('comment', editedItem.value.comment)
+        formData.append('isActive', editedItem.value.isActive.toString())
+        formData.append('file', selectedFile.value)
 
-      showToast('Вложение успешно добавлен')
+        const data = await $api<Attachments>(`${API_BASE}/attachments`, {
+          method: 'POST',
+          body: formData,
+        })
+        attachments.value.push(data)
+      }
+      else {
+        const data = await $api<Attachments>(`${API_BASE}/attachments`, {
+          method: 'POST',
+          body: {
+            ...editedItem.value,
+          },
+        })
+        attachments.value.push(data)
+      }
+      showToast('Вложение успешно добавлено')
     }
     close()
   }
   catch (err) {
-    showToast('Ошибка сохранения вложение', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteAttachments(editedItem.value.id)
-    showToast('Вложение успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления вложение', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Attachments, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateAttachments(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус вложение изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
+    showToast('Ошибка сохранения вложения', 'error')
   }
 }
 
 const { showToast } = useToast()
-
-// Добавление нового вложение
-const addNewAttachments = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  selectedFile.value = null
-  editDialog.value = true
-}
-
-const getFileType = (file: File): number => {
-  if (file.type.startsWith('image/'))
-    return 1
-  if (file.type.startsWith('video/'))
-    return 2
-  if (file.type === 'application/pdf')
-    return 3
-  if (file.type.startsWith('text/'))
-    return 4
-
-  return 0
-}
-
-const handleFileSelect = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    // Проверка размера файла (20 МБ)
-    if (file.size > 20 * 1024 * 1024) {
-      showToast('Файл слишком большой. Максимальный размер: 20 МБ', 'error')
-
-      return
-    }
-
-    // Проверка типа файла
-    const allowedTypes = ['image/', 'video/', 'application/pdf', 'text/']
-    const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.type === 'application/pdf')
-    if (!isAllowed) {
-      showToast('Недопустимый тип файла. Разрешены: изображения, видео, PDF, текстовые файлы', 'error')
-
-      return
-    }
-    selectedFile.value = file
-    editedItem.value.fileName = file.name
-    editedItem.value.type = getFileType(file)
-  }
-}
 
 const getTypeIcon = (type: number): string => {
   switch (type) {
@@ -430,6 +197,38 @@ const getTypeText = (type: number): string => {
   }
 }
 
+const getFileType = (file: File): number => {
+  if (file.type.startsWith('image/'))
+    return 1
+  if (file.type.startsWith('video/'))
+    return 2
+  if (file.type === 'application/pdf')
+    return 3
+  if (file.type.startsWith('text/'))
+    return 4
+  return 0
+}
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('Файл слишком большой. Максимальный размер: 20 МБ', 'error')
+      return
+    }
+    const allowedTypes = ['image/', 'video/', 'application/pdf', 'text/']
+    const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.type === 'application/pdf')
+    if (!isAllowed) {
+      showToast('Недопустимый тип файла. Разрешены: изображения, видео, PDF, текстовые файлы', 'error')
+      return
+    }
+    selectedFile.value = file
+    editedItem.value.fileName = file.name
+    editedItem.value.type = getFileType(file)
+  }
+}
+
 const clearFile = () => {
   selectedFile.value = null
   editedItem.value.fileName = ''
@@ -446,7 +245,6 @@ const downloadItem = async (item: Attachments) => {
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
-
     a.href = url
     a.download = item.fileName
     a.click()
@@ -456,6 +254,7 @@ const downloadItem = async (item: Attachments) => {
     showToast('Ошибка скачивания файла', 'error')
   }
 }
+
 </script>
 
 <template>

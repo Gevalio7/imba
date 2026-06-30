@@ -125,3 +125,8 @@ types: ref<any[]>([])
 
 ## ✅ Выполненные рефакторинги
 - ✅ **Toast notification system** — июнь 2026 (3 коммита, ~50+ файлов, -958 строк)
+- ✅ **useEntityCrud composable — 18 страниц мигрировано** — июнь 2026
+  - ✅ **Простые (11):** States, Priorities, TypeCategories, Greetings, Signatures, AutoResponses, Calendars, Customers, CustomersGroups, EmailAddresses, Services
+  - ✅ **Со средней сложностью (4):** Attachments, SLA, Templates, Types
+  - ✅ **Сложные (3):** Queues, TemplateQueues, Workflows
+  - ✅ Backup, IntegrityCheck — не подходят под CRUD (оставлены как есть)

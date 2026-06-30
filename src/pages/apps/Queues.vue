@@ -1,27 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { type ColumnSetting, useFilters } from '@/composables/useFilters'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { type ColumnSetting } from '@/composables/useFilters'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
-
-// CASL helpers
-import { useGlobalPermissions } from '@/composables/useGlobalPermissions'
 
 definePage({ meta: { navActiveLink: 'apps-queues', action: 'read', subject: 'menu_queues' } })
 
 // Типы данных для Очередь
-interface Queues {
-  id: number
+interface Queues extends BaseEntity {
   name: string
   description: string
   companyId: number | null
   serviceId: number | null
   slaId: number | null
   workflowId: number | null
-
   priorityId: number | null
-  keywords: string | null // Изменено с string[] | null на string | null
+  keywords: string | null
   quickAnswerArticleIds: number[] | null
   executorGroupIds: number[] | null
   executorAgentIds: number[] | null
@@ -33,19 +28,80 @@ interface Queues {
   typeId: number | null
   categoryId: number | null
   postMasterMailAccountId: number | null
-
   templateOpenTicketId: number | null
   templateCloseTicketId: number | null
   templateConfirmTicketId: number | null
   templateStatusChangeId: number | null
   templateCommentTicketId: number | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+// Универсальный CRUD
+const {
+  items: queues,
+  loading,
+  error,
+  fetchItems: fetchQueues,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  isFilterDialogOpen,
+  clearFilters,
+  filteredItems: filteredQueues,
+  deleteItem,
+  closeDelete,
+  deleteItemConfirm,
+} = useEntityCrud<Queues>({
+  endpoint: '/queues',
+  itemName: 'очереди',
+  defaultItem: {
+    id: -1,
+    name: '',
+    description: '',
+    companyId: null,
+    serviceId: null,
+    slaId: null,
+    workflowId: null,
+    priorityId: null,
+    keywords: null,
+    quickAnswerArticleIds: null,
+    executorGroupIds: null,
+    executorAgentIds: null,
+    observerGroupIds: null,
+    observerAgentIds: null,
+    approverGroupIds: null,
+    approverAgentIds: null,
+    departmentId: null,
+    typeId: null,
+    categoryId: null,
+    postMasterMailAccountId: null,
+    templateOpenTicketId: null,
+    templateCloseTicketId: null,
+    templateConfirmTicketId: null,
+    templateStatusChangeId: null,
+    templateCommentTicketId: null,
+    isActive: true,
+  },
+  customFilter: (item, query) => {
+    return (item.name?.toLowerCase() || '').includes(query) ||
+           (item.description?.toLowerCase() || '').includes(query)
+  },
+})
 
 // Справочники для отображения названий вместо ID
 interface ReferenceData {
@@ -170,8 +226,8 @@ const referenceData = ref<ReferenceData>({
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $api<ReferenceData>(`${API_BASE}/referenceData`)
-    
+    const data = await $api<ReferenceData>(`/referenceData`)
+
     referenceData.value = {
       services: data.services || [],
       sla: data.sla || [],
@@ -255,10 +311,6 @@ const getPriorityColor = (id: number | null) => {
   return priority?.color || 'grey'
 }
 
-const priorityOptions = computed(() =>
-  referenceData.value.priorities.map(p => ({ title: p.name, value: p.id })),
-)
-
 const getCompanyName = (id: number | null) => {
   if (!id)
     return '-'
@@ -324,363 +376,16 @@ const getTemplateName = (id: number | null) => {
 const router = useRouter()
 const route = useRoute()
 
-// Данные очереди
-const queues = ref<Queues[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Поиск
-const searchQuery = ref('')
-
-// Загрузка данных из API
-const fetchQueues = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching queues from:', `${API_BASE}/queues`)
-
-    const data = await $api<{ queues: Queues[]; total: number }>(`${API_BASE}/queues`)
-
-    console.log('Fetched queues data:', data)
-    queues.value = data.queues
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки очереди'
-    console.error('Error fetching queues:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание очередь
-const createQueues = async (item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Queues>(`${API_BASE}/queues`, {
-      method: 'POST',
-      body: item,
-    })
-
-    queues.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating queues:', err)
-    throw err
-  }
-}
-
-// Обновление очередь
-const updateQueues = async (id: number, item: Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Queues>(`${API_BASE}/queues/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      queues.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating queues:', err)
-    throw err
-  }
-}
-
-// Удаление очередь
-const deleteQueues = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/queues/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = queues.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      queues.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting queues:', err)
-    throw err
-  }
-}
+// Диалог настройки колонок
+const isColumnsDialogOpen = ref(false)
 
 // Watcher для обновления данных при возврате со страницы редактирования
 let stopWatchRefresh: (() => void) | null = null
 
-// Фильтрация
-const filteredQueues = computed(() => {
-  let filtered = queues.value
-
-  // Поиск
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(q => 
-      q.name?.toLowerCase().includes(query) ||
-      q.description?.toLowerCase().includes(query)
-    )
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-  searchQuery.value = ''
-}
-
-// Массовые действия
-const selectedItems = ref<Queues[]>([])
-const bulkDeleting = ref(false)
-const bulkStatusChanging = ref(false)
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-const bulkDelete = () => {
-  if (selectedItems.value.length === 0) {
-    showToast('Нет выбранных элементов', 'warning')
-    return
-  }
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-  isBulkActionsMenuOpen.value = false
-}
-
-const bulkChangeStatus = () => {
-  if (selectedItems.value.length === 0) {
-    showToast('Нет выбранных элементов', 'warning')
-    return
-  }
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-  isBulkActionsMenuOpen.value = false
-}
-
-const confirmBulkDelete = async () => {
-  if (bulkDeleting.value) return
-  
-  try {
-    bulkDeleting.value = true
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await deleteQueues(item.id)
-    }
-    selectedItems.value = []
-    showToast(`Удалено ${count} очередей`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    console.error('Bulk delete error:', err)
-    showToast('Ошибка массового удаления', 'error')
-  }
-  finally {
-    bulkDeleting.value = false
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  if (bulkStatusChanging.value) return
-  
-  try {
-    bulkStatusChanging.value = true
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateQueues(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} очередей`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    console.error('Bulk status change error:', err)
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-  finally {
-    bulkStatusChanging.value = false
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-}, { deep: true })
-
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-const isColumnsDialogOpen = ref(false)
-
-const defaultItem = ref<Queues>({
-  id: -1,
-  name: '',
-  description: '',
-  companyId: null,
-  serviceId: null,
-  slaId: null,
-  workflowId: null,
-  priorityId: null,
-  keywords: null,
-  quickAnswerArticleIds: null,
-  executorGroupIds: null,
-  executorAgentIds: null,
-  observerGroupIds: null,
-  observerAgentIds: null,
-  approverGroupIds: null,
-  approverAgentIds: null,
-  departmentId: null,
-  typeId: null,
-  categoryId: null,
-  postMasterMailAccountId: null,
-  templateOpenTicketId: null,
-  templateCloseTicketId: null,
-  templateConfirmTicketId: null,
-  templateStatusChangeId: null,
-  templateCommentTicketId: null,
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Queues>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
 const editItem = (item: Queues) => {
   router.push(`/apps/queues/${item.id}`)
 }
 
-const deleteItem = (item: Queues) => {
-  editedIndex.value = queues.value.indexOf(item)
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const close = () => {
-  editDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
-const save = async () => {
-  if (!editedItem.value.name?.trim()) {
-    showToast('Название обязательно для заполнения', 'error')
-    return
-  }
-
-  try {
-    // Подготавливаем данные для отправки
-    const dataToSave = { ...editedItem.value }
-    
-    // Удаляем поля, которые не должны отправляться
-    delete (dataToSave as any).id
-    delete (dataToSave as any).createdAt
-    delete (dataToSave as any).updatedAt
-
-    if (editedIndex.value > -1) {
-      // Обновление существующего
-      await updateQueues(editedItem.value.id, dataToSave as Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>)
-      showToast('Очередь успешно сохранена')
-    }
-    else {
-      // Добавление нового
-      await createQueues(dataToSave as Omit<Queues, 'id' | 'createdAt' | 'updatedAt'>)
-      showToast('Очередь успешно добавлена')
-    }
-    close()
-    await fetchQueues() // Обновляем список
-  }
-  catch (err) {
-    console.error('Save error:', err)
-    showToast('Ошибка сохранения очереди', 'error')
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteQueues(editedItem.value.id)
-    showToast('Очередь успешно удалена')
-    closeDelete()
-  }
-  catch (err) {
-    console.error('Delete error:', err)
-    showToast('Ошибка удаления очереди', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Queues, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateQueues(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус очереди изменен')
-  }
-  catch (err) {
-    console.error('Toggle status error:', err)
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового очереди
 const addNewQueues = () => {
   router.push('/apps/queues/add')
 }
@@ -689,7 +394,7 @@ const addNewQueues = () => {
 onMounted(async () => {
   await fetchReferenceData()
   await fetchQueues()
-  
+
   // Настройка watcher с очисткой
   stopWatchRefresh = watch(() => route.query.refresh, newVal => {
     if (newVal) fetchQueues()
@@ -775,12 +480,18 @@ onBeforeUnmount(() => {
           </template>
           <VList>
             <VListItem
-              @click="bulkDelete"
+              @click="() => {
+                bulkDelete()
+                isBulkActionsMenuOpen = false
+              }"
             >
               <VListItemTitle>Удалить</VListItemTitle>
             </VListItem>
             <VListItem
-              @click="bulkChangeStatus"
+              @click="() => {
+                bulkChangeStatus()
+                isBulkActionsMenuOpen = false
+              }"
             >
               <VListItemTitle>Изменить статус</VListItemTitle>
             </VListItem>
@@ -885,7 +596,6 @@ onBeforeUnmount(() => {
               <VBtn
                 color="error"
                 variant="outlined"
-                :disabled="bulkDeleting"
                 @click="isBulkDeleteDialogOpen = false"
               >
                 Отмена
@@ -893,7 +603,6 @@ onBeforeUnmount(() => {
               <VBtn
                 color="success"
                 variant="elevated"
-                :loading="bulkDeleting"
                 @click="confirmBulkDelete"
               >
                 Удалить
@@ -923,7 +632,6 @@ onBeforeUnmount(() => {
               <VBtn
                 color="error"
                 variant="outlined"
-                :disabled="bulkStatusChanging"
                 @click="isBulkStatusDialogOpen = false"
               >
                 Отмена
@@ -931,7 +639,6 @@ onBeforeUnmount(() => {
               <VBtn
                 color="success"
                 variant="elevated"
-                :loading="bulkStatusChanging"
                 @click="confirmBulkStatusChange"
               >
                 Применить
@@ -1134,230 +841,6 @@ onBeforeUnmount(() => {
     </VCard>
 
     <!-- Диалог редактирования -->
-    <VDialog
-      v-model="editDialog"
-      max-width="600px"
-    >
-      <VCard :title="editedIndex > -1 ? 'Редактировать очередь' : 'Добавить очередь'">
-        <VCardText>
-          <VRow>
-            <!-- Название -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppTextField
-                v-model="editedItem.name"
-                label="Название *"
-              />
-            </VCol>
-
-            <!-- Описание -->
-            <VCol cols="12">
-              <AppTextarea
-                v-model="editedItem.description"
-                label="Описание"
-                rows="3"
-                placeholder="Введите описание..."
-              />
-            </VCol>
-
-            <!-- Приоритет -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.priorityId"
-                label="Приоритет"
-                :items="priorityOptions"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-
-            <!-- Организация -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.companyId"
-                label="Организация"
-                :items="referenceData.customers.map(c => ({ title: c.name, value: c.id }))"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-
-            <!-- Подразделение -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.departmentId"
-                label="Подразделение"
-                :items="referenceData.customersGroups.filter(d => !editedItem.companyId || d.customerId === editedItem.companyId).map(d => ({ title: d.name, value: d.id }))"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-
-            <!-- Тип -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.typeId"
-                label="Тип"
-                :items="referenceData.types.map(t => ({ title: t.name, value: t.id }))"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-
-            <!-- Категория -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.categoryId"
-                label="Категория типа"
-                :items="referenceData.typeCategories.map(c => ({ title: c.name, value: c.id }))"
-                clearable
-                clear-icon="bx-x"
-              />
-            </VCol>
-
-            <!-- Группы исполнителей -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.executorGroupIds"
-                label="Группы исполнителей"
-                :items="referenceData.agentGroups.map(g => ({ title: g.name, value: g.id }))"
-                multiple
-                clearable
-                clear-icon="bx-x"
-                chips
-              />
-            </VCol>
-
-            <!-- Исполнители -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.executorAgentIds"
-                label="Исполнители"
-                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
-                multiple
-                clearable
-                clear-icon="bx-x"
-                chips
-              />
-            </VCol>
-
-            <!-- Наблюдатели -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.observerAgentIds"
-                label="Наблюдатели"
-                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
-                multiple
-                clearable
-                clear-icon="bx-x"
-                chips
-              />
-            </VCol>
-
-            <!-- Группы согласующих -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.approverGroupIds"
-                label="Группы согласующих"
-                :items="referenceData.agentGroups.map(g => ({ title: g.name, value: g.id }))"
-                multiple
-                clearable
-                clear-icon="bx-x"
-                chips
-              />
-            </VCol>
-
-            <!-- Согласующие -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <AppSelect
-                v-model="editedItem.approverAgentIds"
-                label="Согласующие"
-                :items="referenceData.agents.map(a => ({ title: `${a.firstName} ${a.lastName}`, value: a.id }))"
-                multiple
-                clearable
-                clear-icon="bx-x"
-                chips
-              />
-            </VCol>
-
-            <!-- Ключевые слова -->
-            <VCol cols="12">
-              <AppTextField
-                v-model="editedItem.keywords"
-                label="Ключевые слова (через запятую)"
-                placeholder="например: срочно, важно, баг"
-                hint="Введите ключевые слова через запятую"
-              />
-            </VCol>
-
-            <!-- Активен -->
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <VSwitch
-                v-model="editedItem.isActive"
-                label="Активен"
-                color="primary"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VCardText>
-          <div class="self-align-end d-flex gap-4 justify-end">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="close"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="save"
-            >
-              Сохранить
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VDialog>
-
-    <!-- Диалог удаления -->
     <VDialog
       v-model="deleteDialog"
       max-width="500px"

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { $api } from '@/utils/api'
-import { useToast } from '@/composables/useToast'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 
 // Типы данных для SLA
-interface SLA {
-  id: number
+interface SLA extends BaseEntity {
   name: string
   description: string
   responseTime: number
@@ -19,141 +18,104 @@ interface SLA {
   calendarName?: string
   serviceIds?: number[]
   serviceNames?: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-
-// Роутер
-const router = useRouter()
-
-// Данные sla
-const sLA = ref<SLA[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
+// Универсальный CRUD
+const {
+  items: sLA,
+  loading,
+  error,
+  fetchItems: fetchSLA,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  statusFilter,
+  filteredItems: filteredSLA,
+  clearFilters,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem,
+  deleteItem,
+  close: closeEdit,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewSLA,
+  save: saveSLA,
+} = useEntityCrud<SLA>({
+  endpoint: '/sla',
+  itemName: 'sla',
+  defaultItem: {
+    id: -1,
+    name: '',
+    description: '',
+    responseTime: 15,
+    resolutionTime: 240,
+    solutionTime: 480,
+    minIncidentTime: 10,
+    responseNotification: 20,
+    updateNotification: 80,
+    solutionNotification: 80,
+    calendarId: undefined,
+    calendarName: '',
+    serviceIds: [],
+    serviceNames: [],
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+})
 
 // Справочники
-const calendars = ref([])
-const services = ref([])
+interface CalendarItem {
+  id: number
+  name: string
+}
+
+interface ServiceItem {
+  id: number
+  name: string
+}
+
+const calendars = ref<CalendarItem[]>([])
+const services = ref<ServiceItem[]>([])
 
 // Загрузка справочников
 const fetchCalendars = async () => {
-  console.log('fetchCalendars called')
   try {
-    console.log('Fetching calendars from:', `${API_BASE}/calendars`)
-
-    const data = await $api(`${API_BASE}/calendars`)
-
-    console.log('Fetched calendars:', data)
+    const data = await $api<{ calendars: CalendarItem[] }>('/calendars')
     calendars.value = data.calendars || []
-    console.log('Calendars set to:', calendars.value)
   }
   catch (err) {
-    console.log('Error fetching calendars:', err)
+    console.error('Error fetching calendars:', err)
   }
 }
 
 const fetchServices = async () => {
   try {
-    console.log('Fetching services from:', `${API_BASE}/services`)
-
-    const data = await $api(`${API_BASE}/services`)
-
-    console.log('Fetched services:', data)
+    const data = await $api<{ services: ServiceItem[] }>('/services')
     services.value = data.services || []
-    console.log('Services set to:', services.value)
   }
   catch (err) {
-    console.log('Error fetching services:', err)
+    console.error('Error fetching services:', err)
   }
 }
 
-// Загрузка данных из API
-const fetchSLA = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching sla from:', `${API_BASE}/sla`)
-
-    const data = await $api<{ sla: SLA[]; total: number }>(`${API_BASE}/sla`)
-
-    console.log('Fetched sla data:', data)
-    sLA.value = data.sla
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки sla'
-    console.error('Error fetching sLA:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание sla
-const createSLA = async (item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<SLA>(`${API_BASE}/sla`, {
-      method: 'POST',
-      body: item,
-    })
-
-    sLA.value.push(data)
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating sla:', err)
-    throw err
-  }
-}
-
-// Обновление sla
-const updateSLA = async (id: number, item: Omit<SLA, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<SLA>(`${API_BASE}/sla/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = sLA.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      sLA.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating sla:', err)
-    throw err
-  }
-}
-
-// Удаление sla
-const deleteSLA = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/sla/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = sLA.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      sLA.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting sla:', err)
-    throw err
-  }
-}
-
-// Инициализация
 onMounted(async () => {
-  console.log('onMounted called')
   await Promise.all([fetchCalendars(), fetchServices()])
-  console.log('fetchCalendars and fetchServices done')
   fetchSLA()
 })
 
@@ -173,17 +135,8 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredSLA = computed(() => {
-  let filtered = sLA.value
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  return filtered
-})
+// Фильтрация — используем встроенную из composable (фильтр по статусу)
+// filteredSLA уже алиасится из filteredItems в деструктуризации
 
 // Форматирование сервисов для отображения
 const formatServices = (serviceNames?: string[]) => {
@@ -191,234 +144,6 @@ const formatServices = (serviceNames?: string[]) => {
     return '-'
 
   return serviceNames.join(', ')
-}
-
-// Сброс фильтров
-const clearFilters = () => {
-  statusFilter.value = null
-}
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteSLA(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} sla`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateSLA(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} sla`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Диалоги
-const deleteDialog = ref(false)
-const editDialog = ref(false)
-
-const editedItem = ref<SLA>({
-  id: -1,
-  name: '',
-  description: '',
-  type: '',
-  responseTime: 15,
-  resolutionTime: 4,
-  solutionTime: 0,
-  minIncidentTime: 10,
-  responseNotification: 20,
-  updateNotification: 80,
-  solutionNotification: 80,
-  calendarId: undefined,
-  serviceIds: [],
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Методы
-const editItem = (item: SLA) => {
-  editedItem.value = { ...item }
-  editDialog.value = true
-}
-
-const deleteItem = (item: SLA) => {
-  editedItem.value = { ...item }
-  deleteDialog.value = true
-}
-
-const closeDelete = () => {
-  deleteDialog.value = false
-}
-
-const closeEdit = () => {
-  editDialog.value = false
-  // reset to default
-  editedItem.value = {
-    id: -1,
-    name: '',
-    description: '',
-
-    responseTime: 15,
-    resolutionTime: 240,
-    solutionTime: 480,
-    minIncidentTime: 10,
-    responseNotification: 20,
-    updateNotification: 80,
-    solutionNotification: 80,
-    calendarId: undefined,
-    calendarName: '',
-    serviceIds: [],
-    serviceNames: [],
-    isActive: true,
-    createdAt: '',
-    updatedAt: '',
-  }
-}
-
-const saveSLA = async () => {
-  try {
-    if (editedItem.value.id && editedItem.value.id > 0) {
-      await updateSLA(editedItem.value.id, editedItem.value)
-      showToast('SLA успешно обновлен')
-    } else {
-      await createSLA(editedItem.value)
-      showToast('SLA успешно создан')
-    }
-    closeEdit()
-    await fetchSLA()
-  } catch (err) {
-    showToast('Ошибка сохранения SLA', 'error')
-    console.error(err)
-  }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteSLA(editedItem.value.id)
-    showToast('SLA успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления sla', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: SLA, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateSLA(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус sla изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового sla
-const addNewSLA = () => {
-  editedItem.value = {
-    id: -1,
-    name: '',
-    description: '',
-
-    responseTime: 15,
-    resolutionTime: 240,
-    solutionTime: 480,
-    minIncidentTime: 10,
-    responseNotification: 20,
-    updateNotification: 80,
-    solutionNotification: 80,
-    calendarId: undefined,
-    calendarName: '',
-    serviceIds: [],
-    serviceNames: [],
-    isActive: true,
-    createdAt: '',
-    updatedAt: '',
-  }
-  editDialog.value = true
 }
 </script>
 
@@ -727,14 +452,14 @@ const addNewSLA = () => {
       v-model="editDialog"
       max-width="800px"
     >
-      <VCard :title="editedItem.id > 0 ? 'Редактировать SLA' : 'Добавить SLA'">
+      <VCard :title="editedIndex > -1 ? 'Редактировать SLA' : 'Добавить SLA'">
         <VCardText>
           <VRow>
             <VCol cols="12" md="8">
               <AppTextField
                 v-model="editedItem.name"
                 label="Название *"
-                :rules="[v => !!v || 'Обязательное поле']"
+                :rules="[(v: string) => !!v || 'Обязательное поле']"
               />
             </VCol>
             <VCol cols="12" md="4">

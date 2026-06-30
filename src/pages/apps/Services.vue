@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, watch, onMounted, ref } from 'vue'
 import { $api } from '@/utils/api'
+import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
 import { useToast } from '@/composables/useToast'
 
 // Типы данных для Сервис
-interface Services {
-  id: number
+interface Services extends BaseEntity {
   name: string
   comment: string
   type: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
   customers?: Customers[]
   attachments?: Attachment[]
   sla?: SLA | null
@@ -56,130 +53,71 @@ interface SLA {
 // API base URL
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-// Store
-const searchQuery = ref('')
-const itemsPerPage = ref(10)
-const page = ref(1)
-const sortBy = ref()
-const orderBy = ref()
+// Универсальный CRUD (без кастомного save/editItem — используем свои)
+const {
+  items: services,
+  loading,
+  error,
+  fetchItems: fetchServices,
+  editDialog,
+  deleteDialog,
+  editedItem,
+  editedIndex,
+  currentPage,
+  itemsPerPage,
+  searchQuery,
+  statusFilter,
+  filteredItems: baseFilteredItems,
+  selectedItems,
+  isBulkActionsMenuOpen,
+  isBulkDeleteDialogOpen,
+  isBulkStatusDialogOpen,
+  bulkStatusValue,
+  statusOptions,
+  bulkDelete,
+  bulkChangeStatus,
+  confirmBulkDelete,
+  confirmBulkStatusChange,
+  resolveStatusVariant,
+  toggleStatus,
+  isFilterDialogOpen,
+  editItem: baseEditItem,
+  deleteItem: baseDeleteItem,
+  close: baseClose,
+  closeDelete,
+  deleteItemConfirm,
+  addNewItem: addNewServices,
+} = useEntityCrud<Services>({
+  endpoint: '/services',
+  itemName: 'сервисы',
+  defaultItem: {
+    id: -1,
+    name: '',
+    comment: '',
+    type: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  },
+})
 
-// Данные сервисы
-const services = ref<Services[]>([])
-const total = ref(0)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-// Данные компаний для выбора
+// === Справочники ===
 const customers = ref<Customers[]>([])
 const customersLoading = ref(false)
-
-// Данные SLA для выбора
 const slas = ref<SLA[]>([])
 const slasLoading = ref(false)
 
 // Выбранные компании при редактировании
 const selectedCustomerIds = ref<number[]>([])
-
-// Загружаемые файлы
 const uploadedFiles = ref<File[]>([])
-
-// Существующие вложения сервиса
 const existingAttachments = ref<Attachment[]>([])
-
-// Выбранный SLA при редактировании (связь 1 к 1)
 const selectedSLAId = ref<number | null>(null)
 
-// Загрузка данных из API
-const fetchServices = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    console.log('Fetching services from:', `${API_BASE}/services`)
-
-    const data = await $api<{ services: Services[]; total: number }>(`${API_BASE}/services`)
-
-    console.log('Fetched services data:', data)
-    services.value = data.services
-    total.value = data.total
-  }
-  catch (err) {
-    error.value = 'Ошибка загрузки сервисы'
-    console.error('Error fetching services:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Создание сервис
-const createServices = async (item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Services>(`${API_BASE}/services`, {
-      method: 'POST',
-      body: item,
-    })
-
-    services.value.unshift(data) // Добавляем в начало массива
-
-    return data
-  }
-  catch (err) {
-    console.error('Error creating services:', err)
-    throw err
-  }
-}
-
-// Обновление сервис
-const updateServices = async (id: number, item: Omit<Services, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const data = await $api<Services>(`${API_BASE}/services/${id}`, {
-      method: 'PUT',
-      body: item,
-    })
-
-    const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      services.value[index] = data
-
-    return data
-  }
-  catch (err) {
-    console.error('Error updating services:', err)
-    throw err
-  }
-}
-
-// Удаление сервис
-const deleteServices = async (id: number) => {
-  try {
-    await $api(`${API_BASE}/services/${id}`, {
-      method: 'DELETE',
-    })
-
-    const index = services.value.findIndex(p => p.id === id)
-    if (index !== -1)
-      services.value.splice(index, 1)
-  }
-  catch (err) {
-    console.error('Error deleting services:', err)
-    throw err
-  }
-}
-
-// Инициализация
-onMounted(() => {
-  fetchServices()
-  fetchCustomers()
-  fetchSLAs()
-})
-
-// Загрузка списка компаний
+// === Загрузка справочников ===
 const fetchCustomers = async () => {
   try {
     customersLoading.value = true
-
     const data = await $api<{ customers: Customers[]; total: number }>(`${API_BASE}/customers`)
-
     customers.value = data.customers || []
   }
   catch (err) {
@@ -190,13 +128,10 @@ const fetchCustomers = async () => {
   }
 }
 
-// Загрузка списка SLA
 const fetchSLAs = async () => {
   try {
     slasLoading.value = true
-
     const data = await $api<{ sla: SLA[]; total: number }>(`${API_BASE}/sla`)
-
     slas.value = data.sla || []
   }
   catch (err) {
@@ -207,6 +142,14 @@ const fetchSLAs = async () => {
   }
 }
 
+// === Инициализация ===
+onMounted(() => {
+  fetchCustomers()
+  fetchSLAs()
+  fetchServices()
+})
+
+// === Заголовки таблицы ===
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Название', key: 'name', sortable: true },
@@ -221,36 +164,20 @@ const headers = [
   { title: 'Действия', key: 'actions', sortable: false },
 ]
 
-// Фильтрация
-const filteredServices = computed(() => {
-  let filtered = services.value
+// === Фильтрация ===
+const selectedNames = ref<string[]>([])
+const selectedTypes = ref<string[]>([])
+const searchNames = ref<string | null>(null)
 
-  if (searchQuery.value.trim()) {
-    // Фильтруем по поисковому запросу (по названию)
-    const query = searchQuery.value.toLowerCase()
-
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
-  }
-
-  if (statusFilter.value !== null) {
-    // Фильтруем по isActive: 1 = true (активен), 2 = false (не активен)
-    filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
-  }
-
-  if (selectedNames.value.length > 0) {
-    // Фильтруем по выбранным названиям
-    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
-  }
-
-  if (selectedTypes.value.length > 0) {
-    // Фильтруем по выбранным типам
-    filtered = filtered.filter(p => selectedTypes.value.includes(p.type))
-  }
-
-  return filtered
+const uniqueNames = computed(() => {
+  const names = services.value.map(p => p.name)
+  return [...new Set(names)].sort()
 })
 
-// Сброс фильтров
+const hasActiveFilters = computed(() => {
+  return statusFilter.value !== null || selectedNames.value.length > 0 || selectedTypes.value.length > 0
+})
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = null
@@ -258,128 +185,21 @@ const clearFilters = () => {
   selectedTypes.value = []
 }
 
-// Уникальные названия для фильтра
-const uniqueNames = computed(() => {
-  const names = services.value.map(p => p.name)
-
-  return [...new Set(names)].sort()
+const filteredServices = computed(() => {
+  let filtered = baseFilteredItems.value
+  if (selectedNames.value.length > 0)
+    filtered = filtered.filter(p => selectedNames.value.includes(p.name))
+  if (selectedTypes.value.length > 0)
+    filtered = filtered.filter(p => selectedTypes.value.includes(p.type))
+  return filtered
 })
 
-// Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== null || selectedNames.value.length > 0 || selectedTypes.value.length > 0
-})
-
-// Массовые действия
-const bulkDelete = () => {
-  console.log('🗑️ Массовое удаление - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkDeleteDialogOpen.value = true
-}
-
-const bulkChangeStatus = () => {
-  console.log('🔄 Массовое изменение статуса - вызвано')
-  console.log('📋 Выбранные элементы:', selectedItems.value)
-  console.log('📊 Количество выбранных элементов:', selectedItems.value.length)
-  isBulkStatusDialogOpen.value = true
-}
-
-const confirmBulkDelete = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value)
-      await deleteServices(item.id)
-
-    selectedItems.value = []
-    showToast(`Удалено ${count} сервисы`)
-    isBulkDeleteDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового удаления', 'error')
-  }
-}
-
-const confirmBulkStatusChange = async () => {
-  try {
-    const count = selectedItems.value.length
-    for (const item of selectedItems.value) {
-      await updateServices(item.id, {
-        ...item,
-        isActive: bulkStatusValue.value === 1,
-      })
-    }
-    selectedItems.value = []
-    showToast(`Статус изменен для ${count} сервисы`)
-    isBulkStatusDialogOpen.value = false
-  }
-  catch (err) {
-    showToast('Ошибка массового изменения статуса', 'error')
-  }
-}
-
-const resolveStatusVariant = (isActive: boolean) => {
-  if (isActive)
-    return { color: 'primary', text: 'Активен' }
-  else
-    return { color: 'error', text: 'Не активен' }
-}
-
-// Пагинация
-const currentPage = ref(1)
-
-// Фильтры
-const statusFilter = ref<number | null>(null)
-const selectedNames = ref<string[]>([])
-const selectedTypes = ref<string[]>([])
-const searchNames = ref<string | null>(null)
-const isFilterDialogOpen = ref(false)
-
-// Массовые действия
-const selectedItems = ref<any[]>([])
-const isBulkActionsMenuOpen = ref(false)
-const isBulkDeleteDialogOpen = ref(false)
-const isBulkStatusDialogOpen = ref(false)
-const bulkStatusValue = ref<number>(1)
-
-// Отслеживание изменений выбранных элементов
-watch(selectedItems, newValue => {
-  console.log('✅ Изменение выбранных элементов')
-  console.log('📋 Новое значение selectedItems:', newValue)
-  console.log('📊 Количество выбранных:', newValue.length)
-  console.log('🔍 Детали выбранных элементов:', JSON.stringify(newValue, null, 2))
-}, { deep: true })
-
-// Ограничение количества выбранных названий
 watch(selectedNames, value => {
   if (value.length > 10)
     nextTick(() => selectedNames.value.pop())
 })
 
-// Диалоги
-const editDialog = ref(false)
-const deleteDialog = ref(false)
-
-const defaultItem = ref<Services>({
-  id: -1,
-  name: '',
-  comment: '',
-  type: '',
-  createdAt: '',
-  updatedAt: '',
-  isActive: true,
-})
-
-const editedItem = ref<Services>({ ...defaultItem.value })
-const editedIndex = ref(-1)
-
-// Опции статуса
-const statusOptions = [
-  { text: 'Активен', value: 1 },
-  { text: 'Не активен', value: 2 },
-]
-
-// Опции типа
+// === Опции типа ===
 const typeOptions = [
   'Обучение',
   'Демонстрация',
@@ -395,39 +215,24 @@ const typeOptions = [
   'Ит',
 ]
 
-// Методы
+// === Кастомные методы ===
 const editItem = async (item: Services) => {
   editedIndex.value = services.value.indexOf(item)
-
-  // Загружаем полные данные сервиса с сервера
   try {
     const fullItem = await $api<Services>(`${API_BASE}/services/${item.id}`)
-
     editedItem.value = { ...fullItem }
-
-    // Устанавливаем выбранные компании
     selectedCustomerIds.value = fullItem.customers?.map(c => c.id) || []
-
-    // Устанавливаем существующие вложения
     existingAttachments.value = fullItem.attachments || []
-
-    // Очищаем загружаемые файлы
     uploadedFiles.value = []
-
-    // Устанавливаем выбранный SLA (связь 1 к 1)
     selectedSLAId.value = fullItem.sla?.id || null
   }
   catch (err) {
-    console.error('Error loading service details:', err)
-
-    // Fallback к локальным данным
     editedItem.value = { ...item }
     selectedCustomerIds.value = item.customers?.map(c => c.id) || []
     existingAttachments.value = item.attachments || []
     uploadedFiles.value = []
     selectedSLAId.value = item.sla?.id || null
   }
-
   editDialog.value = true
 }
 
@@ -440,36 +245,35 @@ const deleteItem = (item: Services) => {
 const close = () => {
   editDialog.value = false
   editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
+  editedItem.value = {
+    id: -1,
+    name: '',
+    comment: '',
+    type: '',
+    createdAt: '',
+    updatedAt: '',
+    isActive: true,
+  }
   selectedCustomerIds.value = []
   uploadedFiles.value = []
   existingAttachments.value = []
   selectedSLAId.value = null
 }
 
-const closeDelete = () => {
-  deleteDialog.value = false
-  editedIndex.value = -1
-  editedItem.value = { ...defaultItem.value }
-}
-
 const save = async () => {
   if (!editedItem.value.name?.trim()) {
     showToast('Название обязательно для заполнения', 'error')
-
     return
   }
 
   try {
-    // Извлекаем ID компаний из объектов (VCombobox может возвращать объекты вместо ID)
     const customerIds = selectedCustomerIds.value.map((item: any) =>
       typeof item === 'object' && item !== null ? item.id : item,
     )
+    const slaId = selectedSLAId.value
+      ? (typeof selectedSLAId.value === 'object' ? (selectedSLAId.value as any).id : selectedSLAId.value)
+      : null
 
-    // Извлекаем ID SLA из объекта (связь 1 к 1)
-    const slaId = selectedSLAId.value ? (typeof selectedSLAId.value === 'object' ? (selectedSLAId.value as any).id : selectedSLAId.value) : null
-
-    // Подготовка данных для отправки
     const serviceData = {
       name: editedItem.value.name,
       comment: editedItem.value.comment || '',
@@ -480,50 +284,43 @@ const save = async () => {
     }
 
     if (editedIndex.value > -1) {
-      // Обновление существующего
-      const updated = await updateServices(editedItem.value.id, serviceData)
-
-      // Загрузка новых файлов если есть
+      await $api(`${API_BASE}/services/${editedItem.value.id}`, {
+        method: 'PUT',
+        body: serviceData,
+      })
       if (uploadedFiles.value.length > 0)
         await uploadFiles(editedItem.value.id)
-
       showToast('Сервис успешно сохранен')
     }
     else {
-      // Добавление нового
-      const created = await createServices(serviceData)
-
-      // Загрузка файлов для нового сервиса
+      const created = await $api<Services>(`${API_BASE}/services`, {
+        method: 'POST',
+        body: serviceData,
+      })
       if (uploadedFiles.value.length > 0 && created.id)
         await uploadFiles(created.id)
-
-      // Перезагружаем данные что бы получить актуальный список с сервера
-      await fetchServices()
       showToast('Сервис успешно добавлен')
     }
     close()
+    await fetchServices()
   }
   catch (err) {
-    showToast('Ошибка сохранения сервис', 'error')
+    showToast('Ошибка сохранения сервиса', 'error')
   }
 }
 
-// Загрузка файлов на сервер
+const { showToast } = useToast()
+
 const uploadFiles = async (serviceId: number) => {
   try {
     const formData = new FormData()
-
     uploadedFiles.value.forEach(file => {
       formData.append('files', file)
     })
-
     await $api(`${API_BASE}/services/${serviceId}/attachments`, {
       method: 'POST',
       body: formData,
     })
-
-    // Перезагружаем данные после загрузки файлов
-    await fetchServices()
   }
   catch (err) {
     console.error('Error uploading files:', err)
@@ -531,34 +328,27 @@ const uploadFiles = async (serviceId: number) => {
   }
 }
 
-// Удаление вложения
 const removeAttachment = async (attachmentId: number) => {
   try {
     await $api(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachmentId}`, {
       method: 'DELETE',
     })
-
-    // Удаляем из списка существующих вложений
     existingAttachments.value = existingAttachments.value.filter(a => a.id !== attachmentId)
     showToast('Файл удален')
   }
   catch (err) {
-    console.error('Error removing attachment:', err)
     showToast('Ошибка удаления файла', 'error')
   }
 }
 
-// Скачивание вложения
 const downloadAttachment = async (attachment: Attachment) => {
   try {
     const response = await fetch(`${API_BASE}/services/${editedItem.value.id}/attachments/${attachment.id}/download`)
     if (!response.ok)
       throw new Error('Download failed')
-
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
-
     link.href = url
     link.download = attachment.fileName
     document.body.appendChild(link)
@@ -567,54 +357,8 @@ const downloadAttachment = async (attachment: Attachment) => {
     window.URL.revokeObjectURL(url)
   }
   catch (err) {
-    console.error('Error downloading file:', err)
     showToast('Ошибка скачивания файла', 'error')
   }
-}
-
-const deleteItemConfirm = async () => {
-  try {
-    await deleteServices(editedItem.value.id)
-    showToast('Сервис успешно удален')
-    closeDelete()
-  }
-  catch (err) {
-    showToast('Ошибка удаления сервис', 'error')
-  }
-}
-
-// Переключение статуса
-const toggleStatus = async (item: Services, newValue: boolean | null) => {
-  console.log('🔄 toggleStatus вызван')
-  console.log('📝 Элемент:', item)
-  console.log('🔢 Новое значение isActive:', newValue)
-
-  if (newValue === null)
-    return
-
-  try {
-    await updateServices(item.id, {
-      ...item,
-      isActive: newValue,
-    })
-    showToast('Статус сервис изменен')
-  }
-  catch (err) {
-    showToast('Ошибка изменения статуса', 'error')
-  }
-}
-
-const { showToast } = useToast()
-
-// Добавление нового сервис
-const addNewServices = () => {
-  editedItem.value = { ...defaultItem.value }
-  editedIndex.value = -1
-  selectedCustomerIds.value = []
-  uploadedFiles.value = []
-  existingAttachments.value = []
-  selectedSLAId.value = null
-  editDialog.value = true
 }
 </script>
 
@@ -1092,7 +836,6 @@ const addNewServices = () => {
                 persistent-hint
               />
 
-              <!-- Список существующих вложений -->
               <div
                 v-if="existingAttachments.length > 0"
                 class="mt-4"

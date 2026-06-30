@@ -26,8 +26,8 @@ export interface CrudConfig<T extends BaseEntity> {
   endpoint: string
   /** Название сущности в родительном падеже, напр. 'состояния' */
   itemName: string
-  /** Заголовки таблицы */
-  headers: CrudHeader[]
+  /** Заголовки таблицы (опционально, для документации/использования в будущем) */
+  headers?: CrudHeader[]
   /** Значение по умолчанию для новой сущности */
   defaultItem: T
   /** Ключ ответа API, если он отличается от имени эндпоинта (напр. '/backup' возвращает { data: [...] }) */
