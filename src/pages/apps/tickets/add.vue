@@ -20,6 +20,8 @@ definePage({
 const API_BASE = import.meta.env.VITE_API_BASE_URL
 const router = useRouter()
 
+const REF_SECTIONS = ['priorities', 'queues', 'states', 'types', 'typeCategories', 'agents', 'agentGroups', 'customers', 'services', 'sla', 'customerUsers', 'systemConfiguration'] as const
+
 const { data: refData, fetchAll: loadReferenceData, refreshData: refreshReferenceData, isLoading: refLoading } = useReferenceData()
 
 const priorities = computed(() => refData.priorities)
@@ -587,7 +589,7 @@ const createAuthorFromDialog = async () => {
 
     const newUser = await createNewAuthor()
 
-    await loadReferenceData(true)
+    await loadReferenceData([...REF_SECTIONS], true)
 
     ticket.ownerId = (newUser as any).id   // всегда примитив ID
     newAuthorData.value.email = ''
@@ -626,7 +628,7 @@ const createNewUserFromNoData = async () => {
 
     console.log('New user created:', newUser)
     console.log('Fetching updated customerUsers...')
-    await loadReferenceData(true)
+    await loadReferenceData([...REF_SECTIONS], true)
     console.log('customerUsers after fetch:', customerUsers.value.length, 'items')
 
     const createdUserId = (newUser as any).id
@@ -690,7 +692,7 @@ const cancel = () => {
 // Инициализация
 onMounted(async () => {
   console.log('Add.vue mounted - initializing')
-  await loadReferenceData()
+  await loadReferenceData([...REF_SECTIONS])
   console.log('Add.vue initialization complete')
 })
 </script>

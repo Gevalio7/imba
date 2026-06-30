@@ -32,8 +32,10 @@ export interface CrudConfig<T extends BaseEntity> {
   defaultItem: T
   /** Ключ ответа API, если он отличается от имени эндпоинта (напр. '/backup' возвращает { data: [...] }) */
   responseKey?: string
-  /** Функция дополнительной фильтрации */
+  /** Функция дополнительной фильтрации (только при поиске) */
   customFilter?: (item: T, searchQuery: string) => boolean
+  /** Функция дополнительной фильтрации, применяется ПОСЛЕ всех стандартных фильтров (поиск + статус) */
+  filterCallback?: (item: T) => boolean
   /** Дополнительные поля для массового обновления статуса */
   extraUpdateFields?: (item: T) => Record<string, any>
   /** Обработчик перед сохранением (для валидации/трансформации) */
@@ -119,6 +121,7 @@ export function useEntityCrud<T extends BaseEntity>(
     defaultItem: _defaultItem,
     responseKey,
     customFilter,
+    filterCallback,
     extraUpdateFields,
     beforeSave,
     afterSave,
@@ -126,7 +129,7 @@ export function useEntityCrud<T extends BaseEntity>(
   } = config
 
   // === Состояния данных ===
-  const items: Ref<T[]> = ref([]) as any
+  const items = ref([]) as Ref<T[]>
   const total = ref(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -217,6 +220,11 @@ export function useEntityCrud<T extends BaseEntity>(
       filtered = filtered.filter(p => p.isActive === (statusFilter.value === 1))
     }
 
+    // Кастомный filterCallback (всегда применяется, независимо от поиска/статуса)
+    if (filterCallback) {
+      filtered = filtered.filter(item => filterCallback(item))
+    }
+
     return filtered
   })
 
@@ -299,7 +307,7 @@ export function useEntityCrud<T extends BaseEntity>(
   }
 
   // === Массовые действия ===
-  const selectedItems: Ref<T[]> = ref([]) as any
+  const selectedItems = ref([]) as Ref<T[]>
   const isBulkActionsMenuOpen = ref(false)
   const isBulkDeleteDialogOpen = ref(false)
   const isBulkStatusDialogOpen = ref(false)

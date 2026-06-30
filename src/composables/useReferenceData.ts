@@ -43,10 +43,10 @@ const isLoaded = ref(false)
 const isLoading = ref(false)
 const lastFetch = ref<number | null>(null)
 
-const CACHE_TTL = 30 * 1000 // 30 seconds
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export function useReferenceData() {
-  const fetchAll = async (forceRefresh = false) => {
+  const fetchAll = async (sections?: string[], forceRefresh = false) => {
     if (isLoading.value)
       return
 
@@ -57,11 +57,15 @@ export function useReferenceData() {
 
     isLoading.value = true
     try {
-      const endpoint = forceRefresh
-        ? '/referenceData?forceRefresh=true'
-        : '/referenceData'
+      const queryParams = []
+      if (forceRefresh)
+        queryParams.push('forceRefresh=true')
+      if (sections && sections.length > 0)
+        queryParams.push(`sections=${sections.join(',')}`)
 
-      const result = await $api<ReferenceData>(`${API_BASE}/referenceData${forceRefresh ? '?forceRefresh=true' : ''}`)
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : ''
+
+      const result = await $api<ReferenceData>(`${API_BASE}/referenceData${queryString}`)
 
       data.priorities = result.priorities || []
       data.queues = result.queues || []
@@ -95,8 +99,8 @@ export function useReferenceData() {
     lastFetch.value = null
   }
 
-  const refreshData = async () => {
-    return fetchAll(true)
+  const refreshData = async (sections?: string[]) => {
+    return fetchAll(sections, true)
   }
 
   return {

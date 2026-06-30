@@ -21,6 +21,8 @@ const ticketId = computed(() => {
   return id ? Number(id) : null
 })
 
+const REF_SECTIONS = ['priorities', 'queues', 'states', 'types', 'typeCategories', 'customers', 'services', 'customerUsers'] as const
+
 const { data: refData, fetchAll: loadReferenceData } = useReferenceData()
 
 const {
@@ -30,7 +32,7 @@ const {
 } = useTicketForm(ticketId)
 
 onMounted(async () => {
-  await loadReferenceData()
+  await loadReferenceData([...REF_SECTIONS])
   await fetchTicket()
 })
 

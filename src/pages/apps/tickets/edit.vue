@@ -40,6 +40,8 @@ const ticketId = computed(() => {
 })
 
 // Reference data
+const REF_SECTIONS = ['priorities', 'queues', 'states', 'types', 'typeCategories', 'agents', 'agentGroups', 'customers', 'services', 'sla', 'customerUsers', 'systemConfiguration', 'workflows', 'postMasterMailAccounts', 'templates'] as const
+
 const { data: refData, fetchAll: loadReferenceData, refreshData: refreshReferenceData } = useReferenceData()
 
 // Main ticket form composable
@@ -231,7 +233,7 @@ watch(() => ticket.queueId, async (newQueueId, oldQueueId) => {
 onMounted(async () => {
   try {
     // Справочные данные загружаем всегда
-    await loadReferenceData()
+    await loadReferenceData([...REF_SECTIONS])
 
     // Для данных тикета проверяем наличие ticketId, чтобы избежать лишних API вызовов
     if (ticketId.value) {

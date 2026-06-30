@@ -192,7 +192,7 @@ const statusFilter = ref<number | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<Roles[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)

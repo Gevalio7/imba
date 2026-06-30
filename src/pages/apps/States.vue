@@ -61,6 +61,11 @@ watch(selectedNames, value => {
           id: -1, name: '', comment: '', type: '', color: '',
           createdAt: '', updatedAt: '', isActive: true,
         },
+        filterCallback: (item) => {
+          if (selectedNames.length > 0 && !selectedNames.includes(item.name))
+            return false
+          return true
+        },
       }"
       :headers="headers"
       :subject="'menu_states'"

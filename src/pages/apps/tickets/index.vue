@@ -283,7 +283,7 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<Ticket[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 

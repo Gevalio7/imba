@@ -20,20 +20,79 @@ const PostMasterMailAccounts = require('../models/postMasterMailAccounts')
 const Templates = require('../models/templates')
 const { asyncHandler } = require('../middleware/errorHandler')
 
+// --- Section registry: maps client section name → { model, defaultOpts, resultKey } ---
+const SECTION_REGISTRY = {
+  priorities: { model: Priorities, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'priorities' },
+  queues: { model: Queues, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'queues' },
+  states: { model: States, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'states' },
+  types: { model: Types, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'types' },
+  typeCategories: { model: TypeCategories, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'typeCategories' },
+  agents: { model: Agents, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'agents' },
+  agentGroups: { model: AgentsGroups, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'agentGroups' },
+  customers: { model: Customers, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'customers' },
+  customersGroups: { model: CustomersGroups, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'customersGroups' },
+  services: { model: Services, defaultOpts: { itemsPerPage: 1000 }, resultKey: 'services' },
+  sla: { model: Sla, defaultOpts: { itemsPerPage: 1000 }, resultKey: 'sla' },
+  systemConfiguration: { model: SystemConfiguration, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'systemConfiguration' },
+  customerUsers: { model: CustomerUsers, defaultOpts: { itemsPerPage: 1000 }, resultKey: 'customerUsers' },
+  workflows: { model: Workflows, defaultOpts: { itemsPerPage: 1000 }, resultKey: 'workflows' },
+  postMasterMailAccounts: { model: PostMasterMailAccounts, defaultOpts: { itemsPerPage: 1000, isActive: true }, resultKey: 'postMasterMailAccounts' },
+  templates: { model: Templates, defaultOpts: { itemsPerPage: 1000 }, resultKey: 'templates' },
+}
+
+const ALL_SECTIONS = Object.keys(SECTION_REGISTRY)
+
 let cachedData = null
+let cachedSections = new Set()
 let cacheTimestamp = null
 
 // Helper to clear cache programmatically
 const clearCache = () => {
   cachedData = null
+  cachedSections = new Set()
   cacheTimestamp = null
   console.log('🧹 Reference data cache cleared programmatically')
 }
 
 router.clearCache = clearCache
 
+/**
+ * Fetch one or more sections in parallel.
+ * Returns { data: { sectionName: [...] }, newlyCached: Set }
+ */
+async function fetchSections(sectionsToFetch) {
+  const fetchPromises = sectionsToFetch.map(async (name) => {
+    const entry = SECTION_REGISTRY[name]
+    if (!entry) return { name, result: [] }
+    try {
+      const result = await entry.model.getAll(entry.defaultOpts)
+      return { name, result: (result && result[entry.resultKey]) || [] }
+    } catch (err) {
+      console.error(`⚠️ Error fetching section "${name}":`, err.message)
+      return { name, result: [] }
+    }
+  })
+
+  const fetched = await Promise.all(fetchPromises)
+  const data = {}
+  const newlyCached = new Set()
+  for (const { name, result } of fetched) {
+    data[name] = result
+    newlyCached.add(name)
+  }
+  return { data, newlyCached }
+}
+
 router.get('/', asyncHandler(async (req, res) => {
-  const { forceRefresh } = req.query
+  const { forceRefresh, sections } = req.query
+
+  // Parse requested sections (comma-separated), or default to ALL
+  let requestedSections
+  if (sections && typeof sections === 'string' && sections.trim()) {
+    requestedSections = sections.split(',').map(s => s.trim()).filter(s => s && SECTION_REGISTRY[s])
+  }
+  if (!requestedSections || requestedSections.length === 0)
+    requestedSections = ALL_SECTIONS
 
   // Read TTL from system configuration (seconds). Default 300s (5min)
   let ttlSeconds = 300
@@ -52,82 +111,59 @@ router.get('/', asyncHandler(async (req, res) => {
     return Date.now() - cacheTimestamp < ttlSeconds * 1000
   }
 
-  if (!forceRefresh && isCacheValid())
-    return res.json(cachedData)
-
-  console.log('📊 Loading reference data (batch)...')
-
-  const startTime = Date.now()
-
-  const [
-    prioritiesResult,
-    queuesResult,
-    statesResult,
-    typesResult,
-    typeCategoriesResult,
-    agentsResult,
-    agentsGroupsResult,
-    customersResult,
-    customersGroupsResult,
-    servicesResult,
-    slaResult,
-    systemConfigurationResult,
-    customerUsersResult,
-    workflowsResult,
-    postMasterMailAccountsResult,
-    templatesResult,
-  ] = await Promise.all([
-    Priorities.getAll({ itemsPerPage: 1000, isActive: true }),
-    Queues.getAll({ itemsPerPage: 1000, isActive: true }),
-    States.getAll({ itemsPerPage: 1000, isActive: true }),
-    Types.getAll({ itemsPerPage: 1000, isActive: true }),
-    TypeCategories.getAll({ itemsPerPage: 1000, isActive: true }),
-    Agents.getAll({ itemsPerPage: 1000, isActive: true }),
-    AgentsGroups.getAll({ itemsPerPage: 1000, isActive: true }),
-    Customers.getAll({ itemsPerPage: 1000, isActive: true }),
-    CustomersGroups.getAll({ itemsPerPage: 1000, isActive: true }),
-    Services.getAll({ itemsPerPage: 1000 }),
-    Sla.getAll({ itemsPerPage: 1000 }),
-    SystemConfiguration.getAll({ itemsPerPage: 1000, isActive: true }),
-    CustomerUsers.getAll({ itemsPerPage: 1000 }),
-    Workflows.getAll({ itemsPerPage: 1000 }),
-    PostMasterMailAccounts.getAll({ itemsPerPage: 1000, isActive: true }),
-    Templates.getAll({ itemsPerPage: 1000 }),
-  ])
-
-  const data = {
-    priorities: prioritiesResult.priorities || [],
-    queues: queuesResult.queues || [],
-    states: statesResult.states || [],
-    types: typesResult.types || [],
-    typeCategories: typeCategoriesResult.typeCategories || [],
-    agents: agentsResult.agents || [],
-    agentGroups: agentsGroupsResult.agentsGroups || [],
-    customers: customersResult.customers || [],
-    customersGroups: customersGroupsResult.customersGroups || [],
-    services: servicesResult.services || [],
-    sla: slaResult.sla || [],
-    systemConfiguration: systemConfigurationResult.systemConfiguration || [],
-    customerUsers: customerUsersResult.customerUsers || [],
-    workflows: workflowsResult.workflows || [],
-    postMasterMailAccounts: postMasterMailAccountsResult.postMasterMailAccounts || [],
-    templates: templatesResult.templates || [],
+  // Try cache first (unless forceRefresh)
+  const allSectionsCached = requestedSections.every(s => cachedSections.has(s))
+  if (!forceRefresh && isCacheValid() && allSectionsCached) {
+    // Build response from cache for requested sections only
+    const partialResponse = {}
+    for (const name of requestedSections) {
+      partialResponse[name] = cachedData[name] || []
+    }
+    return res.json(partialResponse)
   }
 
-  console.log('systemConfiguration in data:', data.systemConfiguration)
+  console.log(`📊 Loading reference data (${requestedSections.length}/${ALL_SECTIONS.length} sections): ${requestedSections.join(', ')}`)
+  const startTime = Date.now()
 
-  cachedData = data
+  // Fetch only the sections that aren't cached (or all if forceRefresh)
+  const sectionsToFetch = forceRefresh
+    ? requestedSections
+    : requestedSections.filter(s => !cachedSections.has(s) || !isCacheValid())
+
+  if (sectionsToFetch.length === 0) {
+    // All requested sections are already cached — just return them
+    const partialResponse = {}
+    for (const name of requestedSections) {
+      partialResponse[name] = cachedData[name] || []
+    }
+    return res.json(partialResponse)
+  }
+
+  const { data: newData, newlyCached } = await fetchSections(sectionsToFetch)
+
+  // Merge into global cache
+  if (!cachedData) cachedData = {}
+  for (const name of newlyCached) {
+    cachedData[name] = newData[name]
+    cachedSections.add(name)
+  }
   cacheTimestamp = Date.now()
 
+  // Build response: use cached + fresh data for requested sections
+  const response = {}
+  for (const name of requestedSections) {
+    response[name] = cachedData[name] || []
+  }
+
   const elapsed = Date.now() - startTime
+  console.log(`✅ Reference data loaded (${sectionsToFetch.length} sections fetched) in ${elapsed}ms`)
 
-  console.log(`✅ Reference data loaded in ${elapsed}ms`)
-
-  res.json(data)
+  res.json(response)
 }))
 
 router.get('/clear-cache', asyncHandler(async (req, res) => {
   cachedData = null
+  cachedSections = new Set()
   cacheTimestamp = null
   res.json({ message: 'Cache cleared' })
 }))

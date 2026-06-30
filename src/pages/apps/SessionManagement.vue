@@ -299,7 +299,7 @@ const typeFilter = ref<string | null>(null)
 const isFilterDialogOpen = ref(false)
 
 // Массовые действия
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<SessionManagement[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkTerminateAllDialogOpen = ref(false)
 

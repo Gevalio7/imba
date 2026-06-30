@@ -232,7 +232,7 @@ const itemsPerPage = ref(10)
 
 const statusFilter = ref<number | null>(null)
 
-const selectedItems = ref<any[]>([])
+const selectedItems = ref<PostMasterMailAccount[]>([])
 const isBulkActionsMenuOpen = ref(false)
 const isBulkDeleteDialogOpen = ref(false)
 const isBulkStatusDialogOpen = ref(false)
