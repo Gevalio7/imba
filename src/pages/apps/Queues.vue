@@ -2,12 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { type ColumnSetting } from '@/composables/useFilters'
-import { useEntityCrud, type BaseEntity } from '@/composables/useEntityCrud'
+import type { BaseEntity } from '@/composables/useEntityCrud'
+import EntityList, { type EntityListHeader } from '@/components/EntityList.vue'
 import { $api } from '@/utils/api'
 
 definePage({ meta: { navActiveLink: 'apps-queues', action: 'read', subject: 'menu_queues' } })
 
-// Типы данных для Очередь
 interface Queues extends BaseEntity {
   name: string
   description: string
@@ -35,91 +35,11 @@ interface Queues extends BaseEntity {
   templateCommentTicketId: number | null
 }
 
-// Универсальный CRUD
-const {
-  items: queues,
-  loading,
-  error,
-  fetchItems: fetchQueues,
-  deleteDialog,
-  editedItem,
-  editedIndex,
-  selectedItems,
-  isBulkActionsMenuOpen,
-  isBulkDeleteDialogOpen,
-  isBulkStatusDialogOpen,
-  bulkStatusValue,
-  statusOptions,
-  bulkDelete,
-  bulkChangeStatus,
-  confirmBulkDelete,
-  confirmBulkStatusChange,
-  resolveStatusVariant,
-  toggleStatus,
-  currentPage,
-  itemsPerPage,
-  searchQuery,
-  statusFilter,
-  isFilterDialogOpen,
-  clearFilters,
-  filteredItems: filteredQueues,
-  deleteItem,
-  closeDelete,
-  deleteItemConfirm,
-} = useEntityCrud<Queues>({
-  endpoint: '/queues',
-  itemName: 'очереди',
-  defaultItem: {
-    id: -1,
-    name: '',
-    description: '',
-    companyId: null,
-    serviceId: null,
-    slaId: null,
-    workflowId: null,
-    priorityId: null,
-    keywords: null,
-    quickAnswerArticleIds: null,
-    executorGroupIds: null,
-    executorAgentIds: null,
-    observerGroupIds: null,
-    observerAgentIds: null,
-    approverGroupIds: null,
-    approverAgentIds: null,
-    departmentId: null,
-    typeId: null,
-    categoryId: null,
-    postMasterMailAccountId: null,
-    templateOpenTicketId: null,
-    templateCloseTicketId: null,
-    templateConfirmTicketId: null,
-    templateStatusChangeId: null,
-    templateCommentTicketId: null,
-    isActive: true,
-  },
-  customFilter: (item, query) => {
-    return (item.name?.toLowerCase() || '').includes(query) ||
-           (item.description?.toLowerCase() || '').includes(query)
-  },
-})
+const entityListRef = ref<any>(null)
+const router = useRouter()
+const route = useRoute()
 
-// Справочники для отображения названий вместо ID
-interface ReferenceData {
-  services: { id: number; name: string }[]
-  sla: { id: number; name: string }[]
-  workflows: { id: number; name: string }[]
-  agentGroups: { id: number; name: string }[]
-  priorities: { id: number; name: string; color: string }[]
-  customers: { id: number; name: string }[]
-  customersGroups: { id: number; name: string; customerId: number }[]
-  agents: { id: number; firstName: string; lastName: string }[]
-  types: { id: number; name: string }[]
-  typeCategories: { id: number; name: string }[]
-  postMasterMailAccounts: { id: number; name: string }[]
-  templates: { id: number; name: string }[]
-}
-
-// Доступные колонки для настройки
+// === Доступные колонки для настройки ===
 const availableColumns: ColumnSetting[] = [
   { key: 'id', title: 'ID', visible: true, sortable: true, type: 'text' },
   { key: 'name', title: 'Название', visible: true, sortable: true, type: 'text' },
@@ -146,7 +66,6 @@ const availableColumns: ColumnSetting[] = [
   { key: 'actions', title: 'Действия', visible: true, sortable: false, type: 'text' },
 ]
 
-// Загрузка/сохранение настроек колонок
 const STORAGE_KEY = 'queues-columns-settings'
 
 const loadColumnSettings = (): ColumnSetting[] => {
@@ -154,10 +73,8 @@ const loadColumnSettings = (): ColumnSetting[] => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as ColumnSetting[]
-
       return availableColumns.map(col => {
         const savedCol = parsed.find((s: ColumnSetting) => s.key === col.key)
-
         return savedCol ? { ...col, visible: savedCol.visible } : col
       })
     }
@@ -165,42 +82,34 @@ const loadColumnSettings = (): ColumnSetting[] => {
   catch (e) {
     console.error('Error loading column settings:', e)
   }
-
   return [...availableColumns]
 }
 
 const columnSettings = ref<ColumnSetting[]>(loadColumnSettings())
 
-// Вычисляемые заголовки на основе настроек колонок
-const visibleHeaders = computed(() => {
-  return columnSettings.value.filter(col => col.visible)
+const visibleHeaders = computed<EntityListHeader[]>(() => {
+  return columnSettings.value.filter(col => col.visible).map(col => ({
+    title: col.title,
+    key: col.key,
+    sortable: col.sortable,
+  }))
 })
 
-// Сохранение настроек колонок
 watch(columnSettings, newSettings => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
-  }
-  catch (e) {
-    console.error('Error saving column settings:', e)
-  }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings)) }
+  catch (e) { console.error('Error saving column settings:', e) }
 }, { deep: true })
 
-// Методы для работы с колонками
 const moveColumnUp = (index: number) => {
-  if (index <= 0)
-    return
+  if (index <= 0) return
   const temp = columnSettings.value[index]
-
   columnSettings.value[index] = columnSettings.value[index - 1]
   columnSettings.value[index - 1] = temp
 }
 
 const moveColumnDown = (index: number) => {
-  if (index >= columnSettings.value.length - 1)
-    return
+  if (index >= columnSettings.value.length - 1) return
   const temp = columnSettings.value[index]
-
   columnSettings.value[index] = columnSettings.value[index + 1]
   columnSettings.value[index + 1] = temp
 }
@@ -209,728 +118,201 @@ const resetColumnSettings = () => {
   columnSettings.value = availableColumns.map(col => ({ ...col, visible: true }))
 }
 
+// === Справочники ===
+interface ReferenceData {
+  services: { id: number; name: string }[]
+  sla: { id: number; name: string }[]
+  workflows: { id: number; name: string }[]
+  agentGroups: { id: number; name: string }[]
+  priorities: { id: number; name: string; color: string }[]
+  customers: { id: number; name: string }[]
+  customersGroups: { id: number; name: string; customerId: number }[]
+  agents: { id: number; firstName: string; lastName: string }[]
+  types: { id: number; name: string }[]
+  typeCategories: { id: number; name: string }[]
+  postMasterMailAccounts: { id: number; name: string }[]
+  templates: { id: number; name: string }[]
+}
+
 const referenceData = ref<ReferenceData>({
-  services: [],
-  sla: [],
-  workflows: [],
-  agentGroups: [],
-  priorities: [],
-  customers: [],
-  customersGroups: [],
-  agents: [],
-  types: [],
-  typeCategories: [],
-  postMasterMailAccounts: [],
-  templates: [],
+  services: [], sla: [], workflows: [], agentGroups: [],
+  priorities: [], customers: [], customersGroups: [], agents: [],
+  types: [], typeCategories: [], postMasterMailAccounts: [], templates: [],
 })
 
 const fetchReferenceData = async () => {
   try {
-    const data = await $api<ReferenceData>(`/referenceData`)
-
-    referenceData.value = {
-      services: data.services || [],
-      sla: data.sla || [],
-      workflows: data.workflows || [],
-      agentGroups: data.agentGroups || [],
-      priorities: data.priorities || [],
-      customers: data.customers || [],
-      customersGroups: data.customersGroups || [],
-      agents: data.agents || [],
-      types: data.types || [],
-      typeCategories: data.typeCategories || [],
-      postMasterMailAccounts: data.postMasterMailAccounts || [],
-      templates: data.templates || [],
-    }
+    const data = await $api<ReferenceData>('/referenceData')
+    Object.assign(referenceData.value, data)
   }
   catch (err) {
     console.error('Error fetching reference data:', err)
-    // Устанавливаем пустые массивы при ошибке
-    referenceData.value = {
-      services: [],
-      sla: [],
-      workflows: [],
-      agentGroups: [],
-      priorities: [],
-      customers: [],
-      customersGroups: [],
-      agents: [],
-      types: [],
-      typeCategories: [],
-      postMasterMailAccounts: [],
-      templates: [],
-    }
   }
 }
 
-const getServiceName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const service = referenceData.value.services.find(s => s.id === id)
+const getServiceName = (id: number | null) => id ? referenceData.value.services.find(s => s.id === id)?.name || '-' : '-'
+const getSlaName = (id: number | null) => id ? referenceData.value.sla.find(s => s.id === id)?.name || '-' : '-'
+const getWorkflowName = (id: number | null) => id ? referenceData.value.workflows.find(w => w.id === id)?.name || '-' : '-'
+const getAgentGroupName = (id: number | null) => id ? referenceData.value.agentGroups.find(g => g && g.id === id)?.name || '-' : '-'
+const getPriorityName = (id: number | null) => id ? referenceData.value.priorities.find(p => p && p.id === id)?.name || '-' : '-'
+const getPriorityColor = (id: number | null) => id ? referenceData.value.priorities.find(p => p && p.id === id)?.color || 'grey' : 'grey'
+const getCompanyName = (id: number | null) => id ? referenceData.value.customers.find(c => c && c.id === id)?.name || '-' : '-'
+const getDepartmentName = (id: number | null) => id ? referenceData.value.customersGroups.find(d => d && d.id === id)?.name || '-' : '-'
+const getAgentNames = (ids: number[] | null) => !ids || ids.length === 0 ? '-' : ids.map(id => {
+  const agent = referenceData.value.agents.find(a => a && a.id === id)
+  return agent ? `${agent.firstName} ${agent.lastName}` : `Агент ${id}`
+}).join(', ')
+const getTypeName = (id: number | null) => id ? referenceData.value.types.find(t => t && t.id === id)?.name || '-' : '-'
+const getCategoryName = (id: number | null) => id ? referenceData.value.typeCategories.find(c => c && c.id === id)?.name || '-' : '-'
+const getPostMasterMailAccountName = (id: number | null) => id ? referenceData.value.postMasterMailAccounts.find(a => a && a.id === id)?.name || '-' : '-'
+const getTemplateName = (id: number | null) => id ? referenceData.value.templates.find(t => t && t.id === id)?.name || '-' : '-'
 
-  return service?.name || '-'
-}
+// === Навигация ===
+const editItem = (item: Queues) => router.push(`/apps/queues/${item.id}`)
+const addNewQueues = () => router.push('/apps/queues/add')
 
-const getSlaName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const sla = referenceData.value.sla.find(s => s.id === id)
-
-  return sla?.name || '-'
-}
-
-const getWorkflowName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const workflows = referenceData.value.workflows.find(w => w.id === id)
-
-  return workflows?.name || '-'
-}
-
-const getAgentGroupName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const group = referenceData.value.agentGroups.find(g => g && g.id === id)
-
-  return group?.name || '-'
-}
-
-const getPriorityName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const priority = referenceData.value.priorities.find(p => p && p.id === id)
-
-  return priority?.name || '-'
-}
-
-const getPriorityColor = (id: number | null) => {
-  if (!id)
-    return 'grey'
-  const priority = referenceData.value.priorities.find(p => p && p.id === id)
-
-  return priority?.color || 'grey'
-}
-
-const getCompanyName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const company = referenceData.value.customers.find(c => c && c.id === id)
-
-  return company?.name || '-'
-}
-
-const getDepartmentName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const department = referenceData.value.customersGroups.find(d => d && d.id === id)
-
-  return department?.name || '-'
-}
-
-const getAgentNames = (ids: number[] | null) => {
-  if (!ids || ids.length === 0)
-    return '-'
-
-  const names = ids.map(id => {
-    const agent = referenceData.value.agents.find(a => a && a.id === id)
-
-    return agent ? `${agent.firstName} ${agent.lastName}` : `Агент ${id}`
-  })
-
-  return names.join(', ')
-}
-
-const getTypeName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const type = referenceData.value.types.find(t => t && t.id === id)
-
-  return type?.name || '-'
-}
-
-const getCategoryName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const category = referenceData.value.typeCategories.find(c => c && c.id === id)
-
-  return category?.name || '-'
-}
-
-const getPostMasterMailAccountName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const account = referenceData.value.postMasterMailAccounts.find(a => a && a.id === id)
-
-  return account?.name || '-'
-}
-
-const getTemplateName = (id: number | null) => {
-  if (!id)
-    return '-'
-  const template = referenceData.value.templates.find(t => t && t.id === id)
-
-  return template?.name || '-'
-}
-
-// Роутер
-const router = useRouter()
-const route = useRoute()
-
-// Диалог настройки колонок
+// === Диалог настройки колонок ===
 const isColumnsDialogOpen = ref(false)
 
-// Watcher для обновления данных при возврате со страницы редактирования
+// === Watcher для обновления при возврате с редактирования ===
 let stopWatchRefresh: (() => void) | null = null
 
-const editItem = (item: Queues) => {
-  router.push(`/apps/queues/${item.id}`)
-}
-
-const addNewQueues = () => {
-  router.push('/apps/queues/add')
-}
-
-// Инициализация и очистка
-onMounted(async () => {
-  await fetchReferenceData()
-  await fetchQueues()
-
-  // Настройка watcher с очисткой
+onMounted(() => {
   stopWatchRefresh = watch(() => route.query.refresh, newVal => {
-    if (newVal) fetchQueues()
+    if (newVal) entityListRef.value?.fetchItems()
   })
 })
 
 onBeforeUnmount(() => {
-  // Очищаем watcher при размонтировании
-  if (stopWatchRefresh) {
-    stopWatchRefresh()
-  }
+  if (stopWatchRefresh) stopWatchRefresh()
 })
 </script>
 
 <template>
   <div>
-    <VCard title="Очереди">
-      <!-- Индикатор загрузки -->
-      <div
-        v-if="loading"
-        class="d-flex justify-center pa-6"
-      >
-        <VProgressCircular
-          indeterminate
-          color="primary"
-        />
-      </div>
+    <EntityList
+      ref="entityListRef"
+      :config="{
+        endpoint: '/queues',
+        itemName: 'очереди',
+        defaultItem: {
+          id: -1, name: '', description: '', companyId: null, serviceId: null,
+          slaId: null, workflowId: null, priorityId: null, keywords: null,
+          quickAnswerArticleIds: null, executorGroupIds: null, executorAgentIds: null,
+          observerGroupIds: null, observerAgentIds: null, approverGroupIds: null,
+          approverAgentIds: null, departmentId: null, typeId: null, categoryId: null,
+          postMasterMailAccountId: null, templateOpenTicketId: null, templateCloseTicketId: null,
+          templateConfirmTicketId: null, templateStatusChangeId: null, templateCommentTicketId: null,
+          isActive: true,
+        },
+        customFilter: (item, query) => {
+          const q = item as Queues
+          return (q.name?.toLowerCase() || '').includes(query)
+            || (q.description?.toLowerCase() || '').includes(query)
+        },
+      }"
+      :headers="visibleHeaders"
+      title="Очереди"
+      subject="menu_queues"
+      search-placeholder="Поиск очереди"
+      :show-edit-dialog="false"
+      @mounted="fetchReferenceData"
+    >
+      <!-- Кастомные колонки (все ~20) -->
+      <template #item.serviceId="{ item }">{{ getServiceName((item as Queues).serviceId) }}</template>
+      <template #item.slaId="{ item }">{{ getSlaName((item as Queues).slaId) }}</template>
+      <template #item.workflowId="{ item }">{{ getWorkflowName((item as Queues).workflowId) }}</template>
+      <template #item.companyId="{ item }">{{ getCompanyName((item as Queues).companyId) }}</template>
+      <template #item.departmentId="{ item }">{{ getDepartmentName((item as Queues).departmentId) }}</template>
+      <template #item.typeId="{ item }">{{ getTypeName((item as Queues).typeId) }}</template>
+      <template #item.categoryId="{ item }">{{ getCategoryName((item as Queues).categoryId) }}</template>
+      <template #item.postMasterMailAccountId="{ item }">{{ getPostMasterMailAccountName((item as Queues).postMasterMailAccountId) }}</template>
 
-      <!-- Сообщение об ошибке -->
-      <div
-        v-else-if="error"
-        class="d-flex justify-center pa-6"
-      >
-        <VAlert
-          type="error"
-          class="ma-4"
-        >
-          {{ error }}
-        </VAlert>
-      </div>
-
-      <div
-        v-else
-        class="d-flex flex-wrap gap-4 pa-6"
-      >
-        <div class="d-flex align-center">
-          <!-- Поиск -->
-          <AppTextField
-            v-model="searchQuery"
-            placeholder="Поиск очереди"
-            style="inline-size: 250px;"
-            class="me-3"
-            clearable
-            clear-icon="bx-x"
-          />
+      <template #item.keywords="{ item }">
+        <div v-if="(item as Queues).keywords" class="d-flex flex-wrap gap-1">
+          <VChip v-for="keyword in (item as Queues).keywords!.split(',')" :key="keyword" size="small" color="primary" variant="flat" prepend-icon="bx-tag">
+            {{ keyword.trim() }}
+          </VChip>
         </div>
+        <span v-else class="text-disabled">-</span>
+      </template>
 
-        <!-- Кнопка фильтра -->
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="bx-filter"
-          @click="isFilterDialogOpen = true"
-        >
-          Фильтр
+      <template #item.executorGroupIds="{ item }">
+        {{ (item as Queues).executorGroupIds && (item as Queues).executorGroupIds!.length > 0 ? (item as Queues).executorGroupIds!.map(id => getAgentGroupName(id)).join(', ') : '-' }}
+      </template>
+      <template #item.executorAgentIds="{ item }">{{ getAgentNames((item as Queues).executorAgentIds) }}</template>
+      <template #item.observerGroupIds="{ item }">
+        {{ (item as Queues).observerGroupIds && (item as Queues).observerGroupIds!.length > 0 ? (item as Queues).observerGroupIds!.map(id => getAgentGroupName(id)).join(', ') : '-' }}
+      </template>
+      <template #item.observerAgentIds="{ item }">{{ getAgentNames((item as Queues).observerAgentIds) }}</template>
+      <template #item.approverGroupIds="{ item }">
+        {{ (item as Queues).approverGroupIds && (item as Queues).approverGroupIds!.length > 0 ? (item as Queues).approverGroupIds!.map(id => getAgentGroupName(id)).join(', ') : '-' }}
+      </template>
+      <template #item.approverAgentIds="{ item }">{{ getAgentNames((item as Queues).approverAgentIds) }}</template>
+
+      <template #item.priorityId="{ item }">
+        <VChip v-if="(item as Queues).priorityId" :color="getPriorityColor((item as Queues).priorityId)" size="small">
+          {{ getPriorityName((item as Queues).priorityId) }}
+        </VChip>
+        <span v-else>-</span>
+      </template>
+
+      <template #item.templateOpenTicketId="{ item }">{{ getTemplateName((item as Queues).templateOpenTicketId) }}</template>
+      <template #item.templateCloseTicketId="{ item }">{{ getTemplateName((item as Queues).templateCloseTicketId) }}</template>
+      <template #item.templateConfirmTicketId="{ item }">{{ getTemplateName((item as Queues).templateConfirmTicketId) }}</template>
+      <template #item.templateStatusChangeId="{ item }">{{ getTemplateName((item as Queues).templateStatusChangeId) }}</template>
+      <template #item.templateCommentTicketId="{ item }">{{ getTemplateName((item as Queues).templateCommentTicketId) }}</template>
+
+      <!-- Действия: навигация на отдельные страницы -->
+      <template #item.actions="{ item }">
+        <div class="d-flex gap-1">
+          <IconBtn v-if="$can('write', 'menu_queues')" @click="editItem(item as Queues)">
+            <VIcon icon="bx-edit" />
+          </IconBtn>
+          <IconBtn v-if="$can('delete', 'menu_queues')" @click="entityListRef?.deleteItem(item)">
+            <VIcon icon="bx-trash" />
+          </IconBtn>
+        </div>
+      </template>
+
+      <!-- Доп. кнопки в тулбаре -->
+      <template #toolbar-append>
+        <VBtn variant="tonal" color="secondary" prepend-icon="bx-columns" @click="isColumnsDialogOpen = true">
+          Колонки
         </VBtn>
+        <VBtn v-if="$can('write', 'menu_queues')" color="primary" prepend-icon="bx-plus" @click="addNewQueues">
+          Добавить очередь
+        </VBtn>
+      </template>
+    </EntityList>
 
-        <!-- Кнопка массовых действий -->
-        <VMenu
-          v-model="isBulkActionsMenuOpen"
-          :close-on-content-click="false"
-        >
-          <template #activator="{ props }">
-            <VBtn
-              variant="tonal"
-              color="secondary"
-              prepend-icon="bx-dots-vertical-rounded"
-              :disabled="selectedItems.length === 0"
-              v-bind="props"
-            >
-              Действия ({{ selectedItems.length }})
-            </VBtn>
-          </template>
+    <!-- Диалог настроек колонок -->
+    <VDialog v-model="isColumnsDialogOpen" max-width="600px">
+      <VCard title="Настройка колонок">
+        <VCardText>
+          <div class="d-flex justify-end mb-4">
+            <VBtn variant="text" size="small" @click="resetColumnSettings">Сбросить</VBtn>
+          </div>
           <VList>
-            <VListItem
-              @click="() => {
-                bulkDelete()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Удалить</VListItemTitle>
-            </VListItem>
-            <VListItem
-              @click="() => {
-                bulkChangeStatus()
-                isBulkActionsMenuOpen = false
-              }"
-            >
-              <VListItemTitle>Изменить статус</VListItemTitle>
+            <VListItem v-for="(col, index) in columnSettings" :key="col.key" class="mb-1">
+              <template #prepend>
+                <VCheckbox v-model="col.visible" hide-details density="compact" />
+              </template>
+              <VListItemTitle>{{ col.title }}</VListItemTitle>
+              <template #append>
+                <div class="d-flex gap-1">
+                  <IconBtn :disabled="index === 0" @click="moveColumnUp(index)"><VIcon icon="bx-chevron-up" /></IconBtn>
+                  <IconBtn :disabled="index === columnSettings.length - 1" @click="moveColumnDown(index)"><VIcon icon="bx-chevron-down" /></IconBtn>
+                </div>
+              </template>
             </VListItem>
           </VList>
-        </VMenu>
-
-        <VSpacer />
-        <div class="d-flex gap-4 flex-wrap align-center">
-          <AppSelect
-            v-model="itemsPerPage"
-            :items="[5, 10, 20, 25, 50]"
-          />
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            prepend-icon="bx-columns"
-            @click="isColumnsDialogOpen = true"
-          >
-            Колонки
-          </VBtn>
-          <!-- Экспорт -->
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            prepend-icon="bx-export"
-          >
-            Экспорт
-          </VBtn>
-
-          <VBtn
-            v-if="$can('write', 'menu_queues')"
-            color="primary"
-            prepend-icon="bx-plus"
-            @click="addNewQueues"
-          >
-            Добавить очередь
-          </VBtn>
-        </div>
-      </div>
-
-      <!-- Диалог фильтров -->
-      <VDialog
-        v-model="isFilterDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Фильтры">
-          <VCardText>
-            <VRow>
-              <VCol cols="12">
-                <AppSelect
-                  v-model="statusFilter"
-                  placeholder="Статус"
-                  :items="[
-                    { title: 'Активен', value: 1 },
-                    { title: 'Не активен', value: 2 },
-                  ]"
-                  clearable
-                  clear-icon="bx-x"
-                />
-              </VCol>
-            </VRow>
-          </VCardText>
-
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                variant="text"
-                @click="clearFilters"
-              >
-                Сбросить
-              </VBtn>
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isFilterDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="isFilterDialogOpen = false"
-              >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <!-- Диалог массового удаления -->
-      <VDialog
-        v-model="isBulkDeleteDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Подтверждение удаления">
-          <VCardText>
-            Вы уверены, что хотите удалить выбранные очереди? Это действие нельзя отменить.
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkDeleteDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkDelete"
-              >
-                Удалить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <!-- Диалог массового изменения статуса -->
-      <VDialog
-        v-model="isBulkStatusDialogOpen"
-        max-width="500px"
-      >
-        <VCard title="Изменить статус">
-          <VCardText>
-            <AppSelect
-              v-model="bulkStatusValue"
-              :items="statusOptions"
-              item-title="text"
-              item-value="value"
-              label="Новый статус"
-            />
-          </VCardText>
-          <VCardText>
-            <div class="d-flex justify-end gap-4">
-              <VBtn
-                color="error"
-                variant="outlined"
-                @click="isBulkStatusDialogOpen = false"
-              >
-                Отмена
-              </VBtn>
-              <VBtn
-                color="success"
-                variant="elevated"
-                @click="confirmBulkStatusChange"
-              >
-                Применить
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VDialog>
-
-      <VDivider />
-
-      <!-- Таблица -->
-      <VDataTable
-        v-model="selectedItems"
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="currentPage"
-        :headers="visibleHeaders"
-        :items="filteredQueues"
-        show-select
-        :hide-default-footer="true"
-        item-value="id"
-        return-object
-        no-data-text="Нет данных"
-      >
-        <!-- Сервис -->
-        <template #item.serviceId="{ item }">
-          {{ getServiceName(item.serviceId) }}
-        </template>
-
-        <!-- SLA -->
-        <template #item.slaId="{ item }">
-          {{ getSlaName(item.slaId) }}
-        </template>
-
-        <!-- Рабочий процесс -->
-        <template #item.workflowId="{ item }">
-          {{ getWorkflowName(item.workflowId) }}
-        </template>
-
-        <!-- Организация -->
-        <template #item.companyId="{ item }">
-          {{ getCompanyName(item.companyId) }}
-        </template>
-
-        <!-- Подразделение -->
-        <template #item.departmentId="{ item }">
-          {{ getDepartmentName(item.departmentId) }}
-        </template>
-
-        <!-- Тип -->
-        <template #item.typeId="{ item }">
-          {{ getTypeName(item.typeId) }}
-        </template>
-
-        <!-- Категория -->
-        <template #item.categoryId="{ item }">
-          {{ getCategoryName(item.categoryId) }}
-        </template>
-
-        <!-- Ключевые слова -->
-        <template #item.keywords="{ item }">
-          <div
-            v-if="item.keywords"
-            class="d-flex flex-wrap gap-1"
-          >
-            <VChip
-              v-for="keyword in item.keywords.split(',')"
-              :key="keyword"
-              size="small"
-              color="primary"
-              variant="flat"
-              prepend-icon="bx-tag"
-            >
-              {{ keyword.trim() }}
-            </VChip>
-          </div>
-          <span
-            v-else
-            class="text-disabled"
-          >-</span>
-        </template>
-
-        <!-- Почтовый аккаунт -->
-        <template #item.postMasterMailAccountId="{ item }">
-          {{ getPostMasterMailAccountName(item.postMasterMailAccountId) }}
-        </template>
-
-        <!-- Группы исполнителей -->
-        <template #item.executorGroupIds="{ item }">
-          {{ item.executorGroupIds && item.executorGroupIds.length > 0 ? item.executorGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
-        </template>
-
-        <!-- Исполнители -->
-        <template #item.executorAgentIds="{ item }">
-          {{ getAgentNames(item.executorAgentIds) }}
-        </template>
-
-        <!-- Группы наблюдателей -->
-        <template #item.observerGroupIds="{ item }">
-          {{ item.observerGroupIds && item.observerGroupIds.length > 0 ? item.observerGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
-        </template>
-
-        <!-- Наблюдатели -->
-        <template #item.observerAgentIds="{ item }">
-          {{ getAgentNames(item.observerAgentIds) }}
-        </template>
-
-        <!-- Группы согласующих -->
-        <template #item.approverGroupIds="{ item }">
-          {{ item.approverGroupIds && item.approverGroupIds.length > 0 ? item.approverGroupIds.map(id => getAgentGroupName(id)).join(', ') : '-' }}
-        </template>
-
-        <!-- Согласующие -->
-        <template #item.approverAgentIds="{ item }">
-          {{ getAgentNames(item.approverAgentIds) }}
-        </template>
-
-        <!-- Приоритет (справочник) -->
-        <template #item.priorityId="{ item }">
-          <VChip
-            v-if="item.priorityId"
-            :color="getPriorityColor(item.priorityId)"
-            size="small"
-          >
-            {{ getPriorityName(item.priorityId) }}
-          </VChip>
-          <span v-else>-</span>
-        </template>
-
-        <!-- Шаблон открытия -->
-        <template #item.templateOpenTicketId="{ item }">
-          {{ getTemplateName(item.templateOpenTicketId) }}
-        </template>
-
-        <!-- Шаблон закрытия -->
-        <template #item.templateCloseTicketId="{ item }">
-          {{ getTemplateName(item.templateCloseTicketId) }}
-        </template>
-
-        <!-- Шаблон подтверждения -->
-        <template #item.templateConfirmTicketId="{ item }">
-          {{ getTemplateName(item.templateConfirmTicketId) }}
-        </template>
-
-        <!-- Шаблон изменения статуса -->
-        <template #item.templateStatusChangeId="{ item }">
-          {{ getTemplateName(item.templateStatusChangeId) }}
-        </template>
-
-        <!-- Шаблон комментария -->
-        <template #item.templateCommentTicketId="{ item }">
-          {{ getTemplateName(item.templateCommentTicketId) }}
-        </template>
-
-        <!-- Активен -->
-        <template #item.isActive="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VSwitch
-              :model-value="item.isActive"
-              color="primary"
-              hide-details
-              @update:model-value="(val) => toggleStatus(item, val)"
-            />
-            <VChip
-              v-bind="resolveStatusVariant(item.isActive)"
-              density="compact"
-              label
-              size="small"
-            />
-          </div>
-        </template>
-
-        <!-- Действия -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1">
-            <IconBtn
-              v-if="$can('write', 'menu_queues')"
-              @click="editItem(item)"
-            >
-              <VIcon icon="bx-edit" />
-            </IconBtn>
-            <IconBtn
-              v-if="$can('delete', 'menu_queues')"
-              @click="deleteItem(item)"
-            >
-              <VIcon icon="bx-trash" />
-            </IconBtn>
-          </div>
-        </template>
-      </VDataTable>
-
-      <!-- Пагинация -->
-      <div class="d-flex justify-center mt-4 pb-4">
-        <VPagination
-          v-model="currentPage"
-          :length="Math.ceil(filteredQueues.length / itemsPerPage) || 1"
-          :total-visible="$vuetify.display.mdAndUp ? 7 : 3"
-        />
-      </div>
-    </VCard>
-
-    <!-- Диалог редактирования -->
-    <VDialog
-      v-model="deleteDialog"
-      max-width="500px"
-    >
-      <VCard title="Вы уверены, что хотите удалить эту очередь?">
-        <VCardText>
-          <div class="d-flex justify-center gap-4">
-            <VBtn
-              color="error"
-              variant="outlined"
-              @click="closeDelete"
-            >
-              Отмена
-            </VBtn>
-            <VBtn
-              color="success"
-              variant="elevated"
-              @click="deleteItemConfirm"
-            >
-              Удалить
-            </VBtn>
-          </div>
         </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn @click="isColumnsDialogOpen = false">Закрыть</VBtn>
+        </VCardActions>
       </VCard>
     </VDialog>
   </div>
-
-  <!-- Диалог настроек колонок -->
-  <VDialog
-    v-model="isColumnsDialogOpen"
-    max-width="600px"
-  >
-    <VCard title="Настройка колонок">
-      <VCardText>
-        <div class="d-flex justify-end mb-4">
-          <VBtn
-            variant="text"
-            size="small"
-            @click="resetColumnSettings"
-          >
-            Сбросить
-          </VBtn>
-        </div>
-        <VList>
-          <VListItem
-            v-for="(col, index) in columnSettings"
-            :key="col.key"
-            class="mb-1"
-          >
-            <template #prepend>
-              <VCheckbox
-                v-model="col.visible"
-                hide-details
-                density="compact"
-              />
-            </template>
-            <VListItemTitle>{{ col.title }}</VListItemTitle>
-            <template #append>
-              <div class="d-flex gap-1">
-                <IconBtn
-                  :disabled="index === 0"
-                  @click="moveColumnUp(index)"
-                >
-                  <VIcon icon="bx-chevron-up" />
-                </IconBtn>
-                <IconBtn
-                  :disabled="index === columnSettings.length - 1"
-                  @click="moveColumnDown(index)"
-                >
-                  <VIcon icon="bx-chevron-down" />
-                </IconBtn>
-              </div>
-            </template>
-          </VListItem>
-        </VList>
-      </VCardText>
-      <VCardActions>
-        <VSpacer />
-        <VBtn @click="isColumnsDialogOpen = false">
-          Закрыть
-        </VBtn>
-      </VCardActions>
-    </VCard>
-  </VDialog>
-
-
 </template>
-
-<style lang="scss" scoped>
-.v-card {
-  margin-block-end: 1rem;
-}
-</style>
